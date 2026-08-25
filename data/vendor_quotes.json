@@ -1,0 +1,18 @@
+[
+  {
+    "equipment_id": "FE-001",
+    "vendor": "AcmeWaste Handling GmbH",
+    "price": 42500.0,
+    "date": "2026-08-20",
+    "notes": "Quote via email, 12wk lead time",
+    "logged_at": "2026-08-25T13:54:06.410102+00:00"
+  },
+  {
+    "equipment_id": "GA-001",
+    "vendor": "Thermax Gasification Systems",
+    "price": 380000.0,
+    "date": "2026-08-22",
+    "notes": "Phone quote, valid 30 days",
+    "logged_at": "2026-08-25T13:54:06.411091+00:00"
+  }
+]

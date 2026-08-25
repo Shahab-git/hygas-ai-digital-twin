@@ -1,0 +1,5454 @@
+[
+  {
+    "id": "FE-001",
+    "name": "MSW Receiving Hopper",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Total hopper capacity",
+        "value": "2",
+        "unit": "t",
+        "remarks": "Sized for ~2 days buffer at 1 tpd nominal, per DOK-ING hot-standby requirement"
+      },
+      {
+        "parameter": "Number of hoppers",
+        "value": "1",
+        "unit": "—",
+        "remarks": "Single-module design; redundancy handled at multi-module level (AI-014), not duplicated here"
+      },
+      {
+        "parameter": "Hopper material",
+        "value": "Carbon steel S355, Hardox 400 wear liner in discharge zone",
+        "unit": "—",
+        "remarks": "Liner addresses abrasive/heterogeneous MSW wear in the discharge zone specifically"
+      },
+      {
+        "parameter": "Live capacity (usable)",
+        "value": "1.7",
+        "unit": "t",
+        "remarks": "85% of total — typical dead-volume margin for this hopper geometry"
+      },
+      {
+        "parameter": "Discharge opening size",
+        "value": "900x900",
+        "unit": "mm",
+        "remarks": "Sized to avoid bridging on pre-shredded feed ahead of FE-002"
+      },
+      {
+        "parameter": "Level sensor type",
+        "value": "Radar (non-contact)",
+        "unit": "—",
+        "remarks": "Chosen over ultrasonic — more tolerant of dust buildup over time"
+      },
+      {
+        "parameter": "Level sensor range",
+        "value": "0-5",
+        "unit": "m",
+        "remarks": "Matches hopper height at this capacity"
+      },
+      {
+        "parameter": "Weight sensor (load cell) capacity",
+        "value": "5",
+        "unit": "t",
+        "remarks": "Hopper self-weight + live load + margin"
+      },
+      {
+        "parameter": "Weight sensor accuracy",
+        "value": "±0.25",
+        "unit": "% FS",
+        "remarks": "Standard industrial grade; tighter accuracy not needed since not custody-transfer metering"
+      },
+      {
+        "parameter": "Operating temperature (ambient)",
+        "value": "(-20 to +50)",
+        "unit": "°C",
+        "remarks": "Standard outdoor range; confirm once site location is set"
+      },
+      {
+        "parameter": "Dust suppression system",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Standard for open MSW receiving points"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "11 of 13 parameters filled"
+  },
+  {
+    "id": "FE-002",
+    "name": "Magnetic & Eddy Current Separator",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Separator type",
+        "value": "Combined magnetic drum (ferrous) + eddy current separator (non-ferrous)",
+        "unit": "—",
+        "remarks": "Two-stage: DOK-ING feed mix (plastic, wood, textiles) means non-ferrous tramp (Al/Cu) also needs catching, not just ferrous"
+      },
+      {
+        "parameter": "Design throughput",
+        "value": "0.5",
+        "unit": "t/h",
+        "remarks": "Smallest practical standard unit — real turndown margin over the 41.7 kg/h actual feed rate, not oversizing for its own sake"
+      },
+      {
+        "parameter": "Belt width",
+        "value": "500",
+        "unit": "mm",
+        "remarks": "Matches the smaller standard throughput class"
+      },
+      {
+        "parameter": "Magnetic field strength",
+        "value": "100",
+        "unit": "mT",
+        "remarks": "Standard field strength for ferrous tramp-metal duty"
+      },
+      {
+        "parameter": "Target metal fraction",
+        "value": "Residual ferrous + non-ferrous tramp metal (post-MRF, polishing duty)",
+        "unit": "mm",
+        "remarks": "Polishing catch, not primary recovery — DOK-ING's feed is already pre-sorted at the MRF"
+      },
+      {
+        "parameter": "Removal efficiency",
+        "value": ">98",
+        "unit": "—",
+        "remarks": "Standard for this duty when feed is already largely metal-free going in"
+      },
+      {
+        "parameter": "Drive power",
+        "value": "0.75",
+        "unit": "%",
+        "remarks": "Standard drive power for a small unit"
+      },
+      {
+        "parameter": "Installation position",
+        "value": "Between FE-001 (Hopper) and FE-003 (Shredder)",
+        "unit": "Kw",
+        "remarks": "Positioned specifically to protect FE-003 shredder blades — the equipment most vulnerable to tramp metal damage"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "FE-003",
+    "name": "Weighing Conveyor",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Nominal feed rate",
+        "value": "0.042",
+        "unit": "t/h",
+        "remarks": "Matches DOK-ING's 1 tpd (41.7 kg/h) nominal basis directly"
+      },
+      {
+        "parameter": "Min feed rate",
+        "value": "0.029",
+        "unit": "t/h",
+        "remarks": "70% turndown per DOK-ING spec"
+      },
+      {
+        "parameter": "Max feed rate",
+        "value": "0.05",
+        "unit": "t/h",
+        "remarks": "120% turndown per DOK-ING spec"
+      },
+      {
+        "parameter": "Belt width",
+        "value": "400",
+        "unit": "mm",
+        "remarks": "Smallest practical standard belt-weigher width — same minimum-practical-unit pattern seen at FE-008"
+      },
+      {
+        "parameter": "Belt speed range",
+        "value": "0.1-0.3",
+        "unit": "m/s",
+        "remarks": "Deliberately slow — improves belt-weigher accuracy, and throughput here is small regardless"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "0.37",
+        "unit": "kW",
+        "remarks": "Standard small-motor size for this duty"
+      },
+      {
+        "parameter": "Weighing accuracy",
+        "value": "±0.5",
+        "unit": "% FS",
+        "remarks": "This number matters more than most: it's the mass-balance input every downstream efficiency KPI is calculated against"
+      },
+      {
+        "parameter": "Conveyor length",
+        "value": "3",
+        "unit": "m",
+        "remarks": "Short connecting run between FE-008 and FE-003"
+      },
+      {
+        "parameter": "Inclination angle",
+        "value": "0",
+        "unit": "°",
+        "remarks": "Horizontal — avoids the measurement error an incline adds to belt-weigher accuracy"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "FE-004",
+    "name": "Shredder / Size Reducer",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Throughput capacity",
+        "value": "0.1",
+        "unit": "t/h",
+        "remarks": "Covers FE-002's max feed rate (0.050 t/h) with margin; smallest practical shredder unit — same oversizing pattern as FE-008/FE-002"
+      },
+      {
+        "parameter": "Output particle size (max)",
+        "value": "20",
+        "unit": "mm",
+        "remarks": "Sits inside DOK-ING's 20–30mm target with margin, not right at the edge"
+      },
+      {
+        "parameter": "Rotor speed",
+        "value": "40",
+        "unit": "rpm",
+        "remarks": "Low-speed, high-torque — standard for mixed/heterogeneous waste rather than high-speed shredding"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "15",
+        "unit": "kW",
+        "remarks": "Shredders don't scale down power the way throughput scales down — cutting force is the limiter, not mass flow. This is the sharpest oversizing case yet"
+      },
+      {
+        "parameter": "Number of rotors",
+        "value": "2 (dual-shaft)",
+        "unit": "—",
+        "remarks": "Handles DOK-ING's mixed feed (plastic, wood, textiles) more reliably than single-shaft"
+      },
+      {
+        "parameter": "Rotor material",
+        "value": "Hardened alloy steel (42CrMo4), induction-hardened cutting edges",
+        "unit": "—",
+        "remarks": "Standard for abrasive/mixed MSW duty"
+      },
+      {
+        "parameter": "Screen mesh size",
+        "value": "20",
+        "unit": "mm",
+        "remarks": "Matches target output size directly"
+      },
+      {
+        "parameter": "VSD fitted",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Handles load variability in heterogeneous feed, reduces jam risk"
+      },
+      {
+        "parameter": "Overload protection",
+        "value": "Torque-limiting clutch + automatic reverse-on-jam",
+        "unit": "—",
+        "remarks": "Standard modern practice; protects the single most mechanically stressed equipment in the feed train"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "FE-005",
+    "name": "Feed Dryer (Rotary/Belt)",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Dryer type",
+        "value": "Belt dryer (low-temperature convective)",
+        "unit": "—",
+        "remarks": "Chosen over rotary specifically because feed includes plastics — gentler thin-layer drying avoids sticking/fouling on hot drum walls"
+      },
+      {
+        "parameter": "Design throughput",
+        "value": "0.05",
+        "unit": "t/h",
+        "remarks": "Matches FE-003 max feed rate"
+      },
+      {
+        "parameter": "Inlet moisture (design)",
+        "value": "10",
+        "unit": "% moisture",
+        "remarks": "Same midpoint value used in the mass/energy balance dashboard — keeps this datasheet consistent rather than introducing a second assumption"
+      },
+      {
+        "parameter": "Outlet moisture (target)",
+        "value": "-1",
+        "unit": "% moisture",
+        "remarks": "Matches residual moisture already used in the stream table"
+      },
+      {
+        "parameter": "Heat source",
+        "value": "Recovered process heat (HB-005 WGS heat exchanger and/or EU-006 CHP recovery), electric/gas trim backup",
+        "unit": "—",
+        "remarks": "Closes an energy loop within the plant rather than adding dedicated fuel-fired duty; flagged as a candidate integration when HB-003 was originally described"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "100",
+        "unit": "°C",
+        "remarks": "Kept below where common MSW plastics (PE/PP) soften (~120-160°C) to avoid fouling"
+      },
+      {
+        "parameter": "Residence time",
+        "value": "15",
+        "unit": "min",
+        "remarks": "Standard for thin-layer belt drying at this scale"
+      },
+      {
+        "parameter": "Drive power",
+        "value": "5",
+        "unit": "kW",
+        "remarks": "Dominated by fan/blower power, not mechanical drive, in a convective dryer"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 11 parameters filled"
+  },
+  {
+    "id": "FE-006",
+    "name": "Moisture Analyser",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Measurement principle",
+        "value": "Near-infrared reflectance (NIR)",
+        "unit": "—",
+        "remarks": "Non-contact, robust for heterogeneous solids — avoids fouling/wear a contact method would face on mixed MSW"
+      },
+      {
+        "parameter": "Measurement range",
+        "value": "0–25",
+        "unit": "% moisture",
+        "remarks": "Covers FE-007's ~1% target with margin, plus DOK-ING's full inlet range (up to 20%) in case material bypasses drying"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±0.5",
+        "unit": "± %",
+        "remarks": "Standard for NIR moisture analysers at this duty"
+      },
+      {
+        "parameter": "Response time",
+        "value": "2",
+        "unit": "s",
+        "remarks": "Fast enough to actually close a control loop back to the dryer, not just log a reading"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Analog for local control loop, digital for integration into AI/SCADA layer"
+      },
+      {
+        "parameter": "Installation type",
+        "value": "Non-contact, mounted above conveyor at dryer discharge",
+        "unit": "—",
+        "remarks": "Reads material right as it leaves FE-007, before FE-005"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "0 to +60",
+        "unit": "°C",
+        "remarks": "Sensor housed clear of the ~100°C drying air stream"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "6",
+        "unit": "months",
+        "remarks": "Standard for continuous online NIR moisture sensors"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "FE-007",
+    "name": "Feed Screw / Ram Feeder",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Feed rate range",
+        "value": "0.029-0.050",
+        "unit": "t/h",
+        "remarks": "Matches FE-002/FE-003 turndown range directly"
+      },
+      {
+        "parameter": "Stroke length (ram)",
+        "value": "400",
+        "unit": "mm",
+        "remarks": "Standard for a small-scale ram feeder at this throughput"
+      },
+      {
+        "parameter": "Stroke rate",
+        "value": "4",
+        "unit": "strokes/min",
+        "remarks": "Sized to match feed rate at this stroke volume"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "5.5",
+        "unit": "kW",
+        "remarks": "Hydraulic power unit driving the ram cylinder"
+      },
+      {
+        "parameter": "Cylinder bore (hydraulic)",
+        "value": "125",
+        "unit": "mm",
+        "remarks": "Standard small-bore hydraulic cylinder for this duty"
+      },
+      {
+        "parameter": "Operating pressure (hydraulic)",
+        "value": "200",
+        "unit": "bar",
+        "remarks": "Standard hydraulic ram system pressure"
+      },
+      {
+        "parameter": "Position sensor type",
+        "value": "Magnetostrictive linear position transducer",
+        "unit": "—",
+        "remarks": "Continuous stroke-position feedback"
+      },
+      {
+        "parameter": "Sealing type",
+        "value": "Compacted feed plug (self-sealing) + hydraulic rod seals",
+        "unit": "—",
+        "remarks": "Plug is the primary pressure barrier, works with FE-006 downstream to hold reactor pressure"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "FE-008",
+    "name": "Air-lock / Rotary Valve",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Nominal throughput",
+        "value": "0.029–0.050",
+        "unit": "t/h",
+        "remarks": "Matches FE-005 feed rate range directly"
+      },
+      {
+        "parameter": "Rotor speed range",
+        "value": "10–20",
+        "unit": "rpm",
+        "remarks": "Standard for solids rotary valves at this duty"
+      },
+      {
+        "parameter": "Differential sealing pressure",
+        "value": "150",
+        "unit": "mbar",
+        "remarks": "Rated with margin above the ~100 mbar actual differential (gasifier runs near-atmospheric, ~1.1 bar)"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "0.75",
+        "unit": "kW",
+        "remarks": "Small unit, standard for this throughput"
+      },
+      {
+        "parameter": "Rotor pocket volume",
+        "value": "2",
+        "unit": "L",
+        "remarks": "Sized against throughput and rotor speed"
+      },
+      {
+        "parameter": "Housing material",
+        "value": "Cast iron body, hardened rotor-tip inserts",
+        "unit": "—",
+        "remarks": "Standard for dried, abrasive MSW dust service"
+      },
+      {
+        "parameter": "Seal type",
+        "value": "Adjustable rotor-tip clearance + shaft lip seals",
+        "unit": "—",
+        "remarks": "Secondary pressure barrier — works with FE-005’s compacted plug to hold gasifier pressure"
+      },
+      {
+        "parameter": "VSD fitted",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Allows speed matching to actual feed rate, avoids over/under-feeding"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-001",
+    "name": "Gasifier Vessel (Reactor)",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Design temperature",
+        "value": "1050",
+        "unit": "°C",
+        "remarks": "Margin above operating temperature for design safety factor"
+      },
+      {
+        "parameter": "Operating temperature (typical)",
+        "value": "950",
+        "unit": "°C",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard and Simulink thermal-lag model"
+      },
+      {
+        "parameter": "Design pressure",
+        "value": "500",
+        "unit": "mbar(g)",
+        "remarks": "Rated with real margin above operating, even though BFB runs near-atmospheric"
+      },
+      {
+        "parameter": "Operating pressure (typical)",
+        "value": "100",
+        "unit": "mbar(g)",
+        "remarks": "Matches ~1.1 bar absolute already used in the pressure profile chart"
+      },
+      {
+        "parameter": "Vessel internal diameter",
+        "value": "600",
+        "unit": "mm",
+        "remarks": "Sized for realistic superficial gas velocity (0.5-1.5 m/s typical for BFB) at this small throughput"
+      },
+      {
+        "parameter": "Vessel height (total)",
+        "value": "4000",
+        "unit": "mm",
+        "remarks": "Includes bed height + freeboard for particle disengagement before gas exits"
+      },
+      {
+        "parameter": "Refractory lining material",
+        "value": "70% Al2O3 high-alumina castable",
+        "unit": "—",
+        "remarks": "Standard for continuous service at 950-1050°C"
+      },
+      {
+        "parameter": "Refractory thickness",
+        "value": "150",
+        "unit": "mm",
+        "remarks": "Standard for this temperature class, protects the shell from process temperature"
+      },
+      {
+        "parameter": "Shell material",
+        "value": "Carbon steel SA516 Gr.70, refractory-lined",
+        "unit": "—",
+        "remarks": "Refractory does the thermal work; shell doesn't need to be a high-temp alloy"
+      },
+      {
+        "parameter": "Number of temperature zones",
+        "value": "4",
+        "unit": "—",
+        "remarks": "Lower bed, upper bed, freeboard, gas exit — enough resolution to see bed behavior, not just one averaged reading"
+      },
+      {
+        "parameter": "Temperature sensor type",
+        "value": "Type S (Pt-Rh) thermocouples, multi-point",
+        "unit": "—",
+        "remarks": "Type K degrades in accuracy near 950°C+; Type S is standard at this temperature class"
+      },
+      {
+        "parameter": "Gasifier technology type",
+        "value": "Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping oxygen carrier",
+        "unit": "—",
+        "remarks": "Matches the specific technology documented in the equipment reference and gasifier structure diagram"
+      },
+      {
+        "parameter": "Residence time (design)",
+        "value": "20",
+        "unit": "min",
+        "remarks": "Solids residence time in the bed — typical for MSW/biomass gasification conversion at this scale"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "13 of 15 parameters filled"
+  },
+  {
+    "id": "GA-002",
+    "name": "Gasifier Vessel (Pressure)",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Design pressure",
+        "value": "500",
+        "unit": "mbar(g)",
+        "remarks": "Matches GA-001's design pressure directly"
+      },
+      {
+        "parameter": "Operating pressure range",
+        "value": "50-150",
+        "unit": "mbar(g)",
+        "remarks": "Band around the 100 mbar(g) typical value, reflecting the 70-120% feed turndown DOK-ING specified"
+      },
+      {
+        "parameter": "Pressure transmitter type",
+        "value": "Capacitive diaphragm pressure transmitter",
+        "unit": "—",
+        "remarks": "Standard choice for this low-pressure (mbar) range"
+      },
+      {
+        "parameter": "Pressure transmitter range",
+        "value": "0-600",
+        "unit": "mbar",
+        "remarks": "Covers design pressure with margin"
+      },
+      {
+        "parameter": "Pressure transmitter accuracy",
+        "value": "±0.1",
+        "unit": "% FS",
+        "remarks": "Tighter than typical elsewhere — justified as a key AI control input and earliest upset-condition indicator in the plant"
+      },
+      {
+        "parameter": "Safety relief valve set pressure",
+        "value": "480",
+        "unit": "mbar(g)",
+        "remarks": "Standard margin below the 500 mbar(g) design pressure, code-compliant practice"
+      },
+      {
+        "parameter": "Number of pressure taps",
+        "value": "2",
+        "unit": "—",
+        "remarks": "Primary continuous transmitter + a second tap enabling cross-check and feeding the bed ΔP calculation (AI-013)"
+      },
+      {
+        "parameter": "Vendor / model (transmitter)",
+        "value": null,
+        "unit": null,
+        "remarks": null
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GA-003",
+    "name": "Air/Steam Injection (Flow)",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Primary air flow rate (design)",
+        "value": "60",
+        "unit": "Nm³/h",
+        "remarks": "Derived from ER=0.25 × stoichiometric air demand for the dry feed rate — not DOK-ING-confirmed, treat as an estimate"
+      },
+      {
+        "parameter": "Steam flow rate (design)",
+        "value": "15",
+        "unit": "kg/h",
+        "remarks": "Directly matches the 0.4 kg steam/kg dry feed ratio already used in the mass/energy balance (37.5 kg/h dry feed x 0.4)"
+      },
+      {
+        "parameter": "Air-to-fuel equivalence ratio (ER)",
+        "value": "0.25",
+        "unit": "—",
+        "remarks": "Partial oxidation for autothermal heat; majority of gasification still driven by steam reactions per DOK-ING's steam-blown spec"
+      },
+      {
+        "parameter": "Air flow meter type",
+        "value": "Thermal mass flow meter",
+        "unit": "—",
+        "remarks": "No pressure/temperature compensation needed, suited to Nm3/h normalized flow"
+      },
+      {
+        "parameter": "Steam flow meter type",
+        "value": "Vortex shedding flow meter",
+        "unit": "—",
+        "remarks": "Standard robust choice for steam service, no moving parts"
+      },
+      {
+        "parameter": "Air flow meter range",
+        "value": "0-100",
+        "unit": "Nm³/h",
+        "remarks": "Margin above the 60 Nm3/h design value"
+      },
+      {
+        "parameter": "Steam flow meter range",
+        "value": "0-25",
+        "unit": "kg/h",
+        "remarks": "Margin above the 15 kg/h design value"
+      },
+      {
+        "parameter": "Number of injection points",
+        "value": "12",
+        "unit": "—",
+        "remarks": "Distributor-plate nozzles, sized for uniform fluidization across the 600mm bed diameter (GA-001)"
+      },
+      {
+        "parameter": "Injection nozzle material",
+        "value": "Inconel 625",
+        "unit": "—",
+        "remarks": "High-temperature, oxidation-resistant — nozzles sit directly in the 950°C bed environment"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "GA-004",
+    "name": "Air/Steam Injection (Temp)",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Air preheat temperature",
+        "value": "200",
+        "unit": "°C",
+        "remarks": "Sourced from recovered process heat (same integration approach as FE-007) rather than dedicated fuel-fired preheat"
+      },
+      {
+        "parameter": "Steam temperature (design)",
+        "value": "350",
+        "unit": "°C",
+        "remarks": "Superheated — avoids condensation in injection lines and local bed quenching at injection points"
+      },
+      {
+        "parameter": "Steam pressure (design)",
+        "value": "5",
+        "unit": "bar(g)",
+        "remarks": "Supply header pressure; throttled down through the control valve to match the near-atmospheric reactor pressure (GA-002)"
+      },
+      {
+        "parameter": "Steam quality",
+        "value": ">99% dry (superheated)",
+        "unit": "—",
+        "remarks": "Wet steam would carry liquid droplets causing thermal shock/erosion at the injection nozzles (GA-003)"
+      },
+      {
+        "parameter": "Temperature sensor type (air)",
+        "value": "Pt100 RTD",
+        "unit": "—",
+        "remarks": "More accurate/stable than thermocouples at this moderate temperature range"
+      },
+      {
+        "parameter": "Temperature sensor type (steam)",
+        "value": "Pt100 RTD",
+        "unit": "—",
+        "remarks": "350°C is well within RTD accurate operating range"
+      },
+      {
+        "parameter": "Control valve type",
+        "value": "Pneumatic-actuated control valve with positioner",
+        "unit": "—",
+        "remarks": "Standard for tight flow control tied into the AI/PLC control loop"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GA-005",
+    "name": "Bed Drain / Ash Discharge System",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Discharge mechanism type",
+        "value": "Water-cooled screw conveyor",
+        "unit": "—",
+        "remarks": "BFB reactors use a bed drain/screw discharge through the distributor plate, not a moving grate"
+      },
+      {
+        "parameter": "Discharge opening area",
+        "value": "0.05",
+        "unit": "m²",
+        "remarks": "Small opening relative to the 600mm bed diameter (GA-001)"
+      },
+      {
+        "parameter": "Discharge drive speed range",
+        "value": "5_15",
+        "unit": "rpm",
+        "remarks": "Standard screw-conveyor range for ash discharge duty"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "1.1",
+        "unit": "kW",
+        "remarks": "Small unit for this ash mass flow"
+      },
+      {
+        "parameter": "Discharge component material",
+        "value": "Heat-resistant stainless steel (310S)",
+        "unit": "—",
+        "remarks": "Survives hot ash + abrasion at the bed-drain interface"
+      },
+      {
+        "parameter": "Ash discharge rate (design)",
+        "value": "10",
+        "unit": "% of feed",
+        "remarks": "Matches the 10% ash content (dry basis) already used in the mass/energy balance"
+      },
+      {
+        "parameter": "Ash cooling method",
+        "value": "Water-jacketed screw housing, indirect cooling",
+        "unit": "—",
+        "remarks": "Cools discharged ash from bed temperature before reaching GA-006 downstream"
+      },
+      {
+        "parameter": "Torque sensor fitted",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Detects jams/blockages in the discharge screw — feeds into AI monitoring"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-006",
+    "name": "Char / Ash Conveyor",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Conveyor type",
+        "value": "Drag chain conveyor (enclosed)",
+        "unit": "—",
+        "remarks": "Standard for hot, dusty ash service; enclosed housing controls dust"
+      },
+      {
+        "parameter": "Conveyor capacity",
+        "value": "0.02",
+        "unit": "t/h",
+        "remarks": "Margin above the ~0.005 t/h ash rate implied by GA-005's 10%-of-feed discharge rate"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "0.55",
+        "unit": "kW",
+        "remarks": "Small unit for this mass flow"
+      },
+      {
+        "parameter": "Char temperature at inlet",
+        "value": "150",
+        "unit": "°C",
+        "remarks": "Already cooled by GA-005's water-jacketed screw housing — well below bed temperature (950°C, GA-001)"
+      },
+      {
+        "parameter": "Conveyor material",
+        "value": "Carbon steel with abrasion-resistant liner",
+        "unit": "—",
+        "remarks": "At this lower temperature (vs GA-005's 310S), carbon steel is sufficient; liner handles ash abrasion"
+      },
+      {
+        "parameter": "Cooling method",
+        "value": "Ambient air cooling via enclosed housing",
+        "unit": "—",
+        "remarks": "No active cooling needed — primary cooling already done at GA-005"
+      },
+      {
+        "parameter": "Length",
+        "value": "4",
+        "unit": "m",
+        "remarks": "Short connecting run to GA-007"
+      },
+      {
+        "parameter": "Mass flow sensor type",
+        "value": "Load cell under conveyor support frame",
+        "unit": "—",
+        "remarks": "Verifies ash output rate against the 10% design value from GA-005, feeds the same mass-balance cross-checking pattern as FE-001/FE-002"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-007",
+    "name": "Char Collection Bin",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Bin volume",
+        "value": "0.5",
+        "unit": "m³",
+        "remarks": "Several days' buffer at the ~0.005 t/h actual ash rate; smallest practical bin size"
+      },
+      {
+        "parameter": "Design temperature",
+        "value": "200",
+        "unit": "°C",
+        "remarks": "Margin above GA-006's ~150°C outlet temperature"
+      },
+      {
+        "parameter": "Level sensor type",
+        "value": "Radar (non-contact)",
+        "unit": "—",
+        "remarks": "Same reasoning as FE-001 — more tolerant of dust buildup than ultrasonic"
+      },
+      {
+        "parameter": "Level sensor range",
+        "value": "0-1.5",
+        "unit": "m",
+        "remarks": "Matches bin height"
+      },
+      {
+        "parameter": "Bin material",
+        "value": "Carbon steel S275",
+        "unit": "—",
+        "remarks": "Moderate temperature, no longer abrasion-critical once ash has settled"
+      },
+      {
+        "parameter": "Insulation fitted",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Retains residual warmth, reduces moisture condensation/caking risk in the ash"
+      },
+      {
+        "parameter": "Dust filter / vent",
+        "value": "Bag filter vent (dust collector)",
+        "unit": "—",
+        "remarks": "Prevents dust escape during bin filling"
+      },
+      {
+        "parameter": "Discharge valve type",
+        "value": "Pneumatically actuated slide gate valve",
+        "unit": "—",
+        "remarks": "Automated batch discharge feeding GA-008/GA-009 consistently"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-008",
+    "name": "Carbon Black Recovery & Classification Unit",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Separation method",
+        "value": "Cyclone (coarse) + electrostatic precipitator (fine polishing)",
+        "unit": "—",
+        "remarks": "Two-stage — cyclone alone doesn't efficiently capture the finest carbon black fraction"
+      },
+      {
+        "parameter": "Design capacity",
+        "value": "3",
+        "unit": "kg/h",
+        "remarks": "Margin above the ~1.88 kg/h nominal (2.25 kg/h at 120% turndown) already used in the mass/energy balance"
+      },
+      {
+        "parameter": "Particle size cut point",
+        "value": "10",
+        "unit": "µm",
+        "remarks": "Defines the fine-particulate cut separating carbon black from coarser char/ash handled by GA-005/006/007"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "180",
+        "unit": "°C",
+        "remarks": "Typical operating range for cyclone/ESP duty on this fines stream"
+      },
+      {
+        "parameter": "Collection efficiency",
+        "value": ">95",
+        "unit": "%",
+        "remarks": "Standard for a combined cyclone + ESP system at this particle size"
+      },
+      {
+        "parameter": "Storage/packaging type",
+        "value": "Collection hopper feeding GA-010 packaging silo",
+        "unit": "—",
+        "remarks": "GA-008 separates and classifies; GA-010 handles actual packaging/storage downstream"
+      },
+      {
+        "parameter": "Product ash content",
+        "value": "<1",
+        "unit": "wt%",
+        "remarks": "Standard purity target for commercial-grade carbon black"
+      },
+      {
+        "parameter": "Dust explosion protection (ATEX)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Carbon black dust is combustible — this isn't optional at any scale"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-009",
+    "name": "Ash Aggregate Processing & Packaging Unit",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Processing method",
+        "value": "Crushing, cement/lime stabilization, and screening to size",
+        "unit": "—",
+        "remarks": "Standard three-step process turning raw bottom ash into a construction-grade aggregate"
+      },
+      {
+        "parameter": "Design capacity",
+        "value": "5",
+        "unit": "kg/h",
+        "remarks": "Margin above the ~3.75 kg/h ash rate (10% of dry feed) already established in the mass/energy balance"
+      },
+      {
+        "parameter": "Product size grade",
+        "value": "0-8",
+        "unit": "mm",
+        "remarks": "Standard construction aggregate sizing"
+      },
+      {
+        "parameter": "Leachate stabilization additive",
+        "value": "Portland cement (5-10% by mass)",
+        "unit": "—",
+        "remarks": "MSW-derived ash can carry heavy metals — stabilization/encapsulation is what makes leachate compliance achievable"
+      },
+      {
+        "parameter": "Compressive strength (product)",
+        "value": "≥20",
+        "unit": "MPa",
+        "remarks": "Mid-range target for construction aggregate use"
+      },
+      {
+        "parameter": "Storage/packaging type",
+        "value": "Bulk bags (FIBC) or bulk silo storage",
+        "unit": "—",
+        "remarks": "Standard for aggregate product shipment"
+      },
+      {
+        "parameter": "Applicable standard",
+        "value": "EN 12620",
+        "unit": "—",
+        "remarks": "European standard for aggregates for concrete — the actual compliance target this equipment exists to meet"
+      },
+      {
+        "parameter": "Dust suppression",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Crushing and screening generate dust; water misting or filtration required"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GA-010",
+    "name": "Carbon Black Packaging & Storage Silo",
+    "category": "Feed & Gasification",
+    "parameters": [
+      {
+        "parameter": "Storage type",
+        "value": "Vertical silo, N2-blanketed",
+        "unit": "—",
+        "remarks": "Standard for fine combustible particulate storage"
+      },
+      {
+        "parameter": "Storage capacity",
+        "value": "2",
+        "unit": "m³",
+        "remarks": "Several days' buffer at the ~1.88 kg/h nominal rate; low bulk density means volume, not mass, drives sizing"
+      },
+      {
+        "parameter": "Packaging format",
+        "value": "Bulk bags (FIBC)",
+        "unit": "—",
+        "remarks": "Matches GA-009's aggregate packaging approach for consistency"
+      },
+      {
+        "parameter": "Product grade target",
+        "value": "Industrial/pigment-grade",
+        "unit": "—",
+        "remarks": "Realistic target given the waste-gasification source — not premium tire-grade carbon black"
+      },
+      {
+        "parameter": "Dust explosion protection (ATEX)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Same requirement as GA-008 — carries through the whole handling chain"
+      },
+      {
+        "parameter": "Inert gas blanketing",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "N2 blanketing prevents dust ignition/oxidation risk during storage"
+      },
+      {
+        "parameter": "Loadout method",
+        "value": "Pneumatic loadout with dust collection",
+        "unit": "—",
+        "remarks": "Standard for fine, fluffy carbon black product transfer"
+      },
+      {
+        "parameter": "Moisture content (product)",
+        "value": "<1",
+        "unit": "wt%",
+        "remarks": "Standard quality/handling spec for carbon black product"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-001",
+    "name": "Primary Cyclone (Temp)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Inlet gas temperature (design)",
+        "value": "900",
+        "unit": "°C",
+        "remarks": "Some heat loss from the 950°C bed (GA-001) through transfer piping before reaching the cyclone"
+      },
+      {
+        "parameter": "Outlet gas temperature (design)",
+        "value": "880",
+        "unit": "°C",
+        "remarks": "Modest further loss through the cyclone body itself — short residence time limits heat loss here"
+      },
+      {
+        "parameter": "Temperature sensor type",
+        "value": "Type K thermocouple",
+        "unit": "—",
+        "remarks": "Below the bed's own extreme (which justified Type S at GA-001); Type K remains accurate and more cost-effective at this temperature"
+      },
+      {
+        "parameter": "Number of temperature sensors",
+        "value": "2",
+        "unit": "—",
+        "remarks": "One at inlet, one at outlet — enables tracking ΔT across the cyclone, paired with GC-002's ΔP reading"
+      },
+      {
+        "parameter": "Cyclone body material",
+        "value": "Refractory-lined carbon steel shell",
+        "unit": "—",
+        "remarks": "Same cost-effective approach as GA-001 — refractory does the thermal work rather than a solid high-temp alloy shell"
+      },
+      {
+        "parameter": "Design gas flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches the ~46.9 kg/h raw syngas mass flow already established in the mass/energy balance, converted at typical syngas density"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "GC-002",
+    "name": "Primary Cyclone (ΔP)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Design pressure drop",
+        "value": "20",
+        "unit": "mbar",
+        "remarks": "Standard for a moderate-efficiency primary (bulk removal) cyclone at this gas flow"
+      },
+      {
+        "parameter": "Operating pressure drop (typical)",
+        "value": "15",
+        "unit": "mbar",
+        "remarks": "Below design under normal clean conditions; rising toward design signals fouling"
+      },
+      {
+        "parameter": "Differential pressure transmitter range",
+        "value": "0-50",
+        "unit": "mbar",
+        "remarks": "Margin above design value, wide enough to still register meaningful readings as fouling develops"
+      },
+      {
+        "parameter": "Transmitter accuracy",
+        "value": "±0.1",
+        "unit": "% FS",
+        "remarks": "Tight accuracy justified — this is the AI system's early warning signal for cyclone degradation, same reasoning as GA-002"
+      },
+      {
+        "parameter": "Cut size (d50)",
+        "value": "15",
+        "unit": "µm",
+        "remarks": "Coarser cut than a polishing cyclone — removes bulk particulate, leaving finer material for GC-003"
+      },
+      {
+        "parameter": "Collection efficiency (design)",
+        "value": ">90",
+        "unit": "% > d50",
+        "remarks": "Standard for a primary cyclone at this cut size"
+      },
+      {
+        "parameter": "Dust hopper volume",
+        "value": "20",
+        "unit": "L",
+        "remarks": "Sized for captured particulate loading at this gas flow"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GC-003",
+    "name": "Secondary Cyclone",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Inlet gas temperature",
+        "value": "870",
+        "unit": "°C",
+        "remarks": "Minor further loss from GC-001's 880°C outlet through connecting piping"
+      },
+      {
+        "parameter": "Design pressure drop",
+        "value": "30",
+        "unit": "mbar",
+        "remarks": "Higher than GC-002's 20 mbar — finer particle cut requires more centrifugal force"
+      },
+      {
+        "parameter": "Cut size (d50)",
+        "value": "5",
+        "unit": "µm",
+        "remarks": "Finer than the primary cyclone's 15µm cut — this stage specifically targets what GC-002 missed"
+      },
+      {
+        "parameter": "Collection efficiency > 10 µm",
+        "value": ">95",
+        "unit": "%",
+        "remarks": "Higher than the primary stage's >90%, consistent with the finer cut size targeting this range"
+      },
+      {
+        "parameter": "Number of cyclones (parallel)",
+        "value": "1",
+        "unit": "—",
+        "remarks": "Plant scale (~50 Nm³/h) doesn't justify parallel units"
+      },
+      {
+        "parameter": "Cyclone body material",
+        "value": "Refractory-lined carbon steel shell",
+        "unit": "—",
+        "remarks": "Same approach as GC-001 — still hot enough (870°C) to need refractory protection"
+      },
+      {
+        "parameter": "Design gas flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches GC-001/002 — particulate removal doesn't meaningfully change gas volume"
+      },
+      {
+        "parameter": "Dust loading inlet (max)",
+        "value": "2",
+        "unit": "g/Nm³",
+        "remarks": "Residual loading after the primary cyclone's >90% removal of the coarse fraction"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-004",
+    "name": "Quench Tower (Temp)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Inlet gas temperature",
+        "value": "860",
+        "unit": "°C",
+        "remarks": "Minor connecting-pipe loss from GC-003's 870°C outlet"
+      },
+      {
+        "parameter": "Outlet gas temperature (design)",
+        "value": "65",
+        "unit": "°C",
+        "remarks": "Matches the value already established in the mass/energy balance dashboard temperature profile"
+      },
+      {
+        "parameter": "Cooling medium",
+        "value": "Direct water spray (recirculated quench water)",
+        "unit": "—",
+        "remarks": "Standard approach for rapid gasifier gas cooling"
+      },
+      {
+        "parameter": "Tower height",
+        "value": "3",
+        "unit": "m",
+        "remarks": "Sized for adequate gas-liquid contact time at this small scale"
+      },
+      {
+        "parameter": "Tower diameter",
+        "value": "400",
+        "unit": "mm",
+        "remarks": "Gas volume contracts ~70% cooling from 860°C to 65°C — diameter sized for cooled gas velocity, not hot inlet condition"
+      },
+      {
+        "parameter": "Tower material",
+        "value": "Stainless steel 316L",
+        "unit": "—",
+        "remarks": "Wet, potentially acidic condensate (dissolved HCl, H2S) requires corrosion resistance carbon steel can't provide"
+      },
+      {
+        "parameter": "Number of spray nozzles",
+        "value": "6",
+        "unit": "—",
+        "remarks": "Multiple nozzles for even quench water distribution across the gas stream"
+      },
+      {
+        "parameter": "Temperature sensor type",
+        "value": "Type K thermocouple (inlet), Pt100 RTD (outlet)",
+        "unit": "—",
+        "remarks": "Different sensor types matched to each temperature extreme within the same tower"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-005",
+    "name": "Quench Tower (Water)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Water consumption (design)",
+        "value": "0.5",
+        "unit": "m³/h",
+        "remarks": "Sized for evaporative + sensible cooling duty at this gas flow, plus tar/particulate washing"
+      },
+      {
+        "parameter": "Water supply pressure",
+        "value": "3",
+        "unit": "bar(g)",
+        "remarks": "Standard atomization pressure for spray nozzles (GC-004)"
+      },
+      {
+        "parameter": "Water supply temperature",
+        "value": "20",
+        "unit": "°C",
+        "remarks": "Ambient plant water supply"
+      },
+      {
+        "parameter": "Flow meter type",
+        "value": "Magnetic flow meter",
+        "unit": "—",
+        "remarks": "No moving parts — handles particulate-laden, potentially acidic water better than mechanical meters"
+      },
+      {
+        "parameter": "Flow meter range",
+        "value": "0-2",
+        "unit": "m³/h",
+        "remarks": "Margin above the 0.5 m³/h design value"
+      },
+      {
+        "parameter": "pH of quench water",
+        "value": "4_6",
+        "unit": "—",
+        "remarks": "Acidic — absorbed HCl/H2S from raw syngas lowers pH before dedicated downstream scrubbing (GC-006/GC-015) removes these species properly"
+      },
+      {
+        "parameter": "Blowdown rate",
+        "value": "0.05",
+        "unit": "m³/h",
+        "remarks": "~10% of total flow — recirculated system needs periodic blowdown to prevent dissolved solids buildup"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GC-006",
+    "name": "Tar Removal Unit",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Unit type",
+        "value": "Fixed packed-bed tar adsorber",
+        "unit": "—",
+        "remarks": "Matches the bed-based parameters, rather than an OLGA-type oil-scrubber column"
+      },
+      {
+        "parameter": "Bed material",
+        "value": "Activated carbon pellets (commercial-grade)",
+        "unit": "—",
+        "remarks": "Reliable adsorption capacity; self-generated char is a lower-cost but less consistent alternative worth considering later"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "65",
+        "unit": "°C",
+        "remarks": "Matches GC-004's quench tower outlet temperature directly"
+      },
+      {
+        "parameter": "Design pressure drop",
+        "value": "40",
+        "unit": "mbar",
+        "remarks": "Typical for a packed bed at this depth and gas velocity"
+      },
+      {
+        "parameter": "Bed height",
+        "value": "1.5",
+        "unit": "m",
+        "remarks": "Sized for adequate tar-loading contact time at this small gas flow"
+      },
+      {
+        "parameter": "Bed diameter",
+        "value": "350",
+        "unit": "mm",
+        "remarks": "Similar order to the quench tower diameter (GC-004) for consistent gas velocity through the train"
+      },
+      {
+        "parameter": "Regeneration method",
+        "value": "Replaceable media (no in-situ regeneration)",
+        "unit": "—",
+        "remarks": "In-situ thermal regeneration isn't economical at 1 tpd scale — media swap is simpler and more reliable"
+      },
+      {
+        "parameter": "Service interval",
+        "value": "2160",
+        "unit": "h",
+        "remarks": "Equivalent to ~3 months; estimate pending real tar-loading data"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-007",
+    "name": "Wet Scrubber (Tar)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Tar inlet concentration (design)",
+        "value": "0.5",
+        "unit": "g/Nm³",
+        "remarks": "Residual after GC-008's bulk packed-bed removal — down from typical raw syngas tar loading"
+      },
+      {
+        "parameter": "Tar outlet concentration (target)",
+        "value": "<50",
+        "unit": "mg/Nm³",
+        "remarks": "Standard target to protect downstream WGS catalyst and PSA adsorbent from fouling"
+      },
+      {
+        "parameter": "Scrubbing liquid",
+        "value": "Water (recirculated)",
+        "unit": "—",
+        "remarks": "Simple final polishing wash — bulk tar already handled by GC-006"
+      },
+      {
+        "parameter": "Operating temperature (gas side)",
+        "value": "60",
+        "unit": "°C",
+        "remarks": "Minor further cooling from GC-006s 65°C through the additional wet contact stage"
+      },
+      {
+        "parameter": "Liquid-to-gas ratio",
+        "value": "2",
+        "unit": "L/Nm³",
+        "remarks": "Standard range for a polishing wet scrubber"
+      },
+      {
+        "parameter": "Pressure drop (design)",
+        "value": "15",
+        "unit": "mbar",
+        "remarks": "Typical for a spray/venturi-type contactor at this duty"
+      },
+      {
+        "parameter": "Tar analyser type",
+        "value": "None — manual verification via SA-007 downstream",
+        "unit": "—",
+        "remarks": "Consistent with the plant's existing design pattern of periodic manual tar sampling rather than continuous online monitoring at this scale"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GC-008",
+    "name": "Wet Scrubber (H₂S)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "H₂S inlet concentration (design)",
+        "value": "200",
+        "unit": "ppm",
+        "remarks": "Estimate — DOK-ING never specified feed sulfur content; needs real confirmation"
+      },
+      {
+        "parameter": "H₂S outlet concentration (target)",
+        "value": "<1",
+        "unit": "ppm",
+        "remarks": "WGS catalysts (HB-001/003) are sulfur-sensitive — hard protection requirement, not a nice-to-have"
+      },
+      {
+        "parameter": "Removal efficiency",
+        "value": ">99.5",
+        "unit": "%",
+        "remarks": "Required to go from 200 ppm down to <1 ppm target"
+      },
+      {
+        "parameter": "Scrubbing liquid",
+        "value": "Caustic soda (NaOH) solution",
+        "unit": "—",
+        "remarks": "Simpler and more practical at this scale than an amine-based system"
+      },
+      {
+        "parameter": "Liquid-to-gas ratio",
+        "value": "3",
+        "unit": "L/Nm³",
+        "remarks": "Higher than GC-007's tar scrubber (L/G=2) — reaching sub-ppm H2S needs better liquid contact"
+      },
+      {
+        "parameter": "Scrubber height",
+        "value": "2",
+        "unit": "m",
+        "remarks": "Sized for adequate mass transfer to reach the <1 ppm target"
+      },
+      {
+        "parameter": "Scrubber diameter",
+        "value": "300",
+        "unit": "mm",
+        "remarks": "Consistent with other gas cleaning equipment at this scale"
+      },
+      {
+        "parameter": "Packing material / type",
+        "value": "Random packing (polypropylene Pall rings)",
+        "unit": "—",
+        "remarks": "Standard, corrosion-resistant to caustic solution"
+      },
+      {
+        "parameter": "H₂S analyser (inlet) type",
+        "value": "Electrochemical H2S sensor",
+        "unit": "—",
+        "remarks": "Adequate resolution at the higher inlet concentration range"
+      },
+      {
+        "parameter": "H₂S analyser (outlet) type",
+        "value": "UV fluorescence analyzer",
+        "unit": "—",
+        "remarks": "More sensitive than electrochemical — needed to verify the sub-ppm outlet target protecting the WGS catalyst"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "GC-009",
+    "name": "HCl Scrubber (Alkaline)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Scrubber type",
+        "value": "Packed-bed alkaline wet scrubber",
+        "unit": "—",
+        "remarks": "Consistent design approach with GC-006's packed column"
+      },
+      {
+        "parameter": "Scrubbing agent",
+        "value": "Sodium hydroxide (NaOH) solution",
+        "unit": "—",
+        "remarks": "Same chemical as GC-008 — simplifies on-site chemical handling to one reagent"
+      },
+      {
+        "parameter": "Design gas flow",
+        "value": "50",
+        "unit": "Nm3/h",
+        "remarks": "Matches the gas flow established through the rest of the gas cleaning train"
+      },
+      {
+        "parameter": "Inlet HCl concentration",
+        "value": "150",
+        "unit": "ppm",
+        "remarks": "Estimate — DOK-ING's feed includes plastic (potentially PVC-derived chlorine), but chlorine content was never specified"
+      },
+      {
+        "parameter": "Outlet HCl concentration (target)",
+        "value": "<5",
+        "unit": "ppm",
+        "remarks": "Protects downstream equipment from corrosion and catalyst-poisoning risk"
+      },
+      {
+        "parameter": "Removal efficiency",
+        "value": ">97",
+        "unit": "%",
+        "remarks": "Required to go from 150 ppm down to <5 ppm target"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "55",
+        "unit": "°C",
+        "remarks": "Continues the gradual cooling trend from GC-007's 60°C"
+      },
+      {
+        "parameter": "Liquid-to-gas ratio",
+        "value": "2.5",
+        "unit": "L/Nm3",
+        "remarks": "Slightly less demanding than GC-008s L/G=3"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 12 parameters filled"
+  },
+  {
+    "id": "GC-010",
+    "name": "Bag Filter (Dust)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Inlet dust loading",
+        "value": "300",
+        "unit": "mg/Nm³",
+        "remarks": "Residual after the cyclones and wet scrubbing stages have already removed the bulk particulate"
+      },
+      {
+        "parameter": "Outlet dust loading (design)",
+        "value": "<5",
+        "unit": "mg/Nm³",
+        "remarks": "Tight target — protects GC-009's carbon bed and downstream WGS/PSA from fine particulate fouling"
+      },
+      {
+        "parameter": "Filter area",
+        "value": "2",
+        "unit": "m²",
+        "remarks": "Generously sized relative to strict air-to-cloth calculation at this tiny gas flow — smallest practical unit"
+      },
+      {
+        "parameter": "Number of bags",
+        "value": "4",
+        "unit": "—",
+        "remarks": "Matches the small filter area needed at this scale"
+      },
+      {
+        "parameter": "Bag material",
+        "value": "Polyester felt (PTFE membrane coating)",
+        "unit": "—",
+        "remarks": "Good filtration efficiency and moisture resistance at this moderate operating temperature"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "50",
+        "unit": "°C",
+        "remarks": "Continues the cooling trend from GC-015's 55°C"
+      },
+      {
+        "parameter": "Max temperature (peak)",
+        "value": "80",
+        "unit": "°C",
+        "remarks": "Margin above operating for upset conditions"
+      },
+      {
+        "parameter": "Cleaning method",
+        "value": "Pulse-jet (compressed air)",
+        "unit": "—",
+        "remarks": "Standard, effective cleaning method for a bag filter at this scale"
+      },
+      {
+        "parameter": "Optical dust monitor type",
+        "value": "Optical (forward light-scattering) dust monitor",
+        "unit": "—",
+        "remarks": "Verifies outlet loading continuously and detects a broken/failed bag before it becomes a bigger problem downstream"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "GC-011",
+    "name": "Bag Filter (ΔP)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Design pressure drop (clean)",
+        "value": "5",
+        "unit": "mbar",
+        "remarks": "Typical for clean bags at this small gas flow"
+      },
+      {
+        "parameter": "Design pressure drop (dirty)",
+        "value": "20",
+        "unit": "mbar",
+        "remarks": "ΔP builds as dust cake forms; consistent order of magnitude with other ΔP values through the gas cleaning train"
+      },
+      {
+        "parameter": "Differential pressure transmitter range",
+        "value": "0-50",
+        "unit": "mbar",
+        "remarks": "Margin above the dirty design value"
+      },
+      {
+        "parameter": "Cleaning trigger pressure",
+        "value": "15",
+        "unit": "mbar",
+        "remarks": "Triggers pulse-jet cleaning before reaching the 20 mbar dirty maximum, keeping operation steady rather than reactive"
+      },
+      {
+        "parameter": "Cleaning air pressure",
+        "value": "6",
+        "unit": "bar(g)",
+        "remarks": "Standard pulse-jet cleaning pressure"
+      },
+      {
+        "parameter": "Compressed air consumption",
+        "value": "2",
+        "unit": "Nm³/h",
+        "remarks": "Average consumption accounting for periodic pulses, not continuous flow"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "GC-012",
+    "name": "Activated Carbon Filter",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "H₂S / COS removal target",
+        "value": "<0.1",
+        "unit": "ppm outlet",
+        "remarks": "Tighter than GC-006's <1 ppm H2S target — catches COS, which wet scrubbing doesn't remove effectively"
+      },
+      {
+        "parameter": "Carbon bed volume",
+        "value": "50",
+        "unit": "L",
+        "remarks": "Sized for the small gas flow (~50 Nm³/h) with adequate contact time"
+      },
+      {
+        "parameter": "Carbon type",
+        "value": "Impregnated activated carbon (KOH or metal-oxide impregnated, sulfur-selective)",
+        "unit": "—",
+        "remarks": "Plain activated carbon isn't selective enough for trace sulfur species at this outlet target"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "45",
+        "unit": "°C",
+        "remarks": "Continues the cooling trend from GC-010/011's ~50°C"
+      },
+      {
+        "parameter": "Design pressure drop",
+        "value": "15",
+        "unit": "mbar",
+        "remarks": "Smaller polishing bed than GC-006's bulk tar adsorber — proportionally lower ΔP"
+      },
+      {
+        "parameter": "Breakthrough monitoring",
+        "value": "Downstream H2S/COS analyser (breakthrough detection)",
+        "unit": "—",
+        "remarks": "Ties directly to SA-008 (H2S/COS Analyser) elsewhere in the registry — same instrument, dual purpose"
+      },
+      {
+        "parameter": "Carbon replacement interval",
+        "value": "6",
+        "unit": "months",
+        "remarks": "Longer than GC-006's 3 months — this stage sees much lower loading"
+      },
+      {
+        "parameter": "Vessel material",
+        "value": "Carbon steel",
+        "unit": "—",
+        "remarks": "No longer handling raw hot corrosive gas at this point — already cleaned and cooled"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-013",
+    "name": "Gas Blower / ID Fan (Flow)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Design gas flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches the flow rate established through the entire gas cleaning train"
+      },
+      {
+        "parameter": "Min flow rate",
+        "value": "35",
+        "unit": "Nm³/h",
+        "remarks": "70% turndown, consistent with DOK-ING's stated feed turndown range"
+      },
+      {
+        "parameter": "Max flow rate",
+        "value": "60",
+        "unit": "Nm³/h",
+        "remarks": "120% turndown, same basis"
+      },
+      {
+        "parameter": "Flow meter type",
+        "value": "Thermal mass flow meter",
+        "unit": "—",
+        "remarks": "Same approach as GA-003's air flow meter — suited to this clean(ish), low-flow gas service"
+      },
+      {
+        "parameter": "Flow meter range",
+        "value": "0-100",
+        "unit": "Nm³/h",
+        "remarks": "Margin above the 60 Nm³/h max flow"
+      },
+      {
+        "parameter": "Fan speed range",
+        "value": "1500-3000",
+        "unit": "rpm",
+        "remarks": "Standard centrifugal ID fan range at this duty"
+      },
+      {
+        "parameter": "Motor power",
+        "value": "1.5",
+        "unit": "kW",
+        "remarks": "Sized for the pressure rise needed to overcome the cumulative ΔP across the whole gas cleaning train (~115+ mbar combined), not just the small gas flow itself"
+      },
+      {
+        "parameter": "VSD fitted",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Matches fan speed/flow to the actual feed rate rather than running fixed-speed with a control damper"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "GC-014",
+    "name": "Gas Blower (Pressure)",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Design discharge pressure",
+        "value": "50",
+        "unit": "mbar(g)",
+        "remarks": "Enough positive pressure to push gas into the WGS section (HB-001 onward) against its own pressure drops"
+      },
+      {
+        "parameter": "Design suction pressure",
+        "value": "-20",
+        "unit": "mbar(g)",
+        "remarks": "Slightly negative — by the fan inlet, the gasifier's own 100 mbar(g) (GA-002) has mostly been consumed overcoming the cumulative ΔP across the gas cleaning train"
+      },
+      {
+        "parameter": "Pressure transmitter range (discharge)",
+        "value": "0-150",
+        "unit": "mbar",
+        "remarks": "Margin above the 50 mbar(g) design discharge value"
+      },
+      {
+        "parameter": "Pressure transmitter range (suction)",
+        "value": "(-50 to +50)",
+        "unit": "mbar",
+        "remarks": "Covers the negative suction range with margin"
+      },
+      {
+        "parameter": "Safety relief valve set point",
+        "value": "100",
+        "unit": "mbar(g)",
+        "remarks": "Margin above design discharge pressure"
+      },
+      {
+        "parameter": "Bearing temperature sensor",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Standard protection for rotating equipment running continuously per DOK-ING's 24/7 spec"
+      },
+      {
+        "parameter": "Vibration sensor",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Same reasoning — early fault detection on equipment that doesn't get to stop"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "GC-015",
+    "name": "Condensate Tank",
+    "category": "Gas Cleaning",
+    "parameters": [
+      {
+        "parameter": "Tank volume",
+        "value": "1",
+        "unit": "m³",
+        "remarks": "Buffers a few hours of combined condensate flow at this small scale"
+      },
+      {
+        "parameter": "Condensate flow rate (design)",
+        "value": "0.2",
+        "unit": "m³/h",
+        "remarks": "Combined net outflow from quench blowdown (GC-005) plus scrubber blowdowns (GC-006, GC-007, GC-015)"
+      },
+      {
+        "parameter": "Level sensor type",
+        "value": "Radar (non-contact)",
+        "unit": "—",
+        "remarks": "Consistent with the level-sensing approach used elsewhere in the plant"
+      },
+      {
+        "parameter": "pH monitoring",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Combined condensate from the H2S and HCl scrubbers will be acidic — needs verification before treatment/disposal"
+      },
+      {
+        "parameter": "Pump type (discharge)",
+        "value": "Chemical-resistant centrifugal pump (PTFE-lined)",
+        "unit": "—",
+        "remarks": "Handles the acidic, contaminated liquid without corrosion issues"
+      },
+      {
+        "parameter": "Pump flow rate",
+        "value": "0.5",
+        "unit": "m³/h",
+        "remarks": "Margin above the 0.2 m³/h average inflow — periodic/batch discharge rather than continuous"
+      },
+      {
+        "parameter": "Material",
+        "value": "316L stainless steel",
+        "unit": "—",
+        "remarks": "Same corrosion-resistance logic as GC-004's quench tower"
+      },
+      {
+        "parameter": "Disposal route for condensate",
+        "value": "Off-site wastewater treatment (or on-site neutralization before discharge)",
+        "unit": "—",
+        "remarks": "Acidic, contaminated liquid can't go straight to normal discharge"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "SA-001",
+    "name": "Gas Analyser (H₂)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-50",
+        "unit": "vol%",
+        "remarks": "Margin above the expected 32-33 vol% clean syngas composition"
+      },
+      {
+        "parameter": "Expected H₂ concentration",
+        "value": "32-33",
+        "unit": "vol%",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Thermal conductivity detector (TCD)",
+        "unit": "—",
+        "remarks": "Standard for H2 analysis — H2's thermal conductivity is distinctly different from CO/CO2/CH4/N2"
+      },
+      {
+        "parameter": "Response time (T90)",
+        "value": "15",
+        "unit": "s",
+        "remarks": "Typical for a TCD-based process gas analyser"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±1",
+        "unit": "% FS",
+        "remarks": "Standard for this analyser type and duty"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Same dual-signal approach as FE-004 — local loop plus SCADA/AI integration"
+      },
+      {
+        "parameter": "Calibration gas required",
+        "value": "Certified H2/N2 calibration gas mixture (span gas)",
+        "unit": "—",
+        "remarks": "Required periodically to verify TCD response against a known reference"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "3",
+        "unit": "months",
+        "remarks": "More frequent than FE-004's moisture analyser — this reading feeds process composition tracking downstream equipment sizing depends on"
+      },
+      {
+        "parameter": "Sample conditioning required",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Needs moisture removal, particulate filtration, and pressure/flow regulation before reaching the analyser"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "SA-002",
+    "name": "Gas Analyser (CO)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-40",
+        "unit": "vol%",
+        "remarks": "Margin above the expected 28 vol% CO composition"
+      },
+      {
+        "parameter": "Expected CO concentration",
+        "value": "28",
+        "unit": "vol%",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Non-dispersive infrared (NDIR)",
+        "unit": "—",
+        "remarks": "Standard for CO — strong, distinct IR absorption band, different technology from SA-001's TCD for H2"
+      },
+      {
+        "parameter": "Response time (T90)",
+        "value": "10",
+        "unit": "s",
+        "remarks": "Typically faster than TCD (SA-001) for this analyser type"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±1",
+        "unit": "% FS",
+        "remarks": "Consistent with SA-001"
+      },
+      {
+        "parameter": "Cross-sensitivity (CO₂)",
+        "value": "<2% of reading at 22 vol% CO2",
+        "unit": "vol%",
+        "remarks": "CO2's IR absorption band can overlap with CO's, and this stream carries ~22 vol% CO2 — a genuinely significant interference source if not properly compensated"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "3",
+        "unit": "months",
+        "remarks": "Consistent with SA-001"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "SA-003",
+    "name": "Gas Analyser (CO₂)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-30",
+        "unit": "vol%",
+        "remarks": "Margin above the expected 22 vol% CO2 composition"
+      },
+      {
+        "parameter": "Expected CO₂ concentration",
+        "value": "22",
+        "unit": "vol%",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Non-dispersive infrared (NDIR)",
+        "unit": "—",
+        "remarks": "Same technology as SA-002 — CO2 has one of the strongest, most well-characterized IR absorption bands of any syngas component"
+      },
+      {
+        "parameter": "Response time (T90)",
+        "value": "10",
+        "unit": "s",
+        "remarks": "Consistent with SA-002"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±1",
+        "unit": "% FS",
+        "remarks": "Consistent with SA-001/SA-002"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001/SA-002"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "3",
+        "unit": "months",
+        "remarks": "Consistent with SA-001/SA-002"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "SA-004",
+    "name": "Gas Analyser (CH₄)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-15",
+        "unit": "vol%",
+        "remarks": "Margin above the expected 8 vol% CH4 composition"
+      },
+      {
+        "parameter": "Expected CH₄ concentration",
+        "value": "8",
+        "unit": "vol%",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Non-dispersive infrared (NDIR)",
+        "unit": "—",
+        "remarks": "Same technology as SA-002/SA-003 — CH4 also has a strong, well-characterized IR absorption band"
+      },
+      {
+        "parameter": "Response time (T90)",
+        "value": "10",
+        "unit": "s",
+        "remarks": "Consistent with SA-002/SA-003"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±1",
+        "unit": "% FS",
+        "remarks": "Consistent with SA-001/002/003"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001/002/003"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "3",
+        "unit": "months",
+        "remarks": "Consistent with SA-001/002/003"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "SA-005",
+    "name": "Gas Analyser (N₂)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-20",
+        "unit": "vol%",
+        "remarks": "Margin above the expected 10 vol% N2 composition"
+      },
+      {
+        "parameter": "Expected N₂ concentration",
+        "value": "10",
+        "unit": "vol%",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Calculated by difference (100% minus sum of SA-001/002/003/004)",
+        "unit": "—",
+        "remarks": "N2 is IR-inactive (symmetric diatomic), so NDIR won't work — calculating by difference is standard practice, avoids needing a separate exotic instrument"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Calculated value still output through the same signal path as the direct measurements"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±3",
+        "unit": "% FS",
+        "remarks": "Wider than SA-001-004's individual ±1% — this is propagated uncertainty from combining four separate measurements"
+      }
+    ],
+    "vendor_model": "N/A — calculated in DCS/PLC from SA-001-004",
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 7 parameters filled"
+  },
+  {
+    "id": "SA-006",
+    "name": "Gas Calorimeter / LHV",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "LHV measurement range",
+        "value": "0-15",
+        "unit": "MJ/Nm³",
+        "remarks": "Margin above the calculated ~9.8 MJ/Nm³ expected value"
+      },
+      {
+        "parameter": "Expected LHV",
+        "value": "9.8",
+        "unit": "MJ/Nm³",
+        "remarks": "Calculated from the established gas composition (SA-001/002/004) using standard component LHV values"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Calculated from SA-001/002/004 composition (H2, CO, CH4), not a direct physical calorimeter",
+        "unit": "—",
+        "remarks": "Same logic as SA-005 — plant already measures H2/CO/CH4 directly, so a combustion-based calorimeter would be redundant hardware"
+      },
+      {
+        "parameter": "Response time",
+        "value": "15",
+        "unit": "s",
+        "remarks": "Matches the slower of the underlying NDIR/TCD analysers it is calculated from"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±3",
+        "unit": "% FS",
+        "remarks": "Propagated uncertainty from combining three separate measurements, same reasoning as SA-005"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-005"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "N/A — inherits calibration from SA-001/002/004",
+        "unit": "—",
+        "remarks": "No separate instrument to calibrate"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "SA-007",
+    "name": "Tar Sampling Port",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Sampling method",
+        "value": "Manual grab sampling (isokinetic probe) — no continuous online analyser",
+        "unit": "—",
+        "remarks": "Matches what was already established at GC-007 — dedicated online tar analysers not justified at this scale"
+      },
+      {
+        "parameter": "Sampling frequency",
+        "value": "Monthly, plus before/after GC-008 media replacement",
+        "unit": "—",
+        "remarks": "Ties sampling to the media-replacement interval already set at GC-008"
+      },
+      {
+        "parameter": "Expected tar concentration (raw)",
+        "value": "10",
+        "unit": "g/Nm³",
+        "remarks": "Back-calculated from GC-007's established 0.5 g/Nm³ inlet, assuming GC-006's ~95% bulk removal efficiency"
+      },
+      {
+        "parameter": "Expected tar concentration (clean)",
+        "value": "<50",
+        "unit": "mg/Nm³",
+        "remarks": "Matches GC-007's established outlet target directly"
+      },
+      {
+        "parameter": "Port location (P&ID ref)",
+        "value": "Two ports: upstream of GC-008 (raw) and downstream of GC-007 (clean)",
+        "unit": "—",
+        "remarks": "Needed to verify both ends of the tar-removal chain, not just the final result"
+      },
+      {
+        "parameter": "Sample volume per test",
+        "value": "100",
+        "unit": "L",
+        "remarks": "Typical for standard tar-protocol impinger-train sampling"
+      },
+      {
+        "parameter": "Analysis lab / method",
+        "value": "CEN/TS 15439 Tar Protocol (solvent impinger + gravimetric analysis), off-site laboratory",
+        "unit": null,
+        "remarks": "Standard, recognized methodology for gasification tar measurement"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 8 parameters filled"
+  },
+  {
+    "id": "SA-008",
+    "name": "H₂S / COS Analyser",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "H₂S measurement range",
+        "value": "0-5",
+        "unit": "ppm",
+        "remarks": "Deliberately narrow — prioritizes resolution near the 0.1 ppm compliance target rather than covering a wide dynamic range"
+      },
+      {
+        "parameter": "Expected H₂S concentration",
+        "value": "<0.1",
+        "unit": "ppm",
+        "remarks": "Matches GC-009's target under normal (non-breakthrough) operation"
+      },
+      {
+        "parameter": "COS measurement range",
+        "value": "0-5",
+        "unit": "ppm",
+        "remarks": "Same resolution reasoning as H2S"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Combined UV fluorescence (H2S) + GC-FPD (COS), single skid-mounted package",
+        "unit": "—",
+        "remarks": "UV fluorescence alone is not COS-selective; a combined package avoids two entirely separate analysers"
+      },
+      {
+        "parameter": "Response time (T90)",
+        "value": "30",
+        "unit": "s",
+        "remarks": "Slower than the simpler NDIR analysers (SA-002-004) — reflects the more complex combined detection technology"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±0.02 ppm absolute or ±5% of reading, whichever greater",
+        "unit": "% FS",
+        "remarks": "Deliberately different from SA-001-006's generic ±1% FS — this instrument's whole purpose is confirming sub-ppm compliance"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-007"
+      },
+      {
+        "parameter": "Alarm setpoint H₂S",
+        "value": "0.5",
+        "unit": "ppm",
+        "remarks": "5x the normal target — early warning of GC-009 bed breakthrough before levels reach genuinely damaging territory"
+      },
+      {
+        "parameter": "Calibration interval",
+        "value": "1",
+        "unit": "months",
+        "remarks": "Tighter than SA-001-006's quarterly cycle — justified by how compliance-critical this measurement is"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "SA-009",
+    "name": "Dust / Particulate Monitor",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-20",
+        "unit": "mg/Nm³",
+        "remarks": "Covers GC-010's <5 mg/Nm³ target with margin"
+      },
+      {
+        "parameter": "Detection limit",
+        "value": "0.5",
+        "unit": "mg/Nm³",
+        "remarks": "Needs to reliably resolve readings well below the 5 mg/Nm³ target to be a meaningful verification"
+      },
+      {
+        "parameter": "Measurement principle",
+        "value": "Triboelectric (charge transfer) dust monitor",
+        "unit": "—",
+        "remarks": "Deliberately different technology from GC-010's optical monitor — gives real independent verification, not a redundant duplicate"
+      },
+      {
+        "parameter": "Response time",
+        "value": "5",
+        "unit": "s",
+        "remarks": "Fast enough for continuous trending, not just periodic spot-checks"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-008"
+      },
+      {
+        "parameter": "Operating temperature (gas)",
+        "value": "40",
+        "unit": "°C",
+        "remarks": "Gas has cooled further by this point in the train, downstream of GC-010's ~50°C"
+      },
+      {
+        "parameter": "Calibration method",
+        "value": "Zero/span check against reference dust loading, quarterly",
+        "unit": "—",
+        "remarks": "Standard practice for continuous triboelectric monitors"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "SA-010",
+    "name": "Gas Flow Meter (Clean)",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Design flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches the flow rate established consistently through the entire gas cleaning train (GC-001-013)"
+      },
+      {
+        "parameter": "Flow meter type",
+        "value": "Thermal mass flow meter",
+        "unit": "—",
+        "remarks": "Same approach as GA-003/GC-012 — suited to this clean, low-flow gas service"
+      },
+      {
+        "parameter": "Measurement range",
+        "value": "0-100",
+        "unit": "Nm³/h",
+        "remarks": "Matches GC-012's margin approach directly"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±1",
+        "unit": "% FS",
+        "remarks": "Consistent with SA-001-004 and typical thermal mass flow meter performance"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "40",
+        "unit": "°C",
+        "remarks": "Matches SA-009's position in the train — gas has fully cooled by this point"
+      },
+      {
+        "parameter": "Operating pressure",
+        "value": "50",
+        "unit": "mbar(g)",
+        "remarks": "Directly matches GC-013's established discharge pressure"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-009"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "SA-011",
+    "name": "Gas Temperature Sensor",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-100",
+        "unit": "°C",
+        "remarks": "Generous margin around the expected 40°C operating point — a normal-condition location, not extreme-temp like GA-001"
+      },
+      {
+        "parameter": "Sensor type",
+        "value": "Pt100 RTD",
+        "unit": "—",
+        "remarks": "Consistent with GA-004/GC-004's approach for moderate-temperature process points"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±0.5",
+        "unit": "°C",
+        "remarks": "Standard Class A Pt100 accuracy"
+      },
+      {
+        "parameter": "Response time",
+        "value": "5",
+        "unit": "s",
+        "remarks": "Fast enough for use in a control loop, not just logging"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-010"
+      },
+      {
+        "parameter": "Insertion length",
+        "value": "150",
+        "unit": "mm",
+        "remarks": "Standard thermowell insertion length for a moderate pipe size at this point in the train"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "SA-012",
+    "name": "Gas Pressure Sensor",
+    "category": "Syngas Analysis",
+    "parameters": [
+      {
+        "parameter": "Measurement range",
+        "value": "0-150",
+        "unit": "mbar(g)",
+        "remarks": "Consistent margin approach with GC-013's own pressure transmitter range"
+      },
+      {
+        "parameter": "Operating pressure (typical)",
+        "value": "50",
+        "unit": "mbar(g)",
+        "remarks": "Directly matches GC-013's discharge pressure and SA-010's operating pressure"
+      },
+      {
+        "parameter": "Sensor type",
+        "value": "Capacitive diaphragm pressure transmitter",
+        "unit": "—",
+        "remarks": "Same technology as GA-002 for this low-pressure range"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±0.25",
+        "unit": "% FS",
+        "remarks": "Slightly less tight than GA-002's ±0.1% — not the reactor's primary safety-critical pressure point"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-011"
+      },
+      {
+        "parameter": "Process connection",
+        "value": "1/2\" NPT threaded",
+        "unit": "—",
+        "remarks": "Standard for small-bore, low-pressure process connections"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "HB-001",
+    "name": "WGS Reactor HTS (Temp)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Inlet temperature (design)",
+        "value": "350",
+        "unit": "°C",
+        "remarks": "Matches the value already used in the mass/energy balance dashboard's temperature profile"
+      },
+      {
+        "parameter": "Outlet temperature (design)",
+        "value": "400",
+        "unit": "°C",
+        "remarks": "~50°C exothermic temperature rise from the shift reaction"
+      },
+      {
+        "parameter": "Max allowable temperature",
+        "value": "500",
+        "unit": "°C",
+        "remarks": "Fe-Cr HTS catalyst thermal stability limit is typically ~500-550°C"
+      },
+      {
+        "parameter": "Number of temperature sensors",
+        "value": "3",
+        "unit": "—",
+        "remarks": "Inlet, mid-bed, outlet — tracks reaction progress and hot-spot formation, not just one averaged reading"
+      },
+      {
+        "parameter": "Sensor type",
+        "value": "Type K thermocouple",
+        "unit": "—",
+        "remarks": "Well-suited at 350-400°C — well below GA-001's Type S extreme"
+      },
+      {
+        "parameter": "Catalyst type",
+        "value": "Iron-chromium oxide (Fe2O3/Cr2O3)",
+        "unit": "—",
+        "remarks": "Classic, standard HTS catalyst chemistry"
+      },
+      {
+        "parameter": "Catalyst volume",
+        "value": "25",
+        "unit": "L",
+        "remarks": "Sized against typical HTS space velocity (~2000 h-1 GHSV) at the ~50 Nm³/h gas flow"
+      },
+      {
+        "parameter": "Reactor vessel material",
+        "value": "Carbon steel (SA516 Gr.70) or low-alloy steel",
+        "unit": "—",
+        "remarks": "Does not need exotic materials — 350-400°C is well within standard carbon steel service"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-002",
+    "name": "WGS Reactor HTS (CO Conv.)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "CO inlet concentration",
+        "value": "28",
+        "unit": "vol%",
+        "remarks": "Matches SA-002's established clean syngas composition directly"
+      },
+      {
+        "parameter": "CO outlet concentration (design)",
+        "value": "7",
+        "unit": "vol%",
+        "remarks": "Based on 75% HTS-stage conversion of the 28% inlet"
+      },
+      {
+        "parameter": "CO conversion efficiency",
+        "value": "75",
+        "unit": "%",
+        "remarks": "HTS stage only — distinct from the overall 85% combined HTS+LTS target; LTS (HB-004) makes up the remainder — Now backed by a validated reaction-kinetics model (Arrhenius + Van't Hoff, Fe-Cr catalyst, Ea=111 kJ/mol), running live in Simulink and reproducing this value from real temperature/space-velocity physics, not just a design assumption."
+      },
+      {
+        "parameter": "Steam-to-CO molar ratio",
+        "value": "04:01:00",
+        "unit": "mol/mol",
+        "remarks": "Standard industry range (3:1-5:1); should be cross-checked against HB-005's actual steam supply once revisited"
+      },
+      {
+        "parameter": "Space velocity (GHSV)",
+        "value": "2000",
+        "unit": "h⁻¹",
+        "remarks": "Matches the value already established at HB-001"
+      },
+      {
+        "parameter": "Catalyst lifetime (design)",
+        "value": "4",
+        "unit": "years",
+        "remarks": "Typical for Fe-Cr HTS catalyst under normal operation, assuming upstream H2S removal is performing as designed"
+      },
+      {
+        "parameter": "CO analyser type",
+        "value": "Dedicated NDIR CO analyser at HTS outlet",
+        "unit": "—",
+        "remarks": "Same technology as SA-002, but a separate instrument — SA-002 sits upstream of WGS entirely"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "HB-003",
+    "name": "Heat Exchanger (WGS)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Heat exchanger type",
+        "value": "Shell-and-tube heat exchanger",
+        "unit": "—",
+        "remarks": "Standard, robust choice for this duty and scale"
+      },
+      {
+        "parameter": "Hot side inlet temperature",
+        "value": "400",
+        "unit": "°C",
+        "remarks": "Matches HB-001's HTS outlet directly"
+      },
+      {
+        "parameter": "Hot side outlet temperature",
+        "value": "220",
+        "unit": "°C",
+        "remarks": "Matches the WGS-LTS inlet temperature already established in the mass/energy balance dashboard"
+      },
+      {
+        "parameter": "Cold side inlet temperature",
+        "value": "20",
+        "unit": "°C",
+        "remarks": "Ambient boiler feed water"
+      },
+      {
+        "parameter": "Cold side outlet temperature",
+        "value": "150",
+        "unit": "°C",
+        "remarks": "Substantial preheat — feeds toward HB-005's steam generation, closing another internal heat-integration loop"
+      },
+      {
+        "parameter": "Design heat duty",
+        "value": "5",
+        "unit": "kW",
+        "remarks": "Estimated from ~50 kg/h gas flow, ~1.8 kJ/kg路K specific heat, 180°C drop (400°C to 220°C)"
+      },
+      {
+        "parameter": "Hot side material",
+        "value": "Carbon steel (SA516 Gr.70)",
+        "unit": "—",
+        "remarks": "Same material logic as HB-001 — this range does not need exotic alloys"
+      },
+      {
+        "parameter": "Cold side material",
+        "value": "Carbon steel",
+        "unit": "—",
+        "remarks": "Standard for water/steam service at this scale"
+      },
+      {
+        "parameter": "Design pressure (hot side)",
+        "value": "0.1",
+        "unit": "bar(g)",
+        "remarks": "Consistent order of magnitude with GC-013's 50 mbar(g) discharge, with margin (100 mbar = 0.1 bar)"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "HB-004",
+    "name": "WGS Reactor LTS",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Inlet temperature (design)",
+        "value": "220",
+        "unit": "°C",
+        "remarks": "Matches HB-005's hot-side outlet directly"
+      },
+      {
+        "parameter": "Outlet temperature (design)",
+        "value": "240",
+        "unit": "°C",
+        "remarks": "Smaller exothermic rise than HTS's 50°C — less CO remains to convert at this stage"
+      },
+      {
+        "parameter": "CO outlet concentration (design)",
+        "value": "4.2",
+        "unit": "vol%",
+        "remarks": "Matches the overall 85% combined HTS+LTS conversion target already worked out at HB-002 (28% x (1-0.85)) — Now backed by a validated reaction-kinetics model (Arrhenius + Van't Hoff, Cu/ZnO/Al2O3 catalyst, Ea=75 kJ/mol — genuinely different kinetics from HTS, matching this stage's different catalyst), running live in Simulink."
+      },
+      {
+        "parameter": "Catalyst type",
+        "value": "Copper-zinc oxide on alumina (Cu/ZnO/Al2O3)",
+        "unit": "—",
+        "remarks": "Classic LTS catalyst — more active at lower temperature than Fe-Cr, but far more sulfur-sensitive"
+      },
+      {
+        "parameter": "Catalyst volume",
+        "value": "35",
+        "unit": "L",
+        "remarks": "Larger than HB-001's 25L — LTS kinetics are slower even though equilibrium is more favorable"
+      },
+      {
+        "parameter": "Max allowable temperature",
+        "value": "260",
+        "unit": "°C",
+        "remarks": "Cu catalyst sinters at much lower temperatures than Fe-Cr — genuinely tighter ceiling than HTS's 500°C"
+      },
+      {
+        "parameter": "Sensitivity to sulphur",
+        "value": "<0.1 ppm S (cumulative)",
+        "unit": "ppm S limit",
+        "remarks": "This is exactly why GC-009's outlet target was set to <0.1 ppm H2S/COS — this catalyst is what that upstream spec was protecting"
+      },
+      {
+        "parameter": "Reactor vessel material",
+        "value": "Carbon steel (SA516 Gr.70)",
+        "unit": "—",
+        "remarks": "Standard at this temperature range, same as HB-001/HB-003"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-005",
+    "name": "Steam Generator (WGS)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Steam production rate",
+        "value": "45",
+        "unit": "kg/h",
+        "remarks": "Derived from HB-002's 4:1 steam:CO molar ratio at the established ~28 vol% CO, ~50 Nm³/h gas flow"
+      },
+      {
+        "parameter": "Steam pressure (design)",
+        "value": "5",
+        "unit": "bar(g)",
+        "remarks": "Same supply-header approach as GA-004's gasifier steam"
+      },
+      {
+        "parameter": "Steam temperature",
+        "value": "350",
+        "unit": "°C",
+        "remarks": "Superheated, matching GA-004's plant-wide steam supply pattern"
+      },
+      {
+        "parameter": "Feed water quality",
+        "value": "Demineralized water, per boiler manufacturer spec (e.g. <10 ppb silica, deaerated)",
+        "unit": "—",
+        "remarks": "Standard requirement to protect the generator from scaling/corrosion"
+      },
+      {
+        "parameter": "Heat source",
+        "value": "Preheated feed water from HB-005 (150°C) + supplementary heat (recovered EU-006 CHP heat or trim electric/gas heater)",
+        "unit": "—",
+        "remarks": "Closes the loop with HB-003 directly — WGS waste heat does the initial preheat before this unit finishes the job"
+      },
+      {
+        "parameter": "Steam-to-CO ratio",
+        "value": "04:01:00",
+        "unit": "mol/mol",
+        "remarks": "Matches HB-002's value exactly — this is the demand this generator is sized against"
+      },
+      {
+        "parameter": "Steam flow meter type",
+        "value": "Vortex shedding flow meter",
+        "unit": "—",
+        "remarks": "Same technology as GA-003's steam metering"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "HB-006",
+    "name": "PSA Unit (H₂ Purity)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "H₂ purity (design)",
+        "value": "99.97",
+        "unit": "vol%",
+        "remarks": "DOK-ING's actual stated target (ISO 14687 Grade D) — not an assumption, used directly"
+      },
+      {
+        "parameter": "H₂ purity (minimum acceptable)",
+        "value": "99.95",
+        "unit": "vol%",
+        "remarks": "Tight margin below design target before triggering an off-spec alarm"
+      },
+      {
+        "parameter": "Feed gas H₂ content",
+        "value": "55",
+        "unit": "vol%",
+        "remarks": "Matches the post-WGS composition already established in the mass/energy balance dashboard's gas composition chart"
+      },
+      {
+        "parameter": "Number of adsorber vessels",
+        "value": "4",
+        "unit": "—",
+        "remarks": "Reaching 99.97% needs more sophisticated multi-bed cycling with better pressure equalization than a simple 2-bed unit"
+      },
+      {
+        "parameter": "Adsorbent material",
+        "value": "Layered bed: activated carbon (bulk CO2/CH4 removal) + zeolite molecular sieve (final CO/N2 polishing)",
+        "unit": "—",
+        "remarks": "Standard industrial approach for high-purity H2 PSA — single-adsorbent beds do not reach this purity reliably"
+      },
+      {
+        "parameter": "H₂ purity analyser type",
+        "value": "Trace impurity analyser (NDIR for CO/CO2, GC for N2) — measures residual contaminants, not H2 directly",
+        "unit": "—",
+        "remarks": "At 99.97% purity, directly measuring H2 has no resolution to detect the tiny remaining impurity — same logic as SA-005 in reverse"
+      },
+      {
+        "parameter": "Analyser response time",
+        "value": "60",
+        "unit": "s",
+        "remarks": "Slower than the simple composition analysers (SA-001-004) — trace-level multi-species analysis is inherently more complex"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with SA-001-012"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-007",
+    "name": "PSA Unit (H₂ Recovery)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "H₂ recovery rate (design)",
+        "value": "75",
+        "unit": "%",
+        "remarks": "Matches the unconfirmed assumption already flagged and tracked since GC-006 — still pending DOK-ING/vendor confirmation"
+      },
+      {
+        "parameter": "Feed gas flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches the flow established consistently through the whole gas train (GC-012/013, SA-010, HB-006)"
+      },
+      {
+        "parameter": "Product H₂ flow rate",
+        "value": "20.6",
+        "unit": "Nm³/h",
+        "remarks": "Calculated: 55% feed H2 content x 50 Nm3/h x 75% recovery — converts to ~1.85 kg/h, modestly below DOK-ING's 50 kg/day (2.083 kg/h) target"
+      },
+      {
+        "parameter": "Tail gas flow rate",
+        "value": "29.4",
+        "unit": "Nm³/h",
+        "remarks": "Feed flow minus product flow (50 - 20.6)"
+      },
+      {
+        "parameter": "Tail gas composition",
+        "value": "~H2 25%, CO2 55%, CH4 10%, CO+N2 10%",
+        "unit": "—",
+        "remarks": "Rejected stream enriched in non-H2 species since 75% of H2 was pulled into product — indicative, not a precise PSA cycle simulation"
+      },
+      {
+        "parameter": "Tail gas LHV",
+        "value": "~8",
+        "unit": "MJ/Nm³",
+        "remarks": "Still meaningful fuel value from unrecovered H2 and CH4 — lower than SA-006's 9.8 MJ/Nm3, but substantial enough to justify recycling"
+      },
+      {
+        "parameter": "Tail gas disposition",
+        "value": "Recycled to GA-001 gasifier via HB-009 (PSA Tail Gas Handler) as supplemental fuel",
+        "unit": "—",
+        "remarks": "Matches the design intent already established for HB-009 — closes a small efficiency loop rather than venting"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "HB-008",
+    "name": "PSA Unit (Pressure)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Adsorption pressure (design)",
+        "value": "7",
+        "unit": "bar(g)",
+        "remarks": "Within DOK-ING's actual stated 3-10 bar PSA discharge range — real data, not an assumption"
+      },
+      {
+        "parameter": "Regeneration pressure",
+        "value": "0.2",
+        "unit": "bar(g)",
+        "remarks": "Near-atmospheric, standard for PSA blowdown/purge desorption"
+      },
+      {
+        "parameter": "Cycle time (adsorption step)",
+        "value": "60",
+        "unit": "s",
+        "remarks": "Standard for a small PSA system at this scale"
+      },
+      {
+        "parameter": "Feed compressor required",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Folded into HB-012 as a multi-stage compressor (low pressure to PSA pressure, then PSA pressure to storage pressure) rather than a separate equipment tag"
+      },
+      {
+        "parameter": "Feed compressor pressure ratio",
+        "value": "~7.6:1",
+        "unit": "—",
+        "remarks": "From ~1.05 bar(a) (WGS train outlet, ~50 mbar(g)) to ~8 bar(a) (PSA adsorption pressure + atmospheric)"
+      },
+      {
+        "parameter": "Pressure transmitter range",
+        "value": "0-15",
+        "unit": "bar",
+        "remarks": "Margin above the 7 bar(g) design adsorption pressure"
+      },
+      {
+        "parameter": "Number of pressure transmitters",
+        "value": "5",
+        "unit": "—",
+        "remarks": "One per adsorber vessel (4, matching HB-006's vessel count) plus one on the common feed/product header"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "HB-009",
+    "name": "PSA Tail Gas Handler",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Tail gas flow rate",
+        "value": "29.4",
+        "unit": "Nm³/h",
+        "remarks": "Matches HB-007's established tail gas flow directly"
+      },
+      {
+        "parameter": "Tail gas composition (H₂ residual)",
+        "value": "~25",
+        "unit": "vol%",
+        "remarks": "Matches HB-007's established tail gas composition"
+      },
+      {
+        "parameter": "Tail gas H₂S content",
+        "value": "<0.1",
+        "unit": "ppm",
+        "remarks": "Gas has already passed through GC-006/GC-009 H2S removal upstream — PSA itself does not introduce sulfur"
+      },
+      {
+        "parameter": "Tail gas disposition",
+        "value": "Recycled to GA-001 gasifier as supplemental fuel",
+        "unit": "—",
+        "remarks": "Matches HB-007's established disposition exactly"
+      },
+      {
+        "parameter": "Tail gas buffer tank volume",
+        "value": "1",
+        "unit": "m³",
+        "remarks": "Small buffer ahead of the gasifier feed, consistent with the tiny scale throughout this plant"
+      },
+      {
+        "parameter": "Tail gas compressor (if recycled)",
+        "value": "0.5",
+        "unit": "kW",
+        "remarks": "Small blower rather than a full compressor — tail gas exits PSA regeneration at ~0.2 bar(g) (HB-008), already close to GA-002 reactor pressure"
+      },
+      {
+        "parameter": "Tail gas analyser type",
+        "value": "Combined TCD (H2) + electrochemical (H2S)",
+        "unit": "—",
+        "remarks": "Same TCD technology as SA-001 for H2, paired with electrochemical H2S check before returning gas to the gasifier"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  },
+  {
+    "id": "HB-010",
+    "name": "Membrane Separator",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Membrane type",
+        "value": "Polymeric hollow-fiber membrane",
+        "unit": "—",
+        "remarks": "Standard, cost-effective choice at this scale"
+      },
+      {
+        "parameter": "Membrane material",
+        "value": "Polyimide",
+        "unit": "—",
+        "remarks": "Common H2-selective polymeric membrane material"
+      },
+      {
+        "parameter": "Feed gas H₂ partial pressure",
+        "value": "4.4",
+        "unit": "bar",
+        "remarks": "55% H2 content (HB-006) x ~8 bar(a) system pressure, consistent with HB-008 PSA feed compression stage"
+      },
+      {
+        "parameter": "Permeate H₂ purity",
+        "value": "95-98",
+        "unit": "vol%",
+        "remarks": "Falls short of DOK-ING's 99.97% target on its own — genuine trade-off against PSA, not papered over"
+      },
+      {
+        "parameter": "H₂ permeance",
+        "value": "50",
+        "unit": "GPU",
+        "remarks": "Mid-range typical value for polyimide hollow-fiber membranes"
+      },
+      {
+        "parameter": "H₂ recovery rate",
+        "value": "85",
+        "unit": "%",
+        "remarks": "Higher than PSA's 75% (HB-007) — membranes don't waste product gas in a purge/blowdown cycle"
+      },
+      {
+        "parameter": "Feed gas flow rate",
+        "value": "50",
+        "unit": "Nm³/h",
+        "remarks": "Matches the flow established throughout the plant"
+      },
+      {
+        "parameter": "Product H₂ flow rate",
+        "value": "23.4",
+        "unit": "Nm³/h",
+        "remarks": "55% x 50 Nm3/h x 85% recovery — better than PSA's 20.6 Nm3/h, consistent with the recovery trade-off"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "40",
+        "unit": "°C",
+        "remarks": "Matches the established gas temperature at this point in the train (SA-009/010/011)"
+      },
+      {
+        "parameter": "Max allowable H₂S",
+        "value": "<1",
+        "unit": "ppm",
+        "remarks": "Comfortably within tolerance given upstream GC-006/GC-009 already bring H2S down to <0.1 ppm"
+      },
+      {
+        "parameter": "Membrane area",
+        "value": "20",
+        "unit": "m²",
+        "remarks": "Sized against the flow/permeance relationship at this small scale"
+      },
+      {
+        "parameter": "Number of membrane modules",
+        "value": "2",
+        "unit": "—",
+        "remarks": "Basic redundancy/staging at this small scale"
+      },
+      {
+        "parameter": "Pressure drop across membrane",
+        "value": "0.3",
+        "unit": "bar",
+        "remarks": "Modest flow-path pressure drop, separate from the larger transmembrane driving force"
+      },
+      {
+        "parameter": "Membrane lifetime",
+        "value": "3",
+        "unit": "years",
+        "remarks": "Shorter than PSA's adsorbent — polymeric membranes need more frequent replacement"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "14 of 16 parameters filled"
+  },
+  {
+    "id": "HB-011",
+    "name": "Electrolyser (Green H₂) — Auxiliary/Optional",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Electrolyser type",
+        "value": "PEM (Proton Exchange Membrane)",
+        "unit": "—",
+        "remarks": "Matches the technology already specified in the equipment reference documentation"
+      },
+      {
+        "parameter": "Rated power input",
+        "value": "10",
+        "unit": "kW",
+        "remarks": "Modest, auxiliary-appropriate scale — not sized to patch the WGS+PSA shortfall"
+      },
+      {
+        "parameter": "H₂ production rate (rated)",
+        "value": "0.18",
+        "unit": "Nm³/h",
+        "remarks": "10 kW / ~55 kWh/Nm3 typical PEM efficiency"
+      },
+      {
+        "parameter": "H₂ purity (outlet)",
+        "value": ">99.99",
+        "unit": "vol%",
+        "remarks": "Genuine PEM advantage — inherently purer than syngas-derived routes since never diluted by combustion by-products"
+      },
+      {
+        "parameter": "System efficiency",
+        "value": "55",
+        "unit": "kWh/Nm³ H₂",
+        "remarks": "Standard mid-range figure for commercial PEM electrolysers"
+      },
+      {
+        "parameter": "Operating pressure (H₂ side)",
+        "value": "15",
+        "unit": "bar(g)",
+        "remarks": "PEM stacks commonly produce H2 at moderate pressure directly — needs far less compression to reach shared storage than the WGS+PSA route"
+      },
+      {
+        "parameter": "Water consumption",
+        "value": "~1",
+        "unit": "L/Nm³ H₂",
+        "remarks": "Stoichiometric water demand (~0.81 L/Nm3) plus practical system losses"
+      },
+      {
+        "parameter": "Water quality required",
+        "value": "Deionized water, resistivity >1 MΩ·cm",
+        "unit": "—",
+        "remarks": "PEM membranes are sensitive to contamination"
+      },
+      {
+        "parameter": "Stack lifetime",
+        "value": "60000",
+        "unit": "h",
+        "remarks": "Standard industry figure for PEM stacks — roughly 7-8 years at continuous operation"
+      },
+      {
+        "parameter": "Footprint",
+        "value": "5",
+        "unit": "m²",
+        "remarks": "Compact, skid-mounted unit at this small scale"
+      },
+      {
+        "parameter": "Grid connection voltage",
+        "value": "400V / 3-phase",
+        "unit": "V / phases",
+        "remarks": "Standard European 3-phase industrial supply"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "11 of 13 parameters filled"
+  },
+  {
+    "id": "HB-012",
+    "name": "H₂ Compressor",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Compressor type",
+        "value": "Diaphragm compressor (H2 stage) + integrated low-pressure rotary lobe blower (pre-PSA feed stage, per HB-008)",
+        "unit": "—",
+        "remarks": "Diaphragm technology standard for high-purity H2 — zero process-gas contact with lubricant"
+      },
+      {
+        "parameter": "Inlet pressure",
+        "value": "7",
+        "unit": "bar(g)",
+        "remarks": "PSA product/discharge pressure, matching HB-008's design adsorption pressure directly"
+      },
+      {
+        "parameter": "Discharge pressure (design)",
+        "value": "700",
+        "unit": "bar(g)",
+        "remarks": "DOK-ING's higher stated dispensing pressure — 350 bar achievable as a lower operating mode through the same equipment"
+      },
+      {
+        "parameter": "Flow rate",
+        "value": "20.6",
+        "unit": "Nm³/h",
+        "remarks": "Matches HB-007's established PSA product flow directly"
+      },
+      {
+        "parameter": "Number of stages",
+        "value": "4",
+        "unit": "—",
+        "remarks": "Needed to reach a ~100:1 pressure ratio (7 to 700 bar) — typical for diaphragm H2 compressors at this range"
+      },
+      {
+        "parameter": "Drive motor power",
+        "value": "10",
+        "unit": "kW",
+        "remarks": "Estimated for this flow and compression ratio at small scale"
+      },
+      {
+        "parameter": "Cooling method",
+        "value": "Interstage water/air cooling",
+        "unit": "—",
+        "remarks": "Standard requirement — compression heat builds significantly across 4 stages at this ratio"
+      },
+      {
+        "parameter": "Lubrication type",
+        "value": "Oil-lubricated crankcase, oil-free process gas (diaphragm isolation)",
+        "unit": "—",
+        "remarks": "The diaphragm keeps lubricant entirely separate from the H2 stream"
+      },
+      {
+        "parameter": "Interstage temperature (max)",
+        "value": "150",
+        "unit": "°C",
+        "remarks": "Standard practical limit before requiring more aggressive interstage cooling"
+      },
+      {
+        "parameter": "Safety relief valve set pressure",
+        "value": "770",
+        "unit": "bar(g)",
+        "remarks": "10% margin above the 700 bar(g) design discharge — standard practice"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "HB-013",
+    "name": "H₂ Storage Vessel",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Vessel type",
+        "value": "Type IV composite (carbon-fiber wrapped, polymer liner)",
+        "unit": "—",
+        "remarks": "Standard for 700 bar H2 storage — much lighter than steel"
+      },
+      {
+        "parameter": "Storage capacity",
+        "value": "50",
+        "unit": "kg H₂",
+        "remarks": "Sized as roughly one day's production buffer, matching DOK-ING's ~50 kg/day target directly"
+      },
+      {
+        "parameter": "Design pressure",
+        "value": "875",
+        "unit": "bar(g)",
+        "remarks": "Real industry-standard rating for 700 bar dispensing systems (SAE/ISO Type IV tanks)"
+      },
+      {
+        "parameter": "Operating pressure range",
+        "value": "350-700",
+        "unit": "bar(g)",
+        "remarks": "Covers both of DOK-ING's stated dispensing pressure options"
+      },
+      {
+        "parameter": "Number of vessels",
+        "value": "3",
+        "unit": "—",
+        "remarks": "Simple cascade bank (low/medium/high pressure) — standard practice for efficient H2 dispensing"
+      },
+      {
+        "parameter": "Vessel material",
+        "value": "HDPE liner with carbon fiber composite overwrap",
+        "unit": "—",
+        "remarks": "Matches the Type IV vessel construction specified above"
+      },
+      {
+        "parameter": "Safety relief valve pressure",
+        "value": "875",
+        "unit": "bar(g)",
+        "remarks": "Set at the design pressure (MAWP) itself — standard PRV practice, not above it"
+      },
+      {
+        "parameter": "Pressure transmitter range",
+        "value": "0-1000",
+        "unit": "bar",
+        "remarks": "Margin above the 875 bar(g) design pressure"
+      },
+      {
+        "parameter": "Temperature sensor (vessel)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Compressed gas heating during fast-fill is a genuine consideration"
+      },
+      {
+        "parameter": "Leak detection method",
+        "value": "Point-type catalytic/electrochemical H2 sensors, area monitoring",
+        "unit": "—",
+        "remarks": "Essential given H2's wide flammability range"
+      },
+      {
+        "parameter": "ATEX zone classification",
+        "value": "Zone 2 (Zone 1 immediately around valves/fittings)",
+        "unit": "—",
+        "remarks": "Standard classification for outdoor H2 storage with adequate ventilation"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "11 of 13 parameters filled"
+  },
+  {
+    "id": "HB-014",
+    "name": "LOHC Hydrogenation / Loading Reactor",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Carrier compound",
+        "value": "Dibenzyltoluene (DBT)",
+        "unit": "—",
+        "remarks": "Standard, widely-used LOHC carrier compound"
+      },
+      {
+        "parameter": "H₂ loading capacity",
+        "value": "2",
+        "unit": "kg H₂/h",
+        "remarks": "Margin above HB-007's established ~1.85 kg/h PSA product rate"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "170",
+        "unit": "°C",
+        "remarks": "Mid-range for DBT hydrogenation (typically 150-200°C)"
+      },
+      {
+        "parameter": "Operating pressure",
+        "value": "40",
+        "unit": "bar",
+        "remarks": "Mid-range for LOHC hydrogenation (typically 30-50 bar)"
+      },
+      {
+        "parameter": "Catalyst type",
+        "value": "Platinum/Palladium on alumina (Pt/Pd/Al2O3)",
+        "unit": "—",
+        "remarks": "Standard catalyst for DBT hydrogenation"
+      },
+      {
+        "parameter": "H₂ loading efficiency",
+        "value": "6.2",
+        "unit": "wt%",
+        "remarks": "Within DBT's typical 6-7 wt% H2 loading capacity"
+      },
+      {
+        "parameter": "Reactor volume",
+        "value": "0.5",
+        "unit": "m³",
+        "remarks": "Sized for the modest 2 kg H2/h capacity at this scale"
+      },
+      {
+        "parameter": "Heat integration source",
+        "value": "N/A — reaction is exothermic; waste heat recoverable for integration elsewhere (e.g. FE-007 dryer or HB-004 steam generation)",
+        "unit": "—",
+        "remarks": "This equipment is a heat source, not a consumer — opposite role from most other heat source fields"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-015",
+    "name": "LOHC Storage Tank (Lean/Rich Oil)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Storage configuration",
+        "value": "Twin-tank (separate lean and rich carrier storage)",
+        "unit": "—",
+        "remarks": "Matches the Lean/Rich Oil framing already in the equipment name"
+      },
+      {
+        "parameter": "Lean carrier tank volume",
+        "value": "1",
+        "unit": "m³",
+        "remarks": "Sized from HB-014's carrier throughput (~0.031 m³/h) for roughly a day's buffer"
+      },
+      {
+        "parameter": "Rich carrier tank volume",
+        "value": "1",
+        "unit": "m³",
+        "remarks": "Matches lean tank size — symmetric twin-tank design, since lean-out equals rich-in over a full cycle"
+      },
+      {
+        "parameter": "Storage temperature",
+        "value": "15-40",
+        "unit": "°C",
+        "remarks": "Ambient — the entire appeal of LOHC over compressed storage (HB-013)"
+      },
+      {
+        "parameter": "Storage pressure",
+        "value": "1_5",
+        "unit": "bar",
+        "remarks": "Near-atmospheric — no pressure vessel design requirements, unlike HB-013"
+      },
+      {
+        "parameter": "Tank material",
+        "value": "Carbon steel (with liner if needed for DBT compatibility)",
+        "unit": "—",
+        "remarks": "Standard for organic liquid storage at these mild conditions"
+      },
+      {
+        "parameter": "H₂ storage density",
+        "value": "56",
+        "unit": "kg H₂/m³ carrier",
+        "remarks": "Mid-range for DBT's typical H2 storage density"
+      },
+      {
+        "parameter": "Dehydrogenation interface",
+        "value": "Rich oil transported off-site to HB-016 dehydrogenation (or on-site if co-located)",
+        "unit": "—",
+        "remarks": "Matches the design intent already established for HB-016"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-016",
+    "name": "LOHC Dehydrogenation Unit — Auxiliary/Optional",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Carrier compound",
+        "value": "Dibenzyltoluene (DBT)",
+        "unit": "—",
+        "remarks": "Matches HB-014/HB-015's established carrier directly"
+      },
+      {
+        "parameter": "H₂ release capacity",
+        "value": "2",
+        "unit": "kg H₂/h",
+        "remarks": "Matches HB-014's loading capacity — symmetric, what's loaded must be releasable"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "300",
+        "unit": "°C",
+        "remarks": "Dehydrogenation runs hotter than hydrogenation (HB-014's 170°C) — endothermic reactions favor higher temperature"
+      },
+      {
+        "parameter": "Operating pressure",
+        "value": "2",
+        "unit": "bar",
+        "remarks": "Lower than HB-014's 40 bar — releasing H2 gas favors lower pressure (Le Chatelier)"
+      },
+      {
+        "parameter": "Catalyst type",
+        "value": "Platinum-based (Pt/Al2O3)",
+        "unit": "—",
+        "remarks": "Same catalyst family as HB-014's Pt/Pd, optimized for the reverse reaction"
+      },
+      {
+        "parameter": "Heat demand",
+        "value": "19",
+        "unit": "kW",
+        "remarks": "Calculated from DBT's ~67 kJ/mol H2 dehydrogenation enthalpy at 2 kg H2/h (1000 mol H2/h)"
+      },
+      {
+        "parameter": "Location",
+        "value": "Typically off-site (per HB-015 interface); on-site optional if heat integration with HB-014 is pursued",
+        "unit": "—",
+        "remarks": "Matches the design intent already established, with the heat-integration opportunity noted as a future option"
+      },
+      {
+        "parameter": "H₂ release efficiency",
+        "value": "6",
+        "unit": "wt%",
+        "remarks": "Slightly below HB-014's 6.2 wt% loading — reflects minor round-trip losses"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-017",
+    "name": "H₂ Purification (Post-LOHC Dehydrogenation)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Purification method",
+        "value": "Activated carbon polishing bed (removes trace DBT carrier vapor)",
+        "unit": "—",
+        "remarks": "Simple polishing duty, similar principle to GC-009's activated carbon approach for trace contaminants"
+      },
+      {
+        "parameter": "Target purity",
+        "value": "99.9",
+        "unit": "%",
+        "remarks": "Slightly relaxed from HB-006's 99.97% — this stream remixes with the main PSA-purified flow in shared storage"
+      },
+      {
+        "parameter": "Design capacity",
+        "value": "2",
+        "unit": "kg H₂/h",
+        "remarks": "Matches HB-016's release capacity directly"
+      },
+      {
+        "parameter": "Inlet pressure",
+        "value": "2",
+        "unit": "bar",
+        "remarks": "Matches HB-016's dehydrogenation operating pressure"
+      },
+      {
+        "parameter": "Outlet pressure",
+        "value": "1.8",
+        "unit": "bar",
+        "remarks": "Small pressure drop across a simple polishing bed"
+      },
+      {
+        "parameter": "Contaminants targeted",
+        "value": "Trace DBT carrier vapor, trace catalyst decomposition products",
+        "unit": "—",
+        "remarks": "The specific contaminants this LOHC-origin stream carries that the WGS+PSA route never has to deal with"
+      },
+      {
+        "parameter": "Recovery efficiency",
+        "value": ">99",
+        "unit": "%",
+        "remarks": "Minimal H2 loss expected — a much smaller trade-off than PSA's 75% recovery, since this filters trace vapor, not separates a mixed gas stream"
+      },
+      {
+        "parameter": "Downstream routing",
+        "value": "Rejoins shared H2 Storage Vessel (HB-013) via HB-012 compressor, merging with the primary WGS+PSA route",
+        "unit": "—",
+        "remarks": "Matches the shared-infrastructure design decision already established"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "HB-018",
+    "name": "H₂ Dispensing Station (Mobility/FCEV Refuelling)",
+    "category": "H2 Boosting & Purification",
+    "parameters": [
+      {
+        "parameter": "Dispensing pressure",
+        "value": "350/700",
+        "unit": "bar",
+        "remarks": "Matches DOK-ING's actual stated dual dispensing pressure options directly"
+      },
+      {
+        "parameter": "Fuelling protocol",
+        "value": "SAE J2601 (H70/H35)",
+        "unit": "—",
+        "remarks": "Standard protocol already referenced at HB-012; covers both 700 bar (H70) and 350 bar (H35) fills"
+      },
+      {
+        "parameter": "Dispensing rate",
+        "value": "1.2",
+        "unit": "kg/min",
+        "remarks": "Reasonable for this small-scale station — not sized to match large highway-station throughput"
+      },
+      {
+        "parameter": "Nozzle standard",
+        "value": "SAE J2600",
+        "unit": "—",
+        "remarks": "Standard nozzle/receptacle interface paired with J2601 fuelling protocol"
+      },
+      {
+        "parameter": "Pre-cooling required",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Mandatory for 700 bar fast-fill compliance under SAE J2601 — prevents excessive tank temperature rise during fill"
+      },
+      {
+        "parameter": "Vehicle classes served",
+        "value": "Light-duty FCEV (700 bar) and heavy-duty/bus (350 bar)",
+        "unit": "—",
+        "remarks": "Matches the dual-pressure capability directly"
+      },
+      {
+        "parameter": "Metering/billing system",
+        "value": "Coriolis mass flow meter, custody-transfer grade, integrated billing",
+        "unit": "—",
+        "remarks": "Needed to support DOK-ING's stated dual gate-fee + product-sales business model"
+      },
+      {
+        "parameter": "Source stream(s)",
+        "value": "HB-013 shared H2 Storage Vessel (fed by both WGS+PSA and LOHC pathways)",
+        "unit": "—",
+        "remarks": "Closes the loop on the shared-infrastructure design decision"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "EU-001",
+    "name": "SOFC Stack (Temp)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Stack operating temperature",
+        "value": "750",
+        "unit": "°C",
+        "remarks": "Typical mid-range for commercial SOFC — high temperature is the defining characteristic of this fuel cell type"
+      },
+      {
+        "parameter": "Number of temperature sensors",
+        "value": "6",
+        "unit": "—",
+        "remarks": "Distributed across the stack to catch hot spots and ensure thermal uniformity"
+      },
+      {
+        "parameter": "Sensor type",
+        "value": "Type K thermocouple",
+        "unit": "—",
+        "remarks": "750°C sits comfortably within Type K's reliable range — doesn't need GA-001's Type S justification"
+      },
+      {
+        "parameter": "Max allowable temperature",
+        "value": "900",
+        "unit": "°C",
+        "remarks": "150°C margin above operating — protects ceramic components and seals from thermal stress damage"
+      },
+      {
+        "parameter": "Thermal ramp rate (max)",
+        "value": "2",
+        "unit": "°C/min",
+        "remarks": "Genuinely restrictive — SOFC's ceramic construction is vulnerable to thermal cycling stress, close to the real physical limit"
+      },
+      {
+        "parameter": "Stack cooling method",
+        "value": "Cathode air flow rate control (process air also serves as primary cooling medium)",
+        "unit": "—",
+        "remarks": "Same airflow supplying oxidant also removes excess heat — no separate liquid cooling loop needed"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "EU-002",
+    "name": "SOFC Stack (Efficiency)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Rated electrical power output",
+        "value": "18",
+        "unit": "kWe",
+        "remarks": "Sized against a modest ~1 kg H2/h dispatch scenario at 55% electrical efficiency — not all available H2 committed here, one of four parallel dispatch options"
+      },
+      {
+        "parameter": "Electrical efficiency (LHV)",
+        "value": "55",
+        "unit": "%",
+        "remarks": "Among the highest of any fuel cell/power-gen technology — matches the reference documentation's high-efficiency characterization"
+      },
+      {
+        "parameter": "Fuel utilisation factor",
+        "value": "80",
+        "unit": "%",
+        "remarks": "Typical single-pass utilization for SOFC"
+      },
+      {
+        "parameter": "AC or DC output",
+        "value": "DC (stack), AC via inverter for grid/plant use",
+        "unit": "—",
+        "remarks": "Stack produces DC; standard inverter needed for grid-tie or plant AC use"
+      },
+      {
+        "parameter": "Fuel inlet composition (H₂ + CO)",
+        "value": "59.2",
+        "unit": "vol%",
+        "remarks": "H2 (55%) + CO (4.2%) combined, both usable — genuine SOFC advantage over PEM (H2-only, CO-poisoned)"
+      },
+      {
+        "parameter": "Fuel inlet pressure",
+        "value": "100",
+        "unit": "mbar(g)",
+        "remarks": "Near-atmospheric — SOFC doesn't need PEM's elevated fuel-side pressure"
+      },
+      {
+        "parameter": "Stack voltage",
+        "value": "48",
+        "unit": "V",
+        "remarks": "Common nominal voltage for a small commercial SOFC stack at this power class"
+      },
+      {
+        "parameter": "Stack current",
+        "value": "375",
+        "unit": "A",
+        "remarks": "Derived directly: 18,000 W / 48 V"
+      },
+      {
+        "parameter": "Power meter type",
+        "value": "Digital power meter (kWh + kW instantaneous), grid-tie compatible",
+        "unit": "—",
+        "remarks": "Standard for tracking both cumulative energy and real-time output"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-003",
+    "name": "Gas Engine / Genset (Power)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Rated electrical output",
+        "value": "15",
+        "unit": "kWe",
+        "remarks": "Slightly below EU-002's SOFC (18kWe) — reflects genuinely lower electrical efficiency of combustion vs electrochemical conversion"
+      },
+      {
+        "parameter": "Rated thermal output (CHP)",
+        "value": "20",
+        "unit": "kWth",
+        "remarks": "Higher than electrical output — gas engines characteristically produce more recoverable heat than fuel cells"
+      },
+      {
+        "parameter": "Electrical efficiency (LHV)",
+        "value": "35",
+        "unit": "%",
+        "remarks": "Realistic for a small-scale reciprocating gas engine — notably lower than SOFC's 55% (EU-002)"
+      },
+      {
+        "parameter": "Fuel gas LHV required",
+        "value": "9.8",
+        "unit": "MJ/Nm³",
+        "remarks": "Matches SA-006's calculated syngas LHV directly — same fuel value used, not a separate assumption"
+      },
+      {
+        "parameter": "Fuel gas pressure (supply)",
+        "value": "100",
+        "unit": "mbar(g)",
+        "remarks": "Consistent with the low-pressure gas distribution used elsewhere in the plant"
+      },
+      {
+        "parameter": "Fuel gas flow rate (rated)",
+        "value": "15.8",
+        "unit": "Nm³/h",
+        "remarks": "Calculated: (15 kWe / 35% efficiency) / 9.8 MJ/Nm3 — not picked independently"
+      },
+      {
+        "parameter": "Generator voltage",
+        "value": "400",
+        "unit": "V",
+        "remarks": "Matches HB-011's grid connection standard — consistent European industrial voltage"
+      },
+      {
+        "parameter": "Generator frequency",
+        "value": "50",
+        "unit": "Hz",
+        "remarks": "European grid standard"
+      },
+      {
+        "parameter": "Power meter / protection relay",
+        "value": "Digital power meter with integrated protection relay (over/under voltage, frequency, reverse power)",
+        "unit": "—",
+        "remarks": "Standard genset grid-interconnection protection package"
+      },
+      {
+        "parameter": "Engine speed",
+        "value": "1500",
+        "unit": "rpm",
+        "remarks": "Standard 4-pole generator speed for 50Hz operation"
+      },
+      {
+        "parameter": "NOx emission (dry, 5% O₂)",
+        "value": "<250",
+        "unit": "mg/Nm³",
+        "remarks": "Reasonable modern lean-burn gas engine emission standard"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "11 of 13 parameters filled"
+  },
+  {
+    "id": "EU-004",
+    "name": "Gas Engine (Thermal Eff.)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Exhaust gas temperature",
+        "value": "450",
+        "unit": "°C",
+        "remarks": "Typical for a small reciprocating gas engine"
+      },
+      {
+        "parameter": "Exhaust gas flow rate",
+        "value": "60",
+        "unit": "Nm³/h",
+        "remarks": "Roughly 4x the 15.8 Nm3/h fuel flow (EU-003), accounting for combustion air addition"
+      },
+      {
+        "parameter": "Jacket cooling heat recovery",
+        "value": "12",
+        "unit": "kWth",
+        "remarks": "~60% of EU-003's 20 kWth total — typical split favoring jacket cooling for reciprocating engines"
+      },
+      {
+        "parameter": "Exhaust heat recovery",
+        "value": "8",
+        "unit": "kWth",
+        "remarks": "Remaining ~40% of the total, from exhaust gas heat recovery"
+      },
+      {
+        "parameter": "Total heat recovery potential",
+        "value": "20",
+        "unit": "kWth",
+        "remarks": "Matches EU-003's established CHP thermal output exactly — sum of the two lines above"
+      },
+      {
+        "parameter": "Cooling water flow rate",
+        "value": "~1",
+        "unit": "m³/h",
+        "remarks": "Sized for the 12 kWth jacket duty at a ~10°C temperature rise"
+      },
+      {
+        "parameter": "Cooling water supply temperature",
+        "value": "20",
+        "unit": "°C",
+        "remarks": "Matches the ambient plant utility water temperature already used elsewhere (e.g. GA-004)"
+      },
+      {
+        "parameter": "Cooling water return temperature",
+        "value": "30",
+        "unit": "°C",
+        "remarks": "Supply temperature plus the ~10°C rise used in the flow rate calculation"
+      },
+      {
+        "parameter": "Thermal efficiency (LHV)",
+        "value": "47",
+        "unit": "%",
+        "remarks": "20 kWth / ~42.9 kW fuel input — combined with EU-003's 35% electrical efficiency, gives ~82% total CHP efficiency"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-005",
+    "name": "Microturbine",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Rated electrical output",
+        "value": "12",
+        "unit": "kWe",
+        "remarks": "Smaller than EU-003's gas engine — reflects typical smaller-scale commercial microturbine unit sizes"
+      },
+      {
+        "parameter": "Electrical efficiency (LHV)",
+        "value": "28",
+        "unit": "%",
+        "remarks": "Lower than EU-003's 35% — genuine microturbine trade-off (efficiency sacrificed for lower emissions/maintenance)"
+      },
+      {
+        "parameter": "Turbine speed",
+        "value": "4000",
+        "unit": "rpm",
+        "remarks": "4 bar(g) — notably higher than EU-003's 100 mbar(g); fuel must be injected against the turbine's own internal compressor discharge pressure"
+      },
+      {
+        "parameter": "Exhaust temperature",
+        "value": "280",
+        "unit": "°C",
+        "remarks": "Lower than EU-004's 450°C exhaust — different thermodynamic cycle characteristic"
+      },
+      {
+        "parameter": "Exhaust flow rate",
+        "value": "150",
+        "unit": "Nm³/h",
+        "remarks": "Roughly 10x fuel flow — microturbines use much more excess air for turbine cooling than reciprocating engines"
+      },
+      {
+        "parameter": "Fuel gas LHV required",
+        "value": "9.8",
+        "unit": "MJ/Nm³",
+        "remarks": "Matches SA-006 directly — same fuel, consistent reuse"
+      },
+      {
+        "parameter": "Fuel gas pressure (supply)",
+        "value": "4",
+        "unit": "mbar(g)",
+        "remarks": "Notably higher than EU-003's 100 mbar(g) — fuel must be injected against the turbine's own internal compressor discharge pressure"
+      },
+      {
+        "parameter": "Generator output voltage",
+        "value": "400",
+        "unit": "V",
+        "remarks": "Achieved via power electronics (AC-DC-AC) converting the raw high-frequency generator output to grid-standard voltage"
+      },
+      {
+        "parameter": "NOx emissions",
+        "value": "<15",
+        "unit": "ppmvd @ 15% O₂",
+        "remarks": "Genuine microturbine advantage — lean premix combustion gives much lower NOx than EU-003's reciprocating engine"
+      },
+      {
+        "parameter": "Grid connection type",
+        "value": "Grid-tie inverter (AC-DC-AC conversion from high-speed generator)",
+        "unit": "—",
+        "remarks": "Required because the raw generator output frequency does not match grid frequency at these turbine speeds"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "EU-006",
+    "name": "H₂ Fuel Cell (Stationary)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Fuel cell type",
+        "value": "PEM (Proton Exchange Membrane)",
+        "unit": "—",
+        "remarks": "Consistent technology with HB-011's electrolyser — same membrane chemistry, opposite direction"
+      },
+      {
+        "parameter": "Rated electrical output",
+        "value": "15",
+        "unit": "kWe",
+        "remarks": "Mid-range among the four CHP options (SOFC 18kWe, Gas Engine 15kWe, Microturbine 12kWe)"
+      },
+      {
+        "parameter": "Electrical efficiency (LHV)",
+        "value": "50",
+        "unit": "%",
+        "remarks": "Solid PEM efficiency, modestly below SOFC's 55% (EU-002)"
+      },
+      {
+        "parameter": "H₂ fuel purity required",
+        "value": ">99.97",
+        "unit": "vol%",
+        "remarks": "The critical constraint — PEM is CO-poisoned even at trace levels, unlike SOFC. Draws from HB-013 purified storage"
+      },
+      {
+        "parameter": "H₂ supply pressure",
+        "value": "2",
+        "unit": "bar(g)",
+        "remarks": "Typical PEM stack inlet pressure — needs pressure letdown from HB-013's 350-700 bar storage"
+      },
+      {
+        "parameter": "H₂ consumption (rated)",
+        "value": "10",
+        "unit": "Nm³/h",
+        "remarks": "Calculated: (15 kWe / 50% efficiency) / 10.8 MJ/Nm3 (H2 volumetric LHV)"
+      },
+      {
+        "parameter": "DC output voltage",
+        "value": "48",
+        "unit": "V",
+        "remarks": "Consistent nominal voltage choice with EU-002's SOFC"
+      },
+      {
+        "parameter": "Stack lifetime",
+        "value": "60000",
+        "unit": "h",
+        "remarks": "Matches HB-011's electrolyser stack lifetime — same PEM membrane durability characteristics"
+      },
+      {
+        "parameter": "Cooling method",
+        "value": "Liquid cooling loop (coolant circulation, radiator/heat exchanger)",
+        "unit": "—",
+        "remarks": "Genuine difference from EU-001's air-cooling — PEM operates at 60-80°C, far too low for cathode-air cooling"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-007",
+    "name": "Flare / Emergency Burner",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Flare capacity (100% design flow)",
+        "value": "100",
+        "unit": "Nm³/h",
+        "remarks": "2x margin above the plant's established ~50 Nm³/h normal flow — sized for worst-case emergency blowdown"
+      },
+      {
+        "parameter": "Flare type",
+        "value": "Enclosed ground flare",
+        "unit": "—",
+        "remarks": "More practical at this small scale than an elevated stack"
+      },
+      {
+        "parameter": "Pilot burner type",
+        "value": "Continuous pilot with UV/IR flame supervision",
+        "unit": "—",
+        "remarks": "Standard practice — ensures reliable ignition exactly when needed"
+      },
+      {
+        "parameter": "Flame detector type",
+        "value": "UV/IR flame detector",
+        "unit": "—",
+        "remarks": "Standard for reliable flame detection at the pilot/flare tip"
+      },
+      {
+        "parameter": "Gas composition range",
+        "value": "Raw syngas to pure H2 — composition variable depending on where in the process the emergency release originates",
+        "unit": "—",
+        "remarks": "This flare could receive gas from anywhere in the process (GA-001 through HB-013)"
+      },
+      {
+        "parameter": "Smokeless operation",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Standard design capability for a modern enclosed ground flare"
+      },
+      {
+        "parameter": "Noise limit at boundary",
+        "value": "55",
+        "unit": "dB(A)",
+        "remarks": "Reasonably conservative facility boundary limit"
+      },
+      {
+        "parameter": "Radiation limit at fence",
+        "value": "1.58",
+        "unit": "kW/m²",
+        "remarks": "Standard API 521 limit for areas where personnel may be continuously present"
+      },
+      {
+        "parameter": "ATEX classification",
+        "value": "Zone 1 (immediate vicinity), Zone 2 (extended area)",
+        "unit": "—",
+        "remarks": "Consistent classification pattern with HB-013's storage area"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-008",
+    "name": "Cooling Tower",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Cooling duty",
+        "value": "20",
+        "unit": "kWth",
+        "remarks": "Some margin above EU-004's established 12 kWth jacket cooling load"
+      },
+      {
+        "parameter": "Tower type",
+        "value": "Induced draft, counterflow packaged cooling tower",
+        "unit": "—",
+        "remarks": "Standard small-scale industrial type at this duty"
+      },
+      {
+        "parameter": "Cooling water supply temperature",
+        "value": "20",
+        "unit": "°C",
+        "remarks": "Matches EU-004's established cooling water supply temperature directly"
+      },
+      {
+        "parameter": "Cooling water return temperature",
+        "value": "30",
+        "unit": "°C",
+        "remarks": "Matches EU-004's established return temperature directly"
+      },
+      {
+        "parameter": "Water flow rate",
+        "value": "~1",
+        "unit": "m³/h",
+        "remarks": "Matches EU-004's established cooling water flow rate"
+      },
+      {
+        "parameter": "Fan motor power",
+        "value": "0.75",
+        "unit": "kW",
+        "remarks": "Small unit, consistent with the tiny scale throughout this plant"
+      },
+      {
+        "parameter": "Make-up water consumption",
+        "value": "~0.05",
+        "unit": "m³/h",
+        "remarks": "Estimated from evaporative loss (~1.8 L/kWh rejected) plus blowdown/drift"
+      },
+      {
+        "parameter": "Water treatment required",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Biocide and scale/corrosion inhibitor treatment needed to prevent fouling"
+      },
+      {
+        "parameter": "Legionella risk assessment",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Mandatory for open evaporative cooling water systems — genuine regulatory requirement"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-009",
+    "name": "Electrical Metering (Grid)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Meter type",
+        "value": "Digital multifunction revenue meter",
+        "unit": "—",
+        "remarks": "Standard for combined generation/consumption metering at grid interconnection"
+      },
+      {
+        "parameter": "Measurement range",
+        "value": "0-50",
+        "unit": "kW",
+        "remarks": "Covers a plausible combination of CHP units running together, not just the single largest unit (EU-002's 18kWe)"
+      },
+      {
+        "parameter": "Accuracy class",
+        "value": "Class 0.5S (IEC 62053-22)",
+        "unit": "—",
+        "remarks": "Revenue-grade accuracy, consistent with the plant's dual gate-fee + product-sales business model"
+      },
+      {
+        "parameter": "Connection voltage",
+        "value": "400",
+        "unit": "V",
+        "remarks": "Matches the established grid voltage standard used throughout (HB-011, EU-003, EU-005)"
+      },
+      {
+        "parameter": "Communication protocol",
+        "value": "Modbus TCP/RTU, DLMS/COSEM for utility billing interface",
+        "unit": "—",
+        "remarks": "Modbus matches the plant's internal SCADA/AI standard; DLMS/COSEM is typical for utility billing meters"
+      },
+      {
+        "parameter": "Import / export metering",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Plant both generates (CHP units) and draws from grid — bidirectional metering needed"
+      },
+      {
+        "parameter": "Data logging interval",
+        "value": "900",
+        "unit": "s",
+        "remarks": "Standard 15-minute utility interval data logging"
+      },
+      {
+        "parameter": "DNO / utility approval required",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Grid-connected generation with multiple sources typically requires Distribution Network Operator approval"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "EU-010",
+    "name": "UPS / Battery Buffer",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "UPS type",
+        "value": "Online double-conversion UPS",
+        "unit": "—",
+        "remarks": "Continuous clean power regardless of grid quality — standard for critical control/safety systems"
+      },
+      {
+        "parameter": "Rated power",
+        "value": "10",
+        "unit": "kVA",
+        "remarks": "Sized for critical control/instrumentation loads rather than full plant process power backup"
+      },
+      {
+        "parameter": "Battery technology",
+        "value": "Lithium-ion (LiFePO4)",
+        "unit": "—",
+        "remarks": "Increasingly standard — better cycle life and smaller footprint than traditional VRLA"
+      },
+      {
+        "parameter": "Backup duration at full load",
+        "value": "30",
+        "unit": "min",
+        "remarks": "Long enough to execute a safe plant shutdown sequence, not extended standalone operation"
+      },
+      {
+        "parameter": "DC bus voltage",
+        "value": "240",
+        "unit": "V",
+        "remarks": "Typical for a UPS at this power class"
+      },
+      {
+        "parameter": "AC output voltage",
+        "value": "400",
+        "unit": "V",
+        "remarks": "Matches the plant's established grid voltage standard (EU-009, HB-011, EU-003, EU-005)"
+      },
+      {
+        "parameter": "Recharge time to 90%",
+        "value": "4",
+        "unit": "h",
+        "remarks": "Reasonable for Li-ion technology, faster than traditional VRLA batteries"
+      },
+      {
+        "parameter": "Battery state-of-charge sensor",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Essential for monitoring backup capacity and predictive maintenance"
+      },
+      {
+        "parameter": "BMS communication",
+        "value": "Modbus TCP/RTU to plant SCADA/AI layer",
+        "unit": "—",
+        "remarks": "Consistent with the plant-wide communication standard — Li-ion requires BMS cell balancing/protection"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "EU-011",
+    "name": "Heat Recovery Unit",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Heat exchanger type",
+        "value": "Gas-to-water shell-and-tube heat exchanger",
+        "unit": "—",
+        "remarks": "Consistent approach with HB-005's earlier heat-recovery design choice"
+      },
+      {
+        "parameter": "Exhaust gas inlet temperature",
+        "value": "280",
+        "unit": "°C",
+        "remarks": "Matches EU-005's established microturbine exhaust temperature directly"
+      },
+      {
+        "parameter": "Exhaust gas outlet temperature",
+        "value": "120",
+        "unit": "°C",
+        "remarks": "Cooled enough to extract most useful heat while avoiding condensation issues"
+      },
+      {
+        "parameter": "Recovery medium",
+        "value": "Water (closed loop)",
+        "unit": "—",
+        "remarks": "Consistent with the plant's other heat recovery approaches (HB-003, EU-004)"
+      },
+      {
+        "parameter": "Recovery medium flow rate",
+        "value": "~0.4",
+        "unit": "m³/h",
+        "remarks": "Sized for the recovered duty at a ~20°C water-side temperature rise"
+      },
+      {
+        "parameter": "Thermal duty recovered",
+        "value": "9",
+        "unit": "kWth",
+        "remarks": "Calculated from EU-005's 150 Nm³/h exhaust flow cooling 280°C to 120°C"
+      },
+      {
+        "parameter": "Pressure drop (gas side)",
+        "value": "10",
+        "unit": "mbar",
+        "remarks": "Modest, consistent with the small scale throughout this plant"
+      },
+      {
+        "parameter": "Material (gas side)",
+        "value": "Stainless steel 304/316",
+        "unit": "—",
+        "remarks": "Moderate temperature with some corrosive potential from combustion byproducts"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "EU-012",
+    "name": "District Heating HX",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "HX type",
+        "value": "Plate heat exchanger",
+        "unit": "—",
+        "remarks": "Compact, efficient, standard for hydraulically isolating the plant internal loop from an external district network"
+      },
+      {
+        "parameter": "Thermal output (design)",
+        "value": "25",
+        "unit": "kWth",
+        "remarks": "Slightly conservative combined capacity from EU-004 (20kWth) + EU-006 (9kWth) — not all sources necessarily simultaneous"
+      },
+      {
+        "parameter": "Primary supply temperature",
+        "value": "80",
+        "unit": "°C",
+        "remarks": "Aggregated internal heat recovery loop at a useful district-heating temperature — higher than EU-004's jacket-cooling loop alone"
+      },
+      {
+        "parameter": "Primary return temperature",
+        "value": "50",
+        "unit": "°C",
+        "remarks": "30°C drop on the primary side, typical for this duty"
+      },
+      {
+        "parameter": "Secondary supply temperature",
+        "value": "75",
+        "unit": "°C",
+        "remarks": "Slightly below primary supply — normal HX approach temperature difference"
+      },
+      {
+        "parameter": "Secondary return temperature",
+        "value": "45",
+        "unit": "°C",
+        "remarks": "Matches the primary-side 30°C drop pattern"
+      },
+      {
+        "parameter": "Primary flow rate",
+        "value": "~0.72",
+        "unit": "m³/h",
+        "remarks": "Sized for the 25 kWth duty at the 30°C primary-side temperature drop"
+      },
+      {
+        "parameter": "Secondary flow rate",
+        "value": "~0.72",
+        "unit": "m³/h",
+        "remarks": "Same order of magnitude as primary, consistent with the matched temperature drops"
+      },
+      {
+        "parameter": "Design pressure (primary)",
+        "value": "6",
+        "unit": "bar(g)",
+        "remarks": "Typical closed-loop internal heating circuit design pressure"
+      },
+      {
+        "parameter": "Design pressure (secondary)",
+        "value": "10",
+        "unit": "bar(g)",
+        "remarks": "Typical district heating network design pressure"
+      },
+      {
+        "parameter": "HX material",
+        "value": "Stainless steel 316 plates",
+        "unit": "—",
+        "remarks": "Standard for plate heat exchangers in heating service"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "11 of 13 parameters filled"
+  },
+  {
+    "id": "EU-013",
+    "name": "Thermal Energy Metering (District Heat)",
+    "category": "Energy Utilisation",
+    "parameters": [
+      {
+        "parameter": "Metering standard",
+        "value": "EN 1434 (Class 2)",
+        "unit": "—",
+        "remarks": "Standard European heat metering standard"
+      },
+      {
+        "parameter": "Measured flow rate range",
+        "value": "0-2",
+        "unit": "m³/h",
+        "remarks": "Margin above EU-007's established ~0.72 m³/h secondary-side design flow"
+      },
+      {
+        "parameter": "Supply/return temperature range",
+        "value": "0-100",
+        "unit": "°C",
+        "remarks": "Covers EU-007's established 45-75°C secondary operating range with generous margin"
+      },
+      {
+        "parameter": "Metered energy accuracy class",
+        "value": "Class 2",
+        "unit": "—",
+        "remarks": "Standard commercial accuracy under EN 1434 — matches the metering standard directly"
+      },
+      {
+        "parameter": "Billing interface",
+        "value": "M-Bus (wired), integrated with plant billing/utility system",
+        "unit": "—",
+        "remarks": "M-Bus is the standard heat-metering protocol, distinct from EU-009's DLMS/COSEM electrical billing approach"
+      },
+      {
+        "parameter": "Heat delivery point",
+        "value": "District heating network connection point (EU-007 secondary side)",
+        "unit": "—",
+        "remarks": "Directly matches EU-007's established secondary-side output"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "6 of 8 parameters filled"
+  },
+  {
+    "id": "AI-001",
+    "name": "Weather Station",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Parameters measured",
+        "value": "Ambient temperature, wind speed/direction, solar irradiance, rainfall, barometric pressure, relative humidity",
+        "unit": "—",
+        "remarks": "Solar irradiance and wind data specifically support anticipating renewable generation availability for HB-011"
+      },
+      {
+        "parameter": "Temperature range",
+        "value": "(-40 to +60)",
+        "unit": "°C",
+        "remarks": "Standard wide range for outdoor weather monitoring equipment"
+      },
+      {
+        "parameter": "Wind speed range",
+        "value": "0-60",
+        "unit": "m/s",
+        "remarks": "Covers calm conditions through extreme storm events"
+      },
+      {
+        "parameter": "Rainfall measurement",
+        "value": "0-300",
+        "unit": "mm/h",
+        "remarks": "Covers light rain through extreme downpour conditions"
+      },
+      {
+        "parameter": "Data output protocol",
+        "value": "Modbus TCP/RTU to plant SCADA/AI layer",
+        "unit": "—",
+        "remarks": "Consistent with the plant-wide communication standard used throughout"
+      },
+      {
+        "parameter": "Data update interval",
+        "value": "60",
+        "unit": "s",
+        "remarks": "Standard 1-minute update resolution for weather monitoring"
+      },
+      {
+        "parameter": "Mounting height",
+        "value": "10",
+        "unit": "m",
+        "remarks": "WMO standard convention for wind speed measurement height"
+      },
+      {
+        "parameter": "IP rating",
+        "value": "IP66",
+        "unit": "—",
+        "remarks": "Dust-tight and protected against powerful water jets — standard for outdoor weather equipment"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "AI-002",
+    "name": "Camera / Vision System",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Camera type",
+        "value": "Industrial machine-vision camera (RGB + optional NIR for material classification)",
+        "unit": "—",
+        "remarks": "Robust choice for a dusty industrial feedstock-handling environment"
+      },
+      {
+        "parameter": "Resolution",
+        "value": "5",
+        "unit": "MP",
+        "remarks": "Adequate for contamination/oversized-item detection at this scale"
+      },
+      {
+        "parameter": "Frame rate",
+        "value": "30",
+        "unit": "fps",
+        "remarks": "More than sufficient for a slow-moving conveyor application"
+      },
+      {
+        "parameter": "Field of view",
+        "value": "90",
+        "unit": "°",
+        "remarks": "Wide enough to cover the inspection area at FE-001's hopper/conveyor"
+      },
+      {
+        "parameter": "AI model purpose",
+        "value": "Feedstock contamination/oversized-item detection at FE-001 receiving hopper, flagging non-conforming material before it reaches FE-003 shredder",
+        "unit": "—",
+        "remarks": "Complements FE-008's magnetic tramp-metal removal with an earlier, broader visual check"
+      },
+      {
+        "parameter": "AI model accuracy (design)",
+        "value": "90",
+        "unit": "%",
+        "remarks": "Realistic target for this kind of visual classification task"
+      },
+      {
+        "parameter": "Interface",
+        "value": "GigE Vision / Ethernet to AI Model Server (AI-008)",
+        "unit": "—",
+        "remarks": "Direct architectural connection — this camera's output feeds the plant's established MPC/RL model server"
+      },
+      {
+        "parameter": "IP / ATEX rating",
+        "value": "IP67 (dust/washdown protection); ATEX not required at this location",
+        "unit": "—",
+        "remarks": "Early in the process, away from the flammable-gas zones that required ATEX classification at HB-013"
+      },
+      {
+        "parameter": "Housing material",
+        "value": "Stainless steel or powder-coated aluminum enclosure",
+        "unit": "—",
+        "remarks": "Standard for this industrial application"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-003",
+    "name": "Bed Pressure-Drop Sensor",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Measurement principle",
+        "value": "Differential pressure transmitter, using GA-002's dual pressure taps directly",
+        "unit": "—",
+        "remarks": "This is exactly why GA-002 was specified with two taps rather than one — this sensor is the reason"
+      },
+      {
+        "parameter": "Measurement range",
+        "value": "0-100",
+        "unit": "mbar",
+        "remarks": "Reasonable range for a fluidized bed ΔP at this small scale"
+      },
+      {
+        "parameter": "Accuracy",
+        "value": "±0.1",
+        "unit": "± %",
+        "remarks": "Tight accuracy, matching the same reasoning used at GC-002 — a high-value diagnostic reading, not a routine one"
+      },
+      {
+        "parameter": "Response time",
+        "value": "2",
+        "unit": "s",
+        "remarks": "Fast enough to actually catch a rapid bed upset as it develops"
+      },
+      {
+        "parameter": "Output signal",
+        "value": "4-20mA + Modbus TCP",
+        "unit": "—",
+        "remarks": "Consistent with the plant-wide standard"
+      },
+      {
+        "parameter": "Installation location",
+        "value": "GA-002's dual pressure taps (bed level + freeboard), differential calculated between them",
+        "unit": "—",
+        "remarks": "Direct physical connection to the infrastructure already built for this purpose"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "0-60",
+        "unit": "°C",
+        "remarks": "The transmitter itself sits well below bed temperature — impulse lines carry the signal from the 950°C bed to a remotely-mounted instrument"
+      },
+      {
+        "parameter": "Alarm / trip setpoint",
+        "value": "Low: <10 mbar (defluidization risk); High: >90 mbar (agglomeration/blockage risk)",
+        "unit": "mbar",
+        "remarks": "Dual-limit alarm reflecting the genuine diagnostic value — both directions of failure matter"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "AI-004",
+    "name": "PLC (Main Control)",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "PLC make / family",
+        "value": "Siemens SIMATIC S7-1500 (or equivalent process-grade PLC)",
+        "unit": "—",
+        "remarks": "Representative industry-standard family — actual vendor selection still needs a real quote"
+      },
+      {
+        "parameter": "CPU model",
+        "value": "CPU 1516-3 PN/DP (or equivalent)",
+        "unit": "—",
+        "remarks": "Mid-range CPU appropriate for this plant's I/O count and process complexity"
+      },
+      {
+        "parameter": "Number of digital inputs",
+        "value": "128",
+        "unit": "—",
+        "remarks": "Sized generously for discrete signals across ~91 equipment items"
+      },
+      {
+        "parameter": "Number of digital outputs",
+        "value": "96",
+        "unit": "—",
+        "remarks": "Valve/motor control outputs across the plant"
+      },
+      {
+        "parameter": "Number of analogue inputs",
+        "value": "64",
+        "unit": "—",
+        "remarks": "Covers the extensive 4-20mA instrumentation already established across every section"
+      },
+      {
+        "parameter": "Number of analogue outputs",
+        "value": "32",
+        "unit": "—",
+        "remarks": "Control valve positioning, VSD speed references, etc."
+      },
+      {
+        "parameter": "Scan cycle time",
+        "value": "50",
+        "unit": "ms",
+        "remarks": "Fast enough for the gasifier/WGS reaction control loops without being unrealistically aggressive"
+      },
+      {
+        "parameter": "Communication interfaces",
+        "value": "Profinet/Ethernet, Modbus TCP/RTU, OPC-UA (to AI-003 gateway)",
+        "unit": "—",
+        "remarks": "Matches the plant-wide Modbus standard, plus the broader integration path to the AI/cloud layer"
+      },
+      {
+        "parameter": "Redundancy (CPU)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Genuinely justified given this layer's stated criticality"
+      },
+      {
+        "parameter": "Power supply redundancy",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Consistent with the CPU redundancy decision"
+      },
+      {
+        "parameter": "Safety PLC (SIL rated)",
+        "value": "SIL 2",
+        "unit": "SIL level",
+        "remarks": "Reasonable integrity level given this handles safety trips for a process with real H2/flammable gas and high-temperature hazards"
+      },
+      {
+        "parameter": "ATEX / Ex rating (if required)",
+        "value": "Not required (PLC housed in non-hazardous control room; field I/O rated per individual zone, e.g. HB-013 Zone 2)",
+        "unit": "—",
+        "remarks": "Standard practice — the PLC stays in a safe area"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "12 of 14 parameters filled"
+  },
+  {
+    "id": "AI-005",
+    "name": "OPC-UA Gateway",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Gateway hardware",
+        "value": "Industrial DIN-rail mounted OPC-UA gateway/edge PC",
+        "unit": "—",
+        "remarks": "Standard hardware form factor for this integration role"
+      },
+      {
+        "parameter": "OPC-UA server spec version",
+        "value": "OPC-UA 1.05",
+        "unit": "—",
+        "remarks": "Current mainstream specification version"
+      },
+      {
+        "parameter": "Number of OPC-UA tags (max)",
+        "value": "1000",
+        "unit": "—",
+        "remarks": "Generous capacity covering AI-001's ~320 direct I/O points plus calculated/derived values, alarms, and status points"
+      },
+      {
+        "parameter": "Tag update rate",
+        "value": "100",
+        "unit": "ms",
+        "remarks": "2x AI-001's 50ms scan cycle — this integration layer doesn't need to match the direct control loop's speed"
+      },
+      {
+        "parameter": "Security mode",
+        "value": "SignAndEncrypt",
+        "unit": "—",
+        "remarks": "Strongest OPC-UA security mode — bridges into broader IT/cloud infrastructure"
+      },
+      {
+        "parameter": "Security policy",
+        "value": "Basic256Sha256",
+        "unit": "—",
+        "remarks": "Current standard OPC-UA security policy"
+      },
+      {
+        "parameter": "Communication interface",
+        "value": "Ethernet (from AI-001 PLC) to MQTT (AI-004) and cloud/AI layer",
+        "unit": "—",
+        "remarks": "Direct match to what AI-001's own datasheet already specified as its integration path"
+      },
+      {
+        "parameter": "Redundancy",
+        "value": "No",
+        "unit": "Yes/No",
+        "remarks": "Deliberately different from AI-001 — losing this gateway means lost visibility, not lost control"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "AI-006",
+    "name": "MQTT Broker",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "MQTT broker software",
+        "value": "Eclipse Mosquitto (or equivalent industrial MQTT broker)",
+        "unit": "—",
+        "remarks": "Well-established, widely-deployed open-source choice for industrial MQTT"
+      },
+      {
+        "parameter": "Max concurrent clients",
+        "value": "50",
+        "unit": "—",
+        "remarks": "Reasonable capacity for this plant's publisher/subscriber ecosystem (AI-008, AI-009, historian, etc.)"
+      },
+      {
+        "parameter": "Max message throughput",
+        "value": "1000",
+        "unit": "msg/s",
+        "remarks": "Generous margin below AI-003's theoretical max (1000 tags at 100ms update)"
+      },
+      {
+        "parameter": "Protocol version",
+        "value": "MQTT 5.0",
+        "unit": "—",
+        "remarks": "Current mainstream version with improved features over 3.1.1"
+      },
+      {
+        "parameter": "TLS/SSL encryption",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Consistent with AI-003's SignAndEncrypt approach"
+      },
+      {
+        "parameter": "Authentication method",
+        "value": "Username/password + client certificates (mutual TLS)",
+        "unit": "—",
+        "remarks": "Standard robust authentication for an industrial MQTT deployment"
+      },
+      {
+        "parameter": "Persistence (retained messages)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Ensures subscribers get the latest value immediately on connection/reconnection"
+      },
+      {
+        "parameter": "QoS levels supported",
+        "value": "QoS 0, 1, 2 (all levels supported)",
+        "unit": "—",
+        "remarks": "Full MQTT QoS range"
+      },
+      {
+        "parameter": "Hardware / cloud hosting",
+        "value": "On-premises edge server (bridges to AI-006 Cloud IoT Hub)",
+        "unit": "—",
+        "remarks": "Sits between the OT gateway (AI-003) and the cloud layer (AI-006), matching the established sequence"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-007",
+    "name": "DCS / SCADA Server",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "SCADA software",
+        "value": "Siemens WinCC (or equivalent SCADA/HMI software)",
+        "unit": "—",
+        "remarks": "Ecosystem-consistent with AI-001's Siemens S7-1500 PLC choice"
+      },
+      {
+        "parameter": "Server hardware spec",
+        "value": "Industrial rack-mount server, redundant PSU, 32GB RAM, RAID storage",
+        "unit": "—",
+        "remarks": "Standard industrial server spec for this duty"
+      },
+      {
+        "parameter": "Redundancy (server)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Genuinely warranted — operators need continuous process visibility for a plant with real H2/high-temperature hazards"
+      },
+      {
+        "parameter": "Number of I/O tags (licensed)",
+        "value": "1000",
+        "unit": "—",
+        "remarks": "Matches AI-003's already-established tag capacity — SCADA mirrors the same tag universe as the OPC-UA gateway"
+      },
+      {
+        "parameter": "Historian software",
+        "value": "Integrated historian (e.g. Siemens WinCC Historian, or equivalent)",
+        "unit": "—",
+        "remarks": "Long-term trending/diagnostics, distinct role from real-time SCADA display"
+      },
+      {
+        "parameter": "Data logging interval",
+        "value": "10",
+        "unit": "s",
+        "remarks": "Finer resolution than EU-009's 15-minute utility billing interval — appropriate for process trending"
+      },
+      {
+        "parameter": "Historian retention period",
+        "value": "5",
+        "unit": "years",
+        "remarks": "Reasonable industrial standard — also supports AI-015's RFNBO compliance record-keeping if activated"
+      },
+      {
+        "parameter": "Client stations (operator HMI)",
+        "value": "2",
+        "unit": "—",
+        "remarks": "Main control room plus a backup/mobile station, appropriate for this small scale"
+      },
+      {
+        "parameter": "Remote access method",
+        "value": "VPN with multi-factor authentication",
+        "unit": "—",
+        "remarks": "Secure remote monitoring/support access, relevant given DOK-ING's external stakeholder visibility needs"
+      },
+      {
+        "parameter": "Cybersecurity standard",
+        "value": "IEC 62443",
+        "unit": "—",
+        "remarks": "Leading industrial control systems cybersecurity standard — directly relevant given AI-012's dedicated ICS firewall role"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "AI-008",
+    "name": "Edge Computing Server",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Hardware form factor",
+        "value": "Ruggedized industrial edge PC (fanless, DIN-rail or panel-mount)",
+        "unit": "—",
+        "remarks": "Deployed close to the process, survives the plant environment without active cooling"
+      },
+      {
+        "parameter": "CPU",
+        "value": "Intel Core i7 (or equivalent), 8-core",
+        "unit": "—",
+        "remarks": "Sufficient for local inference and low-latency control tasks"
+      },
+      {
+        "parameter": "GPU (if AI inference)",
+        "value": "NVIDIA Jetson AGX Orin (or equivalent embedded AI accelerator)",
+        "unit": "—",
+        "remarks": "Needed if genuine vision or ML inference runs locally rather than round-tripping to AI-008"
+      },
+      {
+        "parameter": "RAM",
+        "value": "32",
+        "unit": "GB",
+        "remarks": "Adequate for local model inference workloads"
+      },
+      {
+        "parameter": "Storage",
+        "value": "512",
+        "unit": "GB",
+        "remarks": "NVMe SSD — fast storage for real-time data buffering"
+      },
+      {
+        "parameter": "Network interfaces",
+        "value": "2x Gigabit Ethernet, 1x fiber uplink",
+        "unit": "—",
+        "remarks": "Connects to the plant network (AI-001/AI-003) with a dedicated uplink path"
+      },
+      {
+        "parameter": "Operating temperature",
+        "value": "(-20 to +60)",
+        "unit": "°C",
+        "remarks": "Industrial-rated range, consistent with the fanless deployment"
+      },
+      {
+        "parameter": "MTBF",
+        "value": "80000",
+        "unit": "h",
+        "remarks": "Typical for quality industrial computing hardware"
+      },
+      {
+        "parameter": "OS",
+        "value": "Linux (Ubuntu Server LTS or industrial RTOS variant)",
+        "unit": "—",
+        "remarks": "Standard choice for AI/ML inference workloads"
+      },
+      {
+        "parameter": "ATEX / Ex rating (if needed)",
+        "value": "Not required (housed in non-hazardous area, consistent with AI-001's PLC placement)",
+        "unit": "—",
+        "remarks": "Same reasoning as AI-001 — kept out of the actual hazardous process zones"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "AI-009",
+    "name": "Cybersecurity Firewall (ICS)",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Firewall standard",
+        "value": "IEC 62443-3-3 (SL2 target security level)",
+        "unit": "—",
+        "remarks": "Matches AI-002's already-established cybersecurity standard reference directly"
+      },
+      {
+        "parameter": "Throughput",
+        "value": "1",
+        "unit": "Gbps",
+        "remarks": "Generous for this plant's actual data volumes (1000 tags, 100ms updates) — not a bottleneck"
+      },
+      {
+        "parameter": "Number of network zones",
+        "value": "4 zones (Level 0-1 process/control, Level 2 supervisory, Level 3 site operations, Level 4 cloud/enterprise)",
+        "unit": "—",
+        "remarks": "Matches the IEC 62443 zone model, consistent with the plant Level 0-3/Level 4 architecture"
+      },
+      {
+        "parameter": "DPI (deep packet inspection)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Essential for genuine OT security — inspecting actual protocol content, not just IP/port filtering"
+      },
+      {
+        "parameter": "OT protocol awareness",
+        "value": "Modbus TCP, OPC-UA, MQTT, Profinet (deep protocol inspection)",
+        "unit": "—",
+        "remarks": "Matches the plant's established protocol stack directly (AI-001, AI-003, AI-004)"
+      },
+      {
+        "parameter": "Intrusion detection (IDS)",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Standard practice for ICS security"
+      },
+      {
+        "parameter": "VPN support",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Consistent with AI-002's established remote access VPN requirement"
+      },
+      {
+        "parameter": "Logging / SIEM integration",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Feeds into AI-002's historian/logging infrastructure"
+      },
+      {
+        "parameter": "Firmware update policy",
+        "value": "Scheduled quarterly updates with pre-deployment staging tests; emergency patches for critical vulnerabilities",
+        "unit": "—",
+        "remarks": "Balances security currency against operational stability risk"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-010",
+    "name": "Cloud IoT Hub",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Cloud platform",
+        "value": "Microsoft Azure IoT Hub (or equivalent — AWS IoT Core, Google Cloud IoT)",
+        "unit": "—",
+        "remarks": "Representative industrial IoT cloud platform — vendor selection still needs a real decision"
+      },
+      {
+        "parameter": "Max device connections",
+        "value": "50",
+        "unit": "—",
+        "remarks": "Matches AI-004's established client capacity"
+      },
+      {
+        "parameter": "Message ingestion rate",
+        "value": "~500000",
+        "unit": "msg/day",
+        "remarks": "A realistic sustained average, not AI-004's theoretical 1000 msg/s ceiling scaled up naively"
+      },
+      {
+        "parameter": "Data retention (hot tier)",
+        "value": "90",
+        "unit": "days",
+        "remarks": "Standard cloud hot-tier window for active querying"
+      },
+      {
+        "parameter": "Data retention (cold / archive)",
+        "value": "5",
+        "unit": "years",
+        "remarks": "Matches AI-002's already-established historian retention directly"
+      },
+      {
+        "parameter": "Security standard",
+        "value": "IEC 62443 + cloud provider's ISO 27001 certification",
+        "unit": "—",
+        "remarks": "Consistent with AI-012's ICS standard and AI-003's OPC-UA security approach"
+      },
+      {
+        "parameter": "Data residency region",
+        "value": "EU region (GDPR compliance)",
+        "unit": "—",
+        "remarks": "Required given this is a Croatian/EU-based project"
+      },
+      {
+        "parameter": "Integration with twin platform",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Feeds AI-009's Digital Twin Engine directly — this integration is the whole point of the cloud layer"
+      },
+      {
+        "parameter": "Monthly cost estimate",
+        "value": "~200-400",
+        "unit": "EUR/month",
+        "remarks": "Reasonable estimate for this plant's modest data volumes (50 devices, ~500k msg/day)"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-011",
+    "name": "Time-Series Database",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Database software",
+        "value": "InfluxDB (or equivalent — TimescaleDB, Azure Time Series Insights)",
+        "unit": "—",
+        "remarks": "Standard purpose-built time-series database technology"
+      },
+      {
+        "parameter": "Deployment",
+        "value": "Cloud-hosted (co-located with AI-006 Cloud IoT Hub)",
+        "unit": "—",
+        "remarks": "Sits alongside the ingestion point established at AI-006"
+      },
+      {
+        "parameter": "Write throughput",
+        "value": "50",
+        "unit": "points/s",
+        "remarks": "Generous margin above the ~5.8 points/s average implied by AI-006's ~500,000 msg/day ingestion rate"
+      },
+      {
+        "parameter": "Query latency (p99)",
+        "value": "200",
+        "unit": "ms",
+        "remarks": "Reasonable target for a well-indexed time-series DB at this modest data volume"
+      },
+      {
+        "parameter": "Data retention policy",
+        "value": "90 days hot tier (full resolution), 5 years cold/archive tier (downsampled)",
+        "unit": "—",
+        "remarks": "Matches AI-002/AI-006's already-established retention policy directly"
+      },
+      {
+        "parameter": "Compression ratio (typical)",
+        "value": "~10:1",
+        "unit": "—",
+        "remarks": "Conservative, realistic estimate for time-series data compression"
+      },
+      {
+        "parameter": "High availability",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Warranted — underpins both AI-002's historian and AI-009's Digital Twin Engine"
+      },
+      {
+        "parameter": "Backup strategy",
+        "value": "Automated daily snapshots, geo-redundant storage",
+        "unit": "—",
+        "remarks": "Standard practice for data this operationally important"
+      },
+      {
+        "parameter": "API / query language",
+        "value": "InfluxQL / Flux (native), REST API for AI-008/AI-009 integration",
+        "unit": "—",
+        "remarks": "Direct integration path to the plant's model server and digital twin"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-012",
+    "name": "AI Model Server (MPC/RL)",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "AI framework",
+        "value": "Python-based: do-mpc/CasADi (MPC), Stable-Baselines3/Ray RLlib (RL)",
+        "unit": "—",
+        "remarks": "Real, widely-used open-source frameworks for these two distinct control paradigms"
+      },
+      {
+        "parameter": "Control strategy type",
+        "value": "Hybrid MPC (fast, safety-critical process loops) + RL (long-horizon dispatch optimization, e.g. CHP technology selection among the four options)",
+        "unit": "—",
+        "remarks": "Directly matches the plant's genuine optimization opportunities already established"
+      },
+      {
+        "parameter": "Inference latency (target)",
+        "value": "500",
+        "unit": "ms",
+        "remarks": "Slower than AI-001's 50ms PLC scan by design — this layer computes optimized setpoints periodically"
+      },
+      {
+        "parameter": "Control loop frequency",
+        "value": "0.1",
+        "unit": "Hz",
+        "remarks": "~10s MPC cycle for process optimization; CHP dispatch (RL) decisions run much slower"
+      },
+      {
+        "parameter": "Number of controlled variables",
+        "value": "15",
+        "unit": "—",
+        "remarks": "Reasonable count spanning the established control loops"
+      },
+      {
+        "parameter": "Number of manipulated variables",
+        "value": "12",
+        "unit": "—",
+        "remarks": "Corresponding actuators/setpoints (air/steam flow, feed rate, valve positions, CHP dispatch)"
+      },
+      {
+        "parameter": "Training data requirement",
+        "value": "Minimum 6 months of operational data or high-fidelity process simulation",
+        "unit": "—",
+        "remarks": "The plant's own existing MATLAB/Simulink model is exactly this kind of resource for initial RL policy training"
+      },
+      {
+        "parameter": "Model retraining frequency",
+        "value": "Quarterly, or triggered by significant process drift detection",
+        "unit": "—",
+        "remarks": "Standard practice for keeping models current with actual plant behavior"
+      },
+      {
+        "parameter": "Fallback control mode",
+        "value": "Fallback to conventional PID control on AI-001 PLC — AI provides setpoint optimization only; PLC retains base-layer safety control independent of AI availability",
+        "unit": "—",
+        "remarks": "Critical safety architecture point — the plant must not lose basic control if this AI layer fails"
+      },
+      {
+        "parameter": "Hardware spec (inference)",
+        "value": "GPU-accelerated server (NVIDIA A-series or equivalent), 64GB RAM",
+        "unit": "—",
+        "remarks": "Heavier workload than AI-005's edge inference — genuine training/inference compute needs"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "10 of 12 parameters filled"
+  },
+  {
+    "id": "AI-013",
+    "name": "Digital Twin Engine",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Twin platform software",
+        "value": "Siemens Xcelerator/MindSphere (or equivalent — Azure Digital Twins, AVEVA)",
+        "unit": "—",
+        "remarks": "Ecosystem-consistent with AI-001/AI-002's established Siemens choices"
+      },
+      {
+        "parameter": "3D engine",
+        "value": "Unity or Unreal Engine (real-time 3D rendering)",
+        "unit": "—",
+        "remarks": "Standard for real-time industrial visualization"
+      },
+      {
+        "parameter": "State sync frequency",
+        "value": "1",
+        "unit": "Hz",
+        "remarks": "Slower than AI-008's 0.1Hz MPC cycle — this is a visualization/monitoring refresh rate, not control-critical"
+      },
+      {
+        "parameter": "Number of live data tags",
+        "value": "1000",
+        "unit": "—",
+        "remarks": "Matches the tag capacity already established at AI-003/AI-002"
+      },
+      {
+        "parameter": "Process simulation link",
+        "value": "Linked to the existing MATLAB/Simulink process model for physics-based state prediction",
+        "unit": "—",
+        "remarks": "Uses the plant's own already-built simulation files, not a separate independent model"
+      },
+      {
+        "parameter": "Digital twin standard",
+        "value": "ISO 23247 (digital twin framework for manufacturing)",
+        "unit": "—",
+        "remarks": "Real, relevant interoperability standard for this application"
+      },
+      {
+        "parameter": "API type",
+        "value": "REST API + OPC-UA client (reads from AI-003 gateway, AI-007 time-series DB)",
+        "unit": "—",
+        "remarks": "Direct integration with the already-established data infrastructure"
+      },
+      {
+        "parameter": "Visualisation resolution",
+        "value": "4K (3840x2160) rendering target",
+        "unit": "—",
+        "remarks": "Standard for detailed industrial 3D visualization"
+      },
+      {
+        "parameter": "VR/AR support",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "Supports remote inspection, operator training, and maintenance planning"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "9 of 11 parameters filled"
+  },
+  {
+    "id": "AI-014",
+    "name": "Multi-Module Orchestration Controller",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Max modules supported",
+        "value": "25",
+        "unit": "#",
+        "remarks": "Directly matches DOK-ING's stated scaling target — 1 tpd modules up to 25 tpd total capacity"
+      },
+      {
+        "parameter": "Communication protocol",
+        "value": "OPC-UA (inter-module), MQTT (to AI-006 Cloud IoT Hub for fleet-wide visibility)",
+        "unit": "—",
+        "remarks": "Consistent with the plant's established communication stack"
+      },
+      {
+        "parameter": "Load balancing strategy",
+        "value": "Dynamic, based on feedstock availability, module health status, and shared utility capacity",
+        "unit": "—",
+        "remarks": "Genuine optimization problem across a fleet of modules"
+      },
+      {
+        "parameter": "Shared utility coordination",
+        "value": "Coordinates shared steam (HB-004), cooling (EU-011), and grid interconnection (EU-009) capacity across active modules",
+        "unit": "—",
+        "remarks": "Real bottleneck-avoidance need — these are the shared utilities already established in this build"
+      },
+      {
+        "parameter": "Failover / redundancy",
+        "value": "Automatic failover — redistributes feedstock/load to healthy modules if one drops out",
+        "unit": "—",
+        "remarks": "The actual point of a multi-module design: individual module failure does not halt overall production"
+      },
+      {
+        "parameter": "Module health monitoring",
+        "value": "Aggregates status from each module's own AI-001 PLC and AI-009 digital twin instance via AI-006 Cloud IoT Hub",
+        "unit": "—",
+        "remarks": "Ties directly into the plant's already-established monitoring infrastructure"
+      },
+      {
+        "parameter": "Scaling response time",
+        "value": "15",
+        "unit": "min",
+        "remarks": "Reasonable operational response window — consistent with EU-009's 15-min utility interval"
+      },
+      {
+        "parameter": "Central vs. distributed control",
+        "value": "Distributed local control (each module's own AI-001 PLC) with centralized orchestration for fleet-wide optimization",
+        "unit": "—",
+        "remarks": "Reflects the genuine two-tier architecture already established throughout this build"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "8 of 10 parameters filled"
+  },
+  {
+    "id": "AI-015",
+    "name": "RFNBO Compliance & Guarantee-of-Origin Monitor — Auxiliary/Optional",
+    "category": "AI Control & Instruments",
+    "parameters": [
+      {
+        "parameter": "Scope",
+        "value": "Applies only if HB-011 (Electrolyser) is activated — tracks the green-hydrogen pathway specifically, not the primary WGS+PSA route",
+        "unit": "—",
+        "remarks": "Matches HB-011's own Auxiliary/Optional status directly"
+      },
+      {
+        "parameter": "Renewable power verification method",
+        "value": "Guarantee-of-Origin (GO) certificate verification, cross-referenced with AI-010's weather data for on-site renewable generation correlation",
+        "unit": "—",
+        "remarks": "Direct use of AI-010's already-established purpose"
+      },
+      {
+        "parameter": "Temporal correlation requirement",
+        "value": "Hourly matching per EU RFNBO Delegated Regulation 2023/1184",
+        "unit": "—",
+        "remarks": "The actual real regulatory requirement, not a generic placeholder"
+      },
+      {
+        "parameter": "Additionality tracking",
+        "value": "Yes",
+        "unit": "Yes/No",
+        "remarks": "EU RFNBO rules require new renewable capacity, not just reallocated existing renewable electricity"
+      },
+      {
+        "parameter": "Mass-balance / chain-of-custody system",
+        "value": "Book-and-claim or physical segregation tracking of HB-011-produced H2 through shared storage (HB-013), maintaining chain-of-custody records",
+        "unit": "—",
+        "remarks": "Addresses the real complexity of HB-011's green H2 sharing storage with the main route"
+      },
+      {
+        "parameter": "Applicable regulation",
+        "value": "EU RFNBO Delegated Regulation (EU) 2023/1184",
+        "unit": "—",
+        "remarks": "The actual regulation governing Renewable Fuels of Non-Biological Origin in the EU"
+      },
+      {
+        "parameter": "Reporting interface",
+        "value": "Automated reporting via AI-002 historian, exportable for regulatory/certification submission",
+        "unit": "—",
+        "remarks": "Uses the plant's already-established historian infrastructure"
+      }
+    ],
+    "vendor_model": null,
+    "datasheet_reference": null,
+    "parameters_filled": "7 of 9 parameters filled"
+  }
+]

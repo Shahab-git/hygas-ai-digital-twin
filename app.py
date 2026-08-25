@@ -6,7 +6,7 @@ verified Python physics modules in /python — the same models that were
 cross-checked against the MATLAB/Simulink blocks during development.
 """
 import streamlit as st
-from python import kinetics, psa, chp, dispatch_ga, copilot
+from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
@@ -131,6 +131,93 @@ if question:
     }
     answer = copilot.answer_question(question, copilot_state)
     st.info(answer if answer is not None else copilot.UNKNOWN_QUESTION_MESSAGE)
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 6 — Vendor sourcing agent (v1: manual quote log, no web search)
+# ---------------------------------------------------------------------
+st.header("Vendor Sourcing")
+st.warning(
+    "**v1 — manual tracker only.** This does NOT search the web, call any vendor "
+    "API, or auto-fill anything. You find a quote yourself (phone, email, a "
+    "vendor's website) and log it below against the real equipment item. An "
+    "actual research/browsing agent that sources quotes automatically is v2 "
+    "and has not been built yet — this version makes no claim otherwise.",
+    icon="⚠️",
+)
+
+registry = equipment_registry.load_registry()
+quotes = vendor_log.load_quotes()
+counts = vendor_log.status_counts(registry, quotes)
+
+st.caption(
+    f"Registry: {counts['total']} items from the real MSW equipment datasheet workbook "
+    f"(`data/MSW_Equipment_Datasheets_Interactive.xlsx`) — not fabricated placeholder data."
+)
+cols = st.columns(4)
+cols[0].metric("Total items", counts["total"])
+cols[1].metric("Need sourcing", counts["needs_sourcing"])
+cols[2].metric("Quoted", counts["quoted"])
+cols[3].metric("Still open", counts["open"])
+if counts["not_applicable"]:
+    st.caption(f"{counts['not_applicable']} item(s) marked not applicable in the source workbook (no vendor needed).")
+
+st.subheader("Log a found quote")
+quoted_ids = {q["equipment_id"] for q in quotes}
+item_labels = {
+    item["id"]: f"{item['id']} — {item['name']}"
+    + (" ✅ quoted" if item["id"] in quoted_ids else "")
+    for item in registry
+    if equipment_registry.needs_vendor_sourcing(item)
+}
+with st.form("log_quote_form", clear_on_submit=True):
+    fcol1, fcol2 = st.columns(2)
+    with fcol1:
+        selected_id = st.selectbox(
+            "Equipment item", options=list(item_labels.keys()), format_func=lambda k: item_labels[k]
+        )
+        vendor_name = st.text_input("Vendor name")
+    with fcol2:
+        price = st.number_input("Price (EUR)", min_value=0.0, step=100.0)
+        quote_date = st.date_input("Quote date")
+    notes = st.text_area("Notes", placeholder="e.g. lead time, contact, quote reference #")
+    submitted = st.form_submit_button("Log quote")
+
+if submitted:
+    if not vendor_name.strip():
+        st.error("Vendor name is required.")
+    else:
+        vendor_log.log_quote(selected_id, vendor_name, price, quote_date, notes)
+        st.success(f"Logged {vendor_name} for {selected_id} at €{price:,.0f}.")
+        st.rerun()
+
+st.subheader("Registry status")
+selected_category = st.selectbox(
+    "Filter by category", options=["All"] + sorted(set(item["category"] for item in registry))
+)
+for item in registry:
+    if selected_category != "All" and item["category"] != selected_category:
+        continue
+    item_quotes = vendor_log.quotes_for(item["id"], quotes)
+    if not equipment_registry.needs_vendor_sourcing(item):
+        status = "N/A (not applicable — see datasheet)"
+    elif item_quotes:
+        latest = item_quotes[0]
+        status = f"✅ Quoted — {latest['vendor']}, €{latest['price']:,.0f} ({latest['date']})"
+    else:
+        status = "⏳ Open — needs a real vendor quote"
+
+    with st.expander(f"{item['id']} — {item['name']}  ·  {status}"):
+        st.caption(f"Category: {item['category']}  ·  Known spec fields: {item['parameters_filled']}")
+        st.table({
+            "Parameter": [p["parameter"] for p in item["parameters"]],
+            "Value": [f"{p['value']} {p['unit'] or ''}".strip() for p in item["parameters"]],
+        })
+        if item_quotes:
+            st.write("**Logged quotes:**")
+            for q in item_quotes:
+                st.write(f"- {q['vendor']} — €{q['price']:,.0f} on {q['date']}" + (f" — {q['notes']}" if q["notes"] else ""))
 
 st.divider()
 
