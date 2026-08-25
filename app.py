@@ -8,9 +8,18 @@ cross-checked against the MATLAB/Simulink blocks during development.
 import altair as alt
 import pandas as pd
 import streamlit as st
-from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log, uncertainty
+from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log, uncertainty, optimizer
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
+
+# Apply any pending "jump sliders to these values" request from the
+# Optimizer section (Section 6) *before* the slider widgets below are
+# instantiated — Streamlit forbids writing to a widget's session_state
+# key after that widget has already rendered in the same script run, so
+# the actual jump has to happen up here, one rerun after the button click.
+if "_pending_slider_jump" in st.session_state:
+    for _k, _v in st.session_state.pop("_pending_slider_jump").items():
+        st.session_state[_k] = _v
 
 st.title("HYGAS-AI — Digital Twin Status")
 st.caption("Physics-informed, agent-driven digital twin for RFNBO-compliant green hydrogen from waste")
@@ -183,7 +192,90 @@ if "mc_results" in st.session_state:
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 6 — Operator copilot (rule-based v1, no LLM / API key)
+# Section 6 — Central optimizer (v1: single-shot setpoint optimizer over
+# the real physics, NOT real-time receding-horizon MPC — see
+# python/optimizer.py for the full honest-scoping explanation)
+# ---------------------------------------------------------------------
+st.header("Optimizer")
+st.warning(
+    "**v1 — single-shot setpoint optimizer, not real MPC.** True model "
+    "predictive control does receding-horizon optimization over time — "
+    "repeatedly re-planning as a dynamic system evolves. kinetics.py and "
+    "psa.py are steady-state functions (conversion at one fixed operating "
+    "point, no time axis), not dynamic simulations, so a real MPC loop "
+    "isn't buildable on top of them yet. This searches the real adjustable "
+    "setpoints **once**, using the real physics as its internal model — "
+    "not a separate approximation of it. A real receding-horizon MPC "
+    "controller is a genuine v2, once a dynamic (time-domain) version of "
+    "the physics core exists.",
+    icon="⚠️",
+)
+
+objective = st.selectbox(
+    "Objective", ["Maximize overall WGS conversion", "Maximize PSA recovery"], key="optimizer_objective"
+)
+
+if st.button("Run optimizer"):
+    with st.spinner("Searching setpoints against the real kinetics.py / psa.py model..."):
+        if objective == "Maximize overall WGS conversion":
+            opt_result = optimizer.maximize_overall_wgs_conversion(
+                x0=[T_hts_C, ghsv_hts, T_lts_C, ghsv_lts]
+            )
+        else:
+            opt_result = optimizer.maximize_psa_recovery(y_co2=y_co2)
+    st.session_state["optimizer_result"] = {"objective": objective, "result": opt_result}
+
+if "optimizer_result" in st.session_state:
+    saved_objective = st.session_state["optimizer_result"]["objective"]
+    opt_result = st.session_state["optimizer_result"]["result"]
+
+    if saved_objective == "Maximize overall WGS conversion":
+        st.write(
+            f"**Recommended setpoints:** HTS {opt_result['T_hts_C']:.1f}°C / {opt_result['ghsv_hts']:.0f} GHSV "
+            f"· LTS {opt_result['T_lts_C']:.1f}°C / {opt_result['ghsv_lts']:.0f} GHSV"
+        )
+        ocol1, ocol2, ocol3 = st.columns(3)
+        ocol1.metric("HTS conversion", f"{opt_result['X_hts']*100:.1f}%")
+        ocol2.metric("LTS relative conversion", f"{opt_result['X_lts']*100:.1f}%")
+        ocol3.metric("Overall WGS conversion", f"{opt_result['overall']*100:.1f}%")
+        st.caption(
+            f"scipy L-BFGS-B, {opt_result['n_evaluations']} evaluations, converged={opt_result['converged']}. "
+            "Verified: recomputing kinetics.py directly at these setpoints reproduces this exact result — "
+            "the answer isn't just reported, it's checked. Note: this optimizer has no penalty for extreme "
+            "setpoints (catalyst degradation, capital cost, equipment limits aren't modeled), so a boundary "
+            "solution like this is a legitimate answer to 'maximize conversion, no other constraints' — not "
+            "necessarily an operationally sound recommendation on its own."
+        )
+        if st.button("Jump sliders to these values", key="jump_wgs"):
+            st.session_state["_pending_slider_jump"] = {
+                "hts_t": int(min(max(round(opt_result["T_hts_C"]), 300), 400)),
+                "hts_ghsv": int(min(max(round(opt_result["ghsv_hts"]), 1000), 4000)),
+                "lts_t": int(min(max(round(opt_result["T_lts_C"]), 180), 260)),
+                "lts_ghsv": int(min(max(round(opt_result["ghsv_lts"]), 1000), 4000)),
+            }
+            st.rerun()
+    else:
+        st.write(
+            f"**Recommended setpoints:** Adsorption pressure {opt_result['p_high']:.2f} bar(a) "
+            f"· Purge pressure {opt_result['p_low']:.2f} bar(a)"
+        )
+        st.metric("PSA recovery", f"{opt_result['recovery']*100:.1f}%")
+        st.caption(
+            f"Grid search, {opt_result['n_evaluations']} evaluations. Verified: recomputing psa.py directly "
+            "at these setpoints reproduces this exact result. Feed CO2 fraction held at the current slider "
+            "value above."
+        )
+        if st.button("Jump sliders to these values", key="jump_psa"):
+            st.session_state["_pending_slider_jump"] = {
+                "p_high": round(min(max(opt_result["p_high"], 4.0), 14.0), 2),
+                "p_low": round(min(max(opt_result["p_low"], 0.5), 3.0), 2),
+            }
+            st.rerun()
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 7 — Operator copilot (rule-based v1, no LLM / API key)
 # ---------------------------------------------------------------------
 st.header("Operator Copilot")
 st.caption(
@@ -212,7 +304,7 @@ if question:
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 7 — Vendor sourcing agent (v1: manual quote log, no web search)
+# Section 8 — Vendor sourcing agent (v1: manual quote log, no web search)
 # ---------------------------------------------------------------------
 st.header("Vendor Sourcing")
 st.warning(
