@@ -34,17 +34,26 @@ def _integrate_conversion(T_K, GHSV, y_CO_in, steam_to_CO, k0, Ea, n_steps=20000
     return X
 
 
-def hts_conversion(T_K=623.15, GHSV=2000, y_CO_in=0.28, steam_to_CO=4.0):
-    """Fe-Cr catalyst. Design check: T=623.15K, GHSV=2000 -> X=0.75"""
+def hts_conversion(T_K=623.15, GHSV=2000, y_CO_in=0.28, steam_to_CO=4.0, k0_scale=1.0):
+    """Fe-Cr catalyst. Design check: T=623.15K, GHSV=2000 -> X=0.75
+
+    k0_scale: multiplier on the pre-exponential factor, default 1.0 (no
+    change to existing behavior). Used by python/uncertainty.py to
+    propagate calibration uncertainty in the ~85% overall WGS target
+    itself — not meant to be changed by callers other than that module.
+    """
     Ea_HTS = 111000
-    k0_HTS = 5.7231e12
+    k0_HTS = 5.7231e12 * k0_scale
     return _integrate_conversion(T_K, GHSV, y_CO_in, steam_to_CO, k0_HTS, Ea_HTS)
 
 
-def lts_conversion(T_K=493.15, GHSV=2000, y_CO_in=0.07, steam_to_CO=4.0):
-    """Cu/ZnO/Al2O3 catalyst. Design check: T=493.15K, GHSV=2000 -> X_rel=0.40"""
+def lts_conversion(T_K=493.15, GHSV=2000, y_CO_in=0.07, steam_to_CO=4.0, k0_scale=1.0):
+    """Cu/ZnO/Al2O3 catalyst. Design check: T=493.15K, GHSV=2000 -> X_rel=0.40
+
+    k0_scale: see hts_conversion — same role, same default.
+    """
     Ea_LTS = 75000
-    k0_LTS = 3.3974e11
+    k0_LTS = 3.3974e11 * k0_scale
     return _integrate_conversion(T_K, GHSV, y_CO_in, steam_to_CO, k0_LTS, Ea_LTS)
 
 

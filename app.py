@@ -5,8 +5,10 @@ Deploy at share.streamlit.io by pointing it at this repo. Uses the
 verified Python physics modules in /python — the same models that were
 cross-checked against the MATLAB/Simulink blocks during development.
 """
+import altair as alt
+import pandas as pd
 import streamlit as st
-from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log
+from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log, uncertainty
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
@@ -106,7 +108,82 @@ st.table({
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 5 — Operator copilot (rule-based v1, no LLM / API key)
+# Section 5 — Monte Carlo uncertainty analysis over the six unconfirmed
+# design assumptions (see python/uncertainty.py for the full reasoning)
+# ---------------------------------------------------------------------
+st.header("Uncertainty Analysis")
+st.warning(
+    "This reflects uncertainty in **unconfirmed design assumptions** — steam-to-feed "
+    "ratio, air equivalence ratio, feed sulfur/chlorine, and the WGS/PSA target "
+    "calibrations themselves — **not measurement noise or numerical/model error.** "
+    "kinetics.py and psa.py's own math is deterministic and already validated exactly "
+    "against their design targets; what's uncertain is whether the *inputs* to that "
+    "math are correct, since DOK-ING hasn't confirmed them yet.",
+    icon="⚠️",
+)
+
+with st.expander("Assumption ranges used (point value ± 15% — our own assumed default, not DOK-ING-sourced)"):
+    st.table({
+        "Assumption": [cfg["label"] for cfg in uncertainty.ASSUMPTIONS.values()],
+        "Point value": [cfg["point"] for cfg in uncertainty.ASSUMPTIONS.values()],
+        "±15% range": [
+            f"{cfg['point']*0.85:.3g} – {cfg['point']*1.15:.3g}" for cfg in uncertainty.ASSUMPTIONS.values()
+        ],
+        "Propagated into kinetics/psa?": [
+            "Yes" if cfg["wired_in"] else "No — no poisoning/corrosion model exists yet"
+            for cfg in uncertainty.ASSUMPTIONS.values()
+        ],
+    })
+
+n_runs = st.slider("Monte Carlo runs", 200, 2000, 1000, step=100, key="mc_runs")
+if st.button("Run Monte Carlo uncertainty analysis"):
+    with st.spinner(f"Running {n_runs} samples through kinetics.py and psa.py..."):
+        mc_results = uncertainty.run_monte_carlo(
+            n_runs=n_runs,
+            hts_T_C=T_hts_C, hts_GHSV=ghsv_hts,
+            lts_T_C=T_lts_C, lts_GHSV=ghsv_lts,
+            psa_p_high=p_high, psa_p_low=p_low, psa_y_co2=y_co2,
+        )
+    st.session_state["mc_results"] = mc_results
+
+if "mc_results" in st.session_state:
+    mc_labels = {
+        "hts": "HTS conversion", "lts": "LTS relative conversion",
+        "overall": "Overall WGS conversion", "psa_recovery": "PSA recovery",
+    }
+    mc_targets = {"hts": 0.75, "lts": 0.40, "overall": 0.85, "psa_recovery": 0.75}
+    mc_rows = []
+    for key, label in mc_labels.items():
+        s = uncertainty.summarize(st.session_state["mc_results"][key])
+        mc_rows.append({
+            "Output": label, "mean": s["mean"] * 100, "p5": s["p5"] * 100,
+            "p95": s["p95"] * 100, "target": mc_targets[key] * 100,
+        })
+    mc_df = pd.DataFrame(mc_rows)
+
+    st.dataframe(
+        mc_df.rename(columns={
+            "mean": "Mean (%)", "p5": "5th pct (%)", "p95": "95th pct (%)", "target": "Point-value target (%)",
+        }).set_index("Output").round(1),
+        use_container_width=True,
+    )
+
+    base = alt.Chart(mc_df).encode(y=alt.Y("Output:N", sort=None, title=None))
+    ci_bars = base.mark_rule(size=4, color="#4C78A8").encode(
+        x=alt.X("p5:Q", title="%", scale=alt.Scale(zero=False)), x2="p95:Q"
+    )
+    mean_points = base.mark_point(size=100, filled=True, color="black").encode(x="mean:Q")
+    target_ticks = base.mark_tick(color="red", thickness=2, size=25).encode(x="target:Q")
+    st.altair_chart((ci_bars + mean_points + target_ticks).properties(height=220), use_container_width=True)
+    st.caption(
+        "Blue line = 90% confidence interval (5th–95th percentile) · black dot = Monte Carlo mean · "
+        "red tick = current point-value target."
+    )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 6 — Operator copilot (rule-based v1, no LLM / API key)
 # ---------------------------------------------------------------------
 st.header("Operator Copilot")
 st.caption(
@@ -135,7 +212,7 @@ if question:
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 6 — Vendor sourcing agent (v1: manual quote log, no web search)
+# Section 7 — Vendor sourcing agent (v1: manual quote log, no web search)
 # ---------------------------------------------------------------------
 st.header("Vendor Sourcing")
 st.warning(

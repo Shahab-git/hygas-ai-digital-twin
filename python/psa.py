@@ -13,12 +13,17 @@ K1 = 0.01742  # calibrated to the established 75% design-point recovery
 
 
 def psa_recovery(y_CO2=0.35, y_CH4=0.03, y_CO=0.042, y_N2=0.028,
-                  P_high_bar_a=8.0, P_low_bar_a=1.0):
-    """Design check: default args -> recovery = 0.75"""
+                  P_high_bar_a=8.0, P_low_bar_a=1.0, k1_scale=1.0):
+    """Design check: default args -> recovery = 0.75
+
+    k1_scale: multiplier on K1, default 1.0 (no change to existing
+    behavior). Used by python/uncertainty.py to propagate calibration
+    uncertainty in the ~75% recovery target itself.
+    """
     composite_index = (y_CO2 * SELECTIVITY["CO2"] + y_CH4 * SELECTIVITY["CH4"]
                         + y_CO * SELECTIVITY["CO"] + y_N2 * SELECTIVITY["N2"])
     PR = P_high_bar_a / P_low_bar_a
-    purge_fraction = K1 * composite_index / (PR - 1)
+    purge_fraction = (K1 * k1_scale) * composite_index / (PR - 1)
     recovery = 1 - purge_fraction - VOID_LOSS
     return max(0.0, min(1.0, recovery))
 
