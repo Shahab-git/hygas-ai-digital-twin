@@ -8,7 +8,10 @@ cross-checked against the MATLAB/Simulink blocks during development.
 import altair as alt
 import pandas as pd
 import streamlit as st
-from python import kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log, uncertainty, optimizer
+from python import (
+    kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
+    uncertainty, optimizer, predictive_maintenance,
+)
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
@@ -275,7 +278,76 @@ if "optimizer_result" in st.session_state:
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 7 — Operator copilot (rule-based v1, no LLM / API key)
+# Section 7 — Predictive maintenance (v1: catalyst activity via inverse
+# kinetics; thresholds are our own assumed defaults — see
+# python/predictive_maintenance.py for the full reasoning)
+# ---------------------------------------------------------------------
+st.header("Predictive Maintenance")
+st.warning(
+    "**v1 — inverse-kinetics activity monitoring; thresholds are our own "
+    "assumed defaults.** Enter a live-sensor conversion reading and this "
+    "back-calculates the catalyst activity factor (effective k0 ÷ healthy "
+    "calibrated k0) that would produce it, using kinetics.py's own forward "
+    "model in reverse — not a separate approximation of it. The 0.95 / "
+    "0.85 status thresholds are reasonable defaults we picked, **not** "
+    "sourced from any real catalyst degradation data — there isn't any in "
+    "this project yet.",
+    icon="⚠️",
+)
+
+pm_stage = st.selectbox("Stage", ["HTS", "LTS"], key="pm_stage")
+
+if pm_stage == "HTS":
+    pm_state = st.session_state.get("hts", {"X": 0.75, "T_C": 350, "GHSV": 2000})
+else:
+    pm_state = st.session_state.get("lts", {"X": 0.40, "T_C": 220, "GHSV": 2000, "y_CO_in": 0.07})
+
+pm_expected_pct = pm_state["X"] * 100
+st.caption(
+    f"Current slider-predicted {pm_stage} conversion at T={pm_state['T_C']:.0f}°C, "
+    f"GHSV={pm_state['GHSV']:.0f}: {pm_expected_pct:.1f}%"
+)
+
+pm_observed_pct = st.number_input(
+    f"Observed {pm_stage} conversion from a live sensor (%)",
+    min_value=0.0, max_value=100.0, value=round(pm_expected_pct, 1), step=0.5, key="pm_observed",
+)
+
+if st.button("Check catalyst activity"):
+    if pm_stage == "HTS":
+        pm_result = predictive_maintenance.back_calculate_activity_hts(
+            observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
+        )
+    else:
+        pm_result = predictive_maintenance.back_calculate_activity_lts(
+            observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
+            y_CO_in=pm_state["y_CO_in"],
+        )
+    st.session_state["pm_result"] = pm_result
+
+if "pm_result" in st.session_state:
+    pm_result = st.session_state["pm_result"]
+    if "error" in pm_result:
+        st.error(pm_result["error"])
+    else:
+        pm_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}[pm_result["status"]]
+        pcol1, pcol2, pcol3 = st.columns(3)
+        pcol1.metric("Activity factor", f"{pm_result['activity_factor']:.3f}")
+        pcol2.metric("Status", f"{pm_status_icon} {pm_result['status'].title()}")
+        pcol3.metric(
+            "Expected → observed",
+            f"{pm_result['expected_X']*100:.1f}% → {pm_result['observed_X']*100:.1f}%",
+        )
+        st.caption(
+            "Activity factor = effective k0 ÷ healthy calibrated k0, back-calculated by root-finding "
+            "kinetics.py's own forward model at the current T/GHSV. Thresholds: >0.95 healthy, "
+            "0.85–0.95 watch, <0.85 flag for maintenance."
+        )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 8 — Operator copilot (rule-based v1, no LLM / API key)
 # ---------------------------------------------------------------------
 st.header("Operator Copilot")
 st.caption(
@@ -304,7 +376,7 @@ if question:
 st.divider()
 
 # ---------------------------------------------------------------------
-# Section 8 — Vendor sourcing agent (v1: manual quote log, no web search)
+# Section 9 — Vendor sourcing agent (v1: manual quote log, no web search)
 # ---------------------------------------------------------------------
 st.header("Vendor Sourcing")
 st.warning(
