@@ -7,50 +7,89 @@ website), and log it here against the real equipment item it belongs to.
 A real web-search/auto-sourcing agent (v2) would replace the manual lookup
 step — it has not been built yet, and this module makes no claim otherwise.
 
-Storage: a plain local JSON file (data/vendor_quotes.json), not a database,
-per the v1 scope. IMPORTANT caveat, stated here and in the UI: on Streamlit
-Community Cloud the container filesystem is not guaranteed to persist across
-redeploys/restarts, so quotes logged live on the deployed app may not survive
-a redeploy. They *do* persist locally and in git history if this file is
-committed after logging — which is how the two test entries below were
-captured.
-"""
-import json
-import os
-from datetime import datetime, timezone
+Storage: Supabase (Postgres), table `vendor_quotes` — see
+data/supabase_schema.sql for the DDL. This replaces the original plain-JSON
+storage (data/vendor_quotes.json, kept in the repo only as a record of the
+schema that version used — no longer read or written by this module) so
+that quotes logged through the *deployed* app actually persist: Streamlit
+Community Cloud's container filesystem is not guaranteed to survive a
+redeploy/restart, so a local file was never durable there.
 
-_QUOTES_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "vendor_quotes.json")
+Credentials: read from Streamlit secrets (SUPABASE_URL, SUPABASE_KEY) —
+.streamlit/secrets.toml locally (gitignored), Streamlit Cloud's secrets
+manager when deployed. Falls back to reading that same secrets.toml file
+directly for standalone scripts (e.g. the migration script) that run
+outside a `streamlit run` context, where st.secrets isn't populated.
+"""
+import os
+import tomllib
+
+from supabase import create_client
+
+_TABLE = "vendor_quotes"
+_SECRETS_PATH = os.path.join(os.path.dirname(__file__), "..", ".streamlit", "secrets.toml")
+
+_client = None
+
+
+def _get_secret(name):
+    try:
+        import streamlit as st
+        if name in st.secrets:
+            return st.secrets[name]
+    except Exception:
+        pass
+    if os.path.exists(_SECRETS_PATH):
+        with open(_SECRETS_PATH, "rb") as f:
+            data = tomllib.load(f)
+        if name in data:
+            return data[name]
+    raise RuntimeError(
+        f"Missing secret '{name}'. Set it in .streamlit/secrets.toml locally, "
+        f"or in Streamlit Cloud's secrets manager when deployed."
+    )
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        url = _get_secret("SUPABASE_URL")
+        key = _get_secret("SUPABASE_KEY")
+        _client = create_client(url, key)
+    return _client
+
+
+def _row_to_quote(row):
+    return {
+        "equipment_id": row["equipment_tag"],
+        "vendor": row["vendor_name"],
+        "price": float(row["price"]),
+        "date": row["date"],
+        "notes": row.get("notes") or "",
+        "logged_at": row["created_at"],
+    }
 
 
 def load_quotes():
     """Returns all logged quotes, newest first. Empty list if none logged yet."""
-    if not os.path.exists(_QUOTES_PATH):
-        return []
-    with open(_QUOTES_PATH, "r", encoding="utf-8") as f:
-        quotes = json.load(f)
-    return sorted(quotes, key=lambda q: q["logged_at"], reverse=True)
+    resp = _get_client().table(_TABLE).select("*").order("created_at", desc=True).execute()
+    return [_row_to_quote(row) for row in resp.data]
 
 
 def log_quote(equipment_id, vendor, price, quote_date, notes=""):
-    """Appends a manually-found quote and persists it to disk. Returns the new record."""
+    """Inserts a manually-found quote into Supabase. Returns the new record."""
     if not equipment_id or not vendor or price is None:
         raise ValueError("equipment_id, vendor, and price are required")
 
-    record = {
-        "equipment_id": equipment_id,
-        "vendor": vendor.strip(),
+    payload = {
+        "equipment_tag": equipment_id,
+        "vendor_name": vendor.strip(),
         "price": float(price),
         "date": str(quote_date),
         "notes": notes.strip() if notes else "",
-        "logged_at": datetime.now(timezone.utc).isoformat(),
     }
-
-    quotes = load_quotes()
-    quotes.append(record)
-    os.makedirs(os.path.dirname(_QUOTES_PATH), exist_ok=True)
-    with open(_QUOTES_PATH, "w", encoding="utf-8") as f:
-        json.dump(quotes, f, indent=2, ensure_ascii=False)
-    return record
+    resp = _get_client().table(_TABLE).insert(payload).execute()
+    return _row_to_quote(resp.data[0])
 
 
 def quotes_for(equipment_id, quotes=None):
