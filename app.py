@@ -6,7 +6,7 @@ verified Python physics modules in /python — the same models that were
 cross-checked against the MATLAB/Simulink blocks during development.
 """
 import streamlit as st
-from python import kinetics, psa, chp, dispatch_ga
+from python import kinetics, psa, chp, dispatch_ga, copilot
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
@@ -39,6 +39,10 @@ with col2:
 overall = 1 - (1 - X_hts) * (1 - X_lts)
 st.metric("Overall WGS conversion", f"{overall*100:.1f}%", help="Design target: 85.0%")
 
+st.session_state["hts"] = {"X": X_hts, "T_C": T_hts_C, "GHSV": ghsv_hts}
+st.session_state["lts"] = {"X": X_lts, "T_C": T_lts_C, "GHSV": ghsv_lts, "y_CO_in": y_co_after_hts}
+st.session_state["overall"] = overall
+
 st.divider()
 
 # ---------------------------------------------------------------------
@@ -54,6 +58,8 @@ with col4:
 
 recovery = psa.psa_recovery(y_CO2=y_co2, P_high_bar_a=p_high, P_low_bar_a=p_low)
 st.metric("PSA recovery", f"{recovery*100:.1f}%", help="Design target: 75.0%")
+
+st.session_state["psa"] = {"recovery": recovery, "p_high": p_high, "p_low": p_low, "y_co2": y_co2}
 
 st.divider()
 
@@ -71,9 +77,11 @@ with col6:
 if st.button("Run dispatch optimisation (genetic algorithm)"):
     with st.spinner("Running genetic algorithm (150 generations)..."):
         dispatch = dispatch_ga.run_dispatch_ga(syngas_budget, h2_budget)
+    st.session_state["dispatch"] = {"result": dispatch, "syngas_budget": syngas_budget, "h2_budget": h2_budget}
 
+if "dispatch" in st.session_state:
     cols = st.columns(4)
-    for i, (name, load) in enumerate(dispatch.items()):
+    for i, (name, load) in enumerate(st.session_state["dispatch"]["result"].items()):
         eta = chp.chp_efficiency(load, name)
         with cols[i]:
             st.metric(name, f"{load*100:.1f}% load", f"{eta*100:.1f}% efficiency")
@@ -94,5 +102,36 @@ st.table({
     "Simulink Result": ["46.88 kg/h", "45.94 kg/h", "75.0%", "4.134 kW",
                          "40.0%", "85.0%", "75.0%"],
 })
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 5 — Operator copilot (rule-based v1, no LLM / API key)
+# ---------------------------------------------------------------------
+st.header("Operator Copilot")
+st.caption(
+    "Rule-based v1 — answers questions about WGS kinetics, PSA recovery, and the CHP "
+    "dispatch GA using the current values above. No LLM call, no API key. Anything "
+    "outside those topics gets an honest 'I don't cover that yet' instead of a guess."
+)
+
+question = st.text_input(
+    "Ask about the current digital twin state",
+    placeholder="e.g. why is HTS conversion low? / what happens if I increase PSA pressure? / why did the GA skip the microturbine?",
+    key="copilot_question",
+)
+
+if question:
+    copilot_state = {
+        "hts": st.session_state.get("hts"),
+        "lts": st.session_state.get("lts"),
+        "overall": st.session_state.get("overall"),
+        "psa": st.session_state.get("psa"),
+        "dispatch": st.session_state.get("dispatch"),
+    }
+    answer = copilot.answer_question(question, copilot_state)
+    st.info(answer if answer is not None else copilot.UNKNOWN_QUESTION_MESSAGE)
+
+st.divider()
 
 st.caption("HYGAS-AI — SMITH2 R&D Hydrogen Agency — NACHIP Pilot Programme")
