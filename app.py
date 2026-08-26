@@ -11,6 +11,7 @@ import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
+    root_cause,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -324,6 +325,11 @@ if st.button("Check catalyst activity"):
             y_CO_in=pm_state["y_CO_in"],
         )
     st.session_state["pm_result"] = pm_result
+    st.session_state["pm_context"] = {
+        "stage": pm_stage, "T_C": pm_state["T_C"], "GHSV": pm_state["GHSV"],
+        "y_CO_in": pm_state.get("y_CO_in"),
+    }
+    st.session_state.pop("root_cause_result", None)  # stale from a previous reading
 
 if "pm_result" in st.session_state:
     pm_result = st.session_state["pm_result"]
@@ -343,6 +349,35 @@ if "pm_result" in st.session_state:
             "kinetics.py's own forward model at the current T/GHSV. Thresholds: >0.95 healthy, "
             "0.85–0.95 watch, <0.85 flag for maintenance."
         )
+
+        if pm_result["status"] in ("watch", "flag for maintenance"):
+            st.caption(
+                "**Root-cause diagnosis v1 — rule-based reasoning over existing model outputs, not a new "
+                "inference engine.** Compares this activity factor against the range that unconfirmed "
+                "design-basis assumptions alone (uncertainty.py's ±15% bands) could produce with a "
+                "perfectly healthy catalyst, and checks whether the reading is even physically achievable "
+                "at this T/GHSV (kinetics.py's own bounds)."
+            )
+            if st.button("Diagnose"):
+                ctx = st.session_state["pm_context"]
+                st.session_state["root_cause_result"] = root_cause.diagnose(
+                    ctx["stage"], pm_result["observed_X"], ctx["T_C"], ctx["GHSV"], y_CO_in=ctx["y_CO_in"],
+                )
+
+        if "root_cause_result" in st.session_state:
+            rc_result = st.session_state["root_cause_result"]
+            rc_band = rc_result["assumption_band"]
+            st.write(
+                f"**Assumption-only band:** [{rc_band['lo']:.3f}, {rc_band['hi']:.3f}] — the activity "
+                f"factor range {' and '.join(rc_band['assumptions_used'])} uncertainty alone could "
+                f"produce at these conditions with a perfectly healthy catalyst."
+            )
+            rc_rank_icon = {1: "🥇", 2: "🥈", 3: "🥉"}
+            for e in rc_result["explanations"]:
+                icon = rc_rank_icon.get(e["rank"], "⚠️")
+                plausible_str = "plausible" if e["plausible"] else "not the primary explanation here"
+                st.markdown(f"{icon} **{e['label']}** _({plausible_str})_")
+                st.write(e["reasoning"])
 
 st.divider()
 
