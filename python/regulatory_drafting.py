@@ -54,6 +54,7 @@ def generate_draft_summary(checklist=None):
         "## Summary",
         "",
         f"- **{counts[compliance.EVIDENCED]}** item(s) — {compliance.EVIDENCED}",
+        f"- **{counts[compliance.CONFIRMED]}** item(s) — {compliance.CONFIRMED}",
         f"- **{counts[compliance.ASSUMPTION_PENDING]}** item(s) — {compliance.ASSUMPTION_PENDING}",
         f"- **{counts[compliance.NOT_DOCUMENTED]}** item(s) — {compliance.NOT_DOCUMENTED}",
         "",
@@ -72,16 +73,18 @@ def generate_draft_summary(checklist=None):
             lines.append(item["notes"])
             lines.append("")
 
-    # Everything NOT evidenced, gathered in one place — deliberately kept
-    # separate from the category sections above so nothing validated gets
-    # mixed in with what still needs confirmation or documentation.
-    outstanding = [i for i in checklist if i["status"] != compliance.EVIDENCED]
+    # Everything neither evidenced nor confirmed, gathered in one place —
+    # deliberately kept separate from the category sections above so
+    # nothing validated (or already confirmed) gets mixed in with what
+    # still needs confirmation or documentation.
+    _resolved_statuses = (compliance.EVIDENCED, compliance.CONFIRMED)
+    outstanding = [i for i in checklist if i["status"] not in _resolved_statuses]
     lines.append("## Outstanding Items Requiring Confirmation")
     lines.append("")
     lines.append(
         "Everything below is either an unconfirmed design assumption or missing "
-        "documentation — listed together here, separately from the evidenced items "
-        "above, so nothing validated gets mixed in with what still needs work."
+        "documentation — listed together here, separately from the evidenced/confirmed "
+        "items above, so nothing resolved gets mixed in with what still needs work."
     )
     lines.append("")
     if outstanding:
@@ -92,7 +95,7 @@ def generate_draft_summary(checklist=None):
                 f"(source: {item['source']})"
             )
     else:
-        lines.append("_None — every checklist item is currently evidenced._")
+        lines.append("_None — every checklist item is currently evidenced or confirmed._")
     lines.append("")
 
     return "\n".join(lines)

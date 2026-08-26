@@ -530,13 +530,15 @@ st.warning(
 compliance_checklist = compliance.build_checklist()
 compliance_counts = compliance.summarize_checklist(compliance_checklist)
 
-ccol1, ccol2, ccol3 = st.columns(3)
+ccol1, ccol2, ccol3, ccol4 = st.columns(4)
 ccol1.metric(f"🟢 {compliance.EVIDENCED}", compliance_counts[compliance.EVIDENCED])
-ccol2.metric(f"🟡 {compliance.ASSUMPTION_PENDING}", compliance_counts[compliance.ASSUMPTION_PENDING])
-ccol3.metric(f"🔴 {compliance.NOT_DOCUMENTED}", compliance_counts[compliance.NOT_DOCUMENTED])
+ccol2.metric(f"🔵 {compliance.CONFIRMED}", compliance_counts[compliance.CONFIRMED])
+ccol3.metric(f"🟡 {compliance.ASSUMPTION_PENDING}", compliance_counts[compliance.ASSUMPTION_PENDING])
+ccol4.metric(f"🔴 {compliance.NOT_DOCUMENTED}", compliance_counts[compliance.NOT_DOCUMENTED])
 
 _compliance_icons = {
     compliance.EVIDENCED: "🟢",
+    compliance.CONFIRMED: "🔵",
     compliance.ASSUMPTION_PENDING: "🟡",
     compliance.NOT_DOCUMENTED: "🔴",
 }
