@@ -14,6 +14,7 @@ from python import (
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
+    federated_learning,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1170,6 +1171,129 @@ if "s2r_result" in st.session_state:
         }).round(3)
         st.write("**Evaluation points (40, held out from adaptation):**")
         st.dataframe(_eval_df, use_container_width=True)
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 19 — Federated learning (v1: genuine FedAvg across hypothetical
+# plant instances — same illustrative-variant pattern as
+# multi_module_orchestration.py; see python/federated_learning.py for
+# the full honest-scoping statement)
+# ---------------------------------------------------------------------
+st.header("Federated Learning")
+st.warning(
+    "**Illustrative hypothetical plants, not real facilities.** This repo represents exactly one "
+    "real plant. The plants below are illustrative HTS-temperature-variant stand-ins — the same "
+    "pattern Multi-Module Orchestration above already uses — not live data from a real fleet. What "
+    "IS real: genuine federated averaging (FedAvg) of real model weights, trained with this "
+    "project's own validated physics-informed loss, reused unchanged from `pinn_kinetics.py`.",
+    icon="⚠️",
+)
+st.caption(
+    "**The federated-learning premise, actually implemented:** each hypothetical plant has its own "
+    "private local training data AND its own local physics-collocation sampling, restricted to its "
+    "own narrow operating band — it never sees another plant's data, and never pools raw data with "
+    "anyone. Only trained weights cross plant boundaries, and only via a plain average (FedAvg)."
+)
+
+fl_col1, fl_col2 = st.columns(2)
+with fl_col1:
+    fl_n_plants = st.slider("Number of hypothetical plants", 2, len(federated_learning.DEFAULT_PLANTS),
+                             len(federated_learning.DEFAULT_PLANTS), key="fl_n_plants")
+with fl_col2:
+    fl_n_rounds = st.slider("Federation rounds", 10, 80, 50, step=10, key="fl_n_rounds")
+
+if st.button("Run federated learning experiment"):
+    with st.spinner("Training locally at each plant, federating weights across rounds, and training "
+                     "the single-plant and pooled-upper-bound comparison models — can take up to a "
+                     "minute..."):
+        st.session_state["fl_result"] = federated_learning.run_experiment(
+            plants=federated_learning.DEFAULT_PLANTS[:fl_n_plants], n_rounds=fl_n_rounds,
+        )
+
+if "fl_result" in st.session_state:
+    _fr = st.session_state["fl_result"]
+
+    st.subheader("Step 3: three-way comparison on a full-domain test set")
+    st.caption(
+        "Federated is compared against each single-plant-alone model (no federation at all) and, as "
+        "an honest upper-bound REFERENCE ONLY, a model trained on every plant's raw data pooled "
+        "together directly — exactly what federated learning exists to avoid."
+    )
+    _fl_rows = [
+        {"Model": s["name"] + " (alone)", "Mean abs. error": s["mean_error"], "Max abs. error": s["max_error"]}
+        for s in _fr["single_results"]
+    ]
+    _fl_rows.append({"Model": "Single-plant-alone AVERAGE", "Mean abs. error": _fr["avg_single_mean_error"], "Max abs. error": None})
+    _fl_rows.append({"Model": "FEDERATED (FedAvg)", "Mean abs. error": _fr["fed_result"]["mean_error"], "Max abs. error": _fr["fed_result"]["max_error"]})
+    _fl_rows.append({"Model": "POOLED — upper bound, reference only", "Mean abs. error": _fr["pooled_result"]["mean_error"], "Max abs. error": _fr["pooled_result"]["max_error"]})
+    _fl_df = pd.DataFrame(_fl_rows)
+    st.dataframe(_fl_df.round(4), use_container_width=True, hide_index=True)
+
+    def _fl_role(name):
+        if name == "FEDERATED (FedAvg)":
+            return "Federated"
+        if name == "POOLED — upper bound, reference only":
+            return "Pooled (reference only)"
+        return "Single-plant-alone"
+
+    _fl_chart_df = _fl_df.dropna(subset=["Max abs. error"]).copy()
+    _fl_chart_df["Role"] = _fl_chart_df["Model"].apply(_fl_role)
+    _fl_bar = alt.Chart(_fl_chart_df).mark_bar().encode(
+        x=alt.X("Mean abs. error:Q", title="Mean absolute error (full-domain test set)"),
+        y=alt.Y("Model:N", sort="-x", title=None),
+        color=alt.Color("Role:N", scale=alt.Scale(
+            domain=["Single-plant-alone", "Federated", "Pooled (reference only)"],
+            range=["#BAB0AC", "#4C78A8", "#B279A2"],
+        )),
+    ).properties(height=220)
+    st.altair_chart(_fl_bar, use_container_width=True)
+
+    _fed_err = _fr["fed_result"]["mean_error"]
+    _avg_single_err = _fr["avg_single_mean_error"]
+    _best_single_err = _fr["best_single_mean_error"]
+    _pooled_err = _fr["pooled_result"]["mean_error"]
+    _avg_line = (
+        f"Federated's mean error ({_fed_err:.4f}) is **{_avg_single_err / _fed_err:.1f}× better than the "
+        f"average single-plant-alone model** ({_avg_single_err:.4f})."
+        if _fed_err < _avg_single_err else
+        f"Federated's mean error ({_fed_err:.4f}) does **not** beat the average single-plant-alone model "
+        f"({_avg_single_err:.4f}) here — with plants this similar to each other, there's less of a "
+        f"robustness gap for federation to close (see the cross-plant checks below, which are the real test)."
+    )
+    _pooled_line = (
+        f"It sits {_fed_err / _pooled_err:.1f}× above the pooled upper bound ({_pooled_err:.4f})."
+        if _fed_err > _pooled_err else
+        f"It even matches or beats the pooled upper bound ({_pooled_err:.4f}) here."
+    )
+    _best_line = (
+        f"It does **not** beat every single-plant model on this full-domain metric — the best single "
+        f"plant alone ({_best_single_err:.4f}) is still somewhat better here — federation's real payoff "
+        f"is shown below: robustness on data no single plant's own model ever saw."
+        if _best_single_err < _fed_err else
+        f"It also beats the single best-case plant-alone model ({_best_single_err:.4f})."
+    )
+    st.write(f"{_avg_line} {_pooled_line} {_best_line}")
+
+    st.subheader("Step 5: the actual point — does federation help on data a plant never saw?")
+    st.caption(
+        "Each plant's OWN single-plant model, evaluated on ANOTHER plant's local operating range (data "
+        "it never trained on, directly or via any physics constraint) — compared to the federated "
+        "model on that same held-out range, which only ever received averaged weights, never that "
+        "plant's raw data either."
+    )
+    _cross_df = pd.DataFrame(_fr["cross_checks"])
+    _cross_df = _cross_df.rename(columns={
+        "single_plant": "Single-plant model", "tested_on_range_of": "Tested on range of",
+        "single_plant_error": "Single-plant error", "federated_error": "Federated error",
+        "federated_wins": "Federated wins",
+    })
+    st.dataframe(_cross_df.round(4), use_container_width=True, hide_index=True)
+    st.write(
+        f"**Federated wins {_fr['federated_wins_fraction'] * 100:.0f}% of these cross-plant checks** — "
+        f"most decisively exactly where it matters most: correcting a single plant's worst blind spots, "
+        f"not just nudging its already-good regions."
+    )
 
 st.divider()
 

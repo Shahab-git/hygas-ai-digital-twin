@@ -97,6 +97,18 @@ def _pack(W1, b1, W2, b2):
     return np.concatenate([W1.ravel(), b1.ravel(), W2.ravel(), np.array([b2])])
 
 
+def random_init(seed=0):
+    """A single random initial weight vector, same distribution as train()'s
+    own per-restart initialization — public so other modules (e.g.
+    federated_learning.py's FedAvg global-model initialization) can reuse
+    it without reaching into the private packing internals below."""
+    rng = np.random.default_rng(seed)
+    W1 = rng.normal(0, 0.5, (HIDDEN, 2))
+    b1 = rng.normal(0, 0.5, HIDDEN)
+    W2 = rng.normal(0, 0.5, HIDDEN)
+    return _pack(W1, b1, W2, 0.0)
+
+
 def _unpack(flat):
     idx = 0
     W1 = flat[idx:idx + HIDDEN * 2].reshape(HIDDEN, 2); idx += HIDDEN * 2
@@ -143,12 +155,17 @@ def _dX_dtaunorm(flat, T_K, tau):
     return X, dX_dtaunorm
 
 
-def generate_labeled_data(n_points=8, seed=7):
+def generate_labeled_data(n_points=8, seed=7, T_range=None, ghsv_range=None):
     """The FEW labeled anchor points — real kinetics.py output, not
-    thousands of points. Called once at training start, not per-iteration."""
+    thousands of points. Called once at training start, not per-iteration.
+    T_range/ghsv_range default to the full validated domain (T_MIN_C..
+    T_MAX_C, GHSV_MIN..GHSV_MAX); federated_learning.py passes a narrower
+    range to sample each hypothetical plant's own local operating band."""
+    T_lo, T_hi = T_range if T_range is not None else (T_MIN_C, T_MAX_C)
+    G_lo, G_hi = ghsv_range if ghsv_range is not None else (GHSV_MIN, GHSV_MAX)
     rng = np.random.default_rng(seed)
-    T_C = rng.uniform(T_MIN_C, T_MAX_C, n_points)
-    GHSV = rng.uniform(GHSV_MIN, GHSV_MAX, n_points)
+    T_C = rng.uniform(T_lo, T_hi, n_points)
+    GHSV = rng.uniform(G_lo, G_hi, n_points)
     X = np.array([kinetics.hts_conversion(T_K=t + 273.15, GHSV=g) for t, g in zip(T_C, GHSV)])
     return T_C, GHSV, X
 
@@ -168,24 +185,41 @@ def _loss(flat, T_data_K, tau_data, X_data, T_bc_K, T_c_K, tau_c, weights):
     return weights["data"] * data_loss + weights["bc"] * bc_loss + weights["physics"] * physics_loss
 
 
-def train(n_labeled=8, n_collocation=200, n_bc=20, weights=None, seed=7, n_restarts=5, maxiter=800):
+def train(n_labeled=8, n_collocation=200, n_bc=20, weights=None, seed=7, n_restarts=5, maxiter=800,
+          T_range=None, ghsv_range=None, labeled_data=None):
     """Trains the PINN (or, with weights={'physics': 0.0}, a same-
     architecture data-only baseline for comparison — see
     compare_to_baseline() below). Multiple random restarts (cheap, since
     the network is tiny) guard against a bad local minimum from a single
     random initialization.
 
+    T_range/ghsv_range restrict where labeled data AND the physics
+    collocation/boundary-condition points are sampled from — default is
+    the full validated domain, unchanged from before. labeled_data, if
+    given, is an explicit (T_C, GHSV, X) tuple used INSTEAD of generating
+    it internally — e.g. federated_learning.py's pooled-data upper-bound
+    model, which trains on multiple hypothetical plants' data concatenated
+    together (labeled_data), still bounded by T_range/ghsv_range for its
+    physics term. Both are additive, backward-compatible: every existing
+    caller that omits them gets identical behavior to before.
+
     Returns (flat_weights, final_loss, (T_C_labeled, GHSV_labeled, X_labeled)).
     """
     weights = weights or {"data": 1.0, "bc": 1.0, "physics": 1.0}
-    T_C_data, GHSV_data, X_data = generate_labeled_data(n_labeled, seed=seed)
+    T_lo, T_hi = T_range if T_range is not None else (T_MIN_C, T_MAX_C)
+    G_lo, G_hi = ghsv_range if ghsv_range is not None else (GHSV_MIN, GHSV_MAX)
+
+    if labeled_data is not None:
+        T_C_data, GHSV_data, X_data = labeled_data
+    else:
+        T_C_data, GHSV_data, X_data = generate_labeled_data(n_labeled, seed=seed, T_range=(T_lo, T_hi), ghsv_range=(G_lo, G_hi))
     T_data_K = T_C_data + 273.15
     tau_data = 1.0 / GHSV_data
 
     rng = np.random.default_rng(seed + 1)
-    T_bc_K = rng.uniform(T_MIN_C, T_MAX_C, n_bc) + 273.15
-    T_c_K = rng.uniform(T_MIN_C, T_MAX_C, n_collocation) + 273.15
-    tau_c = rng.uniform(1.0 / GHSV_MAX, 1.0 / GHSV_MIN, n_collocation)
+    T_bc_K = rng.uniform(T_lo, T_hi, n_bc) + 273.15
+    T_c_K = rng.uniform(T_lo, T_hi, n_collocation) + 273.15
+    tau_c = rng.uniform(1.0 / G_hi, 1.0 / G_lo, n_collocation)
 
     best = None
     for r in range(n_restarts):
@@ -204,7 +238,8 @@ def train(n_labeled=8, n_collocation=200, n_bc=20, weights=None, seed=7, n_resta
     return best.x, float(best.fun), (T_C_data, GHSV_data, X_data)
 
 
-def fine_tune(flat_init, T_data_K, tau_data, X_data, weights=None, n_collocation=200, n_bc=20, seed=123, maxiter=300):
+def fine_tune(flat_init, T_data_K, tau_data, X_data, weights=None, n_collocation=200, n_bc=20, seed=123, maxiter=300,
+              T_range=None, ghsv_range=None):
     """Warm-started adaptation: continues optimizing FROM an already-trained
     weight vector (flat_init) on new labeled data, reusing the identical
     loss composition as train() — same physics-residual term, same boundary
@@ -212,17 +247,21 @@ def fine_tune(flat_init, T_data_K, tau_data, X_data, weights=None, n_collocation
     (typically small) labeled-data set. A single run, not multiple random
     restarts, since the point is to adapt an existing solution, not search
     for a new one from scratch. Used by sim_to_real.py to fine-tune a
-    simulation-trained PINN on a few noisy "real-world" points — no new
-    optimization logic, just this module's existing machinery re-entered
-    from a warm start.
+    simulation-trained PINN on a few noisy "real-world" points, and by
+    federated_learning.py as each hypothetical plant's local FedAvg training
+    step (T_range/ghsv_range there is that plant's own local operating
+    band) — no new optimization logic, just this module's existing
+    machinery re-entered from a warm start.
 
     Returns (flat_adapted, final_loss).
     """
     weights = weights or {"data": 1.0, "bc": 1.0, "physics": 1.0}
+    T_lo, T_hi = T_range if T_range is not None else (T_MIN_C, T_MAX_C)
+    G_lo, G_hi = ghsv_range if ghsv_range is not None else (GHSV_MIN, GHSV_MAX)
     rng = np.random.default_rng(seed)
-    T_bc_K = rng.uniform(T_MIN_C, T_MAX_C, n_bc) + 273.15
-    T_c_K = rng.uniform(T_MIN_C, T_MAX_C, n_collocation) + 273.15
-    tau_c = rng.uniform(1.0 / GHSV_MAX, 1.0 / GHSV_MIN, n_collocation)
+    T_bc_K = rng.uniform(T_lo, T_hi, n_bc) + 273.15
+    T_c_K = rng.uniform(T_lo, T_hi, n_collocation) + 273.15
+    tau_c = rng.uniform(1.0 / G_hi, 1.0 / G_lo, n_collocation)
 
     res = minimize(
         _loss, flat_init, args=(T_data_K, tau_data, X_data, T_bc_K, T_c_K, tau_c, weights),
