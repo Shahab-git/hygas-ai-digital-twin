@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
-    uncertainty, optimizer, predictive_maintenance, compliance,
+    uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -504,6 +504,28 @@ for _category in ["Mass/Energy Balance Traceability", "Design-Basis Assumptions"
         with st.expander(_title):
             st.caption(f"**Source:** {_item['source']}")
             st.write(_item["notes"])
+
+st.subheader("Draft Compliance Summary")
+st.caption(
+    "**This is drafting, not legal writing.** The generated document needs review by "
+    "someone qualified — compliance/legal counsel, or an accredited RFNBO auditor — "
+    "before it goes anywhere near a real submission, same spirit as the checklist "
+    "above. Every fact in it is pulled from the checklist itself at generation time, "
+    "not written separately."
+)
+
+if st.button("Generate draft compliance summary"):
+    st.session_state["compliance_draft"] = regulatory_drafting.generate_draft_summary(compliance_checklist)
+
+if "compliance_draft" in st.session_state:
+    st.download_button(
+        "Download draft (.md)",
+        data=st.session_state["compliance_draft"],
+        file_name="hygas_ai_draft_compliance_summary.md",
+        mime="text/markdown",
+    )
+    with st.expander("Preview draft", expanded=True):
+        st.markdown(st.session_state["compliance_draft"])
 
 st.divider()
 
