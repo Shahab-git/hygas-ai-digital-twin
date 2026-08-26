@@ -80,28 +80,71 @@ ASSUMPTIONS = {
     "steam_to_feed_ratio": {
         "point": 0.4, "fraction": UNCERTAINTY_FRACTION,
         "label": "Steam-to-feed ratio", "wired_in": True,
+        "confirmed_low": None, "confirmed_high": None,
     },
     "air_equivalence_ratio": {
         "point": 0.25, "fraction": UNCERTAINTY_FRACTION,
         "label": "Air equivalence ratio", "wired_in": True,
+        "confirmed_low": None, "confirmed_high": None,
     },
     "feed_sulfur_ppm": {
         "point": 200, "fraction": UNCERTAINTY_FRACTION,
         "label": "Feed sulfur / H2S (ppm)", "wired_in": False,
+        "confirmed_low": None, "confirmed_high": None,
     },
     "feed_chlorine_ppm": {
         "point": 150, "fraction": UNCERTAINTY_FRACTION,
         "label": "Feed chlorine / HCl (ppm)", "wired_in": False,
+        "confirmed_low": None, "confirmed_high": None,
     },
     "wgs_target_calibration": {
         "point": 1.0, "fraction": UNCERTAINTY_FRACTION,
         "label": "WGS conversion target calibration (~85%)", "wired_in": True,
+        "confirmed_low": None, "confirmed_high": None,
     },
     "psa_target_calibration": {
         "point": 1.0, "fraction": UNCERTAINTY_FRACTION,
         "label": "PSA recovery target calibration (~75%)", "wired_in": True,
+        "confirmed_low": None, "confirmed_high": None,
     },
 }
+
+
+def bounds(name):
+    """The (lo, hi) sampling range actually used for one assumption: the
+    CONFIRMED range if confirmation_loop.py has recorded one (see
+    set_confirmed below), otherwise the default point +/-fraction band.
+    Public, since compliance.py reads this too — a confirmed assumption
+    should show as such in the compliance checklist automatically, not
+    just in the Monte Carlo."""
+    cfg = ASSUMPTIONS[name]
+    if cfg["confirmed_low"] is not None and cfg["confirmed_high"] is not None:
+        return cfg["confirmed_low"], cfg["confirmed_high"]
+    return cfg["point"] * (1 - cfg["fraction"]), cfg["point"] * (1 + cfg["fraction"])
+
+
+def is_confirmed(name):
+    cfg = ASSUMPTIONS[name]
+    return cfg["confirmed_low"] is not None and cfg["confirmed_high"] is not None
+
+
+def set_confirmed(name, low, high):
+    """Marks an assumption as confirmed with a real range. From this call
+    on, run_monte_carlo() samples [low, high] instead of the default
+    +/-15% band for this one assumption — called by
+    confirmation_loop.py.record_confirmation(), not meant to be called
+    directly elsewhere."""
+    if name not in ASSUMPTIONS:
+        raise KeyError(name)
+    if low >= high:
+        raise ValueError("low must be < high")
+    ASSUMPTIONS[name]["confirmed_low"] = low
+    ASSUMPTIONS[name]["confirmed_high"] = high
+
+
+def clear_confirmed(name):
+    ASSUMPTIONS[name]["confirmed_low"] = None
+    ASSUMPTIONS[name]["confirmed_high"] = None
 
 
 def _sample_uniform(point, fraction, rng):
@@ -134,10 +177,15 @@ def run_monte_carlo(n_runs=1000, seed=42,
     results = {"hts": [], "lts": [], "overall": [], "psa_recovery": []}
 
     for _ in range(n_runs):
-        sampled = {
-            name: _sample_uniform(cfg["point"], fractions.get(name, cfg["fraction"]), rng)
-            for name, cfg in ASSUMPTIONS.items()
-        }
+        sampled = {}
+        for name, cfg in ASSUMPTIONS.items():
+            if name in fractions:
+                # explicit override (e.g. the widen/narrow sanity check) —
+                # always relative to the point value, ignoring confirmed status.
+                sampled[name] = _sample_uniform(cfg["point"], fractions[name], rng)
+            else:
+                lo, hi = bounds(name)  # confirmed range if set, else default point +/-fraction
+                sampled[name] = rng.uniform(lo, hi)
 
         steam_to_CO = 4.0 * (sampled["steam_to_feed_ratio"] / ASSUMPTIONS["steam_to_feed_ratio"]["point"])
         y_CO_in = 0.28 * (ASSUMPTIONS["air_equivalence_ratio"]["point"] / sampled["air_equivalence_ratio"])

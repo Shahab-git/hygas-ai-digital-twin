@@ -11,7 +11,7 @@ import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
-    root_cause, multi_agent_negotiation,
+    root_cause, multi_agent_negotiation, confirmation_loop,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -24,6 +24,18 @@ st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 if "_pending_slider_jump" in st.session_state:
     for _k, _v in st.session_state.pop("_pending_slider_jump").items():
         st.session_state[_k] = _v
+
+# Replay any already-confirmed assumptions from Supabase into
+# uncertainty.py's live ASSUMPTIONS *before* the Uncertainty Analysis and
+# Compliance Documentation sections run below — set_confirmed()'s effect
+# lives only in this process's memory, so a fresh process (redeploy,
+# restart) needs this replay every time. Degrades gracefully if the
+# assumption_confirmations table doesn't exist yet (see
+# data/confirmation_schema.sql) rather than crashing the whole app.
+try:
+    _confirmation_status = confirmation_loop.sync_confirmed_from_db()
+except Exception:
+    _confirmation_status = None
 
 st.title("HYGAS-AI — Digital Twin Status")
 st.caption("Physics-informed, agent-driven digital twin for RFNBO-compliant green hydrogen from waste")
@@ -636,6 +648,85 @@ if "negotiation_result" in st.session_state:
                 "Unit": list(p["dispatch"].keys()),
                 "Load factor": [f"{v*100:.1f}%" for v in p["dispatch"].values()],
             })
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 12 — Confirmation-loop agent (v1: drafts confirmation-request
+# content and tracks status; does NOT send real correspondence — see
+# python/confirmation_loop.py for the full scope statement)
+# ---------------------------------------------------------------------
+st.header("Confirmation Tracker")
+st.warning(
+    "**Does NOT send real emails or messages to DOK-ING.** No real correspondence capability, "
+    "and no authority to represent you externally — same drafting-not-correspondence spirit as "
+    "the Draft Compliance Summary above. This drafts confirmation-request content and tracks "
+    "status here; actually sending it and following up is on you.",
+    icon="⚠️",
+)
+
+if _confirmation_status is None:
+    st.error(
+        "The confirmation-tracking table isn't set up yet — run `data/confirmation_schema.sql` "
+        "in the Supabase SQL Editor (same project as the vendor quote log) to enable this section."
+    )
+else:
+    if st.button("Generate all 6 confirmation requests (.md)"):
+        st.session_state["all_requests_draft"] = confirmation_loop.generate_all_requests_draft()
+    if "all_requests_draft" in st.session_state:
+        st.download_button(
+            "Download all requests (.md)", data=st.session_state["all_requests_draft"],
+            file_name="hygas_ai_confirmation_requests.md", mime="text/markdown",
+        )
+
+    _cl_status_icon = {"not_yet_asked": "⚪", "awaiting_response": "🟡", "confirmed": "🟢"}
+
+    for _key, _cfg in uncertainty.ASSUMPTIONS.items():
+        _row = _confirmation_status[_key]
+        _lo, _hi = uncertainty.bounds(_key)
+        _icon = _cl_status_icon[_row["status"]]
+        with st.expander(f"{_icon} {_cfg['label']} — {_row['status'].replace('_', ' ').title()}"):
+            st.caption(
+                f"Current range used by the Monte Carlo: [{_lo:.3g}, {_hi:.3g}]"
+                + (" — **CONFIRMED**" if uncertainty.is_confirmed(_key) else " (assumed, ±15% default)")
+            )
+            if _row["confirmed_value"] is not None:
+                st.write(
+                    f"Confirmed value: **{_row['confirmed_value']:g}**"
+                    + (f"  ·  notes: {_row['notes']}" if _row["notes"] else "")
+                )
+
+            if st.button("Generate request draft", key=f"gen_req_{_key}"):
+                st.session_state[f"req_draft_{_key}"] = confirmation_loop.generate_request_draft(_key)
+            if f"req_draft_{_key}" in st.session_state:
+                st.markdown(st.session_state[f"req_draft_{_key}"])
+                if st.button("Mark as asked", key=f"mark_asked_{_key}"):
+                    confirmation_loop.mark_asked(_key)
+                    st.rerun()
+
+            st.write("**Record a confirmed value:**")
+            with st.form(f"confirm_form_{_key}", clear_on_submit=False):
+                _fcol1, _fcol2, _fcol3 = st.columns(3)
+                _c_val = _fcol1.number_input("Confirmed value", value=float(_cfg["point"]), key=f"cval_{_key}")
+                _c_lo = _fcol2.number_input(
+                    "Confirmed range low", value=float(_cfg["point"]) * 0.98, key=f"clo_{_key}"
+                )
+                _c_hi = _fcol3.number_input(
+                    "Confirmed range high", value=float(_cfg["point"]) * 1.02, key=f"chi_{_key}"
+                )
+                _c_notes = st.text_input("Notes", key=f"cnotes_{_key}")
+                _submitted = st.form_submit_button("Record confirmation")
+            if _submitted:
+                if _c_lo >= _c_hi:
+                    st.error("Confirmed range low must be less than confirmed range high.")
+                else:
+                    confirmation_loop.record_confirmation(_key, _c_val, _c_lo, _c_hi, notes=_c_notes)
+                    st.success(
+                        f"Recorded: {_cfg['label']} confirmed to [{_c_lo:.3g}, {_c_hi:.3g}]. "
+                        "The Uncertainty Analysis and Compliance Documentation sections above now "
+                        "use this range — re-run the Monte Carlo to see the narrower CI."
+                    )
+                    st.rerun()
 
 st.divider()
 

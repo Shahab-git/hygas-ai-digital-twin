@@ -19,9 +19,15 @@ the checklist shape a real compliance review would start from. So a real
 auditor's first questions get real, sourced answers (or an honest "not
 yet documented"), never invented placeholder data.
 
-Every checklist item carries one of three statuses:
+Every checklist item carries one of four statuses:
   - "Evidenced"                          — backed by a real, validated
     number computed live from this repo's own physics functions.
+  - "Confirmed"                          — a design assumption that
+    confirmation_loop.py has recorded a real DOK-ING-confirmed range
+    for (via uncertainty.set_confirmed()). Checked live against
+    uncertainty.is_confirmed() — this status appears automatically the
+    moment a confirmation is recorded, with no separate flag to update
+    here.
   - "Assumption — pending confirmation"  — a stated design assumption
     with an explicit uncertainty range (from uncertainty.py), not yet
     confirmed by DOK-ING.
@@ -37,6 +43,7 @@ sync.
 from . import kinetics, psa, uncertainty
 
 EVIDENCED = "Evidenced"
+CONFIRMED = "Confirmed"
 ASSUMPTION_PENDING = "Assumption — pending confirmation"
 NOT_DOCUMENTED = "Not yet documented"
 
@@ -87,17 +94,27 @@ def _mass_energy_balance_items():
 
 def _design_basis_assumption_items():
     """Pulled directly from uncertainty.ASSUMPTIONS — the live source of
-    truth for range/point values, not a copy."""
+    truth for range/point values, not a copy. Status flips to CONFIRMED
+    automatically the moment confirmation_loop.py records a confirmation
+    (uncertainty.is_confirmed() is checked live, not cached)."""
     items = []
-    for cfg in uncertainty.ASSUMPTIONS.values():
-        lo = cfg["point"] * (1 - cfg["fraction"])
-        hi = cfg["point"] * (1 + cfg["fraction"])
+    for key, cfg in uncertainty.ASSUMPTIONS.items():
+        lo, hi = uncertainty.bounds(key)
+        confirmed = uncertainty.is_confirmed(key)
+        if confirmed:
+            status = CONFIRMED
+            value_str = f"CONFIRMED range [{lo:.3g}, {hi:.3g}]"
+            source = "python/uncertainty.py: ASSUMPTIONS (confirmed via python/confirmation_loop.py)"
+        else:
+            status = ASSUMPTION_PENDING
+            value_str = f"point {cfg['point']:g}, range [{lo:.3g}, {hi:.3g}] (±{cfg['fraction']*100:.0f}%)"
+            source = "python/uncertainty.py: ASSUMPTIONS"
         items.append({
             "category": "Design-Basis Assumptions",
             "item": cfg["label"],
-            "status": ASSUMPTION_PENDING,
-            "value": f"point {cfg['point']:g}, range [{lo:.3g}, {hi:.3g}] (±{cfg['fraction']*100:.0f}%)",
-            "source": "python/uncertainty.py: ASSUMPTIONS",
+            "status": status,
+            "value": value_str,
+            "source": source,
             "notes": (
                 "Propagated into kinetics.py/psa.py's forward model via Monte Carlo — see Uncertainty Analysis."
                 if cfg["wired_in"] else
@@ -142,7 +159,7 @@ def build_checklist():
 def summarize_checklist(checklist=None):
     """Counts by status, for a quick overview."""
     checklist = checklist if checklist is not None else build_checklist()
-    counts = {EVIDENCED: 0, ASSUMPTION_PENDING: 0, NOT_DOCUMENTED: 0}
+    counts = {EVIDENCED: 0, CONFIRMED: 0, ASSUMPTION_PENDING: 0, NOT_DOCUMENTED: 0}
     for item in checklist:
         counts[item["status"]] += 1
     return counts
