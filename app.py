@@ -13,7 +13,7 @@ from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
-    multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics,
+    multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1075,6 +1075,101 @@ if "pinn_result" in st.session_state:
             .round({"T_C": 1, "GHSV": 0, "True (kinetics.py)": 4, "Predicted (PINN)": 4, "error": 4}),
             use_container_width=True,
         )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 18 — Sim-to-real transfer (v1: synthetic domain-gap injection
+# and warm-started fine-tuning on the PINN — see python/sim_to_real.py
+# for the full honest-scoping statement)
+# ---------------------------------------------------------------------
+st.header("Sim-to-Real Transfer")
+st.warning(
+    "**Synthetic 'real world', not a real plant.** This repo has no real plant or real sensors to "
+    "transfer to. 'Real-world' data below means `kinetics.py`'s own true conversion values, "
+    "deliberately corrupted with two illustrative, adjustable imperfections: Gaussian noise on the "
+    "conversion reading (a gas analyser is never exact) and a systematic temperature calibration "
+    "offset (a thermocouple reading consistently off true process temperature). Both magnitudes are "
+    "assumed defaults, not measured instrument specs. This demonstrates the *mechanism* of domain-"
+    "gap evaluation and adaptation on this project's own validated physics — it is not a claim of "
+    "real-world validation.",
+    icon="⚠️",
+)
+st.caption(
+    "Pre-adaptation error is measured against what a real deployment would actually have to check "
+    "against — the sensor's own noisy reading — not an oracle true value, since a real deployment "
+    "wouldn't have one either. That's why both sliders below move it."
+)
+
+s2r_col1, s2r_col2 = st.columns(2)
+with s2r_col1:
+    s2r_noise_std = st.slider(
+        "Sensor noise (Gaussian std, conversion fraction)", 0.0, 0.10,
+        sim_to_real.DEFAULT_NOISE_STD, step=0.01, key="s2r_noise",
+    )
+with s2r_col2:
+    s2r_offset = st.slider(
+        "Temperature calibration offset (°C)", 0.0, 10.0,
+        sim_to_real.DEFAULT_CALIB_OFFSET_C, step=0.5, key="s2r_offset",
+    )
+
+if st.button("Run sim-to-real transfer experiment"):
+    with st.spinner("Training/reusing the simulation PINN, injecting noise, and fine-tuning..."):
+        if "s2r_sim_weights" not in st.session_state:
+            st.session_state["s2r_sim_weights"] = pinn_kinetics.train(seed=7)[0]
+        st.session_state["s2r_result"] = sim_to_real.run_transfer_experiment(
+            flat_sim=st.session_state["s2r_sim_weights"],
+            noise_std=s2r_noise_std, calib_offset_C=s2r_offset,
+        )
+
+if "s2r_result" in st.session_state:
+    _sr = st.session_state["s2r_result"]
+    _pre, _post = _sr["pre"], _sr["post"]
+
+    st.subheader("Domain gap: before vs. after adaptation")
+    scol1, scol2, scol3 = st.columns(3)
+    scol1.metric("Pre-adaptation error (no adaptation)", f"{_pre['mean_error']:.4f}")
+    scol2.metric(
+        "Post-adaptation error (8 noisy points)", f"{_post['mean_error']:.4f}",
+        delta=f"{_post['mean_error'] - _pre['mean_error']:+.4f}", delta_color="inverse",
+    )
+    scol3.metric("Domain gap closed", f"{_sr['gap_closed_fraction'] * 100:.0f}%")
+
+    if _sr["gap_closed_fraction"] >= 0:
+        st.write(
+            f"Fine-tuning on just 8 noisy real-world points reduced mean error from "
+            f"{_pre['mean_error']:.4f} to {_post['mean_error']:.4f} — {_sr['gap_closed_fraction'] * 100:.0f}% "
+            f"of the domain gap closed. "
+            + ("The gap was not fully closed — some residual error remains even after adaptation."
+               if _sr["gap_closed_fraction"] < 0.99 else "")
+        )
+    else:
+        st.write(
+            f"**Adaptation did not help here** — post-adaptation error ({_post['mean_error']:.4f}) is "
+            f"higher than pre-adaptation error ({_pre['mean_error']:.4f}). This is an honest result, "
+            f"not a bug: with a small (or zero) calibration offset, the imperfection is mostly random "
+            f"sensor noise with no systematic bias to correct, so fine-tuning on just 8 noisy points "
+            f"has nothing systematic to learn and can slightly overfit to that noise instead. Try "
+            f"raising the temperature calibration offset — a genuine systematic domain shift is what "
+            f"this adaptation step is actually good at correcting."
+        )
+
+    with st.expander("The 8 noisy points used to adapt, and the 40 held-out points used to evaluate"):
+        _adapt_df = pd.DataFrame({
+            "T_true (°C)": _sr["adapt_set"]["T_true_C"], "T_sensor (°C)": _sr["adapt_set"]["T_sensor_C"],
+            "GHSV": _sr["adapt_set"]["GHSV"], "X_true": _sr["adapt_set"]["X_true"],
+            "X_observed (used to fine-tune)": _sr["adapt_set"]["X_observed"],
+        }).round(3)
+        st.write("**Adaptation points (8, noisy — the model never sees `X_true`, only `X_observed`):**")
+        st.dataframe(_adapt_df, use_container_width=True)
+
+        _eval_df = pd.DataFrame({
+            "T_true (°C)": _sr["real_world_eval"]["T_true_C"], "T_sensor (°C)": _sr["real_world_eval"]["T_sensor_C"],
+            "GHSV": _sr["real_world_eval"]["GHSV"], "X_observed": _sr["real_world_eval"]["X_observed"],
+            "Pred (pre-adaptation)": _pre["predictions"], "Pred (post-adaptation)": _post["predictions"],
+        }).round(3)
+        st.write("**Evaluation points (40, held out from adaptation):**")
+        st.dataframe(_eval_df, use_container_width=True)
 
 st.divider()
 

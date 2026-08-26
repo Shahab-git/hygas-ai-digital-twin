@@ -204,6 +204,33 @@ def train(n_labeled=8, n_collocation=200, n_bc=20, weights=None, seed=7, n_resta
     return best.x, float(best.fun), (T_C_data, GHSV_data, X_data)
 
 
+def fine_tune(flat_init, T_data_K, tau_data, X_data, weights=None, n_collocation=200, n_bc=20, seed=123, maxiter=300):
+    """Warm-started adaptation: continues optimizing FROM an already-trained
+    weight vector (flat_init) on new labeled data, reusing the identical
+    loss composition as train() — same physics-residual term, same boundary
+    condition, just a fresh random draw of collocation/BC points and a new
+    (typically small) labeled-data set. A single run, not multiple random
+    restarts, since the point is to adapt an existing solution, not search
+    for a new one from scratch. Used by sim_to_real.py to fine-tune a
+    simulation-trained PINN on a few noisy "real-world" points — no new
+    optimization logic, just this module's existing machinery re-entered
+    from a warm start.
+
+    Returns (flat_adapted, final_loss).
+    """
+    weights = weights or {"data": 1.0, "bc": 1.0, "physics": 1.0}
+    rng = np.random.default_rng(seed)
+    T_bc_K = rng.uniform(T_MIN_C, T_MAX_C, n_bc) + 273.15
+    T_c_K = rng.uniform(T_MIN_C, T_MAX_C, n_collocation) + 273.15
+    tau_c = rng.uniform(1.0 / GHSV_MAX, 1.0 / GHSV_MIN, n_collocation)
+
+    res = minimize(
+        _loss, flat_init, args=(T_data_K, tau_data, X_data, T_bc_K, T_c_K, tau_c, weights),
+        method="L-BFGS-B", options={"maxiter": maxiter},
+    )
+    return res.x, float(res.fun)
+
+
 def predict(flat, T_C, GHSV):
     """HTS conversion prediction at (T_C, GHSV) — the network evaluated at
     tau = 1/GHSV, the reactor exit."""
