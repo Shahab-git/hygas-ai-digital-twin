@@ -12,7 +12,7 @@ from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
-    multi_module_orchestration, novelty_audit,
+    multi_module_orchestration, novelty_audit, safety_flags,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -908,6 +908,63 @@ for _a in _na_items_to_show:
             st.write(f"**{_lens}:**")
             for _ev in _a["evidence"][_lens]:
                 st.caption(f"— `{_ev['source']}`: {_ev['reasoning']}")
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 16 — Safety hazard flagging (v1: flags design values against
+# real, cited public reference thresholds — NOT a PHA/HAZOP. See
+# python/safety_flags.py for the full scoping and every citation.)
+# ---------------------------------------------------------------------
+st.header("Safety Flags")
+st.markdown(
+    "**⚠️ This is NOT a certified safety assessment.** Real hazard analysis requires qualified "
+    "safety engineers using formal methodology (HAZOP, PHA) — this tool cannot replicate that. "
+    "It exists only to surface where this plant's own design values sit relative to well-"
+    "established, publicly documented reference thresholds (cited explicitly below), so genuine "
+    "gaps are visible instead of silently absent. Nothing here is a hazard determination."
+)
+
+_sf = safety_flags.build_safety_flags()
+_sf_h2s = _sf["h2s"]
+
+st.subheader("Feed H2S — two distinct concerns from the same number")
+st.caption(
+    "The 200 ppm feed H2S assumption is tracked live from uncertainty.py — the same number the "
+    "Uncertainty Analysis, Compliance Documentation, and Confirmation Tracker sections above use. "
+    "If that assumption ever gets a real DOK-ING-confirmed value via the Confirmation Tracker, "
+    "these flags update automatically, with no separate copy to fall out of sync."
+)
+st.write(
+    f"**Current feed H2S value:** {_sf_h2s['assumption_value_ppm']:.0f} ppm  "
+    f"({'CONFIRMED' if _sf_h2s['is_confirmed'] else 'assumed, ±15% default'}, "
+    f"range [{_sf_h2s['assumption_range_ppm'][0]:.0f}, {_sf_h2s['assumption_range_ppm'][1]:.0f}] ppm)"
+)
+
+sfcol1, sfcol2 = st.columns(2)
+for _sfcol, _key in [(sfcol1, "personnel_safety"), (sfcol2, "catalyst_risk")]:
+    _c = _sf_h2s[_key]
+    with _sfcol:
+        _icon = "🔴" if _c["flag"] else "🟢"
+        st.markdown(f"{_icon} **{_c['concern']}**")
+        st.caption(f"Reference: {_c['reference']}")
+        st.metric("Ratio to reference", f"{_c['ratio_to_reference']:.1f}×")
+        st.write(_c["note"])
+
+st.subheader("H2 storage (HB-013)")
+_sf_h2 = _sf["h2_storage"]
+if _sf_h2:
+    st.write(f"**{_sf_h2['equipment_id']} — {_sf_h2['equipment_name']}**")
+    st.write(f"Design pressure: {_sf_h2['design_pressure']}  ·  H2 flammability range: {_sf_h2['h2_flammability_range']}")
+    st.write(_sf_h2["note"])
+
+st.subheader("ATEX-rated equipment (read directly from the registry)")
+for _a in _sf["atex_items"]:
+    st.write(f"- **{_a['equipment_id']}** ({_a['equipment_name']}): {_a['atex_value']}")
+st.caption(
+    "Items explicitly marked \"ATEX not required\" in their own datasheet (AI-002, AI-004, AI-008) "
+    "were checked and correctly assessed as such — not flagged, and not omitted from the search."
+)
 
 st.divider()
 
