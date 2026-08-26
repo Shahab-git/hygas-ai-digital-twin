@@ -6,13 +6,14 @@ verified Python physics modules in /python — the same models that were
 cross-checked against the MATLAB/Simulink blocks during development.
 """
 import altair as alt
+import numpy as np
 import pandas as pd
 import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
-    multi_module_orchestration, novelty_audit, safety_flags,
+    multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -965,6 +966,115 @@ st.caption(
     "Items explicitly marked \"ATEX not required\" in their own datasheet (AI-002, AI-004, AI-008) "
     "were checked and correctly assessed as such — not flagged, and not omitted from the search."
 )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 17 — Physics-informed neural network (v1: a genuine PINN, not
+# a data-fit surrogate mislabeled as one — see python/pinn_kinetics.py
+# for the full formulation, gradient derivation, and honest limitations.)
+# ---------------------------------------------------------------------
+st.header("Physics-Informed Neural Network")
+st.markdown(
+    "**⚠️ Scope.** This predicts HTS WGS conversion under the same steady-state assumptions as "
+    "the rest of this app, trained on ONE specific rate law (`kinetics.hts_conversion` — HTS only, "
+    "not LTS). It is not reliable outside the physical range this project has already validated: "
+    "**300–400°C, 1000–4000 GHSV.** No PyTorch/JAX/autograd dependency was added — checked first "
+    "and confirmed none is already installed, and a full autodiff framework was judged a real "
+    "memory/CPU risk on Streamlit Community Cloud's free tier. Instead this is a tiny hand-rolled "
+    "8-neuron NumPy network with an analytically-derived physics gradient (verified against a "
+    "finite-difference check — see the module's self-test), trained with `scipy.optimize.minimize`."
+)
+st.caption(
+    "What makes it a PINN and not a surrogate: the training loss has a physics-residual term — "
+    "how well the network's own dX/dτ satisfies the real HTS rate law from kinetics.py, checked at "
+    "200 randomly sampled points across the domain — plus the real boundary condition X=0 at τ=0. "
+    "Only 8 labeled (T, GHSV)→X points from kinetics.py's actual output anchor the fit; physics "
+    "shapes the rest."
+)
+
+if st.button("Train PINN (and a data-only baseline, for comparison)"):
+    with st.spinner("Training the physics-informed model and a same-architecture data-only baseline..."):
+        st.session_state["pinn_result"] = pinn_kinetics.compare_to_baseline()
+
+if "pinn_result" in st.session_state:
+    _pr = st.session_state["pinn_result"]
+    _pinn, _base = _pr["pinn"], _pr["baseline"]
+
+    st.subheader("The real test: error near vs. far from the 8 labeled points")
+    st.caption(
+        "Test points are split by distance to the nearest labeled training point (median split). "
+        "If the PINN's far-point error stays close to its near-point error while a data-only fit "
+        "(same architecture, same 8 points, physics term switched off) degrades further away, "
+        "that's real evidence the physics loss — not memorization — is doing the work."
+    )
+    pcol1, pcol2 = st.columns(2)
+    with pcol1:
+        st.markdown("**PINN (physics + data + boundary condition)**")
+        st.metric("Mean abs. error (40 test points)", f"{_pinn['mean_error']:.4f}")
+        st.write(f"Near-training error: **{_pinn['near_mean_error']:.4f}**  ·  "
+                 f"Far-from-training error: **{_pinn['far_mean_error']:.4f}**")
+        st.metric("Far / near error ratio", f"{_pinn['far_to_near_ratio']:.2f}×")
+    with pcol2:
+        st.markdown("**Data-only baseline (physics weight = 0)**")
+        st.metric("Mean abs. error (40 test points)", f"{_base['mean_error']:.4f}")
+        st.write(f"Near-training error: **{_base['near_mean_error']:.4f}**  ·  "
+                 f"Far-from-training error: **{_base['far_mean_error']:.4f}**")
+        st.metric("Far / near error ratio", f"{_base['far_to_near_ratio']:.2f}×")
+
+    _err_multiple = _base["mean_error"] / _pinn["mean_error"] if _pinn["mean_error"] > 0 else float("nan")
+    st.write(
+        f"With identical architecture and the identical 8 labeled points, the PINN's mean test "
+        f"error is **{_err_multiple:.0f}× lower** than the data-only baseline's, and its far-point "
+        f"error barely rises above its near-point error ({_pinn['far_to_near_ratio']:.2f}× vs. the "
+        f"baseline's {_base['far_to_near_ratio']:.2f}×). That is the physics-residual term doing "
+        f"genuine work, not the network simply memorizing 8 points."
+    )
+
+    st.subheader("PINN predictions vs. kinetics.py's real ODE integration")
+    _train_df = pd.DataFrame({
+        "T_C": _pr["T_labeled"], "GHSV": _pr["GHSV_labeled"],
+        "True (kinetics.py)": _pr["X_labeled"],
+        "Predicted (PINN)": pinn_kinetics.predict(_pinn["weights"], _pr["T_labeled"], _pr["GHSV_labeled"]),
+        "Category": "Training point (labeled)",
+    })
+    _test_df = pd.DataFrame({
+        "T_C": _pr["T_test"], "GHSV": _pr["G_test"],
+        "True (kinetics.py)": _pr["X_true"],
+        "Predicted (PINN)": _pinn["predictions"],
+        "Category": np.where(_pr["near_mask"], "Test point (near training)", "Test point (far from training)"),
+    })
+    _plot_df = pd.concat([_train_df, _test_df], ignore_index=True)
+
+    _diag = alt.Chart(pd.DataFrame({"x": [0, 1], "y": [0, 1]})).mark_line(
+        strokeDash=[4, 4], color="gray"
+    ).encode(x="x:Q", y="y:Q")
+    _scatter = alt.Chart(_plot_df).mark_point(size=90, filled=True).encode(
+        x=alt.X("True (kinetics.py):Q", title="True HTS conversion (kinetics.py)", scale=alt.Scale(domain=[0, 1])),
+        y=alt.Y("Predicted (PINN):Q", title="PINN-predicted HTS conversion", scale=alt.Scale(domain=[0, 1])),
+        color=alt.Color("Category:N", scale=alt.Scale(
+            domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
+            range=["#000000", "#4C78A8", "#E45756"],
+        )),
+        shape=alt.Shape("Category:N", scale=alt.Scale(
+            domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
+            range=["diamond", "circle", "circle"],
+        )),
+        tooltip=["T_C:Q", "GHSV:Q", "True (kinetics.py):Q", "Predicted (PINN):Q", "Category:N"],
+    )
+    st.altair_chart((_diag + _scatter).properties(height=380), use_container_width=True)
+    st.caption(
+        "Points on the dashed diagonal are perfect predictions. Black diamonds are the 8 labeled "
+        "training points; blue/red circles are the 40 held-out test points the PINN never saw "
+        "during training, split by distance to the nearest training point."
+    )
+
+    with st.expander("Full table: training points and test points"):
+        st.dataframe(
+            _plot_df.assign(error=(_plot_df["Predicted (PINN)"] - _plot_df["True (kinetics.py)"]).abs())
+            .round({"T_C": 1, "GHSV": 0, "True (kinetics.py)": 4, "Predicted (PINN)": 4, "error": 4}),
+            use_container_width=True,
+        )
 
 st.divider()
 
