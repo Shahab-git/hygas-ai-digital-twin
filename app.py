@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
-    uncertainty, optimizer, predictive_maintenance,
+    uncertainty, optimizer, predictive_maintenance, compliance,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -459,6 +459,51 @@ for item in registry:
             st.write("**Logged quotes:**")
             for q in item_quotes:
                 st.write(f"- {q['vendor']} — €{q['price']:,.0f} on {q['date']}" + (f" — {q['notes']}" if q["notes"] else ""))
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 10 — Compliance documentation (v1: organizes real plant data
+# into audit-checklist shape; NOT actual RFNBO certification — see
+# python/compliance.py for the full limitation statement)
+# ---------------------------------------------------------------------
+st.header("Compliance Documentation")
+st.warning(
+    "**This is NOT RFNBO certification.** Real RFNBO (Renewable Fuel of Non-Biological Origin) "
+    "certification requires an accredited third-party auditor assessing the plant against EU "
+    "Delegated Regulation (EU) 2023/1184 and the related methodology regulation (EU) 2023/1185 — "
+    "additionality, temporal/geographic correlation for renewable electricity, greenhouse-gas "
+    "savings thresholds, mass-balance chain-of-custody, and more. This repo cannot implement that "
+    "process or make that legal determination, and makes no such claim. What this **does** do: "
+    "organize the plant's actual data into the checklist shape a real audit would start from, and "
+    "clearly separate what's genuinely validated from what's still an assumption or undocumented.",
+    icon="⚠️",
+)
+
+compliance_checklist = compliance.build_checklist()
+compliance_counts = compliance.summarize_checklist(compliance_checklist)
+
+ccol1, ccol2, ccol3 = st.columns(3)
+ccol1.metric(f"🟢 {compliance.EVIDENCED}", compliance_counts[compliance.EVIDENCED])
+ccol2.metric(f"🟡 {compliance.ASSUMPTION_PENDING}", compliance_counts[compliance.ASSUMPTION_PENDING])
+ccol3.metric(f"🔴 {compliance.NOT_DOCUMENTED}", compliance_counts[compliance.NOT_DOCUMENTED])
+
+_compliance_icons = {
+    compliance.EVIDENCED: "🟢",
+    compliance.ASSUMPTION_PENDING: "🟡",
+    compliance.NOT_DOCUMENTED: "🔴",
+}
+
+for _category in ["Mass/Energy Balance Traceability", "Design-Basis Assumptions", "Feedstock Traceability"]:
+    st.subheader(_category)
+    for _item in [i for i in compliance_checklist if i["category"] == _category]:
+        _icon = _compliance_icons[_item["status"]]
+        _title = f"{_icon} {_item['item']} — {_item['status']}"
+        if _item["value"]:
+            _title += f"  ({_item['value']})"
+        with st.expander(_title):
+            st.caption(f"**Source:** {_item['source']}")
+            st.write(_item["notes"])
 
 st.divider()
 
