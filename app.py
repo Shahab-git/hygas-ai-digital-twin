@@ -12,6 +12,7 @@ from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
+    multi_module_orchestration,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -772,6 +773,82 @@ st.caption(
     f"(€{circ['total_revenue_eur_h']*8760:,.0f}/yr at 100% uptime, illustrative only — neither price "
     f"is sourced from any real market or offtake data)."
 )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 14 — Multi-module orchestration (v1: coordinates cooperating
+# hypothetical WGS-train modules of the SAME plant toward one shared
+# output target — distinct from Section 11's Multi-Module Negotiation,
+# which divides one scarce resource among COMPETING hypothetical plants.
+# See python/multi_module_orchestration.py for the full distinction.)
+# ---------------------------------------------------------------------
+st.header("Multi-Module Orchestration")
+st.warning(
+    "**Simulated hypothetical plant modules, not live data from real additional hardware.** This "
+    "repo represents exactly one real WGS train. The 3 modules below are illustrative variants of "
+    "kinetics.py's own physics at different operating temperatures — not real separate equipment. "
+    "**Distinct from Multi-Module Negotiation above:** that section divides one shared *scarce* "
+    "resource among *competing* hypothetical plants; this section coordinates *cooperating* "
+    "modules of the *same* plant to jointly hit one shared output target at minimum cost.",
+    icon="⚠️",
+)
+
+mo_target = st.number_input(
+    "Target H2 output (relative GHSV-equivalent units — see caption below)",
+    min_value=100.0, max_value=10000.0, value=2500.0, step=100.0, key="mo_target",
+)
+st.caption(
+    "Output is modeled as throughput × overall WGS conversion, in the same GHSV units kinetics.py "
+    "already uses — a relative/illustrative basis, not a real kg/h mass balance (unlike "
+    "circularity.py's feed rate, which IS a real, sourced number for the one actual train this "
+    "repo models)."
+)
+
+mo_offline = st.multiselect(
+    "Take module(s) offline (simulated scheduled maintenance)",
+    options=[m["name"] for m in multi_module_orchestration.DEFAULT_MODULES],
+    key="mo_offline",
+)
+
+if st.button("Run orchestration"):
+    st.session_state["mo_result"] = multi_module_orchestration.orchestrate(
+        mo_target, offline_module_names=mo_offline,
+    )
+
+if "mo_result" in st.session_state:
+    _mo = st.session_state["mo_result"]
+    if not _mo["feasible"]:
+        st.error(_mo["reason"])
+    else:
+        st.success(
+            f"Target met exactly: {_mo['total_output']:.1f} output at "
+            f"{_mo['total_throughput']:.1f} total throughput (minimized)."
+        )
+
+    _mo_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}
+    for _m in _mo["modules"]:
+        _icon = _mo_status_icon[_m["status"]]
+        if _m["forced_offline"]:
+            _avail_str = "OFFLINE (scheduled maintenance)"
+        elif not _m["available"]:
+            _avail_str = "OFFLINE (flagged for maintenance — activity factor below predictive_maintenance's threshold)"
+        else:
+            _avail_str = "available"
+        with st.expander(f"{_icon} {_m['name']} — {_avail_str}"):
+            st.write(
+                f"HTS temperature: {_m['T_hts_C']:.0f}°C  ·  Activity factor: {_m['activity_factor']:.2f}  ·  "
+                f"Status: {_m['status']}"
+            )
+            if _m["available"]:
+                st.write(f"**Load (GHSV):** {_m['ghsv']:.0f} / {_m['ghsv_max']:.0f} max")
+                st.write(
+                    f"**Output:** {_m['output']:.1f}  "
+                    f"({_m.get('share_of_target', 0)*100:.1f}% of target — the hotter/more efficient "
+                    f"a module is at this load, the larger its share)"
+                )
+            else:
+                st.write("Not contributing to the allocation — offline.")
 
 st.divider()
 
