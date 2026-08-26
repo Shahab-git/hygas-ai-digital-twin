@@ -14,7 +14,7 @@ from python import (
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
-    federated_learning,
+    federated_learning, performance_guarantee,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1294,6 +1294,91 @@ if "fl_result" in st.session_state:
         f"most decisively exactly where it matters most: correcting a single plant's worst blind spots, "
         f"not just nudging its already-good regions."
     )
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 20 — Performance guarantee pricing (v1: PSA recovery threshold
+# guarantee priced from uncertainty.py's real Monte Carlo distribution —
+# see python/performance_guarantee.py for the full honest-scoping
+# statement)
+# ---------------------------------------------------------------------
+st.header("Performance Guarantee Pricing")
+st.warning(
+    "**Illustrative pricing framework, not a real actuarial/insurance-grade guarantee.** This "
+    "prices a hypothetical \"we guarantee ≥X% PSA recovery, or pay a penalty\" offer using this "
+    "project's own Monte Carlo uncertainty distribution — real guarantee terms need actual legal "
+    "and financial structuring (credit risk, counterparty terms, measurement/verification protocol, "
+    "force majeure) that doesn't exist here. The penalty rate below is OUR OWN assumed placeholder "
+    "— same honesty pattern as Circularity Scoring's ash/carbon-black market prices — not sourced "
+    "from any real DOK-ING contract or market data.",
+    icon="⚠️",
+)
+st.caption(
+    "**What IS real:** breach probability and expected cost are computed directly from "
+    "`uncertainty.py`'s genuine Monte Carlo propagation of the six real unconfirmed design "
+    "assumptions through the real `kinetics.py`/`psa.py` physics — not a guessed number. PSA "
+    "recovery's uncertainty in this model comes entirely from the PSA recovery target calibration "
+    "assumption, so this section is automatically live to whatever the Confirmation Tracker above "
+    "has (or hasn't) confirmed for it."
+)
+
+_pg_confirmed = uncertainty.is_confirmed("psa_target_calibration")
+_pg_lo, _pg_hi = uncertainty.bounds("psa_target_calibration")
+st.write(
+    f"**Current PSA calibration range in use:** [{_pg_lo:.2f}, {_pg_hi:.2f}]× "
+    f"({'CONFIRMED via Confirmation Tracker' if _pg_confirmed else 'default ±15% assumption, unconfirmed'})"
+)
+
+pg_col1, pg_col2, pg_col3 = st.columns(3)
+with pg_col1:
+    pg_threshold = st.slider(
+        "Guaranteed PSA recovery (≥, %)", 65.0, 80.0, performance_guarantee.DEFAULT_THRESHOLD * 100,
+        step=0.5, key="pg_threshold",
+    ) / 100.0
+with pg_col2:
+    pg_penalty = st.number_input(
+        "Penalty (€ per percentage-point shortfall)", min_value=0.0,
+        value=performance_guarantee.DEFAULT_PENALTY_EUR_PER_POINT, step=500.0, key="pg_penalty",
+    )
+with pg_col3:
+    pg_n_runs = st.slider("Monte Carlo runs", 200, 1000, performance_guarantee.DEFAULT_N_RUNS, step=100, key="pg_n_runs")
+
+if st.button("Price this guarantee"):
+    with st.spinner(f"Running {pg_n_runs} samples through the real PSA recovery uncertainty distribution..."):
+        st.session_state["pg_result"] = performance_guarantee.price_guarantee(
+            pg_threshold, penalty_eur_per_point=pg_penalty, n_runs=pg_n_runs,
+        )
+
+if "pg_result" in st.session_state:
+    _pg = st.session_state["pg_result"]
+    pgcol1, pgcol2, pgcol3 = st.columns(3)
+    pgcol1.metric("Breach probability", f"{_pg['breach_probability'] * 100:.1f}%")
+    pgcol2.metric("Expected cost", f"€{_pg['expected_cost']:,.0f}")
+    pgcol3.metric("Expected cost, given breach", f"€{_pg['expected_cost_given_breach']:,.0f}")
+
+    st.caption(
+        f"From {_pg['n_samples']} Monte Carlo samples: mean recovery {_pg['mean_recovery'] * 100:.1f}%, "
+        f"90% CI [{_pg['p5_recovery'] * 100:.1f}%, {_pg['p95_recovery'] * 100:.1f}%]. Given a breach, the "
+        f"average shortfall is {_pg['mean_shortfall_points_given_breach']:.2f} percentage points."
+    )
+
+    _pg_df = pd.DataFrame({
+        "recovery_pct": _pg["samples"] * 100,
+        "Result": np.where(_pg["breach_mask"], "Breaches guarantee", "Meets guarantee"),
+    })
+    _pg_hist = alt.Chart(_pg_df).mark_bar().encode(
+        x=alt.X("recovery_pct:Q", bin=alt.Bin(maxbins=40), title="PSA recovery (%)"),
+        y=alt.Y("count():Q", title="Monte Carlo samples"),
+        color=alt.Color("Result:N", scale=alt.Scale(
+            domain=["Meets guarantee", "Breaches guarantee"], range=["#4C78A8", "#E45756"],
+        )),
+    ).properties(height=260)
+    _pg_rule = alt.Chart(pd.DataFrame({"x": [pg_threshold * 100]})).mark_rule(
+        color="black", strokeDash=[4, 4], size=2,
+    ).encode(x="x:Q")
+    st.altair_chart(_pg_hist + _pg_rule, use_container_width=True)
+    st.caption("Dashed line: the guaranteed threshold. Red bars: samples that would breach it.")
 
 st.divider()
 
