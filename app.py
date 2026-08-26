@@ -11,7 +11,7 @@ import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
-    root_cause,
+    root_cause, multi_agent_negotiation,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -561,6 +561,81 @@ if "compliance_draft" in st.session_state:
     )
     with st.expander("Preview draft", expanded=True):
         st.markdown(st.session_state["compliance_draft"])
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 11 — Multi-module negotiation (v1: hypothetical plant variants
+# negotiating over a shared grid export constraint — see
+# python/multi_agent_negotiation.py for the full honest-scoping statement)
+# ---------------------------------------------------------------------
+st.header("Multi-Module Negotiation")
+st.warning(
+    "**These are simulated hypothetical plant variants, not live data from real additional "
+    "facilities.** This repo represents exactly one real plant. 'Plant B' and 'Plant C' below are "
+    "illustrative ±20% variants of this plant's own dispatch parameters — a stand-in for what a "
+    "real multi-plant fleet might look like, built on the real `dispatch_ga.py` optimization, not "
+    "invented numbers.",
+    icon="⚠️",
+)
+st.caption(
+    "**Mechanism: merit-order allocation, not full iterative negotiation** — chosen because it's "
+    "simpler to verify exactly (one sort, one greedy fill, no convergence loop) and it's how real "
+    "grid operators already allocate scarce export capacity: the most fuel-efficient generation is "
+    "dispatched first. Each hypothetical plant runs its own dispatch_ga optimization to get its "
+    "'ask'; plants are then served in efficiency order until the shared capacity runs out."
+)
+
+shared_capacity_kw = st.number_input(
+    "Shared grid export capacity (kW)", min_value=10.0, max_value=200.0, value=70.0, step=5.0,
+    key="negotiation_capacity",
+)
+
+if st.button("Run negotiation"):
+    plant_variants = [
+        {"name": "Plant A (this plant, current budgets)",
+         "syngas_budget_kw": float(syngas_budget), "h2_budget_kw": float(h2_budget)},
+        {"name": "Plant B (+20% feed rate, illustrative)",
+         "syngas_budget_kw": float(syngas_budget) * 1.2, "h2_budget_kw": float(h2_budget) * 1.2},
+        {"name": "Plant C (−20% feed rate, illustrative)",
+         "syngas_budget_kw": float(syngas_budget) * 0.8, "h2_budget_kw": float(h2_budget) * 0.8},
+    ]
+    with st.spinner("Each plant running its own dispatch_ga optimization, then negotiating..."):
+        st.session_state["negotiation_result"] = multi_agent_negotiation.negotiate(
+            shared_capacity_kw, variants=plant_variants,
+        )
+
+if "negotiation_result" in st.session_state:
+    neg = st.session_state["negotiation_result"]
+    ncol1, ncol2, ncol3 = st.columns(3)
+    ncol1.metric("Shared capacity", f"{neg['shared_capacity_kw']:.1f} kW")
+    ncol2.metric("Total asked", f"{neg['total_asked_kw']:.1f} kW")
+    ncol3.metric("Total allocated", f"{neg['total_allocated_kw']:.1f} kW")
+    st.caption(
+        f"Sum of allocations ({neg['total_allocated_kw']:.2f} kW) respects the shared constraint "
+        f"({neg['shared_capacity_kw']:.2f} kW) by construction — a greedy fill against a hard cap, "
+        f"not clipped after the fact. Merit order (most efficient first): "
+        + " → ".join(neg["merit_order"])
+    )
+
+    for p in neg["plants"]:
+        served_icon = "✅" if p["fully_served"] else "⚠️"
+        with st.expander(
+            f"{served_icon} {p['name']} — merit rank #{p['merit_rank']}, "
+            f"{p['allocation_kw']:.1f} / {p['ask_kw']:.1f} kW allocated"
+        ):
+            st.write(
+                f"**Fuel budgets:** syngas {p['syngas_budget_kw']:.1f} kW, H2 {p['h2_budget_kw']:.1f} kW"
+            )
+            st.write(f"**Dispatch efficiency:** {p['efficiency']*100:.2f}% (electrical kW out ÷ fuel kW in)")
+            st.write(
+                f"**Ask:** {p['ask_kw']:.2f} kW  →  **Allocated:** {p['allocation_kw']:.2f} kW "
+                f"({'fully served' if p['fully_served'] else 'partially served — squeezed by higher-efficiency plants ranked above it'})"
+            )
+            st.table({
+                "Unit": list(p["dispatch"].keys()),
+                "Load factor": [f"{v*100:.1f}%" for v in p["dispatch"].values()],
+            })
 
 st.divider()
 
