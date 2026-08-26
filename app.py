@@ -11,7 +11,7 @@ import streamlit as st
 from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
-    root_cause, multi_agent_negotiation, confirmation_loop,
+    root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -729,6 +729,49 @@ else:
                         "use this range — re-run the Monte Carlo to see the narrower CI."
                     )
                     st.rerun()
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 13 — Circularity scoring (v1: ash/carbon-black byproduct mass
+# balance + assumption-based revenue potential — see
+# python/gasifier_mass_balance.py and python/circularity.py)
+# ---------------------------------------------------------------------
+st.header("Circularity Scoring")
+st.caption(
+    "Byproduct mass flows use the real design-basis mass fractions embedded in this repo's own "
+    "equipment datasheets (GA-005: \"10% ash content, dry basis\"; GA-008's stated capacity implies "
+    "~5% carbon black) — a ported linear relationship, not a new model. The **revenue-potential "
+    "figures use our own assumed placeholder prices, not real market pricing** — there's no real "
+    "market data in this project yet. The diversion fraction needs no price assumption at all; "
+    "it's a real mass-balance ratio."
+)
+
+circ_feed_kg_h = st.number_input(
+    "Dry feed rate (kg/h)", min_value=1.0, max_value=200.0,
+    value=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H, step=0.5, key="circ_feed",
+)
+circ = circularity.circularity_summary(circ_feed_kg_h)
+
+ccol1, ccol2, ccol3 = st.columns(3)
+ccol1.metric("Ash output", f"{circ['ash_kg_h']:.2f} kg/h", help="10% of dry feed — GA-005's own design figure")
+ccol2.metric(
+    "Carbon black output", f"{circ['carbon_black_kg_h']:.2f} kg/h",
+    help="~5% of dry feed — consistent with GA-008's stated design capacity",
+)
+ccol3.metric(
+    "Diversion from landfill", f"{circ['diversion_fraction']*100:.1f}%",
+    help="Total byproduct mass ÷ dry feed mass — a real ratio, no price assumption",
+)
+
+st.caption(
+    f"**Revenue potential (assumption-based):** ash €{circ['ash_revenue_eur_h']:.3f}/h "
+    f"(@ €{circularity.ASH_PRICE_EUR_PER_KG:.2f}/kg placeholder) + carbon black "
+    f"€{circ['carbon_black_revenue_eur_h']:.3f}/h (@ €{circularity.CARBON_BLACK_PRICE_EUR_PER_KG:.2f}/kg "
+    f"placeholder) = **€{circ['total_revenue_eur_h']:.3f}/h** "
+    f"(€{circ['total_revenue_eur_h']*8760:,.0f}/yr at 100% uptime, illustrative only — neither price "
+    f"is sourced from any real market or offtake data)."
+)
 
 st.divider()
 
