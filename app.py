@@ -12,7 +12,7 @@ from python import (
     kinetics, psa, chp, dispatch_ga, copilot, equipment_registry, vendor_log,
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
-    multi_module_orchestration,
+    multi_module_orchestration, novelty_audit,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -849,6 +849,65 @@ if "mo_result" in st.session_state:
                 )
             else:
                 st.write("Not contributing to the allocation — offline.")
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 15 — Novelty audit coverage (v1: honest documented-depth
+# coverage against the 8-lens framework, NOT a genuine novelty
+# assessment — see python/novelty_audit.py for the full scoping)
+# ---------------------------------------------------------------------
+st.header("Novelty Audit Coverage")
+st.warning(
+    "**This is NOT a genuine novelty assessment.** Code cannot judge real engineering novelty — "
+    "that needs actual domain-expert judgment against prior art (patents, published literature, "
+    "competing commercial designs), which this tool doesn't attempt and doesn't claim to. What "
+    "this **does** show: which of the 91 equipment registry items have real, working Python code "
+    "behind them *in this repo* across the 8-lens framework (Design, Dynamics, Math, Physics, "
+    "Economics, Safety, Data & Control Intelligence, Circularity) — an honest measure of "
+    "documented engineering depth here, not a claim about which equipment is more innovative.",
+    icon="⚠️",
+)
+
+_na_audit = novelty_audit.build_audit()
+_na_summary = novelty_audit.summarize_audit(_na_audit)
+
+nacol1, nacol2, nacol3 = st.columns(3)
+nacol1.metric("Total registry items", _na_summary["total_items"])
+nacol2.metric("≥1 lens covered", _na_summary["items_with_coverage"])
+nacol3.metric("Zero coverage", _na_summary["items_with_zero_coverage"])
+
+st.write("**Coverage by lens** (out of 91 items):")
+_na_lens_cols = st.columns(4)
+for _i, _lens in enumerate(novelty_audit.LENSES):
+    _na_lens_cols[_i % 4].metric(_lens, _na_summary["lens_totals"][_lens])
+st.caption(
+    "Design, Dynamics, and Safety currently show 0 — an honest gap in this repo (no equipment-"
+    "sizing analysis, no time-domain/transient modeling, and no hazard/ATEX analysis code exist "
+    "here yet), not a bug in the audit."
+)
+
+_na_by_id = {a["equipment_id"]: a for a in _na_audit}
+_na_registry_by_id = {item["id"]: item for item in equipment_registry.load_registry()}
+
+_na_show_all = st.checkbox(
+    "Show all 91 items (default: only the 18 with at least one lens covered)", key="na_show_all",
+)
+_na_items_to_show = _na_audit if _na_show_all else [a for a in _na_audit if a["coverage_count"] > 0]
+_na_items_to_show = sorted(_na_items_to_show, key=lambda a: -a["coverage_count"])
+
+for _a in _na_items_to_show:
+    _eq = _na_registry_by_id[_a["equipment_id"]]
+    _title = f"{_a['equipment_id']} — {_eq['name']}  ·  {_a['coverage_count']}/8 lenses"
+    with st.expander(_title):
+        if _a["coverage_count"] == 0:
+            st.write("_No lens covered yet — no code in this repo currently models this item._")
+        for _lens in novelty_audit.LENSES:
+            if _lens not in _a["evidence"]:
+                continue
+            st.write(f"**{_lens}:**")
+            for _ev in _a["evidence"][_lens]:
+                st.caption(f"— `{_ev['source']}`: {_ev['reasoning']}")
 
 st.divider()
 
