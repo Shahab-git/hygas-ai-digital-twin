@@ -15,6 +15,7 @@ from python import (
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
+    equipment_data_requests,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1879,3 +1880,54 @@ with tab9:
             "`equipment_registry.load_registry()`. See python/equipment_datasheet.py's own "
             "self-test (Step 6) for the same check run standalone."
         )
+
+    st.divider()
+    st.header("Data Request List")
+    st.caption(
+        "**Does NOT send anything to DOK-ING or SMITH2** — same drafting-not-correspondence "
+        "spirit as the Draft Compliance Summary and Confirmation Tracker sections. This turns "
+        "every \"Missing Data — Required\" slot above into one clear request line — item ID, "
+        "item name, missing category, and a short note on what would fill it — grouped by "
+        "section and generated fresh from the live registry every time, so the list can never "
+        "drift out of sync with the real gap: it shrinks automatically as real data lands."
+    )
+
+    if st.button("Generate data request list (.md)"):
+        st.session_state["data_request_draft"] = equipment_data_requests.generate_request_list_markdown(_eq_datasheets)
+
+    if "data_request_draft" in st.session_state:
+        st.download_button(
+            "Download data request list (.md)", data=st.session_state["data_request_draft"],
+            file_name="hygas_ai_equipment_data_requests.md", mime="text/markdown",
+        )
+
+    _dr_requests = equipment_data_requests.build_gap_requests(_eq_datasheets)
+    d1, d2 = st.columns(2)
+    d1.metric("Total data requests", len(_dr_requests))
+    d2.metric("Matches known registry gap", "Yes ✅" if len(_dr_requests) == _all_summary["missing_category_slots"] else "No ❌")
+    _dr_by_section = {}
+    for _r in _dr_requests:
+        _dr_by_section[_r["section"]] = _dr_by_section.get(_r["section"], 0) + 1
+    _dr_pct_missing = {}
+    for _label, _, _ids in equipment_data_requests.SECTIONS:
+        _sec_summary = equipment_datasheet.summarize(_eq_datasheets, ids=_ids)
+        _dr_pct_missing[_label] = (
+            _sec_summary["missing_category_slots"] / _sec_summary["total_category_slots"] * 100
+            if _sec_summary["total_category_slots"] else 0.0
+        )
+    st.caption(
+        "Requests by section, thinnest documentation first: "
+        + ", ".join(
+            f"**{_label}** {_dr_by_section.get(_label, 0)} ({_dr_pct_missing[_label]:.0f}% missing)"
+            for _label, _, _ in sorted(
+                equipment_data_requests.SECTIONS,
+                key=lambda s: _dr_pct_missing[s[0]], reverse=True,
+            )
+        )
+        + f" — {len(_dr_requests)} total, same as the {_all_summary['missing_category_slots']} "
+        "Missing Data — Required slots counted above."
+    )
+
+    if "data_request_draft" in st.session_state:
+        with st.expander("Preview data request list", expanded=False):
+            st.markdown(st.session_state["data_request_draft"])
