@@ -19,7 +19,7 @@ from python import (
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
-tab1, tab2, tab3 = st.tabs(["Digital Twin", "Reserved", "Equipment Datasheets"])
+tab1, tab2, tab3, tab4 = st.tabs(["Digital Twin", "Reserved", "Feed Handling", "Gasification"])
 
 with tab1:
 
@@ -1478,16 +1478,68 @@ with tab1:
 with tab2:
     st.info("Reserved for future work.")
 
+# ---------------------------------------------------------------------
+# Shared equipment-datasheet rendering toolkit — used by every per-
+# section tab below (Feed Handling, Gasification, and future GC/SA/HB/
+# EU/AI tabs as they're built). One registry load, two small render
+# helpers; each section's own tab just supplies its scoped header text
+# and its own id list — this is the pattern to follow for every new
+# equipment section: its own dedicated tab, not appended to an existing
+# one.
+# ---------------------------------------------------------------------
+_eq_datasheets = equipment_datasheet.build_all_datasheets()
+
+
+def _render_equipment_honest_count(summary, n_items):
+    st.subheader("Honest count: how complete is this section, really?")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Real data points", summary["total_real_data_points"])
+    c2.metric(f"Category slots ({n_items} items × 6)", summary["total_category_slots"])
+    c3.metric("Populated categories", summary["populated_category_slots"])
+    c4.metric("Missing Data — Required", summary["missing_category_slots"],
+               delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
+               delta_color="inverse")
+    st.caption(
+        f"{summary['total_real_data_points']} real parameter values are on file across these "
+        f"{n_items} items, but only {summary['populated_category_slots']} of the "
+        f"{summary['total_category_slots']} possible (item × category) slots actually have real "
+        f"data mapped to them — the registry simply doesn't carry every category for every item. "
+        f"That gap is reported honestly, not rounded up."
+    )
+
+
+def _render_equipment_items(ids, per_item_stats):
+    for _item_id in ids:
+        _entry = _eq_datasheets.get(_item_id)
+        if _entry is None:
+            continue
+        _item = _entry["item"]
+        _sheet = _entry["datasheet"]
+        _stat = per_item_stats[_item_id]
+        with st.expander(f"**{_item_id}** — {_item['name']}  ·  {_stat['populated_categories']}/6 categories populated"):
+            for _cat in equipment_datasheet.CATEGORIES:
+                _rows = _sheet[_cat]
+                if not _rows:
+                    st.error(f"**{_cat}:** Missing Data — Required")
+                    continue
+                st.markdown(f"**{_cat}**")
+                _cat_df = pd.DataFrame([
+                    {"Parameter": p["parameter"], "Value": p["value"], "Unit": p["unit"], "Remarks": p.get("remarks", "")}
+                    for p in _rows
+                ])
+                st.dataframe(_cat_df, use_container_width=True, hide_index=True)
+
+
 with tab3:
-    st.header("Equipment Datasheets")
+    st.header("Equipment Datasheets — Feed Handling (FE-001 through FE-008)")
     st.warning(
-        "**Deliberately scoped, incremental coverage: FE-001–008 (Feed Handling) and GA-001–010 "
-        "(Gasification) so far — 18 of the 91 registry items.** The other 73 items are NOT covered "
-        "yet — this stays a narrow, growing section, not a simplified stand-in for the rest. Every "
-        "data point below is read directly from `equipment_registry.load_registry()` — the same "
-        "loader Vendor Sourcing (Tab 1) already uses, not a re-derived or simplified copy. Nothing "
-        "here infers, estimates, or backfills a value that isn't literally present in the registry. "
-        "See `python/equipment_datasheet.py` for the full categorization methodology and the exact "
+        "**Deliberately scoped: FE-001 through FE-008 only, one of a growing set of per-section "
+        "tabs** (see the Gasification tab for GA-001–010; future sections — GC, SA, HB, EU, AI — "
+        "each get their own dedicated tab too, not appended here). Every data point below is read "
+        "directly from `equipment_registry.load_registry()` — the same loader Vendor Sourcing "
+        "(Tab 1) already uses, not a re-derived or simplified copy. Nothing here infers, estimates, "
+        "or backfills a value that isn't literally present in the registry. See "
+        "`python/equipment_datasheet.py` for the full categorization methodology and the exact "
         "keyword rule used to sort each real parameter into a category.",
         icon="⚠️",
     )
@@ -1499,70 +1551,30 @@ with tab3:
         "plausible-sounding placeholder."
     )
 
-    _eq_datasheets = equipment_datasheet.build_all_datasheets()
     _fe_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.FE_IDS)
-    _ga_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.GA_IDS)
+    _render_equipment_honest_count(_fe_summary, 8)
+    st.divider()
+    _render_equipment_items(equipment_datasheet.FE_IDS, _fe_summary["per_item"])
 
-    def _render_honest_count(title, summary, n_items):
-        st.subheader(title)
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Real data points", summary["total_real_data_points"])
-        c2.metric(f"Category slots ({n_items} items × 6)", summary["total_category_slots"])
-        c3.metric("Populated categories", summary["populated_category_slots"])
-        c4.metric("Missing Data — Required", summary["missing_category_slots"],
-                   delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
-                   delta_color="inverse")
-        st.caption(
-            f"{summary['total_real_data_points']} real parameter values are on file across these "
-            f"{n_items} items, but only {summary['populated_category_slots']} of the "
-            f"{summary['total_category_slots']} possible (item × category) slots actually have real "
-            f"data mapped to them — the registry simply doesn't carry every category for every item. "
-            f"That gap is reported honestly below, not rounded up."
-        )
-
-    st.subheader("Honest count: how complete is this coverage, really?")
-    st.caption(
-        "Reported per section, not blended into one number — including a check that adding the GA "
-        "section left the FE section's own earlier count untouched."
+with tab4:
+    st.header("Equipment Datasheets — Gasification (GA-001 through GA-010)")
+    st.warning(
+        "**Deliberately scoped: GA-001 through GA-010 only — the second of a growing set of "
+        "per-section tabs** (Feed Handling's FE-001–008 has its own tab; future sections — GC, SA, "
+        "HB, EU, AI — each get their own dedicated tab too). Same real registry source and same "
+        "six-category methodology as the Feed Handling tab, not a rewrite — see "
+        "`python/equipment_datasheet.py` for the keyword-rule extensions this section needed and "
+        "why each one was added.",
+        icon="⚠️",
     )
-    _render_honest_count("Feed Handling (FE-001–008)", _fe_summary, 8)
-    if _fe_summary["total_real_data_points"] == 69 and _fe_summary["populated_category_slots"] == 26:
-        st.success("Unchanged from before the GA extension: 69 real data points, 26/48 categories populated.")
-    else:
-        st.error(
-            f"**Regression:** FE's count changed to {_fe_summary['total_real_data_points']} real data "
-            f"points, {_fe_summary['populated_category_slots']}/48 populated — was 69/26 before the GA "
-            f"extension. The keyword-rule extension affected FE classification; see "
-            f"python/equipment_datasheet.py."
-        )
+    st.caption(
+        "Each item's real registry parameters are sorted into six categories — Inputs, Outputs, "
+        "Parameters, Measurements, Operating Conditions, Performance Indicators — by the same "
+        "documented keyword rule as Feed Handling. A category with no real data mapped to it is "
+        "shown as **Missing Data — Required**, never a plausible-sounding placeholder."
+    )
+
+    _ga_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.GA_IDS)
+    _render_equipment_honest_count(_ga_summary, 10)
     st.divider()
-    _render_honest_count("Gasification (GA-001–010)", _ga_summary, 10)
-
-    st.divider()
-
-    def _render_datasheet_items(ids, per_item_stats):
-        for _item_id in ids:
-            _entry = _eq_datasheets.get(_item_id)
-            if _entry is None:
-                continue
-            _item = _entry["item"]
-            _sheet = _entry["datasheet"]
-            _stat = per_item_stats[_item_id]
-            with st.expander(f"**{_item_id}** — {_item['name']}  ·  {_stat['populated_categories']}/6 categories populated"):
-                for _cat in equipment_datasheet.CATEGORIES:
-                    _rows = _sheet[_cat]
-                    if not _rows:
-                        st.error(f"**{_cat}:** Missing Data — Required")
-                        continue
-                    st.markdown(f"**{_cat}**")
-                    _cat_df = pd.DataFrame([
-                        {"Parameter": p["parameter"], "Value": p["value"], "Unit": p["unit"], "Remarks": p.get("remarks", "")}
-                        for p in _rows
-                    ])
-                    st.dataframe(_cat_df, use_container_width=True, hide_index=True)
-
-    st.subheader("Feed Handling — FE-001 through FE-008")
-    _render_datasheet_items(equipment_datasheet.FE_IDS, _fe_summary["per_item"])
-
-    st.subheader("Gasification — GA-001 through GA-010")
-    _render_datasheet_items(equipment_datasheet.GA_IDS, _ga_summary["per_item"])
+    _render_equipment_items(equipment_datasheet.GA_IDS, _ga_summary["per_item"])
