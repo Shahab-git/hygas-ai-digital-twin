@@ -1,14 +1,15 @@
 """
 Equipment datasheet view v1 — Feed Handling (FE-001..FE-008),
 Gasification (GA-001..GA-010), Gas Cleaning (GC-001..GC-015), Sensors &
-Analysers (SA-001..SA-012), and Hydrogen/Balance-of-Plant
-(HB-001..HB-018) only.
+Analysers (SA-001..SA-012), Hydrogen/Balance-of-Plant (HB-001..HB-018),
+and Electrical/Utilities (EU-001..EU-013) only.
 
 SCOPE: a deliberately scoped, incremental pass, one equipment section at
 a time. First shipped covering just FE-001..FE-008, then GA-001..GA-010,
-then GC-001..GC-015, then SA-001..SA-012, now HB-001..HB-018 -- each new
-section uses the SAME methodology, no rewrite of what came before. The
-other 28 items in the 91-item registry are still NOT attempted here.
+then GC-001..GC-015, then SA-001..SA-012, then HB-001..HB-018, now
+EU-001..EU-013 -- each new section uses the SAME methodology, no rewrite
+of what came before. The other 15 items in the 91-item registry are
+still NOT attempted here.
 
 HB IS THE SECTION CONTAINING THE ALREADY-VALIDATED WGS REACTION KINETICS
 (HB-001 HTS reactor, HB-004 LTS reactor) THIS PROJECT RELIES ON
@@ -210,14 +211,27 @@ call, and this module doesn't force it either way).
 For HB, three small, well-justified additions, each checked against
 every FE/GA/GC/SA/HB-so-far parameter name for false positives before
 shipping (zero found outside HB in all three cases):
-  - "recovery" added to Performance Indicators: HB-007's and HB-010's
-    "H₂ recovery rate" fields are the exact same kind of headline
-    process-performance metric "efficiency" already captures elsewhere
-    (this project's own psa.py and app.py already treat "PSA recovery"
-    as a first-class KPI, not a generic parameter) -- 2 genuine new
-    matches, 0 false positives. (HB-017's "Recovery efficiency" already
-    matched via "efficiency" either way, so this addition is additive
-    there, not load-bearing.)
+  - "recovery rate" added to Performance Indicators: HB-007's and
+    HB-010's "H₂ recovery rate" fields are the exact same kind of
+    headline process-performance metric "efficiency" already captures
+    elsewhere (this project's own psa.py and app.py already treat "PSA
+    recovery" as a first-class KPI, not a generic parameter) -- 2
+    genuine new matches, 0 false positives at the time. (HB-017's
+    "Recovery efficiency" already matched via "efficiency" either way,
+    so this addition was additive there, not load-bearing.) CORRECTED
+    LATER, when EU was added: this was first shipped as the bare word
+    "recovery", which worked for HB at the time but was a latent bug --
+    EU-004's "Jacket cooling heat recovery" / "Exhaust heat recovery" /
+    "Total heat recovery potential" (heat DUTY quantities in kW, not
+    percentage-style KPIs) and EU-011's "Recovery medium" (names a
+    substance, "Water") would all have been wrongly swept into
+    Performance Indicators by the bare word. Caught before shipping EU,
+    fixed by tightening the keyword to the exact phrase "recovery rate"
+    -- verified this still matches both original HB-007/HB-010 fields
+    unchanged (both literally contain "recovery rate"), and confirmed
+    against every FE/GA/GC/SA/HB/EU parameter name that the tightened
+    phrase now has zero false positives anywhere, including the EU
+    fields that broke the old bare-word version.
   - "feed gas" added to Inputs: HB-006's "Feed gas H₂ content"
     characterizes the incoming stream the same way FE-005's "Inlet
     moisture" already does, just worded differently -- 1 genuine new
@@ -250,6 +264,37 @@ reading (a pressure value at a named location is itself an operating
 condition), consistent with FE-007's "Operating pressure (hydraulic)"
 precedent, not a new special case introduced for HB.
 
+For EU (electrical/utilities), one bug fix and one genuine addition,
+both checked against every FE/GA/GC/SA/HB/EU parameter name before
+shipping:
+  - The "recovery" -> "recovery rate" fix described above under HB --
+    EU is the section that actually exposed the bug, since EU-004/
+    EU-011 are full of legitimate, non-KPI uses of the word "recovery"
+    (heat recovery duties, a recovery medium) that the bare word would
+    have wrongly swept into Performance Indicators.
+  - "power meter" added to Measurements: EU-002's and EU-003's "Power
+    meter type" / "Power meter / protection relay" are real
+    instrumentation (a power meter, the electrical equivalent of the
+    "flow meter" keyword already covers for gas) -- 2 genuine new
+    matches, 0 false positives, and both are the LAST category each of
+    those two items needed: EU-002 and EU-003 go from 5/6 to 6/6
+    populated, the first two fully-populated items across every section
+    shipped so far.
+Two more "meter"-adjacent candidates were found and deliberately left
+unadded, same bar as "permeate"/"metering" under HB: EU-009's bare
+"Meter type" and EU-013's "Metering standard" are real instruments too,
+but neither is named "power meter" or "flow meter" specifically, and
+in both cases Measurements was already populated for that item via
+other fields ("Accuracy class"/"Measurement range" for EU-009,
+"Metered energy accuracy class" for EU-013) -- reclassifying the bare
+"meter"/"metering" wording would move an item between two already-
+populated buckets, not populate a new one, the same low-value bar every
+prior section's declined candidates failed to clear. A bare "meter"
+keyword was NOT reconsidered at all here -- it was already rejected for
+GA-001's "diameter" false positive, and the same "diameter" risk
+recurring in GC-004/GC-006/GC-008's own diameter fields (checked again
+here, still present) confirms that rejection remains correct.
+
 This rule was checked BY HAND against all 69 real FE-001..FE-008
 parameters when first written, again against all 76 real GA-001..GA-010
 parameters (77 minus the one null row) before the GA extension, again
@@ -258,15 +303,18 @@ GC has no null rows) before the GC extension, again against all 85
 real SA-001..SA-012 parameters (all 85 rows are real -- SA has no null
 rows either, though SA-005's own "parameters_filled" metadata claims one
 more filled row than actually exists in its list; see the source-data
-quirks above) before the SA extension, and again against all 154 real
+quirks above) before the SA extension, again against all 154 real
 HB-001..HB-018 parameters (all 154 rows are real -- HB has no null rows)
-before this HB extension was written as code — see this module's own
-self-test, which prints every parameter's assigned category so the
-mapping stays auditable, not a black box, and includes hardcoded
-regression checks that FE's (69 real data points, 26 of 48 slots), GA's
-(84 real data points, 27 of 60 slots), GC's (115 real data points, 52 of
-90 slots), and SA's (85 real data points, 26 of 72 slots) counts are
-byte-for-byte unchanged by the HB addition.
+before the HB extension, and again against all 114 real EU-001..EU-013
+parameters (all 114 rows are real -- EU has no null rows) before this EU
+extension was written as code — see this module's own self-test, which
+prints every parameter's assigned category so the mapping stays
+auditable, not a black box, and includes hardcoded regression checks
+that FE's (69 real data points, 26 of 48 slots), GA's (84 real data
+points, 27 of 60 slots), GC's (115 real data points, 52 of 90 slots),
+SA's (85 real data points, 26 of 72 slots), and HB's (154 real data
+points, 56 of 108 slots) counts are byte-for-byte unchanged by the EU
+addition.
 
 DATA-QUALITY NOTE, reported honestly rather than silently fixed: a
 handful of parameter rows already in the committed
@@ -289,7 +337,8 @@ GA_IDS = [f"GA-{i:03d}" for i in range(1, 11)]
 GC_IDS = [f"GC-{i:03d}" for i in range(1, 16)]
 SA_IDS = [f"SA-{i:03d}" for i in range(1, 13)]
 HB_IDS = [f"HB-{i:03d}" for i in range(1, 19)]
-ITEM_IDS = FE_IDS + GA_IDS + GC_IDS + SA_IDS + HB_IDS  # registry's own numbering, each section in order -- no renumbering
+EU_IDS = [f"EU-{i:03d}" for i in range(1, 14)]
+ITEM_IDS = FE_IDS + GA_IDS + GC_IDS + SA_IDS + HB_IDS + EU_IDS  # registry's own numbering, each section in order -- no renumbering
 
 CATEGORIES = [
     "Inputs", "Outputs", "Parameters", "Measurements",
@@ -298,12 +347,12 @@ CATEGORIES = [
 
 _MEASUREMENTS_KEYWORDS = (
     "sensor", "measurement", "accuracy", "calibration", "response time", "output signal",
-    "flow meter", "transmitter", "analyser", "monitor",
+    "flow meter", "transmitter", "analyser", "monitor", "power meter",
 )
 _OPERATING_KEYWORDS = ("operating", "ambient", "pressure")
 _OUTPUTS_KEYWORDS = ("outlet", "output", "discharge rate", "product", "production rate")
 _INPUTS_KEYWORDS = ("inlet", "feed rate", "throughput", "flow rate", "feed gas")
-_PERFORMANCE_KEYWORDS = ("efficiency", "recovery")
+_PERFORMANCE_KEYWORDS = ("efficiency", "recovery rate")
 
 
 def classify(parameter_name):
@@ -438,39 +487,13 @@ if __name__ == "__main__":
     print(f"Missing Data - Required category slots: {sa_summary['missing_category_slots']} "
           f"({sa_summary['missing_category_slots'] / sa_summary['total_category_slots'] * 100:.0f}%)")
 
-    print("\n=== Step 5 (HB): honest count, this section specifically ===")
+    print("\n=== HB: honest count ===")
     hb_summary = summarize(datasheets, ids=HB_IDS)
     print(f"Total real data points (18 HB items): {hb_summary['total_real_data_points']}")
     print(f"Total category slots (18 x 6): {hb_summary['total_category_slots']}")
     print(f"Populated category slots: {hb_summary['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {hb_summary['missing_category_slots']} "
           f"({hb_summary['missing_category_slots'] / hb_summary['total_category_slots'] * 100:.0f}%)")
-    for item_id, stat in hb_summary["per_item"].items():
-        print(f"  {item_id}: {stat['real_data_points']} real data points, "
-              f"{stat['populated_categories']}/6 categories populated")
-
-    print("\n=== Step 5: regression check -- did the HB addition change FE's, GA's, GC's, or SA's own numbers? ===")
-    EXPECTED = {
-        "FE": (fe_summary, 69, 26, 22, 48),
-        "GA": (ga_summary, 84, 27, 33, 60),
-        "GC": (gc_summary, 115, 52, 38, 90),
-        "SA": (sa_summary, 85, 26, 46, 72),
-    }
-    all_ok = True
-    for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
-        ok = (
-            summary["total_real_data_points"] == exp_real
-            and summary["populated_category_slots"] == exp_pop
-            and summary["missing_category_slots"] == exp_missing
-        )
-        all_ok = all_ok and ok
-        print(f"  {label}: expected {exp_real} real data points, {exp_pop}/{n_slots} populated, "
-              f"{exp_missing}/{n_slots} missing.")
-        print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
-              f"{summary['populated_category_slots']}/{n_slots} populated, "
-              f"{summary['missing_category_slots']}/{n_slots} missing.")
-        assert ok, f"REGRESSION: the HB addition changed {label}'s own classification!"
-    print("PASSED -- FE's, GA's, GC's, and SA's classifications are all byte-for-byte unchanged by the HB addition.")
 
     print("\n=== Kinetics-critical HB fields, verified by name ===")
     hb_by_id = {k: v for k, v in datasheets.items() if k in HB_IDS}
@@ -490,10 +513,62 @@ if __name__ == "__main__":
         print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat})")
         assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
 
-    print("\n=== Combined (FE + GA + GC + SA + HB) ===")
+    print("\n=== Step 5 (EU): honest count, this section specifically ===")
+    eu_summary = summarize(datasheets, ids=EU_IDS)
+    print(f"Total real data points (13 EU items): {eu_summary['total_real_data_points']}")
+    print(f"Total category slots (13 x 6): {eu_summary['total_category_slots']}")
+    print(f"Populated category slots: {eu_summary['populated_category_slots']}")
+    print(f"Missing Data - Required category slots: {eu_summary['missing_category_slots']} "
+          f"({eu_summary['missing_category_slots'] / eu_summary['total_category_slots'] * 100:.0f}%)")
+    for item_id, stat in eu_summary["per_item"].items():
+        print(f"  {item_id}: {stat['real_data_points']} real data points, "
+              f"{stat['populated_categories']}/6 categories populated")
+
+    print("\n=== Step 5: regression check -- did the EU addition change FE's, GA's, GC's, SA's, or HB's own numbers? ===")
+    EXPECTED = {
+        "FE": (fe_summary, 69, 26, 22, 48),
+        "GA": (ga_summary, 84, 27, 33, 60),
+        "GC": (gc_summary, 115, 52, 38, 90),
+        "SA": (sa_summary, 85, 26, 46, 72),
+        "HB": (hb_summary, 154, 56, 52, 108),
+    }
+    all_ok = True
+    for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
+        ok = (
+            summary["total_real_data_points"] == exp_real
+            and summary["populated_category_slots"] == exp_pop
+            and summary["missing_category_slots"] == exp_missing
+        )
+        all_ok = all_ok and ok
+        print(f"  {label}: expected {exp_real} real data points, {exp_pop}/{n_slots} populated, "
+              f"{exp_missing}/{n_slots} missing.")
+        print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
+              f"{summary['populated_category_slots']}/{n_slots} populated, "
+              f"{summary['missing_category_slots']}/{n_slots} missing.")
+        assert ok, f"REGRESSION: the EU addition changed {label}'s own classification!"
+    print("PASSED -- FE's, GA's, GC's, SA's, and HB's classifications are all byte-for-byte unchanged by the EU addition.")
+
+    print("\n=== Recovery-rate bug-fix check: does the tightened keyword avoid EU's false positives? ===")
+    eu_by_id = {k: v for k, v in datasheets.items() if k in EU_IDS}
+    non_performance_checks = [
+        ("EU-004", "Jacket cooling heat recovery", "Parameters"),
+        ("EU-004", "Exhaust heat recovery", "Parameters"),
+        ("EU-004", "Total heat recovery potential", "Parameters"),
+        ("EU-011", "Recovery medium", "Parameters"),
+    ]
+    for item_id, param_name, expected_cat in non_performance_checks:
+        sheet = eu_by_id[item_id]["datasheet"]
+        actual_cat = next(
+            (cat for cat, rows in sheet.items() if any(r["parameter"] == param_name for r in rows)), None
+        )
+        status = "OK" if actual_cat == expected_cat else "MISMATCH"
+        print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat}, NOT Performance Indicators)")
+        assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
+
+    print("\n=== Combined (FE + GA + GC + SA + HB + EU) ===")
     combined = summarize(datasheets)
-    print(f"Total real data points (63 items): {combined['total_real_data_points']}")
-    print(f"Total category slots (63 x 6): {combined['total_category_slots']}")
+    print(f"Total real data points (76 items): {combined['total_real_data_points']}")
+    print(f"Total category slots (76 x 6): {combined['total_category_slots']}")
     print(f"Populated category slots: {combined['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {combined['missing_category_slots']} "
           f"({combined['missing_category_slots'] / combined['total_category_slots'] * 100:.0f}%)")
