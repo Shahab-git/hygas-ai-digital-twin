@@ -19,7 +19,9 @@ from python import (
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Digital Twin", "Reserved", "Feed Handling", "Gasification"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["Digital Twin", "Reserved", "Feed Handling", "Gasification", "Gas Cleaning"]
+)
 
 with tab1:
 
@@ -1534,8 +1536,9 @@ with tab3:
     st.header("Equipment Datasheets — Feed Handling (FE-001 through FE-008)")
     st.warning(
         "**Deliberately scoped: FE-001 through FE-008 only, one of a growing set of per-section "
-        "tabs** (see the Gasification tab for GA-001–010; future sections — GC, SA, HB, EU, AI — "
-        "each get their own dedicated tab too, not appended here). Every data point below is read "
+        "tabs** (see the Gasification and Gas Cleaning tabs for GA-001–010 and GC-001–015; future "
+        "sections — SA, HB, EU, AI — each get their own dedicated tab too, not appended here). "
+        "Every data point below is read "
         "directly from `equipment_registry.load_registry()` — the same loader Vendor Sourcing "
         "(Tab 1) already uses, not a re-derived or simplified copy. Nothing here infers, estimates, "
         "or backfills a value that isn't literally present in the registry. See "
@@ -1559,9 +1562,10 @@ with tab3:
 with tab4:
     st.header("Equipment Datasheets — Gasification (GA-001 through GA-010)")
     st.warning(
-        "**Deliberately scoped: GA-001 through GA-010 only — the second of a growing set of "
-        "per-section tabs** (Feed Handling's FE-001–008 has its own tab; future sections — GC, SA, "
-        "HB, EU, AI — each get their own dedicated tab too). Same real registry source and same "
+        "**Deliberately scoped: GA-001 through GA-010 only — one of a growing set of "
+        "per-section tabs** (Feed Handling's FE-001–008 and Gas Cleaning's GC-001–015 each have "
+        "their own tab; future sections — SA, HB, EU, AI — each get their own dedicated tab too). "
+        "Same real registry source and same "
         "six-category methodology as the Feed Handling tab, not a rewrite — see "
         "`python/equipment_datasheet.py` for the keyword-rule extensions this section needed and "
         "why each one was added.",
@@ -1578,3 +1582,41 @@ with tab4:
     _render_equipment_honest_count(_ga_summary, 10)
     st.divider()
     _render_equipment_items(equipment_datasheet.GA_IDS, _ga_summary["per_item"])
+
+with tab5:
+    st.header("Equipment Datasheets — Gas Cleaning (GC-001 through GC-015)")
+    st.warning(
+        "**Deliberately scoped: GC-001 through GC-015 only — one of a growing set of "
+        "per-section tabs** (Feed Handling's FE-001–008 and Gasification's GA-001–010 each have "
+        "their own tab; future sections — SA, HB, EU, AI — each get their own dedicated tab too). "
+        "Same real registry source and same six-category methodology as Feed Handling and "
+        "Gasification, not a rewrite — see `python/equipment_datasheet.py` for the keyword-rule "
+        "extension this section needed (two new instrumentation terms — \"analyser\", \"monitor\") "
+        "and why it was added.",
+        icon="⚠️",
+    )
+    st.caption(
+        "Each item's real registry parameters are sorted into six categories — Inputs, Outputs, "
+        "Parameters, Measurements, Operating Conditions, Performance Indicators — by the same "
+        "documented keyword rule as Feed Handling and Gasification. A category with no real data "
+        "mapped to it is shown as **Missing Data — Required**, never a plausible-sounding "
+        "placeholder."
+    )
+
+    _gc_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.GC_IDS)
+    _render_equipment_honest_count(_gc_summary, 15)
+    if (_fe_summary["total_real_data_points"] == 69 and _fe_summary["populated_category_slots"] == 26
+            and _ga_summary["total_real_data_points"] == 84 and _ga_summary["populated_category_slots"] == 27):
+        st.success(
+            "Regression check: FE (69 real data points, 26/48 populated) and GA (84 real data "
+            "points, 27/60 populated) are both unchanged by adding this Gas Cleaning section."
+        )
+    else:
+        st.error(
+            f"**Regression:** FE and/or GA's counts changed after adding Gas Cleaning — FE now "
+            f"{_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, GA now "
+            f"{_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']} "
+            f"(expected 69/26 and 84/27). See python/equipment_datasheet.py."
+        )
+    st.divider()
+    _render_equipment_items(equipment_datasheet.GC_IDS, _gc_summary["per_item"])

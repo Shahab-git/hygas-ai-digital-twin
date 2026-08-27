@@ -1,11 +1,12 @@
 """
-Equipment datasheet view v1 — Feed Handling (FE-001..FE-008) and
-Gasification (GA-001..GA-010) only.
+Equipment datasheet view v1 — Feed Handling (FE-001..FE-008),
+Gasification (GA-001..GA-010), and Gas Cleaning (GC-001..GC-015) only.
 
-SCOPE: a deliberately scoped, incremental pass. First shipped covering
-just FE-001..FE-008; this version adds GA-001..GA-010 (the gasification
-section) using the SAME methodology, no rewrite. The other 73 items in
-the 91-item registry are still NOT attempted here.
+SCOPE: a deliberately scoped, incremental pass, one equipment section at
+a time. First shipped covering just FE-001..FE-008, then GA-001..GA-010,
+now GC-001..GC-015 -- each new section uses the SAME methodology, no
+rewrite of what came before. The other 58 items in the 91-item registry
+are still NOT attempted here.
 
 HARD RULE, enforced by code, not just convention: every data point shown
 is read directly from equipment_registry.load_registry() — the SAME
@@ -20,10 +21,10 @@ registry (GA-002's "Vendor / model (transmitter)") is present in the
 item's parameter list but carries value=None, unit=None — an explicit
 placeholder for an unfilled slot, unlike FE, where unfilled slots are
 simply absent from the list entirely. Checked directly: this is the ONLY
-such row across FE-001..FE-008 and GA-001..GA-010. Any row with a None
-value is excluded before classification — it is not real data and must
-not count as one, and must not be treated as populating whatever
-category it would otherwise map to.
+such row across FE-001..FE-008, GA-001..GA-010, and GC-001..GC-015 (GC
+has none). Any row with a None value is excluded before classification
+— it is not real data and must not count as one, and must not be
+treated as populating whatever category it would otherwise map to.
 
 CATEGORIZATION METHOD: each item's real parameters (already extracted
 from the source workbook — see equipment_registry.py's own docstring)
@@ -47,19 +48,36 @@ text (checked in the order below; first match wins, else Parameters):
   1. Measurements          -- "sensor", "measurement", "accuracy",
                                "calibration", "response time",
                                "output signal", "flow meter",
-                               "transmitter" (the last two added for GA:
-                               "flow meter" and "pressure transmitter"
-                               are real instrumentation terms FE never
-                               used. NOTE: a bare "meter" was tried
-                               first and caught in testing as wrong --
-                               it silently matched GA-001's "Vessel
-                               internal diameter" ("dia-METER"),
-                               misclassifying a physical dimension as an
-                               instrument reading. Caught by scanning
-                               every FE/GA parameter name for the
-                               substring before shipping, and fixed by
-                               using the specific phrase "flow meter"
-                               instead of the bare word)
+                               "transmitter", "analyser", "monitor"
+                               ("flow meter"/"transmitter" added for GA;
+                               "analyser"/"monitor" added for GC: GC-007/
+                               GC-008's "Tar analyser type" and "H₂S
+                               analyser (inlet/outlet) type", and
+                               GC-010/012/015's "Optical dust monitor
+                               type" / "Breakthrough monitoring" / "pH
+                               monitoring" are real instrumentation terms
+                               neither FE nor GA used. Checked directly:
+                               scanned every FE, GA, and GC parameter
+                               name for both substrings before adding --
+                               6 real matches, all genuine instruments,
+                               zero false positives. Priority matters
+                               here too: "H₂S analyser (inlet) type"
+                               matches Measurements at priority 1 before
+                               it could ever reach the Inputs "inlet"
+                               keyword at priority 4, so the analyser
+                               itself is correctly classified as an
+                               instrument, not confused with the H₂S
+                               stream it measures. NOTE: a bare "meter"
+                               was tried first for the GA extension and
+                               caught in testing as wrong -- it silently
+                               matched GA-001's "Vessel internal
+                               diameter" ("dia-METER"), misclassifying a
+                               physical dimension as an instrument
+                               reading. Caught by scanning every FE/GA
+                               parameter name for the substring before
+                               shipping, and fixed by using the specific
+                               phrase "flow meter" instead of the bare
+                               word)
   2. Operating Conditions  -- "operating", "ambient", "pressure"
   3. Outputs               -- "outlet", "output", "discharge rate",
                                "product" (last two added for GA: "Ash
@@ -98,14 +116,32 @@ they were left out. "Air preheat temperature" and GA-006/008/009/010's
 various "capacity" parameters fall through to Parameters by default --
 a defensible, if imperfect, reading, not an obvious error.
 
+For GC, the existing rule (Inputs/Outputs/Operating Conditions/
+Performance Indicators, and the design-value override) needed NO new
+keywords beyond Measurements' "analyser"/"monitor" above -- GC's real
+parameters reuse "inlet"/"outlet" (e.g. "Inlet gas temperature",
+"Tar outlet concentration (target)"), "flow rate" (e.g. "Design gas flow
+rate"), "operating"/"pressure" (e.g. "Operating temperature", "Design
+pressure drop"), and "efficiency" (e.g. "Removal efficiency", "Collection
+efficiency") exactly as FE and GA already did. One genuinely new,
+GC-specific wording gap was noticed but deliberately NOT special-cased:
+"Design gas flow" (GC-009, no "rate" suffix) does not match the
+"flow rate" keyword the way GC-001/003/013's "Design gas flow RATE" does
+-- both describe the same kind of quantity, worded slightly differently
+in the real source data, and this module reflects that real variance
+rather than papering over it with looser matching that risks new false
+positives elsewhere.
+
 This rule was checked BY HAND against all 69 real FE-001..FE-008
-parameters when first written, and again against all 76 real (77 minus
-the one null row) GA-001..GA-010 parameters before this extension was
-written as code — see this module's own self-test, which prints every
-parameter's assigned category so the mapping stays auditable, not a
-black box, and includes a hardcoded regression check that FE's own
-counts (69 real data points, 26 of 48 category slots populated) are
-byte-for-byte unchanged by the GA extension.
+parameters when first written, again against all 76 real GA-001..GA-010
+parameters (77 minus the one null row) before the GA extension, and
+again against all 115 real GC-001..GC-015 parameters (all 115 rows are
+real -- GC has no null rows) before this GC extension was written as
+code — see this module's own self-test, which prints every parameter's
+assigned category so the mapping stays auditable, not a black box, and
+includes hardcoded regression checks that FE's (69 real data points, 26
+of 48 slots) and GA's (84 real data points, 27 of 60 slots) counts are
+byte-for-byte unchanged by the GC extension.
 
 DATA-QUALITY NOTE, reported honestly rather than silently fixed: a
 handful of parameter rows already in the committed
@@ -125,7 +161,8 @@ from . import equipment_registry
 
 FE_IDS = [f"FE-{i:03d}" for i in range(1, 9)]
 GA_IDS = [f"GA-{i:03d}" for i in range(1, 11)]
-ITEM_IDS = FE_IDS + GA_IDS  # registry's own numbering, FE section first, GA after -- no renumbering
+GC_IDS = [f"GC-{i:03d}" for i in range(1, 16)]
+ITEM_IDS = FE_IDS + GA_IDS + GC_IDS  # registry's own numbering, each section in order -- no renumbering
 
 CATEGORIES = [
     "Inputs", "Outputs", "Parameters", "Measurements",
@@ -134,7 +171,7 @@ CATEGORIES = [
 
 _MEASUREMENTS_KEYWORDS = (
     "sensor", "measurement", "accuracy", "calibration", "response time", "output signal",
-    "flow meter", "transmitter",
+    "flow meter", "transmitter", "analyser", "monitor",
 )
 _OPERATING_KEYWORDS = ("operating", "ambient", "pressure")
 _OUTPUTS_KEYWORDS = ("outlet", "output", "discharge rate", "product")
@@ -250,37 +287,50 @@ if __name__ == "__main__":
     print(f"Missing Data - Required category slots: {fe_summary['missing_category_slots']} "
           f"({fe_summary['missing_category_slots'] / fe_summary['total_category_slots'] * 100:.0f}%)")
 
-    print("\n=== Step 5/6 (GA): honest count, this section specifically ===")
+    print("\n=== GA: honest count ===")
     ga_summary = summarize(datasheets, ids=GA_IDS)
     print(f"Total real data points (10 GA items): {ga_summary['total_real_data_points']}")
     print(f"Total category slots (10 x 6): {ga_summary['total_category_slots']}")
     print(f"Populated category slots: {ga_summary['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {ga_summary['missing_category_slots']} "
           f"({ga_summary['missing_category_slots'] / ga_summary['total_category_slots'] * 100:.0f}%)")
-    for item_id, stat in ga_summary["per_item"].items():
+
+    print("\n=== Step 5 (GC): honest count, this section specifically ===")
+    gc_summary = summarize(datasheets, ids=GC_IDS)
+    print(f"Total real data points (15 GC items): {gc_summary['total_real_data_points']}")
+    print(f"Total category slots (15 x 6): {gc_summary['total_category_slots']}")
+    print(f"Populated category slots: {gc_summary['populated_category_slots']}")
+    print(f"Missing Data - Required category slots: {gc_summary['missing_category_slots']} "
+          f"({gc_summary['missing_category_slots'] / gc_summary['total_category_slots'] * 100:.0f}%)")
+    for item_id, stat in gc_summary["per_item"].items():
         print(f"  {item_id}: {stat['real_data_points']} real data points, "
               f"{stat['populated_categories']}/6 categories populated")
 
-    print("\n=== Step 6: regression check -- did the GA extension change FE's own numbers? ===")
-    EXPECTED_FE_REAL_DATA_POINTS = 69
-    EXPECTED_FE_POPULATED_SLOTS = 26
-    EXPECTED_FE_MISSING_SLOTS = 22
-    fe_ok = (
-        fe_summary["total_real_data_points"] == EXPECTED_FE_REAL_DATA_POINTS
-        and fe_summary["populated_category_slots"] == EXPECTED_FE_POPULATED_SLOTS
-        and fe_summary["missing_category_slots"] == EXPECTED_FE_MISSING_SLOTS
-    )
-    print(f"Expected (previously reported): {EXPECTED_FE_REAL_DATA_POINTS} real data points, "
-          f"{EXPECTED_FE_POPULATED_SLOTS}/48 populated, {EXPECTED_FE_MISSING_SLOTS}/48 missing.")
-    print(f"Actual after GA extension:      {fe_summary['total_real_data_points']} real data points, "
-          f"{fe_summary['populated_category_slots']}/48 populated, {fe_summary['missing_category_slots']}/48 missing.")
-    assert fe_ok, "REGRESSION: the GA rule extension changed FE's own classification!"
-    print("PASSED -- FE's classification is byte-for-byte unchanged by the GA extension.")
+    print("\n=== Step 5: regression check -- did the GC extension change FE's or GA's own numbers? ===")
+    EXPECTED = {
+        "FE": (fe_summary, 69, 26, 22, 48),
+        "GA": (ga_summary, 84, 27, 33, 60),
+    }
+    all_ok = True
+    for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
+        ok = (
+            summary["total_real_data_points"] == exp_real
+            and summary["populated_category_slots"] == exp_pop
+            and summary["missing_category_slots"] == exp_missing
+        )
+        all_ok = all_ok and ok
+        print(f"  {label}: expected {exp_real} real data points, {exp_pop}/{n_slots} populated, "
+              f"{exp_missing}/{n_slots} missing.")
+        print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
+              f"{summary['populated_category_slots']}/{n_slots} populated, "
+              f"{summary['missing_category_slots']}/{n_slots} missing.")
+        assert ok, f"REGRESSION: the GC rule extension changed {label}'s own classification!"
+    print("PASSED -- both FE's and GA's classifications are byte-for-byte unchanged by the GC extension.")
 
-    print("\n=== Combined (FE + GA) ===")
+    print("\n=== Combined (FE + GA + GC) ===")
     combined = summarize(datasheets)
-    print(f"Total real data points (18 items): {combined['total_real_data_points']}")
-    print(f"Total category slots (18 x 6): {combined['total_category_slots']}")
+    print(f"Total real data points (33 items): {combined['total_real_data_points']}")
+    print(f"Total category slots (33 x 6): {combined['total_category_slots']}")
     print(f"Populated category slots: {combined['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {combined['missing_category_slots']} "
           f"({combined['missing_category_slots'] / combined['total_category_slots'] * 100:.0f}%)")
