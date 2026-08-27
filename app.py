@@ -15,13 +15,13 @@ from python import (
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
-    equipment_data_requests,
+    equipment_data_requests, design_basis,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
-    ["Digital Twin", "Reserved", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
+    ["Digital Twin", "Design Basis", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
      "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation"]
 )
 
@@ -1480,7 +1480,75 @@ with tab1:
     st.caption("HYGAS-AI — SMITH2 R&D Hydrogen Agency — NACHIP Pilot Programme")
 
 with tab2:
-    st.info("Reserved for future work.")
+    st.header("Project Design Basis — DOK-ING RFI Tracker (17 questions)")
+    st.warning(
+        "**Does NOT send anything to DOK-ING.** Same drafting-not-correspondence spirit as the "
+        "Draft Compliance Summary, Confirmation Tracker, and Data Request List sections. No RFI "
+        "document exists anywhere in this repo — these 17 questions are this project's own "
+        "reconstruction of what a design-basis RFI for this kind of plant needs answered, grouped "
+        "into the same five categories a real one would use: Feedstock, Hydrogen Product, "
+        "Site & Infrastructure, Regulatory & Commercial, Project Scope. Every question was "
+        "checked against this project's own real data (kinetics.py, psa.py, compliance.py, "
+        "uncertainty.py, safety_flags.py, the equipment registry, CLAUDE.md/README.md) before "
+        "writing an answer — nothing is invented because a plausible number could be guessed at.",
+        icon="⚠️",
+    )
+    st.caption(
+        "**Status mechanism, same as the Confirmation Tracker below:** every question is either "
+        "**Assumed** (a real, cited answer already exists in this project — either DOK-ING's own "
+        "previously stated data, captured in the equipment registry, or this project's own "
+        "explicit default assumption pending confirmation) or **Unknown — Required** (genuinely "
+        "absent, needs a real answer from DOK-ING). Nothing shows as **Confirmed** until DOK-ING "
+        "actually answers this RFI for real — `set_confirmed()` exists in "
+        "`python/design_basis.py`, ready for that moment, but isn't called anywhere yet."
+    )
+
+    _db_counts = design_basis.summarize()
+    b1, b2, b3 = st.columns(3)
+    b1.metric("Assumed (real, cited)", f"{_db_counts[design_basis.STATUS_ASSUMED]} / 17")
+    b2.metric("Unknown — Required", f"{_db_counts[design_basis.STATUS_UNKNOWN]} / 17")
+    b3.metric("Confirmed by DOK-ING", f"{_db_counts[design_basis.STATUS_CONFIRMED]} / 17")
+    st.caption(
+        f"{_db_counts[design_basis.STATUS_ASSUMED]} of the 17 questions could be answered "
+        f"directly from this project's existing data; {_db_counts[design_basis.STATUS_UNKNOWN]} "
+        f"are genuinely open and need a real answer from DOK-ING. Not rounded up."
+    )
+
+    if st.button("Generate design basis RFI tracker (.md)"):
+        st.session_state["design_basis_draft"] = design_basis.generate_request_list_markdown()
+
+    if "design_basis_draft" in st.session_state:
+        st.download_button(
+            "Download design basis RFI tracker (.md)", data=st.session_state["design_basis_draft"],
+            file_name="hygas_ai_design_basis_rfi_tracker.md", mime="text/markdown",
+        )
+        with st.expander("Preview design basis RFI tracker", expanded=False):
+            st.markdown(st.session_state["design_basis_draft"])
+
+    st.divider()
+
+    _db_status_icon = {
+        design_basis.STATUS_ASSUMED: "🟢", design_basis.STATUS_UNKNOWN: "🔴",
+        design_basis.STATUS_CONFIRMED: "✅",
+    }
+    for _category in design_basis.CATEGORIES:
+        st.subheader(_category)
+        for _key, _cfg in design_basis.QUESTIONS.items():
+            if _cfg["category"] != _category:
+                continue
+            _status = design_basis.status_of(_key)
+            _icon = _db_status_icon[_status]
+            with st.expander(f"{_icon} {_cfg['question']}  —  {_status}"):
+                if design_basis.is_confirmed(_key):
+                    st.write(f"**Confirmed answer:** {_cfg['confirmed_value']}")
+                    st.caption(f"**Confirmed source:** {_cfg['confirmed_source']}")
+                elif _cfg["answer"] is not None:
+                    st.write(f"**Answer (from this project):** {_cfg['answer']}")
+                    st.caption(f"**Source:** {_cfg['source']}")
+                else:
+                    st.write("**Answer:** None on file in this project — required from DOK-ING.")
+                if _cfg["note"]:
+                    st.caption(_cfg["note"])
 
 # ---------------------------------------------------------------------
 # Shared equipment-datasheet rendering toolkit — used by every per-
