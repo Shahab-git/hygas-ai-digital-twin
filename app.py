@@ -1483,14 +1483,17 @@ with tab2:
     st.header("Project Design Basis — DOK-ING RFI Tracker (17 questions)")
     st.warning(
         "**Does NOT send anything to DOK-ING.** Same drafting-not-correspondence spirit as the "
-        "Draft Compliance Summary, Confirmation Tracker, and Data Request List sections. No RFI "
-        "document exists anywhere in this repo — these 17 questions are this project's own "
-        "reconstruction of what a design-basis RFI for this kind of plant needs answered, grouped "
-        "into the same five categories a real one would use: Feedstock, Hydrogen Product, "
-        "Site & Infrastructure, Regulatory & Commercial, Project Scope. Every question was "
-        "checked against this project's own real data (kinetics.py, psa.py, compliance.py, "
-        "uncertainty.py, safety_flags.py, the equipment registry, CLAUDE.md/README.md) before "
-        "writing an answer — nothing is invented because a plausible number could be guessed at.",
+        "Draft Compliance Summary, Confirmation Tracker, and Data Request List sections. These "
+        "are the real, verbatim 17 questions from DOK-ING's actual RFI — see "
+        "`data/rfi_dokink.md` — grouped exactly as that document groups them: Feedstock (5), "
+        "Hydrogen Product (5), Site & Infrastructure (2), Regulatory & Commercial (4), Project "
+        "Scope (1). Every question was checked against this project's own real data (kinetics.py, "
+        "psa.py, compliance.py, uncertainty.py, safety_flags.py, circularity.py, the equipment "
+        "registry, CLAUDE.md/README.md) before writing an answer — nothing is invented because a "
+        "plausible number could be guessed at. An earlier version of this tracker had to "
+        "reconstruct plausible RFI questions before the real document existed in this repo; that "
+        "reconstruction is gone — see `python/design_basis.py`'s own docstring for exactly which "
+        "answers changed once checked against the real wording.",
         icon="⚠️",
     )
     st.caption(
