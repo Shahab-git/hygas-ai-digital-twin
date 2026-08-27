@@ -1,8 +1,65 @@
 """
-Project Design Basis tracker v2 — the 17 RFI questions DOK-ING actually
+Project Design Basis tracker v3 — the 17 RFI questions DOK-ING actually
 sent, verbatim from data/rfi_dokink.md, grouped exactly as that document
 groups them: Feedstock (5), Hydrogen Product (5), Site & Infrastructure
 (2), Regulatory & Commercial (4), Project Scope (1).
+
+v3 RECONCILIATION, against an unsourced walkthrough claiming 8/17
+Assumed: that walkthrough was treated as a claim to verify, not copied
+in — every one of its 17 answers was checked question-by-question
+against v2's actual answers and, where they disagreed, against the real
+cited source file directly, not taken on the walkthrough's word. Result:
+  - #2 (feedstock composition): a REAL BUG in v2, not a disagreement —
+    v2's note wrongly claimed "no ash content... documented anywhere".
+    GA-005's own remarks state "Ash discharge rate (design) = 10% of
+    feed — Matches the 10% ash content (dry basis) already used in the
+    mass/energy balance" (also gasifier_mass_balance.py's ASH_FRACTION
+    = 0.10) — a real, if partial, feedstock proximate-analysis figure
+    v2 missed. The walkthrough's mention of ~10% ash prompted a
+    recheck that found this independently verifiable in the source
+    registry. Also added: the feed_sulfur_ppm/feed_chlorine_ppm
+    assumptions (uncertainty.py) that Q2's own wording ("...S/Cl
+    content...") calls for and v2 had omitted. Status stays Unknown —
+    the majority of what's asked (volatile matter, fixed carbon,
+    C/H/O/N, LHV) is still genuinely undocumented — but the note was
+    factually wrong and is fixed.
+  - #9 (hydrogen end use): the walkthrough's narrower answer (fuel cell
+    only) was checked against v2's dual-citation answer (fuel cell AND
+    mobility dispensing, via HB-013's own "dispensing pressure options"
+    wording) — v2's answer holds up and is, if anything, more complete
+    than the walkthrough's. No change.
+  - #12 (nearby infrastructure): the walkthrough flagged this as
+    uncertain ("partial", MRF interface may not fully answer the
+    question). Investigated independently by checking it against how
+    #11 (site utilities) is treated: v2 had been INCONSISTENT — #11
+    correctly treats the plant's own utility-metering equipment (EU-009)
+    as insufficient to answer "what's actually available on site" (a
+    design spec isn't a confirmed real-world fact), but #12 let the same
+    category of evidence (EU-012/EU-013's district-heating interconnect
+    equipment, FE-002's MRF supply-chain fact) count as Assumed anyway.
+    That inconsistency was the actual bug. FIXED: #12 changed from
+    Assumed to Unknown, with the reasoning documented on the entry
+    itself. This is the one place the walkthrough's hedge pointed at a
+    real problem, though the fix follows from re-applying v2's own #11
+    standard consistently, not from taking the walkthrough's word.
+  - #13 (project driver): verified a genuinely new, real citation the
+    walkthrough didn't raise directly but that a broader check turned
+    up — app.py's own UI names "SMITH2 R&D Hydrogen Agency" alongside
+    DOK-ING/NACHIP (app.py:1480). Added to the note as circumstantial
+    context. The walkthrough's own added claim that SMITH2 is "based in
+    Zagreb" could NOT be verified anywhere in this repo (only DOK-ING is
+    tied to Zagreb, in CLAUDE.md/README.md) and was deliberately NOT
+    incorporated — an unverifiable claim doesn't get added just because
+    it appeared in the walkthrough.
+  - #11 (site utilities): the walkthrough's stated reasoning ("SA
+    section 64% missing data") refers to Sensors & Analysers, an
+    unrelated equipment-datasheet section (Tab 6) with no connection to
+    Site & Infrastructure utilities — an apparent mix-up in the
+    walkthrough. The status (Unknown) still matches, but that specific
+    justification was NOT incorporated since it doesn't actually apply.
+  - All other 12 questions (#1, #3, #4, #5, #6, #7, #8, #10, #14, #15,
+    #16, #17): the walkthrough's stated answers/status matched v2's
+    exactly on independent recheck. No changes.
 
 v1 of this module (before data/rfi_dokink.md existed in this repo) had
 to RECONSTRUCT what a plausible RFI might ask, with its own invented
@@ -60,14 +117,18 @@ confirmation_loop.py/uncertainty.py:
     confirmation_loop.py) is a natural next step at that point, out of
     scope here since there's no real response yet to persist.
 
-FINAL COUNT, verified live by this module's own self-test: 9 of the 17
+FINAL COUNT, verified live by this module's own self-test: 8 of the 17
 real RFI questions have a real, cited answer somewhere in this project
-(STATUS_ASSUMED); 8 are genuinely open (STATUS_UNKNOWN). This DIFFERS
-from v1's reported 10/17 — not because this project's data changed, but
-because the real questions are worded and grouped differently than the
-reconstruction was, and a fresh, question-by-question check against the
-real wording lands on a different split. Not rounded up in either
-direction.
+(STATUS_ASSUMED); 9 are genuinely open (STATUS_UNKNOWN). This is DOWN
+BY ONE from v2's reported 9/8, entirely because of the #12 fix above —
+every other question's status is unchanged from v2. (It happens to
+match the unsourced walkthrough's own 8/17 headline number, but for a
+different reason than the walkthrough gave: the walkthrough's own count
+excluded #12 by hedging rather than by applying a stated rule, and
+undercounted #2 as fully separate from its ash-content evidence without
+citing GA-005 specifically. The convergence on 8/17 here comes from
+independently re-deriving #12 against #11's own precedent, not from
+adopting the walkthrough's number.) Not rounded up in either direction.
 """
 from datetime import datetime, timezone
 
@@ -134,12 +195,22 @@ QUESTIONS = {
         "note": (
             "python/compliance.py's own checklist already flags this exact gap: \"Waste "
             "feedstock sourcing and composition documentation\" is status \"Not yet documented\" "
-            "— \"none found in this repo\". Only feedstock moisture (10% design inlet, FE-005) is "
-            "on file anywhere; no ash content, volatile matter, fixed carbon, elemental "
-            "(C/H/O/N/S/Cl) breakdown, or calorific value (LHV) for the RAW FEEDSTOCK itself is "
-            "documented anywhere. (GA-008/GA-010's \"ash content\"/\"moisture content\" figures "
-            "describe the ash and carbon-black BYPRODUCT streams, not the incoming feedstock, and "
-            "shouldn't be conflated with this question.)"
+            "— \"none found in this repo\". Still true overall — but four of this question's named "
+            "sub-parameters DO have a real, if partial, figure on file, corrected here after a "
+            "prior version of this tracker wrongly claimed \"no ash content... documented "
+            "anywhere\": moisture ~10% design inlet (FE-005); ash ~10 wt% dry basis (GA-005's own "
+            "remarks: \"Ash discharge rate (design) = 10% of feed — Matches the 10% ash content "
+            "(dry basis) already used in the mass/energy balance\", also "
+            "python/gasifier_mass_balance.py's ASH_FRACTION = 0.10); sulfur ~200 ppm and chlorine "
+            "~150 ppm — but the last two are explicitly THIS PROJECT'S OWN default assumption, "
+            "NOT DOK-ING-sourced (python/uncertainty.py: ASSUMPTIONS['feed_sulfur_ppm'] / "
+            "['feed_chlorine_ppm']). Still completely absent: volatile matter, fixed carbon, "
+            "carbon/hydrogen/oxygen/nitrogen elemental content, and calorific value (LHV) for the "
+            "raw feedstock — no full proximate/ultimate analysis exists, which is why this stays "
+            "Unknown despite the four partial figures above. (GA-008/GA-010's \"ash "
+            "content\"/\"moisture content\" figures describe the ash and carbon-black BYPRODUCT "
+            "streams' own purity, not the incoming feedstock, and shouldn't be conflated with "
+            "GA-005's feedstock-ash figure above.)"
         ),
         "confirmed_value": None, "confirmed_source": None, "confirmed_notes": None, "confirmed_at": None,
     },
@@ -339,23 +410,24 @@ QUESTIONS = {
         "rfi_number": 12,
         "category": "Site & Infrastructure",
         "question": "Is there existing waste-handling or industrial infrastructure nearby that this plant needs to interface with?",
-        "status": STATUS_ASSUMED,
-        "answer": (
-            "The design assumes/anticipates interfacing with two kinds of infrastructure: an "
-            "external MRF upstream (feedstock arrives pre-sorted — see the feedstock "
-            "pre-processing question above) and a district heating network downstream (EU-012 "
-            "District Heating HX + EU-013 Thermal Energy Metering are built specifically to "
-            "connect to one)."
-        ),
-        "source": (
-            "data/equipment_registry.json — FE-002 remarks (\"pre-sorted at the MRF\"); "
-            "EU-012, EU-013"
-        ),
+        "status": STATUS_UNKNOWN,
+        "answer": None,
+        "source": None,
         "note": (
-            "This confirms what KIND of infrastructure the plant's own design is built to "
-            "interface with — it does NOT confirm that such infrastructure is physically "
-            "confirmed to exist adjacent to the real site, which remains an open, site-specific "
-            "fact this project has no way to establish."
+            "CORRECTED after a reconciliation pass: an earlier version of this tracker marked this "
+            "Assumed, citing FE-002's MRF remark and EU-012/EU-013's district-heating "
+            "interconnection equipment. On review that was inconsistent with how the previous "
+            "question (#11, site utilities) is treated, and the inconsistency was the actual bug: "
+            "EU-012/EU-013 show what the plant's OWN DESIGN is built to interface with IF such a "
+            "network exists — the same category of evidence as EU-009's metering equipment in #11, "
+            "which was correctly judged NOT sufficient to answer \"what's actually available on "
+            "site\". Neither confirms a real, physical, nearby facility actually exists; both "
+            "describe what the plant's design accommodates. Similarly, FE-002's \"pre-sorted at "
+            "the MRF\" remark is a feedstock SUPPLY-CHAIN fact (already answering #3 above) — it "
+            "doesn't establish that the MRF, or any other waste-handling/industrial facility, is "
+            "physically NEAR this plant's site, only that one exists somewhere in the supply "
+            "chain. No site-specific confirmation of nearby existing infrastructure — waste-"
+            "handling or industrial — is documented anywhere in this project."
         ),
         "confirmed_value": None, "confirmed_source": None, "confirmed_notes": None, "confirmed_at": None,
     },
@@ -370,10 +442,16 @@ QUESTIONS = {
         "answer": None,
         "source": None,
         "note": (
-            "This project is described only as a \"NACHIP pilot project\" (CLAUDE.md/README.md) "
-            "with no further explanation of what NACHIP is, what is funding it, or which of the "
-            "RFI's listed drivers motivates it. Nothing else in this repo addresses project "
-            "motivation."
+            "This project is described only as a \"NACHIP pilot project\" (CLAUDE.md/README.md), "
+            "with app.py's own UI additionally naming \"SMITH2 R&D Hydrogen Agency\" alongside "
+            "DOK-ING (app.py:1480 caption: \"HYGAS-AI — SMITH2 R&D Hydrogen Agency — NACHIP Pilot "
+            "Programme\") — a second real, named party beyond DOK-ING. Neither NACHIP nor SMITH2 "
+            "is explained anywhere in this repo, though \"R&D Hydrogen Agency\" and \"pilot "
+            "programme\" framing circumstantially suggests a research/demonstration motivation "
+            "rather than a straightforward commercial one. That's a plausible inference from the "
+            "naming, not a stated answer — none of the RFI's listed drivers (regulatory "
+            "compliance, decarbonization targets, new revenue stream, grant funding) is ever "
+            "explicitly named anywhere in this repo, so this stays Unknown."
         ),
         "confirmed_value": None, "confirmed_source": None, "confirmed_notes": None, "confirmed_at": None,
     },
@@ -594,11 +672,11 @@ if __name__ == "__main__":
     print(f"Assumed (real, cited answer already in this project): {counts[STATUS_ASSUMED]} of 17")
     print(f"Unknown — Required (genuinely open, needs DOK-ING):    {counts[STATUS_UNKNOWN]} of 17")
     print(f"Confirmed (DOK-ING has actually answered):             {counts[STATUS_CONFIRMED]} of 17")
-    assert counts[STATUS_ASSUMED] == 9, f"REGRESSION: expected exactly 9 Assumed, got {counts[STATUS_ASSUMED]}."
-    assert counts[STATUS_UNKNOWN] == 8, f"REGRESSION: expected exactly 8 Unknown, got {counts[STATUS_UNKNOWN]}."
+    assert counts[STATUS_ASSUMED] == 8, f"REGRESSION: expected exactly 8 Assumed, got {counts[STATUS_ASSUMED]}."
+    assert counts[STATUS_UNKNOWN] == 9, f"REGRESSION: expected exactly 9 Unknown, got {counts[STATUS_UNKNOWN]}."
     assert counts[STATUS_CONFIRMED] == 0, "REGRESSION: something is marked Confirmed before any real RFI response exists."
     assert counts[STATUS_ASSUMED] + counts[STATUS_UNKNOWN] + counts[STATUS_CONFIRMED] == 17
-    print("PASSED -- 9 Assumed + 8 Unknown = 17, matches the documented count exactly (differs from v1's 10/17).")
+    print("PASSED -- 8 Assumed + 9 Unknown = 17, matches the documented count exactly (down from v2's 9/8 after the #12 fix).")
 
     print("\n=== set_confirmed()/clear_confirmed() mechanism check (for future use) ===")
     assert status_of("project_budget") == STATUS_UNKNOWN
@@ -606,13 +684,13 @@ if __name__ == "__main__":
     assert status_of("project_budget") == STATUS_CONFIRMED
     print("  [OK] set_confirmed() flips status to Confirmed live.")
     counts_after = summarize()
-    assert counts_after[STATUS_CONFIRMED] == 1 and counts_after[STATUS_ASSUMED] == 9 and counts_after[STATUS_UNKNOWN] == 7
-    print("  [OK] summarize() reflects the confirmation immediately: 9 Assumed / 7 Unknown / 1 Confirmed.")
+    assert counts_after[STATUS_CONFIRMED] == 1 and counts_after[STATUS_ASSUMED] == 8 and counts_after[STATUS_UNKNOWN] == 8
+    print("  [OK] summarize() reflects the confirmation immediately: 8 Assumed / 8 Unknown / 1 Confirmed.")
     clear_confirmed("project_budget")
     assert status_of("project_budget") == STATUS_UNKNOWN
     counts_cleared = summarize()
-    assert counts_cleared == {STATUS_ASSUMED: 9, STATUS_UNKNOWN: 8, STATUS_CONFIRMED: 0}
-    print("  [OK] clear_confirmed() reverts cleanly -- back to 9 Assumed / 8 Unknown / 0 Confirmed.")
+    assert counts_cleared == {STATUS_ASSUMED: 8, STATUS_UNKNOWN: 9, STATUS_CONFIRMED: 0}
+    print("  [OK] clear_confirmed() reverts cleanly -- back to 8 Assumed / 9 Unknown / 0 Confirmed.")
 
     draft = generate_request_list_markdown()
     question_blocks = sum(1 for line in draft.splitlines() if line.startswith("### RFI #"))
