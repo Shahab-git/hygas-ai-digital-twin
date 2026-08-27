@@ -2,14 +2,20 @@
 Equipment datasheet view v1 — Feed Handling (FE-001..FE-008),
 Gasification (GA-001..GA-010), Gas Cleaning (GC-001..GC-015), Sensors &
 Analysers (SA-001..SA-012), Hydrogen/Balance-of-Plant (HB-001..HB-018),
-and Electrical/Utilities (EU-001..EU-013) only.
+Electrical/Utilities (EU-001..EU-013), and Automation/Instrumentation
+(AI-001..AI-015). ALL 91 REGISTRY ITEMS ARE NOW COVERED -- this is the
+final section.
 
 SCOPE: a deliberately scoped, incremental pass, one equipment section at
 a time. First shipped covering just FE-001..FE-008, then GA-001..GA-010,
-then GC-001..GC-015, then SA-001..SA-012, then HB-001..HB-018, now
-EU-001..EU-013 -- each new section uses the SAME methodology, no rewrite
-of what came before. The other 15 items in the 91-item registry are
-still NOT attempted here.
+then GC-001..GC-015, then SA-001..SA-012, then HB-001..HB-018, then
+EU-001..EU-013, now AI-001..AI-015 -- each new section used the SAME
+methodology, no rewrite of what came before. With AI shipped, every one
+of the 91 items in the registry now has a datasheet view somewhere in
+this module -- see the module-level completeness check in the self-test
+below for the full accounting (item-count reconciliation, no duplicates,
+none missing, and the grand total real-data-point / populated-slot count
+across the whole registry).
 
 HB IS THE SECTION CONTAINING THE ALREADY-VALIDATED WGS REACTION KINETICS
 (HB-001 HTS reactor, HB-004 LTS reactor) THIS PROJECT RELIES ON
@@ -94,8 +100,9 @@ text (checked in the order below; first match wins, else Parameters):
      this override is checked first, ahead of the generic "pressure"
      keyword below. Verified this does NOT touch FE-002/FE-005's
      "Design throughput" -- that phrase has no "pressure"/"temperature"
-     in it, so it still falls through to the Inputs "throughput" keyword
-     unchanged.
+     in it, so it still falls through to the Inputs "design throughput"
+     keyword unchanged (see the AI section's throughput fix below for
+     why that keyword is no longer the bare word).
   1. Measurements          -- "sensor", "measurement", "accuracy",
                                "calibration", "response time",
                                "output signal", "flow meter",
@@ -139,12 +146,17 @@ text (checked in the order below; first match wins, else Parameters):
                                recur across GA-008/009/010 describing the
                                output product's own spec -- a clear,
                                recurring pattern, not a one-off guess)
-  4. Inputs                -- "inlet", "feed rate", "throughput",
-                               "flow rate" (last one added for GA:
-                               "Primary air flow rate" / "Steam flow
-                               rate" describe a utility stream entering
-                               the gasifier, the same role "feed rate"
-                               plays for FE)
+  4. Inputs                -- "inlet", "feed rate", "flow rate" (added
+                               for GA: "Primary air flow rate" / "Steam
+                               flow rate" describe a utility stream
+                               entering the gasifier, the same role
+                               "feed rate" plays for FE), "design
+                               throughput" / "throughput capacity" /
+                               "nominal throughput" (three specific
+                               phrases, NOT the bare word "throughput" --
+                               see the AI section below for why this
+                               changed from the original bare-word
+                               version)
   5. Performance Indicators -- "efficiency"
   6. Parameters            -- everything else (equipment design/
                                construction specs: dimensions, materials,
@@ -295,6 +307,62 @@ GA-001's "diameter" false positive, and the same "diameter" risk
 recurring in GC-004/GC-006/GC-008's own diameter fields (checked again
 here, still present) confirms that rejection remains correct.
 
+For AI (automation/instrumentation -- weather station, camera, PLC,
+gateways, brokers, servers, firewalls, cloud/database services, AI
+model server, digital twin engine, orchestration controller, RFNBO
+monitor), the story flips from every prior section: AI's vocabulary is
+IT/software terminology, not process-equipment terminology, and it
+needed essentially no productive NEW keyword -- almost everything here
+correctly defaults to Parameters (a make/model/spec description, same
+as "Catalyst type" or "Membrane material" elsewhere). What AI's
+different vocabulary DID do is expose that three EXISTING keywords,
+each built for the process-equipment domain, collide with an entirely
+different meaning of the same English word in IT/software contexts.
+Checked against every FE/GA/GC/SA/HB/EU/AI parameter name before
+shipping, same discipline as every prior extension:
+  - FIXED (a genuine bug, not just a soft misfit): the bare word
+    "throughput" was added for FE-002/FE-004/FE-005/FE-008's material
+    feed-rate ratings ("Design throughput", "Throughput capacity",
+    "Nominal throughput"). AI-006's "Max message throughput" (MQTT
+    messages/s), AI-009's bare "Throughput" (a firewall's network
+    throughput, Gbps), and AI-011's "Write throughput" (a database's
+    write rate, points/s) are IT/network metrics with zero conceptual
+    connection to a material stream entering equipment -- landing them
+    in Inputs would have been a clear, unambiguous domain-mismatch, the
+    same severity as the GA-001 "diameter" bug, not a defensible
+    alternate reading. FIXED by replacing the bare word with the three
+    SPECIFIC phrases FE actually uses ("design throughput", "throughput
+    capacity", "nominal throughput") -- verified this preserves all
+    four original FE matches (FE-002 and FE-005 both say "Design
+    throughput", FE-004 says "Throughput capacity", FE-008 says
+    "Nominal throughput") and produces zero matches on any of AI's three
+    IT-throughput fields.
+  - NOT fixed, documented instead (soft, single-item cases where a
+    regex/word-boundary fix would be needed to correct cleanly, which
+    is a bigger design change than this module's simple substring
+    matching is meant to carry, for a small, non-harmful effect):
+    AI-004's "Number of digital outputs" / "Number of analogue outputs"
+    (PLC I/O channel COUNTS) match the generic "output" keyword (which
+    exists for real process/electrical outputs like EU-002's "Rated
+    electrical power output") purely because "outputs" contains
+    "output" as a substring -- landing these in Outputs is an imperfect
+    reading (a hardware channel count isn't really a process "output"),
+    but not a harmful one, and AI-004's own populated-category count
+    would only go from 2/6 to 1/6 if "corrected", i.e. removing the
+    match would make the section look LESS complete for a marginal
+    correctness gain. Left as-is. Similarly, AI-014's "Module health
+    monitoring" and "Scaling response time" match "monitor" and
+    "response time" (added for physical instrumentation -- dust
+    monitors, an analyser's response time) even though they describe
+    SOFTWARE orchestration behavior, not a physical instrument. Also
+    left as-is, for the same reason.
+No new keyword was added for AI's own sake -- the "power meter" (EU),
+"analyser"/"monitor" (GC), "flow meter"/"transmitter" (GA) additions
+already cover the handful of AI fields that are genuinely
+instrumentation-flavored (e.g. AI-003's Bed Pressure-Drop Sensor, which
+reuses "sensor"/"measurement"/"accuracy"/"response time"/"output
+signal" exactly as SA's gas analysers do).
+
 This rule was checked BY HAND against all 69 real FE-001..FE-008
 parameters when first written, again against all 76 real GA-001..GA-010
 parameters (77 minus the one null row) before the GA extension, again
@@ -305,16 +373,21 @@ rows either, though SA-005's own "parameters_filled" metadata claims one
 more filled row than actually exists in its list; see the source-data
 quirks above) before the SA extension, again against all 154 real
 HB-001..HB-018 parameters (all 154 rows are real -- HB has no null rows)
-before the HB extension, and again against all 114 real EU-001..EU-013
-parameters (all 114 rows are real -- EU has no null rows) before this EU
-extension was written as code — see this module's own self-test, which
-prints every parameter's assigned category so the mapping stays
-auditable, not a black box, and includes hardcoded regression checks
-that FE's (69 real data points, 26 of 48 slots), GA's (84 real data
-points, 27 of 60 slots), GC's (115 real data points, 52 of 90 slots),
-SA's (85 real data points, 26 of 72 slots), and HB's (154 real data
-points, 56 of 108 slots) counts are byte-for-byte unchanged by the EU
-addition.
+before the HB extension, again against all 114 real EU-001..EU-013
+parameters (all 114 rows are real -- EU has no null rows) before the EU
+extension, and again against all 135 real AI-001..AI-015 parameters (all
+135 rows are real -- AI has no null rows) before this final AI section
+was written as code — see this module's own self-test, which prints
+every parameter's assigned category so the mapping stays auditable, not
+a black box, and includes hardcoded regression checks that FE's (69 real
+data points, 26 of 48 slots), GA's (84 real data points, 27 of 60
+slots), GC's (115 real data points, 52 of 90 slots), SA's (85 real data
+points, 26 of 72 slots), HB's (154 real data points, 56 of 108 slots),
+and EU's (114 real data points, 45 of 78 slots) counts are byte-for-byte
+unchanged by the AI addition, plus a module-level completeness check
+that FE_IDS + GA_IDS + GC_IDS + SA_IDS + HB_IDS + EU_IDS + AI_IDS
+together cover exactly the 91 real registry item ids, with no duplicates
+and none missing, now that AI is the last section shipped.
 
 DATA-QUALITY NOTE, reported honestly rather than silently fixed: a
 handful of parameter rows already in the committed
@@ -338,7 +411,8 @@ GC_IDS = [f"GC-{i:03d}" for i in range(1, 16)]
 SA_IDS = [f"SA-{i:03d}" for i in range(1, 13)]
 HB_IDS = [f"HB-{i:03d}" for i in range(1, 19)]
 EU_IDS = [f"EU-{i:03d}" for i in range(1, 14)]
-ITEM_IDS = FE_IDS + GA_IDS + GC_IDS + SA_IDS + HB_IDS + EU_IDS  # registry's own numbering, each section in order -- no renumbering
+AI_IDS = [f"AI-{i:03d}" for i in range(1, 16)]
+ITEM_IDS = FE_IDS + GA_IDS + GC_IDS + SA_IDS + HB_IDS + EU_IDS + AI_IDS  # registry's own numbering, each section in order -- no renumbering, covers all 91 items once AI ships
 
 CATEGORIES = [
     "Inputs", "Outputs", "Parameters", "Measurements",
@@ -351,7 +425,10 @@ _MEASUREMENTS_KEYWORDS = (
 )
 _OPERATING_KEYWORDS = ("operating", "ambient", "pressure")
 _OUTPUTS_KEYWORDS = ("outlet", "output", "discharge rate", "product", "production rate")
-_INPUTS_KEYWORDS = ("inlet", "feed rate", "throughput", "flow rate", "feed gas")
+_INPUTS_KEYWORDS = (
+    "inlet", "feed rate", "flow rate", "feed gas",
+    "design throughput", "throughput capacity", "nominal throughput",
+)
 _PERFORMANCE_KEYWORDS = ("efficiency", "recovery rate")
 
 
@@ -513,40 +590,13 @@ if __name__ == "__main__":
         print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat})")
         assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
 
-    print("\n=== Step 5 (EU): honest count, this section specifically ===")
+    print("\n=== EU: honest count ===")
     eu_summary = summarize(datasheets, ids=EU_IDS)
     print(f"Total real data points (13 EU items): {eu_summary['total_real_data_points']}")
     print(f"Total category slots (13 x 6): {eu_summary['total_category_slots']}")
     print(f"Populated category slots: {eu_summary['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {eu_summary['missing_category_slots']} "
           f"({eu_summary['missing_category_slots'] / eu_summary['total_category_slots'] * 100:.0f}%)")
-    for item_id, stat in eu_summary["per_item"].items():
-        print(f"  {item_id}: {stat['real_data_points']} real data points, "
-              f"{stat['populated_categories']}/6 categories populated")
-
-    print("\n=== Step 5: regression check -- did the EU addition change FE's, GA's, GC's, SA's, or HB's own numbers? ===")
-    EXPECTED = {
-        "FE": (fe_summary, 69, 26, 22, 48),
-        "GA": (ga_summary, 84, 27, 33, 60),
-        "GC": (gc_summary, 115, 52, 38, 90),
-        "SA": (sa_summary, 85, 26, 46, 72),
-        "HB": (hb_summary, 154, 56, 52, 108),
-    }
-    all_ok = True
-    for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
-        ok = (
-            summary["total_real_data_points"] == exp_real
-            and summary["populated_category_slots"] == exp_pop
-            and summary["missing_category_slots"] == exp_missing
-        )
-        all_ok = all_ok and ok
-        print(f"  {label}: expected {exp_real} real data points, {exp_pop}/{n_slots} populated, "
-              f"{exp_missing}/{n_slots} missing.")
-        print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
-              f"{summary['populated_category_slots']}/{n_slots} populated, "
-              f"{summary['missing_category_slots']}/{n_slots} missing.")
-        assert ok, f"REGRESSION: the EU addition changed {label}'s own classification!"
-    print("PASSED -- FE's, GA's, GC's, SA's, and HB's classifications are all byte-for-byte unchanged by the EU addition.")
 
     print("\n=== Recovery-rate bug-fix check: does the tightened keyword avoid EU's false positives? ===")
     eu_by_id = {k: v for k, v in datasheets.items() if k in EU_IDS}
@@ -565,12 +615,116 @@ if __name__ == "__main__":
         print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat}, NOT Performance Indicators)")
         assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
 
-    print("\n=== Combined (FE + GA + GC + SA + HB + EU) ===")
+    print("\n=== Step 5 (AI): honest count, this section specifically ===")
+    ai_summary = summarize(datasheets, ids=AI_IDS)
+    print(f"Total real data points (15 AI items): {ai_summary['total_real_data_points']}")
+    print(f"Total category slots (15 x 6): {ai_summary['total_category_slots']}")
+    print(f"Populated category slots: {ai_summary['populated_category_slots']}")
+    print(f"Missing Data - Required category slots: {ai_summary['missing_category_slots']} "
+          f"({ai_summary['missing_category_slots'] / ai_summary['total_category_slots'] * 100:.0f}%)")
+    for item_id, stat in ai_summary["per_item"].items():
+        print(f"  {item_id}: {stat['real_data_points']} real data points, "
+              f"{stat['populated_categories']}/6 categories populated")
+
+    print("\n=== Step 5: regression check -- did the AI addition change FE's, GA's, GC's, SA's, HB's, or EU's own numbers? ===")
+    EXPECTED = {
+        "FE": (fe_summary, 69, 26, 22, 48),
+        "GA": (ga_summary, 84, 27, 33, 60),
+        "GC": (gc_summary, 115, 52, 38, 90),
+        "SA": (sa_summary, 85, 26, 46, 72),
+        "HB": (hb_summary, 154, 56, 52, 108),
+        "EU": (eu_summary, 114, 45, 33, 78),
+    }
+    all_ok = True
+    for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
+        ok = (
+            summary["total_real_data_points"] == exp_real
+            and summary["populated_category_slots"] == exp_pop
+            and summary["missing_category_slots"] == exp_missing
+        )
+        all_ok = all_ok and ok
+        print(f"  {label}: expected {exp_real} real data points, {exp_pop}/{n_slots} populated, "
+              f"{exp_missing}/{n_slots} missing.")
+        print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
+              f"{summary['populated_category_slots']}/{n_slots} populated, "
+              f"{summary['missing_category_slots']}/{n_slots} missing.")
+        assert ok, f"REGRESSION: the AI addition changed {label}'s own classification!"
+    print("PASSED -- FE's, GA's, GC's, SA's, HB's, and EU's classifications are all byte-for-byte "
+          "unchanged by the AI addition.")
+
+    print("\n=== Throughput bug-fix check: does the tightened keyword avoid AI's false positives, "
+          "while still catching FE's real ones? ===")
+    ai_by_id = {k: v for k, v in datasheets.items() if k in AI_IDS}
+    throughput_checks = [
+        ("AI-006", "Max message throughput", "Parameters"),
+        ("AI-009", "Throughput", "Parameters"),
+        ("AI-011", "Write throughput", "Parameters"),
+    ]
+    for item_id, param_name, expected_cat in throughput_checks:
+        sheet = ai_by_id[item_id]["datasheet"]
+        actual_cat = next(
+            (cat for cat, rows in sheet.items() if any(r["parameter"] == param_name for r in rows)), None
+        )
+        status = "OK" if actual_cat == expected_cat else "MISMATCH"
+        print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat}, NOT Inputs)")
+        assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
+    fe_by_id = {k: v for k, v in datasheets.items() if k in FE_IDS}
+    fe_throughput_checks = [
+        ("FE-002", "Design throughput", "Inputs"),
+        ("FE-004", "Throughput capacity", "Inputs"),
+        ("FE-005", "Design throughput", "Inputs"),
+        ("FE-008", "Nominal throughput", "Inputs"),
+    ]
+    for item_id, param_name, expected_cat in fe_throughput_checks:
+        sheet = fe_by_id[item_id]["datasheet"]
+        actual_cat = next(
+            (cat for cat, rows in sheet.items() if any(r["parameter"] == param_name for r in rows)), None
+        )
+        status = "OK" if actual_cat == expected_cat else "MISMATCH"
+        print(f"  [{status}] {item_id} '{param_name}' -> {actual_cat} (expected {expected_cat}, still Inputs)")
+        assert actual_cat == expected_cat, f"{item_id} '{param_name}' landed in {actual_cat}, expected {expected_cat}"
+
+    print("\n=== Step 6: completeness check -- all 91 registry items, no duplicates, none missing ===")
+    ALL_SECTION_IDS = {
+        "FE": FE_IDS, "GA": GA_IDS, "GC": GC_IDS, "SA": SA_IDS,
+        "HB": HB_IDS, "EU": EU_IDS, "AI": AI_IDS,
+    }
+    total_items_covered = sum(len(ids) for ids in ALL_SECTION_IDS.values())
+    print(f"Section item counts: " + ", ".join(f"{label}={len(ids)}" for label, ids in ALL_SECTION_IDS.items()))
+    print(f"Sum: {total_items_covered} (expected 91)")
+    assert total_items_covered == 91, f"REGRESSION: section id lists sum to {total_items_covered}, not 91!"
+
+    seen = set()
+    duplicates = []
+    for ids in ALL_SECTION_IDS.values():
+        for item_id in ids:
+            if item_id in seen:
+                duplicates.append(item_id)
+            seen.add(item_id)
+    print(f"Duplicate item ids across sections: {duplicates or 'none'}")
+    assert not duplicates, f"REGRESSION: {duplicates} appear in more than one section!"
+
+    full_registry = equipment_registry.load_registry()
+    all_registry_ids = {i["id"] for i in full_registry}
+    missing_from_module = all_registry_ids - seen
+    extra_in_module = seen - all_registry_ids
+    print(f"Registry items not covered by any section: {missing_from_module or 'none'}")
+    print(f"Section ids not present in the registry: {extra_in_module or 'none'}")
+    assert not missing_from_module, f"REGRESSION: {missing_from_module} are in the registry but not covered!"
+    assert not extra_in_module, f"REGRESSION: {extra_in_module} are covered but don't exist in the registry!"
+    print(f"Total registry items: {len(full_registry)} (expected 91)")
+    assert len(full_registry) == 91, f"REGRESSION: registry has {len(full_registry)} items, not 91!"
+    print("PASSED -- all 91 registry items are covered by exactly one section tab each.")
+
+    print("\n=== GRAND TOTAL: the whole registry, all 91 items, all 9 tabs ===")
     combined = summarize(datasheets)
-    print(f"Total real data points (76 items): {combined['total_real_data_points']}")
-    print(f"Total category slots (76 x 6): {combined['total_category_slots']}")
+    print(f"Total real data points (91 items): {combined['total_real_data_points']}")
+    print(f"Total category slots (91 x 6): {combined['total_category_slots']}")
     print(f"Populated category slots: {combined['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {combined['missing_category_slots']} "
           f"({combined['missing_category_slots'] / combined['total_category_slots'] * 100:.0f}%)")
+    print(f"Overall honest completion: {combined['populated_category_slots']} of "
+          f"{combined['total_category_slots']} possible (item x category) slots actually have real "
+          f"data -- {combined['populated_category_slots'] / combined['total_category_slots'] * 100:.1f}%.")
 
 

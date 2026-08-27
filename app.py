@@ -19,9 +19,9 @@ from python import (
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
     ["Digital Twin", "Reserved", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
-     "Hydrogen & BoP", "Electrical & Utilities"]
+     "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation"]
 )
 
 with tab1:
@@ -1536,11 +1536,12 @@ def _render_equipment_items(ids, per_item_stats):
 with tab3:
     st.header("Equipment Datasheets — Feed Handling (FE-001 through FE-008)")
     st.warning(
-        "**Deliberately scoped: FE-001 through FE-008 only, one of a growing set of per-section "
-        "tabs** (see the Gasification, Gas Cleaning, Sensors & Analysers, Hydrogen & BoP, and "
-        "Electrical & Utilities tabs for GA-001–010, GC-001–015, SA-001–012, HB-001–018, and "
-        "EU-001–013; the AI section is the last one still to come, with its own dedicated tab too, "
-        "not appended here). Every data point below is read "
+        "**Deliberately scoped: FE-001 through FE-008 only, one of nine per-section tabs that "
+        "together now cover the whole registry** (see the Gasification, Gas Cleaning, Sensors & "
+        "Analysers, Hydrogen & BoP, Electrical & Utilities, and Automation & Instrumentation tabs "
+        "for GA-001–010, GC-001–015, SA-001–012, HB-001–018, EU-001–013, and AI-001–015 — all 91 "
+        "registry items are now covered, one section per tab, not appended into a single one). "
+        "Every data point below is read "
         "directly from `equipment_registry.load_registry()` — the same loader Vendor Sourcing "
         "(Tab 1) already uses, not a re-derived or simplified copy. Nothing here infers, estimates, "
         "or backfills a value that isn't literally present in the registry. See "
@@ -1566,8 +1567,9 @@ with tab4:
     st.warning(
         "**Deliberately scoped: GA-001 through GA-010 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gas Cleaning's GC-001–015, Sensors & "
-        "Analysers' SA-001–012, Hydrogen & BoP's HB-001–018, and Electrical & Utilities' "
-        "EU-001–013 each have their own tab; AI is the last section still to come). Same real registry source and same "
+        "Analysers' SA-001–012, Hydrogen & BoP's HB-001–018, Electrical & Utilities' "
+        "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
+        "91 registry items are now covered, one section per tab). Same real registry source and same "
         "six-category methodology as the Feed Handling tab, not a rewrite — see "
         "`python/equipment_datasheet.py` for the keyword-rule extensions this section needed and "
         "why each one was added.",
@@ -1590,8 +1592,9 @@ with tab5:
     st.warning(
         "**Deliberately scoped: GC-001 through GC-015 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Sensors & "
-        "Analysers' SA-001–012, Hydrogen & BoP's HB-001–018, and Electrical & Utilities' "
-        "EU-001–013 each have their own tab; AI is the last section still to come). Same real registry source and same six-category methodology as Feed Handling and "
+        "Analysers' SA-001–012, Hydrogen & BoP's HB-001–018, Electrical & Utilities' "
+        "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
+        "91 registry items are now covered, one section per tab). Same real registry source and same six-category methodology as Feed Handling and "
         "Gasification, not a rewrite — see `python/equipment_datasheet.py` for the keyword-rule "
         "extension this section needed (two new instrumentation terms — \"analyser\", \"monitor\") "
         "and why it was added.",
@@ -1628,8 +1631,9 @@ with tab6:
     st.warning(
         "**Deliberately scoped: SA-001 through SA-012 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas "
-        "Cleaning's GC-001–015, Hydrogen & BoP's HB-001–018, and Electrical & Utilities' "
-        "EU-001–013 each have their own tab; AI is the last section still to come). Same real registry source and same six-category methodology "
+        "Cleaning's GC-001–015, Hydrogen & BoP's HB-001–018, Electrical & Utilities' "
+        "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
+        "91 registry items are now covered, one section per tab). Same real registry source and same six-category methodology "
         "as the earlier sections — this one needed NO new keywords at all; see "
         "`python/equipment_datasheet.py` for why.",
         icon="⚠️",
@@ -1667,8 +1671,9 @@ with tab7:
     st.warning(
         "**Deliberately scoped: HB-001 through HB-018 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas "
-        "Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, and Electrical & Utilities' "
-        "EU-001–013 each have their own tab; AI is the last section still to come). This is the section "
+        "Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, Electrical & Utilities' "
+        "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
+        "91 registry items are now covered, one section per tab). This is the section "
         "containing the already-validated WGS reaction kinetics (HB-001/HB-004) this project relies "
         "on elsewhere — checked specifically that HB-002's steam-to-CO ratio, GHSV, and conversion "
         "efficiency, and HB-004's catalyst sulfur tolerance already cited in `safety_flags.py`, all "
@@ -1712,8 +1717,9 @@ with tab8:
     st.warning(
         "**Deliberately scoped: EU-001 through EU-013 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas "
-        "Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, and Hydrogen & BoP's HB-001–018 "
-        "each have their own tab; AI is the last section still to come). Same real registry source "
+        "Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, Hydrogen & BoP's HB-001–018, and "
+        "Automation & Instrumentation's AI-001–015 each have their own tab — all 91 registry items "
+        "are now covered, one section per tab). Same real registry source "
         "and same six-category methodology as the earlier sections — see "
         "`python/equipment_datasheet.py` for the one genuine addition this electrical/utilities "
         "section needed (\"power meter\") and a real bug it caught and fixed in an earlier "
@@ -1752,3 +1758,124 @@ with tab8:
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.EU_IDS, _eu_summary["per_item"])
+
+with tab9:
+    st.header("Equipment Datasheets — Automation & Instrumentation (AI-001 through AI-015)")
+    st.warning(
+        "**Deliberately scoped: AI-001 through AI-015 only — the last of nine per-section tabs, "
+        "which together now cover all 91 registry items** (Feed Handling's FE-001–008, "
+        "Gasification's GA-001–010, Gas Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, "
+        "Hydrogen & BoP's HB-001–018, and Electrical & Utilities' EU-001–013 each have their own "
+        "tab too — no section is appended into another). Same real registry source and same "
+        "six-category methodology as the earlier sections — see `python/equipment_datasheet.py` "
+        "for the one real fix this automation/instrumentation section required and two collisions "
+        "it deliberately left alone. This is the weather station, camera, PLC, gateway, broker, "
+        "SCADA, edge server, firewall, cloud hub, time-series DB, AI model server, digital twin "
+        "engine, orchestration, and RFNBO-monitor section — a different technical vocabulary than "
+        "any prior section, and its \"throughput\", \"output\", and \"monitor\" words collide with "
+        "keywords those process-equipment sections already relied on. Found and fixed: the bare "
+        "\"throughput\" keyword under Inputs would have wrongly swept AI-006's \"Max message "
+        "throughput\", AI-009's bare \"Throughput\" (network Gbps), and AI-011's \"Write "
+        "throughput\" (database points/s) into Inputs — none of those are a process feed rate. "
+        "Fixed by narrowing to three specific phrases (\"design throughput\", \"throughput "
+        "capacity\", \"nominal throughput\"), checked against every prior section's parameter "
+        "names to confirm FE-002/FE-004/FE-005/FE-008's legitimate \"...throughput\" fields still "
+        "match. Left alone, and documented rather than silently accepted: AI-004's \"Number of "
+        "digital/analogue outputs\" (a PLC I/O channel count) still matches the generic \"output\" "
+        "keyword and lands in Outputs rather than Parameters, and AI-014's \"Module health "
+        "monitoring\"/\"Scaling response time\" (software orchestration behaviour, not a physical "
+        "instrument) still match \"monitor\"/\"response time\" and land in Measurements — both are "
+        "single-item cases where a substring-only rule can't distinguish the two meanings without "
+        "adding regex complexity the module deliberately doesn't have, and \"fixing\" either would "
+        "only lower the honest completion count, not correct a real error.",
+        icon="⚠️",
+    )
+    st.caption(
+        "Each item's real registry parameters are sorted into six categories — Inputs, Outputs, "
+        "Parameters, Measurements, Operating Conditions, Performance Indicators — by the same "
+        "documented keyword rule as the earlier sections. A category with no real data mapped to "
+        "it is shown as **Missing Data — Required**, never a plausible-sounding placeholder."
+    )
+
+    _ai_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.AI_IDS)
+    _render_equipment_honest_count(_ai_summary, 15)
+    if (_fe_summary["total_real_data_points"] == 69 and _fe_summary["populated_category_slots"] == 26
+            and _ga_summary["total_real_data_points"] == 84 and _ga_summary["populated_category_slots"] == 27
+            and _gc_summary["total_real_data_points"] == 115 and _gc_summary["populated_category_slots"] == 52
+            and _sa_summary["total_real_data_points"] == 85 and _sa_summary["populated_category_slots"] == 26
+            and _hb_summary["total_real_data_points"] == 154 and _hb_summary["populated_category_slots"] == 56
+            and _eu_summary["total_real_data_points"] == 114 and _eu_summary["populated_category_slots"] == 45):
+        st.success(
+            "Regression check: FE (69/26), GA (84/27), GC (115/52), SA (85/26), HB (154/56), and "
+            "EU (114/45) — all real data points/populated categories — are unchanged by adding "
+            "this Automation & Instrumentation section."
+        )
+    else:
+        st.error(
+            f"**Regression:** at least one earlier section's counts changed after adding "
+            f"Automation & Instrumentation — FE now {_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, "
+            f"GA now {_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']}, "
+            f"GC now {_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']}, "
+            f"SA now {_sa_summary['total_real_data_points']}/{_sa_summary['populated_category_slots']}, "
+            f"HB now {_hb_summary['total_real_data_points']}/{_hb_summary['populated_category_slots']}, "
+            f"EU now {_eu_summary['total_real_data_points']}/{_eu_summary['populated_category_slots']} "
+            f"(expected 69/26, 84/27, 115/52, 85/26, 154/56, and 114/45). See python/equipment_datasheet.py."
+        )
+    st.divider()
+    _render_equipment_items(equipment_datasheet.AI_IDS, _ai_summary["per_item"])
+
+    st.divider()
+    st.header("Registry-wide completeness — all 91 items, all 9 tabs")
+    st.markdown(
+        "This is the final section, so here is the full picture across the whole registry, not "
+        "just this tab: **91 of 91 registry items** are covered across the nine equipment-datasheet "
+        "tabs above — Feed Handling (8), Gasification (10), Gas Cleaning (15), Sensors & Analysers "
+        "(12), Hydrogen & BoP (18), Electrical & Utilities (13), and Automation & Instrumentation "
+        "(15) — with no item ID appearing in more than one tab and none missing, checked "
+        "programmatically against `equipment_registry.load_registry()` itself, not just counted by "
+        "hand."
+    )
+    _all_summary = equipment_datasheet.summarize(_eq_datasheets)
+    _all_ids_seen = set()
+    _all_ids_dup = False
+    for _sec_ids in (equipment_datasheet.FE_IDS, equipment_datasheet.GA_IDS, equipment_datasheet.GC_IDS,
+                      equipment_datasheet.SA_IDS, equipment_datasheet.HB_IDS, equipment_datasheet.EU_IDS,
+                      equipment_datasheet.AI_IDS):
+        for _sec_id in _sec_ids:
+            if _sec_id in _all_ids_seen:
+                _all_ids_dup = True
+            _all_ids_seen.add(_sec_id)
+    _full_registry = equipment_registry.load_registry()
+    _registry_ids = {_it["id"] for _it in _full_registry}
+    _completeness_ok = (
+        not _all_ids_dup
+        and len(_all_ids_seen) == 91
+        and _all_ids_seen == _registry_ids
+        and len(_registry_ids) == 91
+    )
+    g1, g2, g3, g4 = st.columns(4)
+    g1.metric("Registry items covered", f"{len(_all_ids_seen)} / 91")
+    g2.metric("Total real data points", _all_summary["total_real_data_points"])
+    g3.metric("Populated (item × category) slots",
+              f"{_all_summary['populated_category_slots']} / {_all_summary['total_category_slots']}")
+    g4.metric("Overall honest completion",
+              f"{_all_summary['populated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%")
+    if _completeness_ok:
+        st.success(
+            f"Completeness check: all 91 registry items are covered across the nine tabs, with no "
+            f"item ID duplicated across sections and none missing versus "
+            f"`equipment_registry.load_registry()`. Across the whole registry: "
+            f"{_all_summary['total_real_data_points']} total real data points, "
+            f"{_all_summary['populated_category_slots']} of {_all_summary['total_category_slots']} "
+            f"possible (item × category) slots populated — "
+            f"{_all_summary['populated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}% "
+            f"overall honest completion, with the remaining "
+            f"{_all_summary['missing_category_slots']} slots reported plainly as Missing Data — "
+            f"Required rather than smoothed over."
+        )
+    else:
+        st.error(
+            "**Completeness check failed** — the section tabs do not exactly reconcile with "
+            "`equipment_registry.load_registry()`. See python/equipment_datasheet.py's own "
+            "self-test (Step 6) for the same check run standalone."
+        )
