@@ -498,3 +498,4 @@ if __name__ == "__main__":
     print(f"Missing Data - Required category slots: {combined['missing_category_slots']} "
           f"({combined['missing_category_slots'] / combined['total_category_slots'] * 100:.0f}%)")
 
+
