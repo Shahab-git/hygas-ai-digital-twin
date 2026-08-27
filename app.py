@@ -14,7 +14,7 @@ from python import (
     uncertainty, optimizer, predictive_maintenance, compliance, regulatory_drafting,
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
-    federated_learning, performance_guarantee,
+    federated_learning, performance_guarantee, time_series_sim, tda_analysis,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1379,6 +1379,93 @@ if "pg_result" in st.session_state:
     ).encode(x="x:Q")
     st.altair_chart(_pg_hist + _pg_rule, use_container_width=True)
     st.caption("Dashed line: the guaranteed threshold. Red bars: samples that would breach it.")
+
+st.divider()
+
+# ---------------------------------------------------------------------
+# Section 21 — Topological data analysis (v1: multi-sensor coordinated-
+# anomaly detection on a synthetic time series — see
+# python/time_series_sim.py and python/tda_analysis.py for the full
+# honest-scoping statements)
+# ---------------------------------------------------------------------
+st.header("Topological Data Analysis")
+st.warning(
+    "**First-pass illustrative pipeline on synthetic data — not validated against real plant "
+    "sensor data.** The underlying time series is a steady-state physics chain (`kinetics.py`/"
+    "`psa.py`) evaluated repeatedly at evolving operating conditions, explicitly NOT real process "
+    "dynamics — this repo has zero time-domain modeling elsewhere (the Novelty Audit above already "
+    "flags zero Dynamics coverage), and this module doesn't quietly try to close that gap.",
+    icon="⚠️",
+)
+st.caption(
+    f"**Dependency decision:** none of ripser / giotto-tda / persim / gudhi are installed "
+    f"(checked directly at import time — real-library available: "
+    f"`{tda_analysis.TDA_LIBRARY_AVAILABLE}`), and adding one is a real build/size risk on "
+    "Streamlit Community Cloud's free tier (most ship native C++/Cython extensions). Instead this "
+    "uses the lighter, still-genuinely-topological alternative: exact 0-dimensional persistent "
+    "homology via the well-known single-linkage/minimum-spanning-tree equivalence (scipy only, no "
+    "new dependency) — real H0 persistence, not H1/loops, which a real library would be needed for."
+)
+st.caption(
+    "**The test case:** a simulated startup ramp into steady operation, then a period where "
+    "several sensors shift slightly together — each individually too small to trip its own "
+    "threshold — then recovery. The topological score compares a sliding window's multi-sensor "
+    "shape against a reference cloud of known-normal operation; a naive per-sensor rolling-"
+    "deviation monitor is the comparison baseline."
+)
+
+if st.button("Run time-series simulation + TDA analysis"):
+    with st.spinner("Simulating the plant trajectory (predictive-maintenance root-finding is the "
+                     "slow part) and computing the topological score — can take a minute or more..."):
+        _tda_result = tda_analysis.run_tda()
+        st.session_state["tda_result"] = _tda_result
+        st.session_state["tda_comparison"] = tda_analysis.compare_to_naive_baseline(_tda_result)
+
+if "tda_result" in st.session_state:
+    _tr = st.session_state["tda_result"]
+    _tc = st.session_state["tda_comparison"]
+    _td = _tr["data"]
+
+    st.subheader("Step 5: does TDA catch what per-sensor thresholds miss?")
+    tdacol1, tdacol2, tdacol3, tdacol4 = st.columns(4)
+    tdacol1.metric("TDA detection (in anomaly)", f"{_tc['tda_detection_rate_in_anomaly'] * 100:.0f}%")
+    tdacol2.metric("TDA false-positive rate", f"{_tc['tda_false_positive_rate_in_normal'] * 100:.0f}%")
+    tdacol3.metric("Naive detection (in anomaly)", f"{_tc['naive_detection_rate_in_anomaly'] * 100:.0f}%")
+    tdacol4.metric("Naive false-positive rate", f"{_tc['naive_false_positive_rate_in_normal'] * 100:.0f}%")
+    st.write(tda_analysis.summarize_comparison(_tc))
+
+    _anomaly_t = _td["t"][_td["is_anomaly"]]
+    _span_df = pd.DataFrame({"t_start": [int(_anomaly_t.min())], "t_end": [int(_anomaly_t.max()) + 1]})
+    _band = alt.Chart(_span_df).mark_rect(opacity=0.15, color="#E45756").encode(x="t_start:Q", x2="t_end:Q")
+
+    st.subheader("The multi-sensor time series (each shift individually subtle)")
+    _sensor_df = pd.concat([
+        pd.DataFrame({"t": _td["t"], "value": _td["hts"] * 100, "Sensor": "HTS conversion (%)"}),
+        pd.DataFrame({"t": _td["t"], "value": _td["lts"] * 100, "Sensor": "LTS conversion (%)"}),
+        pd.DataFrame({"t": _td["t"], "value": _td["psa_recovery"] * 100, "Sensor": "PSA recovery (%)"}),
+        pd.DataFrame({"t": _td["t"], "value": _td["activity_factor"] * 100, "Sensor": "Activity factor (%)"}),
+    ], ignore_index=True)
+    _sensor_lines = alt.Chart(_sensor_df).mark_line(size=1.5).encode(
+        x=alt.X("t:Q", title="Timestep"), y=alt.Y("value:Q", title="Value (%)", scale=alt.Scale(zero=False)),
+        color=alt.Color("Sensor:N", title=None),
+    )
+    st.altair_chart((_band + _sensor_lines).properties(height=280), use_container_width=True)
+    st.caption("Red band: the coordinated-anomaly period. Notice no single line makes an obvious jump there.")
+
+    st.subheader("Topological anomaly score over time")
+    _score_df = pd.DataFrame({"t": _td["t"], "score": _tr["score"]}).dropna()
+    _score_line = alt.Chart(_score_df).mark_line(color="#4C78A8", size=1.5).encode(
+        x=alt.X("t:Q", title="Timestep"), y=alt.Y("score:Q", title="Topological anomaly score"),
+    )
+    _threshold_rule = alt.Chart(pd.DataFrame({"y": [_tc["score_threshold"]]})).mark_rule(
+        color="black", strokeDash=[4, 4],
+    ).encode(y="y:Q")
+    st.altair_chart((_band + _score_line + _threshold_rule).properties(height=280), use_container_width=True)
+    st.caption(
+        "Dashed line: the flagging threshold (95th percentile of scores during known-normal "
+        "operation). Red band: the coordinated-anomaly period — a real detection shows the blue "
+        "line rising above the dashed line inside the red band."
+    )
 
 st.divider()
 
