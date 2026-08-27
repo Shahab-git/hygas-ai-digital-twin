@@ -1,12 +1,13 @@
 """
 Equipment datasheet view v1 — Feed Handling (FE-001..FE-008),
-Gasification (GA-001..GA-010), and Gas Cleaning (GC-001..GC-015) only.
+Gasification (GA-001..GA-010), Gas Cleaning (GC-001..GC-015), and Sensors
+& Analysers (SA-001..SA-012) only.
 
 SCOPE: a deliberately scoped, incremental pass, one equipment section at
 a time. First shipped covering just FE-001..FE-008, then GA-001..GA-010,
-now GC-001..GC-015 -- each new section uses the SAME methodology, no
-rewrite of what came before. The other 58 items in the 91-item registry
-are still NOT attempted here.
+then GC-001..GC-015, now SA-001..SA-012 -- each new section uses the SAME
+methodology, no rewrite of what came before. The other 46 items in the
+91-item registry are still NOT attempted here.
 
 HARD RULE, enforced by code, not just convention: every data point shown
 is read directly from equipment_registry.load_registry() — the SAME
@@ -21,10 +22,27 @@ registry (GA-002's "Vendor / model (transmitter)") is present in the
 item's parameter list but carries value=None, unit=None — an explicit
 placeholder for an unfilled slot, unlike FE, where unfilled slots are
 simply absent from the list entirely. Checked directly: this is the ONLY
-such row across FE-001..FE-008, GA-001..GA-010, and GC-001..GC-015 (GC
-has none). Any row with a None value is excluded before classification
-— it is not real data and must not count as one, and must not be
-treated as populating whatever category it would otherwise map to.
+such value=None row across FE-001..FE-008, GA-001..GA-010, GC-001..GC-015
+(none), and SA-001..SA-012 (none). Any row with a None value is excluded
+before classification — it is not real data and must not count as one,
+and must not be treated as populating whatever category it would
+otherwise map to.
+
+TWO MORE SOURCE-DATA QUIRKS, noticed while adding SA and reported
+honestly rather than smoothed over (same discipline as GC-009's "Design
+gas flow" vs. "Design gas flow rate" wording gap, and FE-002's
+misaligned units, below):
+  - SA-005's own "parameters_filled" metadata says "6 of 7 parameters
+    filled", but the actual parameter list in the committed registry has
+    only 5 entries — a discrepancy in the source registry's own
+    bookkeeping. This module counts the 5 rows that are ACTUALLY present
+    (all 5 have real values), not the 6 the metadata claims; it does not
+    invent a 6th row to match the stated count.
+  - SA-007's "Analysis lab / method" row has unit=None while its value is
+    a real, present string (a lab method reference has no physical
+    unit) — unlike GA-002's row, this is NOT excluded (only a None
+    VALUE is treated as missing; a None unit on a real value is not).
+    Displayed exactly as stored, same as every other value/unit pair.
 
 CATEGORIZATION METHOD: each item's real parameters (already extracted
 from the source workbook — see equipment_registry.py's own docstring)
@@ -132,16 +150,46 @@ in the real source data, and this module reflects that real variance
 rather than papering over it with looser matching that risks new false
 positives elsewhere.
 
+For SA, the existing rule needed NO new keywords at all -- zero
+extension, not even the pattern of one or two well-justified additions
+each prior section needed. SA-001..SA-012 are almost entirely gas
+analysers and sensors, and every one of their real recurring fields --
+"Measurement range", "Measurement principle", "Response time",
+"Accuracy", "Calibration interval"/"Calibration method", and above all
+"Output signal" -- was already a Measurements keyword from FE's very
+first version. "Output signal" earns particular mention: nearly every
+SA item repeats it verbatim, and because Measurements is checked at
+priority 1, ahead of Outputs' generic "output" at priority 3, it
+correctly lands as an instrument's signal format rather than being
+confused with a process output, exactly as designed back in FE-006.
+Two borderline cases were considered and deliberately left as Parameters
+rather than special-cased, same discipline as "capacity"/"temperature"
+above: SA-009's "Detection limit" (an instrument spec, conceptually
+close to "Accuracy", but moving just this one word would empty out
+SA-009's only other populated Parameters slot without fixing a real
+misclassification -- unlike GC's analyser/monitor gap, nothing here was
+landing in an actively WRONG category, just the generic default one),
+and SA-007's "Sampling method"/"Sampling frequency" (SA-007 is a manual
+grab-sampling procedure with no continuous online instrument at all, per
+its own value text -- whether a sampling PROCEDURE description counts as
+"Measurements" the way an instrument's OWN specs do is a genuine judgment
+call, and this module doesn't force it either way).
+
 This rule was checked BY HAND against all 69 real FE-001..FE-008
 parameters when first written, again against all 76 real GA-001..GA-010
-parameters (77 minus the one null row) before the GA extension, and
-again against all 115 real GC-001..GC-015 parameters (all 115 rows are
-real -- GC has no null rows) before this GC extension was written as
-code — see this module's own self-test, which prints every parameter's
-assigned category so the mapping stays auditable, not a black box, and
-includes hardcoded regression checks that FE's (69 real data points, 26
-of 48 slots) and GA's (84 real data points, 27 of 60 slots) counts are
-byte-for-byte unchanged by the GC extension.
+parameters (77 minus the one null row) before the GA extension, again
+against all 115 real GC-001..GC-015 parameters (all 115 rows are real --
+GC has no null rows) before the GC extension, and again against all 85
+real SA-001..SA-012 parameters (all 85 rows are real -- SA has no null
+rows either, though SA-005's own "parameters_filled" metadata claims one
+more filled row than actually exists in its list; see the source-data
+quirks above) before this SA extension was written as code —
+see this module's own self-test, which prints every parameter's assigned
+category so the mapping stays auditable, not a black box, and includes
+hardcoded regression checks that FE's (69 real data points, 26 of 48
+slots), GA's (84 real data points, 27 of 60 slots), and GC's (115 real
+data points, 52 of 90 slots) counts are byte-for-byte unchanged by the SA
+addition.
 
 DATA-QUALITY NOTE, reported honestly rather than silently fixed: a
 handful of parameter rows already in the committed
@@ -162,7 +210,8 @@ from . import equipment_registry
 FE_IDS = [f"FE-{i:03d}" for i in range(1, 9)]
 GA_IDS = [f"GA-{i:03d}" for i in range(1, 11)]
 GC_IDS = [f"GC-{i:03d}" for i in range(1, 16)]
-ITEM_IDS = FE_IDS + GA_IDS + GC_IDS  # registry's own numbering, each section in order -- no renumbering
+SA_IDS = [f"SA-{i:03d}" for i in range(1, 13)]
+ITEM_IDS = FE_IDS + GA_IDS + GC_IDS + SA_IDS  # registry's own numbering, each section in order -- no renumbering
 
 CATEGORIES = [
     "Inputs", "Outputs", "Parameters", "Measurements",
@@ -295,21 +344,30 @@ if __name__ == "__main__":
     print(f"Missing Data - Required category slots: {ga_summary['missing_category_slots']} "
           f"({ga_summary['missing_category_slots'] / ga_summary['total_category_slots'] * 100:.0f}%)")
 
-    print("\n=== Step 5 (GC): honest count, this section specifically ===")
+    print("\n=== GC: honest count ===")
     gc_summary = summarize(datasheets, ids=GC_IDS)
     print(f"Total real data points (15 GC items): {gc_summary['total_real_data_points']}")
     print(f"Total category slots (15 x 6): {gc_summary['total_category_slots']}")
     print(f"Populated category slots: {gc_summary['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {gc_summary['missing_category_slots']} "
           f"({gc_summary['missing_category_slots'] / gc_summary['total_category_slots'] * 100:.0f}%)")
-    for item_id, stat in gc_summary["per_item"].items():
+
+    print("\n=== Step 5 (SA): honest count, this section specifically ===")
+    sa_summary = summarize(datasheets, ids=SA_IDS)
+    print(f"Total real data points (12 SA items): {sa_summary['total_real_data_points']}")
+    print(f"Total category slots (12 x 6): {sa_summary['total_category_slots']}")
+    print(f"Populated category slots: {sa_summary['populated_category_slots']}")
+    print(f"Missing Data - Required category slots: {sa_summary['missing_category_slots']} "
+          f"({sa_summary['missing_category_slots'] / sa_summary['total_category_slots'] * 100:.0f}%)")
+    for item_id, stat in sa_summary["per_item"].items():
         print(f"  {item_id}: {stat['real_data_points']} real data points, "
               f"{stat['populated_categories']}/6 categories populated")
 
-    print("\n=== Step 5: regression check -- did the GC extension change FE's or GA's own numbers? ===")
+    print("\n=== Step 5: regression check -- did the SA addition change FE's, GA's, or GC's own numbers? ===")
     EXPECTED = {
         "FE": (fe_summary, 69, 26, 22, 48),
         "GA": (ga_summary, 84, 27, 33, 60),
+        "GC": (gc_summary, 115, 52, 38, 90),
     }
     all_ok = True
     for label, (summary, exp_real, exp_pop, exp_missing, n_slots) in EXPECTED.items():
@@ -324,13 +382,13 @@ if __name__ == "__main__":
         print(f"  {label}: actual   {summary['total_real_data_points']} real data points, "
               f"{summary['populated_category_slots']}/{n_slots} populated, "
               f"{summary['missing_category_slots']}/{n_slots} missing.")
-        assert ok, f"REGRESSION: the GC rule extension changed {label}'s own classification!"
-    print("PASSED -- both FE's and GA's classifications are byte-for-byte unchanged by the GC extension.")
+        assert ok, f"REGRESSION: the SA addition changed {label}'s own classification!"
+    print("PASSED -- FE's, GA's, and GC's classifications are all byte-for-byte unchanged by the SA addition.")
 
-    print("\n=== Combined (FE + GA + GC) ===")
+    print("\n=== Combined (FE + GA + GC + SA) ===")
     combined = summarize(datasheets)
-    print(f"Total real data points (33 items): {combined['total_real_data_points']}")
-    print(f"Total category slots (33 x 6): {combined['total_category_slots']}")
+    print(f"Total real data points (45 items): {combined['total_real_data_points']}")
+    print(f"Total category slots (45 x 6): {combined['total_category_slots']}")
     print(f"Populated category slots: {combined['populated_category_slots']}")
     print(f"Missing Data - Required category slots: {combined['missing_category_slots']} "
           f"({combined['missing_category_slots'] / combined['total_category_slots'] * 100:.0f}%)")
