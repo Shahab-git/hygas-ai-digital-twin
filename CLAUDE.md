@@ -159,13 +159,13 @@ layer is built.
 ## Known source-data issues (data/equipment_registry.json)
 
 Found while building `python/equipment_engineering_estimates.py`'s
-GC-001 through GC-015 (2026-08-28) and SA-001 through SA-012 (2026-08-28)
-engineering-estimate fills — pre-existing errors in the original
-registry data itself, unrelated to that work. NOT fixed at the source:
-`data/equipment_registry.json` is DOK-ING's own static datasheet
-extract and off-limits to edit (see that module's own docstring).
-Worth correcting whenever the registry maintainer next reviews the
-source spreadsheet:
+GC-001 through GC-015, SA-001 through SA-012, and HB-001 through HB-018
+(all 2026-08-28) engineering-estimate fills — pre-existing errors in
+the original registry data itself, unrelated to that work. NOT fixed
+at the source: `data/equipment_registry.json` is DOK-ING's own static
+datasheet extract and off-limits to edit (see that module's own
+docstring). Worth correcting whenever the registry maintainer next
+reviews the source spreadsheet:
 
 1. GC-007 (Wet Scrubber, Tar)'s own remark for "Tar inlet concentration
    (design)" attributes the 0.5 g/Nm3 figure to "GC-008's bulk packed-bed
@@ -189,11 +189,42 @@ source spreadsheet:
    species entirely. GC-012 (Activated Carbon Filter)'s own confirmed
    "<0.1 ppm outlet" H2S/COS removal target is the actual, exact match.
 
-None of the four errors is relied upon by any fill in
+A REPEATED PATTERN found in HB's own data (three more occurrences of
+essentially the same GC-009/GC-006-vs-GC-012/GC-008 confusion already
+seen in #2 and #4 above — a real, systematic mix-up in the source
+spreadsheet between the H2S-handling units (GC-008 Wet Scrubber H2S,
+GC-012 Activated Carbon Filter) and two unrelated units (GC-006 Tar
+Removal Unit, GC-009 HCl Scrubber):
+
+5. HB-004 (WGS Reactor LTS)'s own remark for "Sensitivity to sulphur"
+   says "this is exactly why GC-009's outlet target was set to <0.1 ppm
+   H2S/COS" — same GC-009-vs-GC-012 mix-up as #4; GC-012's own confirmed
+   target is the actual match.
+6. HB-009 (PSA Tail Gas Handler)'s own remark for "Tail gas H2S content"
+   and HB-010 (Membrane Separator)'s own remark for "Max allowable H2S"
+   BOTH say gas has passed through "GC-006/GC-009 H2S removal upstream."
+   Neither GC-006 (tar) nor GC-009 (HCl) does H2S removal — the actual
+   H2S-handling units are GC-008 (Wet Scrubber, H2S) and GC-012
+   (Activated Carbon Filter).
+7. HB-017 (H2 Purification, Post-LOHC)'s own remark for "Purification
+   method" compares itself to "GC-009's activated carbon approach."
+   GC-009 uses NaOH wet scrubbing, not activated carbon — GC-012 (the
+   actual Activated Carbon Filter) is almost certainly intended.
+
+A separate, unrelated mislabeling, also found in HB:
+
+8. HB-004's own remark for "Inlet temperature (design)" says it
+   "Matches HB-005's hot-side outlet directly." HB-005 is the Steam
+   Generator, which has no hot-side/cold-side terminology anywhere in
+   its own data — HB-003 (Heat Exchanger, WGS), whose own confirmed Hot
+   side outlet temperature is exactly 220°C (matching HB-004's stated
+   220°C inlet), is almost certainly the intended reference.
+
+None of the eight errors is relied upon by any fill in
 `python/equipment_engineering_estimates.py` — each was checked and
-explicitly worked around (see that module's own GC REPORT / SA REPORT
-sections for the full reasoning), not silently used or silently
-ignored.
+explicitly worked around (see that module's own GC REPORT / SA REPORT /
+HB REPORT sections for the full reasoning), not silently used or
+silently ignored.
 
 ## Not yet built (the actual current state)
 

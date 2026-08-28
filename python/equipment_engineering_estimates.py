@@ -1,12 +1,22 @@
 """
-Engineering-estimate overlay v4 — PILOTED on FE-001 through FE-008's 21
+Engineering-estimate overlay v5 — PILOTED on FE-001 through FE-008's 21
 remaining "Missing Data — Required" gaps first (reviewed and approved),
 EXTENDED to GA-001 through GA-010's 29 remaining gaps (reviewed and
 approved), EXTENDED to GC-001 through GC-015's 38 remaining gaps
-(reviewed and approved), now EXTENDED AGAIN to SA-001 through SA-012's
-46 remaining gaps under the identical rule set, no relaxation.
-Extending to the remaining two sections (HB, EU, AI) is still a
-separate, later task.
+(reviewed and approved), EXTENDED to SA-001 through SA-012's 46
+remaining gaps (reviewed and approved), now EXTENDED AGAIN to HB-001
+through HB-018's remaining gaps under the identical rule set, no
+relaxation. Extending to the remaining two sections (EU, AI) is still
+a separate, later task.
+
+HB'S OWN GAP COUNT, VERIFIED LIVE, NOT ASSUMED: the task that requested
+this extension stated "52 remaining gaps." Checked directly against
+this project's own live data before doing anything else (same "verify,
+don't just assert" discipline this whole project follows) — the actual
+live count is 51, not 52 (equipment_datasheet.summarize() on HB_IDS
+after equipment_rfi_fills.py, confirmed via a direct per-item
+recount). Reported honestly rather than silently forced to match the
+stated number or silently corrected without comment.
 
 WHY THIS EXISTS, per the real, authorized basis stated in the task:
 DOK-ING has confirmed they cannot answer some outstanding questions at
@@ -47,8 +57,16 @@ properties by definition, not something a correlation or literature
 value can substitute for before a model is chosen, and most of them
 have no material stream of their own to give an Inputs/Outputs figure
 at all — a near-zero fill rate here is the CORRECT, honest outcome,
-not a gap in effort — see REPORT below for the per-gap reasoning on
-every single one, filled and declined alike, all four sections.
+not a gap in effort. Of HB's 51 actual gaps, 13 get a genuine
+estimate; 38 stay missing — HB is the largest section and the most
+mixed in character: a validated physics core (WGS kinetics, PSA) that
+yields the STRONGEST kind of fill this whole project has produced, a
+parallel/optional technology spread (membrane separation, electrolysis,
+LOHC) that is more genuinely vendor/design-dependent, and the usual
+recurring patterns (shared-physical-equipment sub-items, same-item
+recategorization risk) already established in every prior section —
+see REPORT below for the per-gap reasoning on every single one, filled
+and declined alike, all five sections.
 
 GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
 fills are checked first, and preferentially, for the STRONGEST kind of
@@ -176,6 +194,74 @@ confirmed "<0.1 ppm outlet" H2S/COS target (the Activated Carbon
 Filter) is the actual, exact match. Neither mislabeled reference is
 relied upon by anything filled here.
 
+HB-SPECIFIC DISCIPLINE (task requirements 2-5): task requirement 2's
+explicit priority — check kinetics.py/psa.py's own already-validated
+physics FIRST, since it's independently verified, not an external
+correlation — produced this whole project's SINGLE STRONGEST fill:
+HB-004 (WGS Reactor LTS) Performance Indicators (40% relative
+conversion) comes directly from kinetics.py's own live lts_conversion()
+output, which is independently cross-verified by a completely separate
+route — plain arithmetic on two numbers ALREADY Confirmed in the
+registry itself (HB-002's 7% HTS outlet, HB-004's own 4.2% LTS
+outlet: (7-4.2)/7 = 40%) — physics model and registry data agree
+exactly, not just plausibly. Checked carefully against task
+requirement 2's own explicit warning not to duplicate a number already
+displayed elsewhere in the app: this 40% figure IS also shown live on
+the Digital Twin tab's own kinetics slider, but populating HB-004's own
+equipment-datasheet Performance Indicators slot (which was genuinely
+EMPTY — unlike HB-002's own PI, already Confirmed at 75%) is filling a
+different, real gap with the same underlying fact, not restating
+something already present for THIS item — the same "exact calculation
+from confirmed inputs" pattern as FE-004's specific energy, just
+sourced from a validated physics module instead of two Parameters
+rows. HB-001/HB-002 and HB-006/HB-007/HB-008 are shared-physical-
+equipment sub-item groups (temperature/composition/pressure aspects of
+the SAME WGS-HTS reactor and the SAME PSA skid respectively) — the
+same GA-002/GC-002/GC-014/SA-family pattern already established:
+Inputs/Outputs/Performance Indicators belonging to one aspect-item are
+not re-derived or duplicated into a sibling aspect-item describing the
+identical physical equipment. A "number already sitting in a sibling
+item's own remarks, never given its own row" pattern (first used for
+SA-011) recurs three times here: HB-009's Operating Conditions
+(~0.2 bar(g), already stated in this item's own remark citing HB-008),
+and HB-014's/HB-015's/HB-016's LOHC carrier throughput (~0.031-
+0.032 m3/h, HB-015's own remark already attributes this figure to
+"HB-014's carrier throughput" — independently cross-verified here via
+mass balance from each item's own confirmed H2 loading/release
+capacity and efficiency, using DBT's standard ~1040 kg/m3 density, a
+physical constant, not a design assumption). A genuine "compute, then
+verify, then decline" case (task requirement 4) is reported in full:
+HB-003 (Heat Exchanger, WGS) Performance Indicators — a naive thermal
+effectiveness calculation from this item's own four confirmed
+temperatures gives 47.4%, but that formula is only valid for whichever
+stream has the LOWER heat-capacity rate, and determining that requires
+inferring an unstated water flow rate from the item's own approximate
+duty figure plus an external water-cp constant — a real answer might
+exist, but it rests on a stacked chain of inference rather than values
+directly on file, a materially weaker basis than the LOHC carrier-flow
+calculations above (which use only each item's own two directly-
+Confirmed values plus one physical constant, no inferred intermediate
+quantity) — declined on that distinction, not because the number is
+implausible. A second honest decline, found only by actually checking
+rather than assuming: HB-014 (LOHC Hydrogenation) Inputs was
+considered for the same ~1.85 kg/h H2 feed rate already established at
+HB-007, but HB-017's own remark confirms the LOHC-purified output
+"merges with the primary WGS+PSA route" at shared storage — meaning
+LOHC is a parallel/optional pathway that may process only a FRACTION
+of total H2 production, not necessarily all of it, and no confirmed
+figure states that split — declined rather than silently assuming
+100% throughput. Task requirement 3's core-vs-auxiliary framing was
+checked against this project's own actual item names, not assumed
+literally: only HB-011 and HB-016 carry the literal "— Auxiliary/
+Optional" suffix in their registry names; HB-014/HB-015/HB-017 are
+part of the SAME LOHC alternative-pathway chain in spirit but aren't
+literally labeled that way — reported here rather than silently
+treating the task's framing as exact. Five MORE mislabeled cross-
+references were found while checking for exactly the conflation risk
+task requirement 5 warns about (on top of the four already found in
+GC/SA) — see CLAUDE.md's "Known source-data issues" section for the
+full list; none is relied upon by anything filled here.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE
@@ -187,9 +273,10 @@ completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
 every row's "source" names which round it came from (FE pilot, GA
-extension, GC extension, or SA extension) and its basis type, distinct
-in app.py's UI from both "Equipment Datasheet" (vendor data) and
-"DOK-ING RFI (design_basis.py Q#)" (DOK-ING's real answers) rows.
+extension, GC extension, SA extension, or HB extension) and its basis
+type, distinct in app.py's UI from both "Equipment Datasheet" (vendor
+data) and "DOK-ING RFI (design_basis.py Q#)" (DOK-ING's real answers)
+rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
 static datasheet extract), equipment_datasheet.py's build_datasheet()
@@ -830,11 +917,240 @@ DECLINED — 45 of 46, with the actual reason:
     reasoning as SA-001-006/SA-011 (its own Operating Conditions is
     already separately Confirmed). Performance Indicators: no
     additional KPI beyond its own already-Confirmed accuracy.
+
+HB REPORT (extension — every one of HB's 51 actual gaps, filled and
+declined). HB is the largest, most mixed section: a validated physics
+core (HB-001 through HB-009, HB-012/013), a parallel membrane
+technology (HB-010), auxiliary/optional pathways (HB-011, HB-014
+through HB-017), and standardized dispensing (HB-018):
+
+FILLED — 13 of 51:
+
+  HB-004 (WGS Reactor LTS) Inputs: ~7 vol% CO inlet concentration.
+    Basis: cross-item derivation from HB-002's own confirmed 7 vol% CO
+    outlet concentration (HTS stage) — sequential reactors, the same
+    gas stream, HB-002's outlet IS HB-004's inlet directly.
+
+  HB-004 Performance Indicators: LTS-stage relative CO conversion,
+    40%. Basis: kinetics.py's own live, independently-validated
+    lts_conversion() output (this project's single strongest possible
+    basis — verified physics, not a correlation), cross-checked by
+    plain arithmetic on two values ALREADY Confirmed in the registry
+    (HB-002's 7% outlet, HB-004's own 4.2% outlet: (7-4.2)/7 = 40%) —
+    both routes agree exactly. See HB-SPECIFIC DISCIPLINE above for
+    the full "not duplicating an already-displayed number" reasoning.
+
+  HB-005 (Steam Generator, WGS) Inputs: ~45 kg/h feedwater rate. Basis:
+    standard boiler mass-balance conservation (feedwater mass in =
+    steam mass out, negligible blowdown at this scale) from this
+    item's own confirmed Steam production rate (45 kg/h, its own
+    Outputs) — a genuine new claim about a different physical stream
+    at the same value, not a same-item recategorization.
+
+  HB-006 (PSA Unit, H2 Purity) Operating Conditions: ambient
+    (~15-40 degC). Basis: comparable-installed-system practice, tied
+    directly to this item's own confirmed Adsorbent material
+    (activated carbon + zeolite molecular sieve) — both are standard
+    ambient-temperature PSA media; adsorption selectivity and capacity
+    measurably degrade at elevated temperature, which is why virtually
+    all industrial H2 PSA units operate near ambient regardless of
+    upstream process conditions. Filled here rather than at HB-007/
+    HB-008 (the same physical PSA skid's other two aspect-items) since
+    HB-006 (Purity) is the aspect most directly tied to adsorbent
+    temperature sensitivity — see HB-SPECIFIC DISCIPLINE above.
+
+  HB-009 (PSA Tail Gas Handler) Operating Conditions: ~0.2 bar(g).
+    Basis: this item's own remark for "Tail gas compressor" ALREADY
+    states "tail gas exits PSA regeneration at ~0.2 bar(g) (HB-008)"
+    without it ever being extracted into its own Operating Conditions
+    row — a genuinely new row for an already-stated fact.
+
+  HB-011 (Electrolyser) Inputs: ~0.18 L/h water feed rate. Basis:
+    EXACT calculation from this item's own two already-Confirmed
+    values — Water consumption (~1 L/Nm3 H2) x H2 production rate
+    (rated, 0.18 Nm3/h) = 0.18 L/h.
+
+  HB-012 (H2 Compressor) Performance Indicators: specific compression
+    power, ~5.4 kWh/kg H2. Basis: EXACT calculation from this item's
+    own confirmed Drive motor power (10 kW) and Flow rate (20.6 Nm3/h,
+    converted to ~1.85 kg/h using HB-007's own already-stated Nm3/h-
+    to-kg/h conversion factor for this exact same flow, not re-derived)
+    = 10 / 1.85 = 5.4 kWh/kg. Consistent with published figures for
+    multi-stage mechanical/diaphragm H2 compression to 700-900 bar,
+    commonly cited in the roughly 3-7 kWh/kg range.
+
+  HB-013 (H2 Storage Vessel) Outputs: up to 1.2 kg/min discharge rate
+    (during active dispensing). Basis: cross-item derivation from
+    HB-018's own confirmed Dispensing rate (1.2 kg/min) — HB-018's own
+    remark confirms HB-013 as its direct "Source stream(s)". Stated as
+    the vessel's operational outflow during dispensing, not claimed as
+    its own maximum physical capability.
+
+  HB-014 (LOHC Hydrogenation) Outputs: ~0.031 m3/h carrier (rich oil)
+    throughput. Basis: this figure is ALREADY stated in HB-015's own
+    remark, explicitly attributed to "HB-014's carrier throughput" —
+    independently cross-verified here via mass balance from HB-014's
+    own confirmed H2 loading capacity (2 kg H2/h) and loading
+    efficiency (6.2 wt%), using DBT's standard ~1040 kg/m3 density (a
+    physical constant): (2/0.062)/1040 = 0.031 m3/h — exact agreement
+    with the cited figure.
+
+  HB-015 (LOHC Storage Tank) Inputs and Outputs: ~0.031 m3/h carrier
+    throughput, both directions. Basis: same figure as HB-014 Outputs
+    above, which this item's OWN remark already states as its own
+    tank-sizing basis ("Lean carrier tank volume... sized from HB-014's
+    carrier throughput"); the twin-tank design's own stated symmetry
+    ("lean-out equals rich-in over a full cycle") supports the same
+    steady-state figure for both directions.
+
+  HB-016 (LOHC Dehydrogenation) Inputs and Outputs: ~0.032 m3/h carrier
+    throughput, both directions. Basis: EXACT calculation from this
+    item's own two already-Confirmed values — H2 release capacity
+    (2 kg H2/h) / H2 release efficiency (6 wt%) / DBT's standard
+    ~1040 kg/m3 density = 0.032 m3/h — cross-consistent with HB-014's/
+    HB-015's ~0.031 m3/h (the small difference reflects this item's own
+    stated slightly-lower 6% vs 6.2% efficiency, "minor round-trip
+    losses" per its own remark). Outputs uses the same basis — the
+    carrier compound itself isn't consumed by dehydrogenation, only its
+    H2 payload is released, so mass is conserved through this item too.
+
+DECLINED — 38 of 51, with the actual reason:
+
+  HB-001 (WGS Reactor HTS, Temp) Inputs, Outputs: the SAME physical
+    HTS reactor as HB-002, which already fully characterizes this
+    exact gas stream's composition with its own confirmed Inputs/
+    Outputs — the shared-physical-equipment pattern already established
+    for GA-001/002, GC-001/002. Operating Conditions: no separately
+    confirmed "typical operating" point distinct from this item's own
+    DESIGN temperature values (unlike GA-001, which has both). Performance
+    Indicators: the conversion-efficiency figure for this exact
+    reactor is already Confirmed, attributed to HB-002 (the CO-
+    conversion aspect of the same physical vessel).
+
+  HB-002 (WGS Reactor HTS, CO Conv.) Operating Conditions: same
+    shared-physical-equipment reasoning as HB-001 — this reactor's own
+    temperature is already fully characterized at HB-001; cross-
+    populating the identical figure into a different item ID wouldn't
+    be new information.
+
+  HB-003 (Heat Exchanger, WGS) Measurements: vendor-only instrument
+    spec (no sensor type stated). Operating Conditions: this item's
+    own four already-Confirmed temperatures (hot/cold in/out) already
+    fully describe its operating condition, under Inputs/Outputs, not a
+    separate OC bucket — recategorization, not new information.
+    Performance Indicators: CHECKED, not skipped — see HB-SPECIFIC
+    DISCIPLINE above for the full "compute, verify, decline" reasoning
+    (a naive 47.4% thermal-effectiveness calculation is only valid for
+    whichever stream has the lower heat-capacity rate, which can only
+    be determined here by inferring an unstated water flow rate from
+    a chain of assumptions rather than values directly on file).
+
+  HB-004 Measurements: vendor-only instrument spec (no dedicated LTS-
+    outlet CO analyser confirmed — HB-002's own analyser is at the HTS
+    outlet, a different physical location; assuming an identical
+    instrument exists at LTS outlet would be a vendor/design decision
+    not yet made). Operating Conditions: same shared-physical-equipment
+    reasoning as HB-001 (no separately confirmed operating-vs-design
+    point for this reactor).
+
+  HB-005 Operating Conditions: no separately confirmed operating-vs-
+    design point (Steam temperature/pressure are already this item's
+    own confirmed Parameters). Performance Indicators: no defensible
+    thermal-efficiency KPI — would need fuel/heat input data this
+    project doesn't have.
+
+  HB-006 Outputs: this item's own confirmed Parameters ALREADY states
+    "H2 purity (design) = 99.97 vol%" — the same design-value-
+    classification pattern already noted for HB-008's pressure figure
+    in equipment_rfi_fills.py; restating it under Outputs would be
+    recategorization. Performance Indicators: the recovery-rate figure
+    for this exact PSA skid is already Confirmed, attributed to HB-007
+    (the recovery aspect of the same physical equipment).
+
+  HB-007 (PSA Unit, H2 Recovery) Measurements: vendor-only instrument
+    spec (no dedicated flow-verification instrument confirmed for this
+    aspect). Operating Conditions: same shared-physical-equipment
+    reasoning as HB-001/HB-002 — already characterized at HB-006.
+
+  HB-008 (PSA Unit, Pressure) Inputs, Outputs: same shared-physical-
+    equipment reasoning as HB-002/HB-007 — this is the pressure/cycle-
+    timing aspect of the SAME PSA skid HB-006/HB-007 already fully
+    characterize with their own confirmed Inputs/Outputs; no distinct
+    material stream of its own. Performance Indicators: same reasoning
+    as HB-006 — the recovery figure belongs to HB-007.
+
+  HB-009 Outputs: this item's own confirmed Inputs ALREADY states
+    "Tail gas flow rate = 29.4 Nm3/h" — a handling/buffer system
+    conserves mass with no separation step, so an Outputs figure would
+    restate the identical already-Confirmed number for the identical
+    item — the same recategorization discipline already applied to
+    GC-001/GC-013 (distinct from GA-007's case, where BOTH Inputs and
+    Outputs were freshly-derived, not pre-existing Confirmed data being
+    duplicated). Performance Indicators: no efficiency/recovery concept
+    applies to a tail-gas handling/recycle system.
+
+  HB-010 (Membrane Separator) Measurements: vendor-only instrument
+    spec — consistent with task requirement 3's expectation that this
+    parallel technology is more genuinely vendor-dependent; no other
+    gap exists for this item (Inputs/Outputs/Operating Conditions/
+    Performance Indicators are all already Confirmed).
+
+  HB-011 (Electrolyser) Measurements: vendor-only instrument spec —
+    consistent with task requirement 3's expectation for this
+    auxiliary/optional item (its own registry name literally carries
+    the "— Auxiliary/Optional" suffix).
+
+  HB-012 Outputs: this item's own confirmed Inputs ALREADY states
+    "Flow rate = 20.6 Nm3/h" — a compressor doesn't consume or
+    generate gas, so an Outputs figure would restate the identical
+    already-Confirmed number for the identical item, same
+    recategorization discipline as HB-009/GC-013. Measurements:
+    vendor-only instrument spec.
+
+  HB-013 Performance Indicators: no defensible KPI (round-trip
+    efficiency / boil-off rate concepts don't apply to compressed-gas
+    storage, and no data exists to compute either regardless).
+
+  HB-014 Inputs: CHECKED, not skipped — see HB-SPECIFIC DISCIPLINE
+    above for the full "compute, verify, decline" reasoning (no
+    confirmed figure states what fraction of total H2 production is
+    actually routed through this parallel/optional LOHC pathway versus
+    the primary compressed-storage route; assuming 100% would
+    overclaim). Measurements: vendor-only instrument spec.
+
+  HB-015 Measurements: vendor-only instrument spec (tank level sensor
+    type not stated). Performance Indicators: no efficiency/recovery-
+    rate concept applies to a passive twin-tank buffer.
+
+  HB-016 Measurements: vendor-only instrument spec.
+
+  HB-017 (H2 Purification, Post-LOHC) Inputs: this item's own
+    confirmed Parameters ALREADY states "Design capacity = 2 kg H2/h,"
+    which for a polishing/purification unit already IS its own
+    throughput concept — recategorization, same discipline as HB-006/
+    HB-018. Outputs: CHECKED, not skipped — this item's own confirmed
+    ">99%" Recovery efficiency means output would equal input to
+    within the stated precision (an open-ended lower bound, not a
+    precise figure), so no MEANINGFULLY DISTINCT new number exists
+    beyond what Design capacity and Recovery efficiency already convey
+    — filling it would be low-value padding, not genuine new
+    information. Measurements: vendor-only instrument spec.
+
+  HB-018 (H2 Dispensing Station) Inputs: this item's own confirmed
+    Parameters ALREADY states "Source stream(s) = HB-013" — the same
+    fact an Inputs row would restate, recategorization. Outputs: this
+    item's own confirmed "Dispensing rate = 1.2 kg/min" already IS the
+    Outputs concept, just classified under Parameters — same
+    recategorization discipline. Measurements: vendor-only instrument
+    spec (the confirmed "Metering/billing system" names the meter
+    TYPE, not a specific accuracy/certification spec, which is a
+    vendor/model decision not yet made).
 """
 import copy
 
 from . import equipment_datasheet
 from . import gasifier_mass_balance
+from . import kinetics
 
 _Q = equipment_datasheet
 _GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows()
@@ -859,7 +1175,21 @@ def _source_sa(basis_label):
     return f"Engineering estimate (SA-001..SA-012 extension) — {basis_label}"
 
 
+def _source_hb(basis_label):
+    return f"Engineering estimate (HB-001..HB-018 extension) — {basis_label}"
+
+
 _GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
+
+# HB-004's own strongest-possible fill: kinetics.py's live, independently-validated
+# lts_conversion(), fed the ACTUAL upstream HTS outlet (HB-002's own confirmed 7 vol% CO),
+# not re-derived from scratch. Cross-verified below in the self-test against plain
+# arithmetic on HB-002's/HB-004's own confirmed registry values.
+_HB_HTS_CONVERSION = kinetics.hts_conversion()
+_HB_HTS_OUTLET_CO_PCT = 28.0 * (1 - _HB_HTS_CONVERSION)  # should reproduce HB-002's own confirmed 7 vol%
+_HB_LTS_RELATIVE_CONVERSION_PCT = kinetics.lts_conversion(y_CO_in=_HB_HTS_OUTLET_CO_PCT / 100.0) * 100.0
+
+_HB_DBT_DENSITY_KG_M3 = 1040.0  # standard physical property of Dibenzyltoluene (DBT), not a design assumption -- used for every LOHC carrier-throughput fill below
 
 
 # {item_id: {category: [ {parameter, value, unit, remarks, status, source} ]}}
@@ -1326,6 +1656,230 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "HB-004": {
+        "Inputs": [
+            {
+                "parameter": "Estimated CO inlet concentration",
+                "value": "~7", "unit": "vol%",
+                "remarks": (
+                    "Cross-item derivation: HB-002's own confirmed CO outlet concentration (design) "
+                    "at the HTS stage is 7 vol% — HB-002 and HB-004 are sequential WGS reactors "
+                    "(HTS then LTS) on the same gas stream, so HB-002's outlet is HB-004's inlet "
+                    "directly."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("cross-item derivation from HB-002's own confirmed HTS-stage outlet concentration"),
+            },
+        ],
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated LTS-stage relative CO conversion",
+                "value": f"~{_HB_LTS_RELATIVE_CONVERSION_PCT:.1f}", "unit": "%",
+                "remarks": (
+                    f"This project's single strongest possible basis: kinetics.py's own live, "
+                    f"independently-validated lts_conversion() output ({_HB_LTS_RELATIVE_CONVERSION_PCT:.2f}% "
+                    f"at the design point), fed the actual upstream HTS outlet composition "
+                    f"({_HB_HTS_OUTLET_CO_PCT:.2f} vol% CO, computed from kinetics.py's own "
+                    f"hts_conversion() and matching HB-002's own confirmed 7 vol% figure exactly) "
+                    f"— not re-derived from scratch. Independently cross-checked by plain "
+                    f"arithmetic on two values ALREADY Confirmed in the registry itself alone: "
+                    f"HB-002's 7 vol% outlet and HB-004's own 4.2 vol% outlet give "
+                    f"(7-4.2)/7 = 40.0% by simple subtraction, with no physics model involved at "
+                    f"all — physics model and registry data agree exactly, not just plausibly. "
+                    f"This exact figure is also shown live on the Digital Twin tab's own kinetics "
+                    f"slider ('LTS relative conversion') — restated here because HB-004's own "
+                    f"equipment-datasheet Performance Indicators slot was genuinely empty (unlike "
+                    f"HB-002's own PI, already Confirmed at 75%), the same 'exact calculation from "
+                    f"confirmed inputs, not a same-item recategorization' pattern as FE-004's "
+                    f"specific energy."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("kinetics.py's own live-validated lts_conversion() output, cross-checked by direct arithmetic on this project's own confirmed registry values"),
+            },
+        ],
+    },
+    "HB-005": {
+        "Inputs": [
+            {
+                "parameter": "Estimated feedwater flow rate",
+                "value": "~45", "unit": "kg/h",
+                "remarks": (
+                    "Standard boiler mass-balance conservation (feedwater mass in = steam mass "
+                    "out, negligible blowdown at this scale) applied to this item's own confirmed "
+                    "Steam production rate (45 kg/h, its own Outputs) — a genuine claim about a "
+                    "different physical stream (liquid feedwater vs. steam product) that happens "
+                    "to share the same mass value, not a same-item recategorization of the "
+                    "identical figure."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("standard boiler feedwater/steam mass-balance conservation from this item's own confirmed steam production rate"),
+            },
+        ],
+    },
+    "HB-006": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature",
+                "value": "~15-40", "unit": "°C",
+                "remarks": (
+                    "Comparable-installed-system practice, tied directly to this item's own "
+                    "confirmed Adsorbent material (activated carbon + zeolite molecular sieve) — "
+                    "both are standard ambient-temperature PSA media; adsorption selectivity and "
+                    "capacity measurably degrade at elevated temperature, which is why virtually "
+                    "all industrial H2 PSA units operate near ambient regardless of upstream "
+                    "process conditions, requiring feed cooling first. Filled here (the H2 Purity "
+                    "aspect) rather than at HB-007/HB-008 (the same physical PSA skid's other two "
+                    "aspect-items) since adsorbent temperature sensitivity is most directly tied to "
+                    "purity performance."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("comparable-installed-system practice (ambient-temperature requirement of the confirmed activated-carbon/zeolite PSA adsorbent)"),
+            },
+        ],
+    },
+    "HB-009": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating pressure",
+                "value": "~0.2", "unit": "bar(g)",
+                "remarks": (
+                    "This item's own remark for 'Tail gas compressor (if recycled)' ALREADY states "
+                    "'tail gas exits PSA regeneration at ~0.2 bar(g) (HB-008)' without it ever "
+                    "being extracted into its own Operating Conditions row — a genuinely new row "
+                    "for an already-stated fact, not an external guess."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("extracted from this item's own remarks text, citing HB-008's own confirmed regeneration pressure"),
+            },
+        ],
+    },
+    "HB-011": {
+        "Inputs": [
+            {
+                "parameter": "Estimated water feed rate",
+                "value": "~0.18", "unit": "L/h",
+                "remarks": (
+                    "Exact calculation from this item's own two already-Confirmed values: Water "
+                    "consumption (~1 L/Nm3 H2) x H2 production rate (rated, 0.18 Nm3/h) = "
+                    "0.18 L/h."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("calculated from this item's own confirmed water-consumption ratio and rated H2 production rate"),
+            },
+        ],
+    },
+    "HB-012": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated specific compression power",
+                "value": "~5.4", "unit": "kWh/kg H2",
+                "remarks": (
+                    "Exact calculation from this item's own confirmed Drive motor power (10 kW) "
+                    "and Flow rate (20.6 Nm3/h) — converted to ~1.85 kg/h using HB-007's own "
+                    "already-stated Nm3/h-to-kg/h conversion factor for this exact same flow (not "
+                    "re-derived): 10 / 1.85 = 5.4 kWh/kg. Consistent with published figures for "
+                    "multi-stage mechanical/diaphragm H2 compression from a few bar to 700-900 bar, "
+                    "commonly cited in the roughly 3-7 kWh/kg range."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("calculated from this item's own confirmed motor power and flow rate, compared against published literature range"),
+            },
+        ],
+    },
+    "HB-013": {
+        "Outputs": [
+            {
+                "parameter": "Estimated discharge rate (during dispensing)",
+                "value": "up to 1.2", "unit": "kg/min",
+                "remarks": (
+                    "Cross-item derivation from HB-018's own confirmed Dispensing rate "
+                    "(1.2 kg/min) — HB-018's own remark confirms this item (HB-013) as its direct "
+                    "'Source stream(s)'. Stated as this vessel's operational outflow during active "
+                    "dispensing, not claimed as its own independent maximum physical capability."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("cross-item derivation from HB-018's own confirmed dispensing rate, which names this item as its direct source stream"),
+            },
+        ],
+    },
+    "HB-014": {
+        "Outputs": [
+            {
+                "parameter": "Estimated carrier (rich oil) throughput",
+                "value": "~0.031", "unit": "m³/h",
+                "remarks": (
+                    "This figure is ALREADY stated in HB-015's own remark ('Lean carrier tank "
+                    "volume... sized from HB-014's carrier throughput (~0.031 m3/h)'), explicitly "
+                    "attributed to this item, without ever being extracted into this item's own "
+                    "row. Independently cross-verified via mass balance from this item's own "
+                    "confirmed H2 loading capacity (2 kg H2/h) and loading efficiency (6.2 wt%), "
+                    "using DBT's standard ~1040 kg/m3 density (a physical constant, not a design "
+                    "assumption): (2/0.062)/1040 = 0.031 m3/h — exact agreement with the cited "
+                    "figure."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("extracted from HB-015's own remark (which attributes it to this item), independently cross-verified via mass balance from this item's own confirmed values"),
+            },
+        ],
+    },
+    "HB-015": {
+        "Inputs": [
+            {
+                "parameter": "Estimated carrier (rich oil) inflow",
+                "value": "~0.031", "unit": "m³/h",
+                "remarks": (
+                    "Same figure as HB-014's estimated carrier throughput, which this item's OWN "
+                    "remark already states as its own tank-sizing basis ('Lean carrier tank "
+                    "volume... sized from HB-014's carrier throughput')."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("this item's own remark, citing HB-014's confirmed carrier throughput as its own tank-sizing basis"),
+            },
+        ],
+        "Outputs": [
+            {
+                "parameter": "Estimated carrier (lean oil) outflow",
+                "value": "~0.031", "unit": "m³/h",
+                "remarks": (
+                    "Same basis as this item's estimated Inputs — the twin-tank design's own "
+                    "stated symmetry ('lean-out equals rich-in over a full cycle') supports the "
+                    "same steady-state figure for both directions."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("same basis as this item's estimated Inputs, per this item's own stated twin-tank symmetry"),
+            },
+        ],
+    },
+    "HB-016": {
+        "Inputs": [
+            {
+                "parameter": "Estimated carrier (rich oil) inflow",
+                "value": "~0.032", "unit": "m³/h",
+                "remarks": (
+                    "Exact calculation from this item's own two already-Confirmed values: H2 "
+                    "release capacity (2 kg H2/h) / H2 release efficiency (6 wt%) / DBT's standard "
+                    "~1040 kg/m3 density = 0.032 m3/h — cross-consistent with HB-014's/HB-015's own "
+                    "~0.031 m3/h (the small difference reflects this item's own stated slightly-"
+                    "lower 6% vs 6.2% efficiency, 'minor round-trip losses' per its own remark)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("calculated from this item's own confirmed H2 release capacity and efficiency, using DBT's standard density"),
+            },
+        ],
+        "Outputs": [
+            {
+                "parameter": "Estimated carrier (lean oil) outflow",
+                "value": "~0.032", "unit": "m³/h",
+                "remarks": (
+                    "Same basis as this item's estimated Inputs — the carrier compound itself "
+                    "isn't consumed by dehydrogenation, only its H2 payload is released, so mass "
+                    "is conserved through this item too."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_hb("mass conservation, same basis as this item's estimated Inputs"),
+            },
+        ],
+    },
 }
 
 
@@ -1389,9 +1943,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 25, f"REGRESSION: expected 25 rows (7 FE + 10 GA + 7 GC + 1 SA), counted {n_rows}."
-    assert n_slots == 25, f"REGRESSION: expected 25 newly-estimated slots, counted {n_slots}."
-    assert n_items == 18, f"REGRESSION: expected 18 items touched (6 FE + 6 GA + 5 GC + 1 SA), counted {n_items}."
+    assert n_rows == 38, f"REGRESSION: expected 38 rows (7 FE + 10 GA + 7 GC + 1 SA + 13 HB), counted {n_rows}."
+    assert n_slots == 38, f"REGRESSION: expected 38 newly-estimated slots, counted {n_slots}."
+    assert n_items == 28, f"REGRESSION: expected 28 items touched (6 FE + 6 GA + 5 GC + 1 SA + 10 HB), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -1457,6 +2011,44 @@ if __name__ == "__main__":
     print("PASSED -- SA's only fill is SA-011, and it explicitly documents why the same reasoning wasn't "
           "extended to the sample-conditioned composition analysers.")
 
+    print("\n=== HB-specific check: kinetics.py's live LTS conversion reproduces both the design target and HB-002's/HB-004's own confirmed registry values ===")
+    assert abs(_HB_HTS_OUTLET_CO_PCT - 7.0) < 0.01, (
+        f"REGRESSION: kinetics.py's hts_conversion() no longer reproduces HB-002's own confirmed 7 vol% CO outlet (got {_HB_HTS_OUTLET_CO_PCT})."
+    )
+    assert abs(_HB_LTS_RELATIVE_CONVERSION_PCT - 40.0) < 0.01, (
+        f"REGRESSION: kinetics.py's lts_conversion() no longer reproduces the established 40% relative conversion target (got {_HB_LTS_RELATIVE_CONVERSION_PCT})."
+    )
+    arithmetic_check_pct = (7.0 - 4.2) / 7.0 * 100.0
+    assert abs(arithmetic_check_pct - _HB_LTS_RELATIVE_CONVERSION_PCT) < 0.01, (
+        "REGRESSION: kinetics.py's own output no longer agrees with plain arithmetic on HB-002's/HB-004's own confirmed registry values."
+    )
+    print(f"PASSED -- kinetics.py's live physics ({_HB_LTS_RELATIVE_CONVERSION_PCT:.2f}%) and plain arithmetic on "
+          f"HB-002's/HB-004's own confirmed values ({arithmetic_check_pct:.2f}%) agree exactly -- HB-004's PI fill "
+          f"is doubly validated, not a single unchecked source.")
+
+    print("\n=== HB-specific check: the two computed-then-declined gaps (HB-003 PI, HB-014 Inputs) were never actually filled ===")
+    assert "Performance Indicators" not in ESTIMATE_FILLS.get("HB-003", {}), (
+        "REGRESSION: HB-003 Performance Indicators appears filled -- the module docstring explicitly declines the "
+        "naive thermal-effectiveness calculation as resting on an inferred, unconfirmed water flow rate; it must stay Missing."
+    )
+    assert "Inputs" not in ESTIMATE_FILLS.get("HB-014", {}), (
+        "REGRESSION: HB-014 Inputs appears filled -- the module docstring explicitly declines assuming 100% of H2 "
+        "production routes through this optional LOHC pathway with no confirmed split fraction; it must stay Missing."
+    )
+    print("PASSED -- HB-003 (Heat Exchanger) Performance Indicators and HB-014 (LOHC Hydrogenation) Inputs have no "
+          "fill of any kind, exactly as declined in the HB REPORT.")
+
+    print("\n=== HB-specific check: every LOHC carrier-throughput fill (HB-014/015/016) uses the same DBT density constant ===")
+    for item_id, category in (("HB-014", "Outputs"), ("HB-015", "Inputs"), ("HB-015", "Outputs"),
+                               ("HB-016", "Inputs"), ("HB-016", "Outputs")):
+        for row in ESTIMATE_FILLS[item_id][category]:
+            assert ("1040" in row["remarks"] or "same basis" in row["remarks"].lower()
+                    or "HB-014" in row["remarks"] or "HB-015" in row["remarks"]), (
+                f"REGRESSION: {item_id}/{category} doesn't cite the standard DBT density constant or the item it shares a basis with."
+            )
+    print("PASSED -- every LOHC carrier-throughput fill traces back to the same physical DBT-density constant "
+          "(~1040 kg/m3), not five separately invented numbers.")
+
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
     after = equipment_datasheet.summarize(filled)
@@ -1476,7 +2068,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 6 (this extension): FE's, GA's, and GC's numbers, regression-verified unchanged ===")
+    print("\n=== Task requirement 7 (this extension): FE's, GA's, GC's, and SA's numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -1484,7 +2076,7 @@ if __name__ == "__main__":
     assert fe_after["confirmed_category_slots"] == 27, f"REGRESSION: expected 27 Confirmed FE slots, got {fe_after['confirmed_category_slots']}."
     assert fe_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate FE slots, got {fe_after['estimated_category_slots']}."
     assert fe_after["missing_category_slots"] == 14, f"REGRESSION: expected 14 Missing FE slots, got {fe_after['missing_category_slots']}."
-    print("PASSED -- FE's pilot numbers are unchanged by this SA extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
+    print("PASSED -- FE's pilot numbers are unchanged by this HB extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
 
     ga_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GA_IDS)
     print(f"GA: {ga_after['confirmed_category_slots']} Confirmed, "
@@ -1493,7 +2085,7 @@ if __name__ == "__main__":
     assert ga_after["confirmed_category_slots"] == 31, f"REGRESSION: expected 31 Confirmed GA slots, got {ga_after['confirmed_category_slots']}."
     assert ga_after["estimated_category_slots"] == 10, f"REGRESSION: expected 10 Estimate GA slots, got {ga_after['estimated_category_slots']}."
     assert ga_after["missing_category_slots"] == 19, f"REGRESSION: expected 19 Missing GA slots, got {ga_after['missing_category_slots']}."
-    print("PASSED -- GA's extension numbers are unchanged by this SA extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
+    print("PASSED -- GA's extension numbers are unchanged by this HB extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
 
     gc_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GC_IDS)
     print(f"GC: {gc_after['confirmed_category_slots']} Confirmed, "
@@ -1502,9 +2094,8 @@ if __name__ == "__main__":
     assert gc_after["confirmed_category_slots"] == 52, f"REGRESSION: expected 52 Confirmed GC slots, got {gc_after['confirmed_category_slots']}."
     assert gc_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate GC slots, got {gc_after['estimated_category_slots']}."
     assert gc_after["missing_category_slots"] == 31, f"REGRESSION: expected 31 Missing GC slots, got {gc_after['missing_category_slots']}."
-    print("PASSED -- GC's extension numbers are unchanged by this SA extension: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90.")
+    print("PASSED -- GC's extension numbers are unchanged by this HB extension: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90.")
 
-    print("\n=== SA-specific honest breakdown (this extension) ===")
     sa_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.SA_IDS)
     print(f"SA: {sa_after['confirmed_category_slots']} Confirmed, "
           f"{sa_after['estimated_category_slots']} Engineering Estimate, "
@@ -1512,17 +2103,26 @@ if __name__ == "__main__":
     assert sa_after["confirmed_category_slots"] == 26, f"REGRESSION: expected 26 Confirmed SA slots, got {sa_after['confirmed_category_slots']}."
     assert sa_after["estimated_category_slots"] == 1, f"REGRESSION: expected 1 Estimate SA slot, got {sa_after['estimated_category_slots']}."
     assert sa_after["missing_category_slots"] == 45, f"REGRESSION: expected 45 Missing SA slots, got {sa_after['missing_category_slots']}."
-    print("PASSED -- SA: 26 Confirmed + 1 Engineering Estimate + 45 Missing = 72 total slots, matches exactly.")
+    print("PASSED -- SA's extension numbers are unchanged by this HB extension: 26 Confirmed + 1 Engineering Estimate + 45 Missing = 72.")
 
-    print("\n=== Regression check: every OTHER section (HB, EU, AI) is untouched by this overlay ===")
+    print("\n=== HB-specific honest breakdown (this extension) ===")
+    hb_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.HB_IDS)
+    print(f"HB: {hb_after['confirmed_category_slots']} Confirmed, "
+          f"{hb_after['estimated_category_slots']} Engineering Estimate, "
+          f"{hb_after['missing_category_slots']} Missing (of {hb_after['total_category_slots']} total slots)")
+    assert hb_after["confirmed_category_slots"] == 57, f"REGRESSION: expected 57 Confirmed HB slots, got {hb_after['confirmed_category_slots']}."
+    assert hb_after["estimated_category_slots"] == 13, f"REGRESSION: expected 13 Estimate HB slots, got {hb_after['estimated_category_slots']}."
+    assert hb_after["missing_category_slots"] == 38, f"REGRESSION: expected 38 Missing HB slots, got {hb_after['missing_category_slots']}."
+    print("PASSED -- HB: 57 Confirmed + 13 Engineering Estimate + 38 Missing = 108 total slots, matches exactly.")
+
+    print("\n=== Regression check: every OTHER section (EU, AI) is untouched by this overlay ===")
     for label, ids in [
-        ("HB", equipment_datasheet.HB_IDS),
         ("EU", equipment_datasheet.EU_IDS), ("AI", equipment_datasheet.AI_IDS),
     ]:
         b = equipment_datasheet.summarize(base, ids=ids)
         f = equipment_datasheet.summarize(filled, ids=ids)
         print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, and SA are targeted so far."
-    print("PASSED -- HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
+        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, SA, and HB are targeted so far."
+    print("PASSED -- EU and AI are byte-for-byte identical to the pre-overlay data.")
 
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
