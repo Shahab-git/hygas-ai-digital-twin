@@ -1,11 +1,12 @@
 """
-Engineering-estimate overlay v3 — PILOTED on FE-001 through FE-008's 21
+Engineering-estimate overlay v4 — PILOTED on FE-001 through FE-008's 21
 remaining "Missing Data — Required" gaps first (reviewed and approved),
 EXTENDED to GA-001 through GA-010's 29 remaining gaps (reviewed and
-approved), now EXTENDED AGAIN to GC-001 through GC-015's 38 remaining
-gaps under the identical rule set, no relaxation. Extending to the
-remaining three sections (SA, HB, EU, AI) is still a separate, later
-task.
+approved), EXTENDED to GC-001 through GC-015's 38 remaining gaps
+(reviewed and approved), now EXTENDED AGAIN to SA-001 through SA-012's
+46 remaining gaps under the identical rule set, no relaxation.
+Extending to the remaining two sections (HB, EU, AI) is still a
+separate, later task.
 
 WHY THIS EXISTS, per the real, authorized basis stated in the task:
 DOK-ING has confirmed they cannot answer some outstanding questions at
@@ -38,8 +39,16 @@ genuine estimate; 19 stay missing. Of GC's 38 gaps, only 7 get a
 genuine estimate; 31 stay missing — GC is mostly specific vendor
 equipment-performance specs with no literature basis, so a notably
 lower fill rate than FE/GA is the CORRECT, honest outcome here, not a
-gap in effort — see REPORT below for the per-gap reasoning on every
-single one, filled and declined alike, all three sections.
+gap in effort. Of SA's 46 gaps, only 1 gets a genuine estimate; 45 stay
+missing — SA is almost entirely measurement instruments (gas
+analysers, sensors, a manual sampling port), whose OWN specific
+accuracy/response-time/measurement-range figures are vendor/product
+properties by definition, not something a correlation or literature
+value can substitute for before a model is chosen, and most of them
+have no material stream of their own to give an Inputs/Outputs figure
+at all — a near-zero fill rate here is the CORRECT, honest outcome,
+not a gap in effort — see REPORT below for the per-gap reasoning on
+every single one, filled and declined alike, all four sections.
 
 GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
 fills are checked first, and preferentially, for the STRONGEST kind of
@@ -106,6 +115,67 @@ equipment_registry.json is off-limits to edit (DOK-ING's own static
 extract), so neither is fixed here, but no GC fill below relies on
 either mislabeled reference — both are flagged, not propagated.
 
+SA-SPECIFIC DISCIPLINE (task requirements 2-4): SA is instrumentation —
+gas analysers, sensors, and one manual sampling port — not process
+equipment, so the FE-006 (Moisture Analyser) precedent applies almost
+across the board: a measurement instrument OBSERVES the shared process
+gas stream, it doesn't receive and transform a material stream of its
+own the way a cyclone, scrubber, or filter does, so it structurally has
+no genuine Inputs/Outputs figure to estimate — not just undocumented.
+A second, SA-specific distinction was checked carefully before filling
+any Operating Conditions gap (the "compute-then-verify"/conflation
+discipline, task requirements 3-4): this project's OWN convention,
+evidenced by SA-009's own parameter literally named "Operating
+temperature (gas)", is that Operating Conditions for an SA item means
+the ACTUAL PROCESS GAS temperature at that point — but SA-001 through
+SA-006 and SA-008 are all TCD/NDIR/UV-fluorescence gas-COMPOSITION
+analysers that explicitly require sample conditioning (SA-001's own
+Parameters: "Sample conditioning required = Yes... moisture removal,
+particulate filtration, and pressure/flow regulation before reaching
+the analyser") — what reaches their own detection cell is a
+conditioned sample, not the raw process gas, so assigning them the
+same process-gas temperature as a direct in-line sensor (SA-009's
+triboelectric monitor, SA-010's thermal mass flow meter, SA-011's Pt100
+RTD, SA-012's capacitive diaphragm transmitter) would conflate two
+genuinely different instrument-installation contexts — checked and
+declined for exactly that reason, not overlooked. The one item that IS
+filled (SA-011 Operating Conditions) is a direct in-line RTD sensor
+whose own remarks ALREADY state the number in prose ("Generous margin
+around the expected 40°C operating point") without it ever being
+extracted into its own row — a genuinely new row for an already-stated
+fact, not an external guess, and cross-consistent with SA-009's and
+SA-010's own separately-Confirmed 40°C at the same late-train position.
+A third pattern, checked and declined twice (SA-007, SA-009 Performance
+Indicators): a measurement/verification instrument's Performance
+Indicators must not be filled with the REMOVAL efficiency of the
+process equipment it merely verifies — SA-007 (Tar Sampling Port)
+doesn't remove tar (GC-006/GC-007 do; GC-007's own removal efficiency
+is already filled in the GC round), and SA-009 (Dust Monitor) doesn't
+remove dust (GC-010 does; already filled). Attributing that efficiency
+to the instrument instead of the equipment actually performing the
+removal would be a real misattribution error, the same class of
+mistake as the GC round's adjacent-stage conflations, just between an
+instrument and the equipment it watches rather than between two
+equipment items. equipment_rfi_fills.py's own existing SA-006 check
+(gas calorimeter's SYNGAS LHV is NOT the same quantity as RFI #2's
+FEEDSTOCK LHV) was re-confirmed still unused by any fill here. Two NEW
+apparent MISLABELED cross-references were found in SA's own pre-
+existing registry remarks and are reported, not silently used or
+ignored (same discipline as the two found in GC, and documented
+alongside them in CLAUDE.md's "Known source-data issues" section):
+SA-007's own remark places its "raw" tar-sampling port "upstream of
+GC-008", but its own "Expected tar concentration (raw)" figure is
+explicitly back-calculated using GC-006's removal efficiency ("assuming
+GC-006's ~95% bulk removal efficiency") — the raw port should almost
+certainly be described as upstream of GC-006 (the actual bulk tar-
+removal unit), not GC-008 (the H2S scrubber, unrelated to tar); and
+SA-008's own remark says its <0.1 ppm expected H2S concentration
+"matches GC-009's target", but GC-009 is the HCl Scrubber (its own
+target is <5 ppm HCl, a different species entirely) — GC-012's own
+confirmed "<0.1 ppm outlet" H2S/COS target (the Activated Carbon
+Filter) is the actual, exact match. Neither mislabeled reference is
+relied upon by anything filled here.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE
@@ -117,9 +187,9 @@ completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
 every row's "source" names which round it came from (FE pilot, GA
-extension, or GC extension) and its basis type, distinct in app.py's UI
-from both "Equipment Datasheet" (vendor data) and "DOK-ING RFI
-(design_basis.py Q#)" (DOK-ING's real answers) rows.
+extension, GC extension, or SA extension) and its basis type, distinct
+in app.py's UI from both "Equipment Datasheet" (vendor data) and
+"DOK-ING RFI (design_basis.py Q#)" (DOK-ING's real answers) rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
 static datasheet extract), equipment_datasheet.py's build_datasheet()
@@ -666,6 +736,100 @@ DECLINED — 31 of 38, with the actual reason (not silently skipped):
     temperature would need flow-weighting data this project doesn't
     have. GC-015 Performance Indicators: no efficiency/recovery-rate
     concept applies to a passive buffer tank.
+
+SA REPORT (extension — every one of SA's 46 gaps, filled and declined).
+SA is almost entirely measurement instruments (gas analysers, sensors,
+one manual sampling port) — a near-zero fill rate is the correct,
+honest outcome, not a shortfall in effort:
+
+FILLED — 1 of 46:
+
+  SA-011 (Gas Temperature Sensor) Operating Conditions: ~40 degC. Basis:
+    this item's own Measurement range remark ALREADY states the number
+    in prose ("Generous margin around the expected 40 degC operating
+    point — a normal-condition location") without it ever being
+    extracted into its own Operating Conditions row — a genuinely new
+    row for an already-stated fact, not an external guess. Cross-
+    consistent with SA-009's and SA-010's own separately-Confirmed 40
+    degC Operating temperature at the same late-train position — SA-011
+    is a direct in-line Pt100 RTD sensor, the same instrument category
+    as those two (not a sample-conditioned composition analyser, see
+    the SA-SPECIFIC DISCIPLINE section above for why that distinction
+    matters).
+
+DECLINED — 45 of 46, with the actual reason:
+
+  SA-001 through SA-006 (H2/CO/CO2/CH4/N2/LHV gas-composition analysers)
+    Inputs, Outputs: structurally not a fit — these are measurement
+    instruments observing the shared process gas stream, not process
+    equipment receiving/transforming a material stream of their own,
+    the same FE-006 (Moisture Analyser) precedent already established.
+    Operating Conditions: CHECKED, not skipped — see the SA-SPECIFIC
+    DISCIPLINE section above for the full sample-conditioning-vs-
+    direct-in-line reasoning; assigning them the same process-gas
+    temperature as SA-009/010/011/012 would conflate two different
+    instrument-installation contexts. Performance Indicators: each
+    item's own accuracy/response-time figures already fully capture its
+    performance under Measurements; no additional efficiency/recovery-
+    rate-type KPI concept applies to a composition-measurement
+    instrument. SA-005's and SA-006's own explicitly CALCULATED (not
+    directly measured) status doesn't change any of this reasoning.
+
+  SA-007 (Tar Sampling Port) Inputs, Outputs: structurally not a fit —
+    manual grab sampling (its own stated method: "no continuous online
+    analyser") has no continuous material stream to characterize.
+    Measurements: also structurally not a fit — "response time,"
+    "accuracy," and "output signal" (the concepts this category
+    captures elsewhere) don't apply to a manual, intermittent
+    sampling method; its own methodology (CEN/TS 15439 Tar Protocol) is
+    already fully captured under Parameters. Operating Conditions: no
+    data exists to derive a gas temperature at this specific tap point
+    from. Performance Indicators: CHECKED, not skipped — a tar removal
+    efficiency IS computable from this item's own confirmed raw/clean
+    concentration figures, but that efficiency belongs to GC-006/GC-007
+    (the equipment that actually removes the tar; GC-007's own removal
+    efficiency is already filled in the GC round) — attributing it to
+    this sampling port instead would be a real misattribution error,
+    not a genuine performance metric for THIS item.
+
+  SA-008 (H2S / COS Analyser) Inputs, Outputs: same structural reasoning
+    as SA-001-006. Operating Conditions: same sample-conditioning
+    reasoning as SA-001-006 — this is a combined UV-fluorescence/GC-FPD
+    analyser, also requiring conditioned sample delivery. Performance
+    Indicators: same reasoning as SA-001-006 — accuracy/response time
+    already captured under Measurements.
+
+  SA-009 (Dust / Particulate Monitor) Inputs, Outputs: same structural
+    reasoning as SA-001-006 (a monitor observes, it doesn't receive a
+    material stream of its own — its own Operating Conditions is
+    already separately Confirmed, since it IS a direct in-line
+    instrument, unlike SA-001-006/SA-008). Performance Indicators:
+    CHECKED, not skipped — same misattribution reasoning as SA-007's
+    decline: the dust removal efficiency belongs to GC-010 (already
+    filled in the GC round), not to the monitor that merely verifies
+    it.
+
+  SA-010 (Gas Flow Meter, Clean) Outputs: this item's own confirmed
+    Inputs already states "Design flow rate = 50 Nm3/h" — a flow meter
+    measures ONE stream passing through it; an Outputs figure would
+    restate the identical already-Confirmed number for the identical
+    item, the same recategorization discipline already applied to
+    GC-001/GC-003/GC-013's Outputs. Parameters: no basis exists to
+    derive a physical-spec figure (pipe size, connection type) this
+    item doesn't already state, unlike SA-012 (which has its own
+    confirmed Process connection) — vendor/design-dependent. Performance
+    Indicators: accuracy already captured under Measurements.
+
+  SA-011 Inputs, Outputs: same structural reasoning as SA-001-006 (this
+    item's own Operating Conditions IS filled above, since it's a
+    direct in-line sensor — but it still has no material stream of its
+    own the way process equipment does). Performance Indicators: no
+    additional KPI beyond its own already-Confirmed accuracy.
+
+  SA-012 (Gas Pressure Sensor) Inputs, Outputs: same structural
+    reasoning as SA-001-006/SA-011 (its own Operating Conditions is
+    already separately Confirmed). Performance Indicators: no
+    additional KPI beyond its own already-Confirmed accuracy.
 """
 import copy
 
@@ -689,6 +853,10 @@ def _source_ga(basis_label):
 
 def _source_gc(basis_label):
     return f"Engineering estimate (GC-001..GC-015 extension) — {basis_label}"
+
+
+def _source_sa(basis_label):
+    return f"Engineering estimate (SA-001..SA-012 extension) — {basis_label}"
 
 
 _GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
@@ -1136,6 +1304,28 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "SA-011": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature",
+                "value": "~40", "unit": "°C",
+                "remarks": (
+                    "This item's own Measurement range remark ALREADY states the number in prose "
+                    "('Generous margin around the expected 40°C operating point — a normal-"
+                    "condition location') without it ever being extracted into its own Operating "
+                    "Conditions row — a genuinely new row for an already-stated fact, not an "
+                    "external guess. Cross-consistent with SA-009's and SA-010's own separately-"
+                    "Confirmed 40°C Operating temperature at the same late-train position — SA-011 "
+                    "is a direct in-line Pt100 RTD sensor, the same instrument category as those "
+                    "two (not a sample-conditioned composition analyser like SA-001-006/SA-008, "
+                    "where the same process-gas temperature would NOT apply — checked and "
+                    "deliberately not extended to those items)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_sa("extracted from this item's own remarks text, cross-consistent with SA-009's/SA-010's own confirmed values"),
+            },
+        ],
+    },
 }
 
 
@@ -1199,9 +1389,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 24, f"REGRESSION: expected 24 rows (7 FE + 10 GA + 7 GC), counted {n_rows}."
-    assert n_slots == 24, f"REGRESSION: expected 24 newly-estimated slots, counted {n_slots}."
-    assert n_items == 17, f"REGRESSION: expected 17 items touched (6 FE + 6 GA + 5 GC), counted {n_items}."
+    assert n_rows == 25, f"REGRESSION: expected 25 rows (7 FE + 10 GA + 7 GC + 1 SA), counted {n_rows}."
+    assert n_slots == 25, f"REGRESSION: expected 25 newly-estimated slots, counted {n_slots}."
+    assert n_items == 18, f"REGRESSION: expected 18 items touched (6 FE + 6 GA + 5 GC + 1 SA), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -1254,6 +1444,19 @@ if __name__ == "__main__":
     print(f"PASSED -- GC-006's and GC-012's estimated gas flows both use the exact same {_GC_TRAIN_GAS_FLOW_NM3_H} Nm3/h "
           f"the train's own GC-003/GC-009/GC-013 already confirm, not a separately invented number.")
 
+    print("\n=== SA-specific check: exactly one SA fill, and it explicitly documents why it wasn't extended to SA-001-006/SA-008 ===")
+    sa_items_filled = [item_id for item_id in ESTIMATE_FILLS if item_id.startswith("SA-")]
+    assert sa_items_filled == ["SA-011"], (
+        f"REGRESSION: expected only SA-011 to have a fill, found {sa_items_filled}."
+    )
+    sa011_remarks = ESTIMATE_FILLS["SA-011"]["Operating Conditions"][0]["remarks"]
+    assert "checked and" in sa011_remarks.lower() and "not extended" in sa011_remarks.lower(), (
+        "REGRESSION: SA-011's fill no longer documents the deliberate decision not to extend the same "
+        "reasoning to the sample-conditioned analysers (SA-001-006/SA-008)."
+    )
+    print("PASSED -- SA's only fill is SA-011, and it explicitly documents why the same reasoning wasn't "
+          "extended to the sample-conditioned composition analysers.")
+
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
     after = equipment_datasheet.summarize(filled)
@@ -1273,7 +1476,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 8 (this extension): FE's and GA's numbers, regression-verified unchanged ===")
+    print("\n=== Task requirement 6 (this extension): FE's, GA's, and GC's numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -1281,7 +1484,7 @@ if __name__ == "__main__":
     assert fe_after["confirmed_category_slots"] == 27, f"REGRESSION: expected 27 Confirmed FE slots, got {fe_after['confirmed_category_slots']}."
     assert fe_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate FE slots, got {fe_after['estimated_category_slots']}."
     assert fe_after["missing_category_slots"] == 14, f"REGRESSION: expected 14 Missing FE slots, got {fe_after['missing_category_slots']}."
-    print("PASSED -- FE's pilot numbers are unchanged by this GC extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
+    print("PASSED -- FE's pilot numbers are unchanged by this SA extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
 
     ga_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GA_IDS)
     print(f"GA: {ga_after['confirmed_category_slots']} Confirmed, "
@@ -1290,9 +1493,8 @@ if __name__ == "__main__":
     assert ga_after["confirmed_category_slots"] == 31, f"REGRESSION: expected 31 Confirmed GA slots, got {ga_after['confirmed_category_slots']}."
     assert ga_after["estimated_category_slots"] == 10, f"REGRESSION: expected 10 Estimate GA slots, got {ga_after['estimated_category_slots']}."
     assert ga_after["missing_category_slots"] == 19, f"REGRESSION: expected 19 Missing GA slots, got {ga_after['missing_category_slots']}."
-    print("PASSED -- GA's extension numbers are unchanged by this GC extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
+    print("PASSED -- GA's extension numbers are unchanged by this SA extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
 
-    print("\n=== GC-specific honest breakdown (this extension) ===")
     gc_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GC_IDS)
     print(f"GC: {gc_after['confirmed_category_slots']} Confirmed, "
           f"{gc_after['estimated_category_slots']} Engineering Estimate, "
@@ -1300,17 +1502,27 @@ if __name__ == "__main__":
     assert gc_after["confirmed_category_slots"] == 52, f"REGRESSION: expected 52 Confirmed GC slots, got {gc_after['confirmed_category_slots']}."
     assert gc_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate GC slots, got {gc_after['estimated_category_slots']}."
     assert gc_after["missing_category_slots"] == 31, f"REGRESSION: expected 31 Missing GC slots, got {gc_after['missing_category_slots']}."
-    print("PASSED -- GC: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90 total slots, matches exactly.")
+    print("PASSED -- GC's extension numbers are unchanged by this SA extension: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90.")
 
-    print("\n=== Regression check: every OTHER section (SA, HB, EU, AI) is untouched by this overlay ===")
+    print("\n=== SA-specific honest breakdown (this extension) ===")
+    sa_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.SA_IDS)
+    print(f"SA: {sa_after['confirmed_category_slots']} Confirmed, "
+          f"{sa_after['estimated_category_slots']} Engineering Estimate, "
+          f"{sa_after['missing_category_slots']} Missing (of {sa_after['total_category_slots']} total slots)")
+    assert sa_after["confirmed_category_slots"] == 26, f"REGRESSION: expected 26 Confirmed SA slots, got {sa_after['confirmed_category_slots']}."
+    assert sa_after["estimated_category_slots"] == 1, f"REGRESSION: expected 1 Estimate SA slot, got {sa_after['estimated_category_slots']}."
+    assert sa_after["missing_category_slots"] == 45, f"REGRESSION: expected 45 Missing SA slots, got {sa_after['missing_category_slots']}."
+    print("PASSED -- SA: 26 Confirmed + 1 Engineering Estimate + 45 Missing = 72 total slots, matches exactly.")
+
+    print("\n=== Regression check: every OTHER section (HB, EU, AI) is untouched by this overlay ===")
     for label, ids in [
-        ("SA", equipment_datasheet.SA_IDS), ("HB", equipment_datasheet.HB_IDS),
+        ("HB", equipment_datasheet.HB_IDS),
         ("EU", equipment_datasheet.EU_IDS), ("AI", equipment_datasheet.AI_IDS),
     ]:
         b = equipment_datasheet.summarize(base, ids=ids)
         f = equipment_datasheet.summarize(filled, ids=ids)
         print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, and GC are targeted so far."
-    print("PASSED -- SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
+        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, and SA are targeted so far."
+    print("PASSED -- HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
 
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)

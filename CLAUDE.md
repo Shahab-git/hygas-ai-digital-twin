@@ -156,6 +156,45 @@ layer is built.
   message text (line/column references) without needing to see the block's
   code directly.
 
+## Known source-data issues (data/equipment_registry.json)
+
+Found while building `python/equipment_engineering_estimates.py`'s
+GC-001 through GC-015 (2026-08-28) and SA-001 through SA-012 (2026-08-28)
+engineering-estimate fills — pre-existing errors in the original
+registry data itself, unrelated to that work. NOT fixed at the source:
+`data/equipment_registry.json` is DOK-ING's own static datasheet
+extract and off-limits to edit (see that module's own docstring).
+Worth correcting whenever the registry maintainer next reviews the
+source spreadsheet:
+
+1. GC-007 (Wet Scrubber, Tar)'s own remark for "Tar inlet concentration
+   (design)" attributes the 0.5 g/Nm3 figure to "GC-008's bulk packed-bed
+   removal." GC-008 is the Wet Scrubber (H2S) — GC-006 (Tar Removal Unit,
+   the actual packed-bed tar adsorber) is almost certainly the intended
+   reference.
+2. GC-012 (Activated Carbon Filter)'s own remark for "H2S / COS removal
+   target" compares itself against "GC-006's <1 ppm H2S target." GC-006
+   is the Tar Removal Unit — GC-008 (the actual H2S scrubber, whose own
+   confirmed removal target is <1 ppm) is almost certainly intended.
+3. SA-007 (Tar Sampling Port)'s own remark places its "raw" sampling
+   port "upstream of GC-008," but its own "Expected tar concentration
+   (raw)" figure is explicitly back-calculated using GC-006's removal
+   efficiency ("assuming GC-006's ~95% bulk removal efficiency"). The
+   raw port should almost certainly be described as upstream of GC-006
+   (the actual bulk tar-removal unit it's measuring across), not GC-008
+   (the H2S scrubber, unrelated to tar).
+4. SA-008 (H2S / COS Analyser)'s own remark says its <0.1 ppm expected
+   H2S concentration "matches GC-009's target." GC-009 is the HCl
+   Scrubber — its own confirmed target is <5 ppm HCl, a different
+   species entirely. GC-012 (Activated Carbon Filter)'s own confirmed
+   "<0.1 ppm outlet" H2S/COS removal target is the actual, exact match.
+
+None of the four errors is relied upon by any fill in
+`python/equipment_engineering_estimates.py` — each was checked and
+explicitly worked around (see that module's own GC REPORT / SA REPORT
+sections for the full reasoning), not silently used or silently
+ignored.
+
 ## Not yet built (the actual current state)
 
 `python/kinetics.py`, `python/psa.py`, `python/chp.py`,
