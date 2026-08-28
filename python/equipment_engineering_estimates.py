@@ -1312,3 +1312,5 @@ if __name__ == "__main__":
         print(f"  {label}: {b} == {f}: {b == f}")
         assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, and GC are targeted so far."
     print("PASSED -- SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
+
+# (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
