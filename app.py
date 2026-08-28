@@ -15,7 +15,7 @@ from python import (
     root_cause, multi_agent_negotiation, confirmation_loop, gasifier_mass_balance, circularity,
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
-    equipment_data_requests, design_basis, equipment_rfi_fills,
+    equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -2065,3 +2065,50 @@ with tab9:
     if "data_request_draft" in st.session_state:
         with st.expander("Preview data request list", expanded=False):
             st.markdown(st.session_state["data_request_draft"])
+
+    st.divider()
+    st.subheader("Routed by Likely Owner")
+    st.caption(
+        "The same "
+        f"{len(_dr_requests)} requests above, but grouped by WHO's realistic to answer each one "
+        "instead of sent to DOK-ING as one undifferentiated list — a likely-owner classification "
+        "layered on top (`python/equipment_request_routing.py`), equipment section as a secondary "
+        "grouping within each owner."
+    )
+    st.warning(
+        "**This routing is a reasonable inference, not a confirmed fact.** Classified by "
+        "equipment type and missing category only — never DOK-ING-stated. DOK-ING should correct "
+        "any item routed to the wrong owner; each line states its own reasoning to make that "
+        "correction easy. Where the reasoning genuinely doesn't resolve cleanly (e.g. "
+        "\"Measurements\" on IT/network infrastructure — could mean a product's own hardware spec "
+        "or a monitoring capability the architecture should specify), it's marked **Uncertain / "
+        "needs discussion** rather than forced into a bucket.",
+        icon="⚠️",
+    )
+
+    _routed_requests = equipment_request_routing.route_requests(_dr_requests)
+    _owner_counts = equipment_request_routing.summarize_by_owner(_routed_requests)
+    o1, o2, o3, o4 = st.columns(4)
+    o1.metric("Vendor", _owner_counts[equipment_request_routing.OWNER_VENDOR])
+    o2.metric("DOK-ING", _owner_counts[equipment_request_routing.OWNER_DOKING])
+    o3.metric("Design/process engineer", _owner_counts[equipment_request_routing.OWNER_DESIGN])
+    o4.metric("Uncertain", _owner_counts[equipment_request_routing.OWNER_UNCERTAIN])
+    st.caption(
+        ", ".join(
+            f"**{_owner}** {_owner_counts[_owner]} ({_owner_counts[_owner] / len(_routed_requests) * 100:.0f}%)"
+            for _owner in equipment_request_routing.OWNERS
+        )
+        + f" — {len(_routed_requests)} total, same {len(_dr_requests)} gaps as above, each now "
+        "tagged with a likely owner and its own stated reasoning."
+    )
+
+    if st.button("Generate routed data request list (.md)"):
+        st.session_state["routed_request_draft"] = equipment_request_routing.generate_routed_request_document(_routed_requests)
+
+    if "routed_request_draft" in st.session_state:
+        st.download_button(
+            "Download routed data request list (.md)", data=st.session_state["routed_request_draft"],
+            file_name="hygas_ai_equipment_data_requests_routed.md", mime="text/markdown",
+        )
+        with st.expander("Preview routed data request list", expanded=False):
+            st.markdown(st.session_state["routed_request_draft"])
