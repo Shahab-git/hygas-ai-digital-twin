@@ -767,18 +767,19 @@ with tab1:
         "market data in this project yet. The diversion fraction needs no price assumption at all; "
         "it's a real mass-balance ratio."
     )
-    st.warning(
-        "**⚠️ Known Discrepancy — Requires User Decision.** The 37.5 kg/h (900 kg/day) default "
-        "below is this project's own physics-model design point (python/gasifier_mass_balance.py). "
-        "DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, RFI #1) confirms a "
-        "DIFFERENT nominal capacity: **1 tonne/day (1,000 kg/day)**. These may partly reconcile on "
-        "a wet-vs-dry basis (1,000 kg/day as-received at ~10% design inlet moisture would leave "
-        "~900 kg/day dry), but DOK-ING's answer doesn't state which basis its figure uses, so this "
-        "is NOT assumed resolved. Recalibrating this design point is a decision for you to make "
-        "explicitly — nothing in this repo's physics constants (kinetics.py, "
-        "gasifier_mass_balance.py, psa.py) has been changed because of this. See the Design Basis "
-        "tab (RFI #1) for the full detail.",
-        icon="⚠️",
+    st.success(
+        "**✅ Recalibrated to DOK-ING's confirmed feed rate.** The 37.5 kg/h (900 kg/day) default "
+        "was this project's own original physics-model design point; a previously-flagged "
+        "discrepancy against DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, "
+        "RFI #1: **1 tonne/day / 1,000 kg/day**) has since been resolved by explicit user decision "
+        "— the default below is now **41.67 kg/h (1,000 kg/day)**, a +11.12% increase. The ash "
+        "(10%) and carbon black (5%) fractions themselves are UNCHANGED — only the absolute feed "
+        "rate they're applied to — so ash/carbon-black output and revenue-potential figures below "
+        "all scale by the same +11.12%; the diversion-from-landfill percentage does not change "
+        "(it's a pure ratio of two fractions). WGS conversion (kinetics.py) and PSA recovery "
+        "(psa.py) have no dependency on this number and are unaffected. See the Design Basis tab "
+        "(RFI #1) for the full recalibration detail.",
+        icon="✅",
     )
 
     circ_feed_kg_h = st.number_input(
@@ -1508,13 +1509,15 @@ with tab2:
         "**DOK-ING answered the real RFI.** All 17 questions are now Confirmed with DOK-ING's "
         "own real, formal answers (via Ankica Kovac) — see `data/dokink_rfi_answers.md`. Applied "
         "via `python/design_basis.py`'s `set_confirmed()` mechanism, the first real use of it. "
-        "One real, unresolved discrepancy came out of this: DOK-ING's confirmed feed rate "
-        "(1,000 kg/day) differs from this project's own physics-model design point (900 kg/day) "
-        "— flagged below (RFI #1) and in the Circularity Scoring section, **not** silently "
-        "resolved. Two corrections to this project's own prior framing: RFNBO qualification "
-        "(RFI #14) is confirmed OPTIONAL, not required — see the Compliance Documentation "
-        "section; and hydrogen end use / co-products (RFI #9/#10) are confirmed contractually "
-        "flexible, not fixed to any one configuration.",
+        "One real discrepancy came out of this — DOK-ING's confirmed feed rate (1,000 kg/day) "
+        "differed from this project's own physics-model design point (900 kg/day) — and has "
+        "since been **resolved by explicit recalibration**: see RFI #1 below and the Circularity "
+        "Scoring section, both updated with the new 41.67 kg/h (1,000 kg/day) basis, a +11.12% "
+        "scale-up (percentages/conversions unchanged, only absolute mass flows scaled). Two "
+        "corrections to this project's own prior framing: RFNBO qualification (RFI #14) is "
+        "confirmed OPTIONAL, not required — see the Compliance Documentation section; and "
+        "hydrogen end use / co-products (RFI #9/#10) are confirmed contractually flexible, not "
+        "fixed to any one configuration.",
         icon="✅",
     )
     st.warning(
@@ -1582,6 +1585,8 @@ with tab2:
                     if _cfg["confirmed_notes"]:
                         if "KNOWN DISCREPANCY" in _cfg["confirmed_notes"]:
                             st.error(_cfg["confirmed_notes"])
+                        elif "DISCREPANCY RESOLVED" in _cfg["confirmed_notes"]:
+                            st.success(_cfg["confirmed_notes"])
                         else:
                             st.caption(_cfg["confirmed_notes"])
                     if _cfg["answer"] is not None:

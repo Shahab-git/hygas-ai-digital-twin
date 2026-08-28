@@ -76,14 +76,32 @@ facts, in any new work.
 
 DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, applied
 in python/design_basis.py) has since confirmed all 17 design-basis RFI
-questions. One real, unresolved discrepancy came out of it: DOK-ING's
-confirmed nominal feed rate (1 tonne/day, 1,000 kg/day) differs from
-this project's own physics-model design point (37.5 kg/h dry feed =
-900 kg/day, python/gasifier_mass_balance.py). Recalibrating the physics
-core to either number is a decision for the user to make explicitly —
-do NOT resolve this automatically in any new work; see
-python/design_basis.py's feedstock_rate_variation entry for the full
-detail.
+questions. One real discrepancy came out of it — DOK-ING's confirmed
+nominal feed rate (1 tonne/day, 1,000 kg/day) differed from this
+project's own physics-model design point (37.5 kg/h dry feed = 900
+kg/day) — and has SINCE BEEN RESOLVED by explicit user decision: the
+physics core is now recalibrated to DOK-ING's confirmed figure.
+
+**Current feed-rate basis (use this in any new work): 41.67 kg/h dry
+feed = 1,000 kg/day** (`python/gasifier_mass_balance.py`'s
+`DEFAULT_DRY_FEED_KG_H`), up from the old 37.5 kg/h / 900 kg/day, a
++11.12% scale-up. The ash (10%) and carbon-black (5%) fractions
+themselves are UNCHANGED — only the absolute feed rate they're applied
+to — so absolute ash/carbon-black mass flows and circularity.py's
+revenue-potential figures scaled by the same +11.12% (ash 3.750 -> 4.167
+kg/h, carbon black 1.875 -> 2.0835 kg/h), while the diversion-from-
+landfill percentage (a pure ratio) did not change. kinetics.py's WGS
+conversion (75.0%/40.0%/85.0%) and psa.py's PSA recovery (75.0%) have no
+numeric dependency on this constant and are UNCHANGED, along with every
+module downstream of them (uncertainty.py's Monte Carlo,
+performance_guarantee.py, multi_module_orchestration.py, pinn_kinetics.py,
+sim_to_real.py, time_series_sim.py, tda_analysis.py) — verified directly
+by searching each file for a dependency, not assumed. The ~50 kg/day H2
+production target also did not need to move: it was always an
+externally DOK-ING-stated figure already anchored to the 1,000 kg/day
+basis, not derived by this project's own code from the feed-rate
+constant. See python/design_basis.py's feedstock_rate_variation entry
+and python/gasifier_mass_balance.py's own docstring for the full detail.
 
 ## The 19 innovations and what equipment each belongs to
 

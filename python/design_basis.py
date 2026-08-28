@@ -1,8 +1,32 @@
 """
-Project Design Basis tracker v4 — the 17 RFI questions DOK-ING actually
+Project Design Basis tracker v5 — the 17 RFI questions DOK-ING actually
 sent, verbatim from data/rfi_dokink.md, grouped exactly as that document
 groups them: Feedstock (5), Hydrogen Product (5), Site & Infrastructure
 (2), Regulatory & Commercial (4), Project Scope (1).
+
+v5 PHYSICS CORE RECALIBRATED — the v4 "Known Discrepancy — Requires User
+Decision" on #1 (feed rate) is now RESOLVED, not just documented. The
+user made the explicit decision v4 deferred: recalibrate this project's
+physics core from the old 900 kg/day (37.5 kg/h) design point to
+DOK-ING's confirmed 1,000 kg/day (41.67 kg/h). Applied in
+python/gasifier_mass_balance.py (DEFAULT_DRY_FEED_KG_H), which
+python/circularity.py inherits automatically (no separate constant to
+update there). ASH_FRACTION (0.10) and CARBON_BLACK_FRACTION (0.05) were
+deliberately left untouched — percentages of feed mass, not absolute
+quantities — so only the absolute ash/carbon-black mass flows scaled,
+by the same +11.12% the feed rate itself scaled. Confirmed directly (by
+searching, not assuming) that kinetics.py and psa.py have ZERO numeric
+dependency on this constant, so WGS conversion (75.0%/40.0%/85.0%) and
+PSA recovery (75.0%) are unaffected, and so is every module downstream
+of THEM (uncertainty.py's Monte Carlo, performance_guarantee.py,
+multi_module_orchestration.py, pinn_kinetics.py, sim_to_real.py,
+time_series_sim.py, tda_analysis.py). The ~50 kg/day H2 target
+(hydrogen_production_target, #6) also did not need to move — it was
+already an externally DOK-ING-stated figure anchored to the 1,000 kg/day
+basis, not derived by this project's own code from the old constant; see
+that question's and #1's own confirmed_notes for the full reconciliation.
+#1's confirmed_notes below, and app.py's Circularity Scoring section,
+both now say RESOLVED rather than flagging an open discrepancy.
 
 v4 REAL RFI RESPONSE RECEIVED — the first real (not Assumed, not
 reconstructed, not a hedge to reconcile) answers this tracker has ever
@@ -202,9 +226,11 @@ DESIGN_BASIS_DISCLAIMER = (
     "This document still has no real correspondence capability and no authority to represent you "
     "externally on its own — it's a record of what's confirmed, not a live channel to DOK-ING. "
     "Where a Confirmed answer differs materially from what this project's own physics/equipment "
-    "data previously assumed (see #1's feed-rate discrepancy in particular), that's flagged "
-    "explicitly rather than silently overwritten — nothing in this repo's physics constants was "
-    "changed just because a real answer arrived; see each such question's own confirmed_notes."
+    "data previously assumed, that's flagged explicitly rather than silently overwritten — no "
+    "physics constant was ever changed automatically just because a real answer arrived. #1's "
+    "feed-rate discrepancy WAS since resolved, but only as an explicit, separate recalibration "
+    "decision the user made afterward — not an automatic side effect of this confirmation; see "
+    "that question's own confirmed_notes for exactly what changed."
 )
 
 # Order matches the 5 real RFI categories and the real question numbering
@@ -713,21 +739,30 @@ def apply_dokink_rfi_response():
         "operational turndown ~70-120%. Larger seasonal swings handled by parallel modular units. "
         "Other reactor sizes exist, up to 25 tonnes/day for the largest.",
         f"{RFI_ANSWERS_SOURCE} (RFI #1)",
-        "⚠️ KNOWN DISCREPANCY — REQUIRES USER DECISION: DOK-ING's confirmed nominal "
-        "capacity (1,000 kg/day) is a DIFFERENT number than this project's own physics-model "
-        "design point (37.5 kg/h dry feed = 900 kg/day — python/gasifier_mass_balance.py's "
-        "DEFAULT_DRY_FEED_KG_H, and everything built on it: kinetics.py's operating assumptions, "
-        "circularity.py, equipment_data_requests.py's citations). These MAY partly reconcile on a "
-        "wet-vs-dry basis (1,000 kg/day as-received at ~10% design inlet moisture, FE-005, would "
-        "leave ~900 kg/day dry — consistent with the 900 kg/day figure), but DOK-ING's answer "
-        "does not state which basis the 1,000 kg/day figure is measured on, so this is NOT assumed "
-        "resolved here. Recalibrating kinetics.py/gasifier_mass_balance.py/psa.py's design-point "
-        "constants to either number is a decision for the user to make explicitly — nothing in "
-        "this repo's physics was changed because of this confirmation. NEW, UNMODELED INFORMATION: "
+        "✅ DISCREPANCY RESOLVED — PHYSICS CORE RECALIBRATED: this question previously flagged a "
+        "\"Known Discrepancy — Requires User Decision\" between DOK-ING's confirmed nominal "
+        "capacity (1,000 kg/day) and this project's own physics-model design point (37.5 kg/h dry "
+        "feed = 900 kg/day). The user has since made that explicit decision: recalibrate the "
+        "physics core to DOK-ING's confirmed figure. python/gasifier_mass_balance.py's "
+        "DEFAULT_DRY_FEED_KG_H is now 41.67 kg/h (1,000 kg/day), up from 37.5 kg/h (900 kg/day) — "
+        "a +11.12% scale factor. ASH_FRACTION (0.10) and CARBON_BLACK_FRACTION (0.05) were "
+        "deliberately left UNCHANGED — they are percentages of feed mass, not absolute "
+        "quantities, and nothing in DOK-ING's response revised them; only the absolute ash/"
+        "carbon-black mass flows (python/circularity.py) scaled by the same +11.12%, from "
+        "3.750/1.875 kg/h to 4.167/2.0835 kg/h. kinetics.py's WGS conversion percentages "
+        "(75.0%/40.0%/85.0%) and psa.py's PSA recovery (75.0%) are UNCHANGED — neither module "
+        "has ever had a numeric dependency on the feed-rate constant, confirmed directly by "
+        "searching both files, not assumed. The ~50 kg/day H2 production target (see the "
+        "hydrogen_production_target question) ALSO did not need to move: it was already an "
+        "externally DOK-ING-stated figure (HB-013/HB-007 registry remarks, and DOK-ING's own "
+        "RFI #6 answer: \"~50 kg/day from 1 tpd\") anchored to the 1,000 kg/day basis all along, "
+        "not derived by this project's own code from the old 900 kg/day constant — it was the "
+        "OLD design point that was slightly inconsistent with it, not the target itself. NEW, "
+        "UNMODELED INFORMATION (unaffected by the recalibration, still just documented): "
         "DOK-ING's product line extends well beyond the 1 tpd unit this whole project models — "
         "up to 25 tonnes/day for the largest reactor. This repo's physics and equipment registry "
-        "cover ONLY the 1 tpd unit; larger units are not modeled anywhere here (also noted in "
-        "CLAUDE.md's \"Not yet built\" list).",
+        "cover ONLY the 1 tpd unit, now at its recalibrated 1,000 kg/day basis; larger units are "
+        "not modeled anywhere here (also noted in CLAUDE.md's \"Not yet built\" list).",
     )
     set_confirmed(
         "feedstock_composition",
@@ -992,15 +1027,42 @@ if __name__ == "__main__":
         )
     print(f"PASSED -- {len(SPOT_CHECKS)} spot-checks against the real DOK-ING answer text all matched.")
 
-    print("\n=== Known Discrepancy flag check (task requirement 2) ===")
+    print("\n=== Discrepancy-resolved check (recalibration) ===")
     q1_notes = QUESTIONS["feedstock_rate_variation"]["confirmed_notes"]
-    assert "KNOWN DISCREPANCY" in q1_notes, "REGRESSION: #1's confirmed_notes lost the Known Discrepancy flag."
-    assert "1,000 kg/day" in q1_notes and "900 kg/day" in q1_notes, (
-        "REGRESSION: #1's discrepancy flag doesn't state both numbers."
+    assert "DISCREPANCY RESOLVED" in q1_notes, "REGRESSION: #1's confirmed_notes lost the resolution marker."
+    assert "KNOWN DISCREPANCY" not in q1_notes, "REGRESSION: #1's confirmed_notes still shows the old open-discrepancy flag."
+    assert "41.67" in q1_notes and "1,000 kg/day" in q1_notes and "37.5" in q1_notes and "900 kg/day" in q1_notes, (
+        "REGRESSION: #1's resolution note doesn't state both the old and new numbers."
     )
-    assert "decision for the user" in q1_notes, "REGRESSION: #1's discrepancy flag doesn't defer the decision to the user."
-    print("PASSED -- #1's Known Discrepancy flag states both numbers (1,000 kg/day vs. 900 kg/day) "
-          "and explicitly defers the recalibration decision to the user, not auto-resolved.")
+    assert "+11.12%" in q1_notes, "REGRESSION: #1's resolution note doesn't state the scale factor."
+    print("PASSED -- #1's confirmed_notes shows DISCREPANCY RESOLVED (not the old KNOWN DISCREPANCY "
+          "flag), states both the old (37.5 kg/h / 900 kg/day) and new (41.67 kg/h / 1,000 kg/day) "
+          "figures, and the +11.12% scale factor.")
+
+    print("\n=== Physics-core recalibration check (cross-module, not just this module's own text) ===")
+    from . import gasifier_mass_balance, circularity
+    assert gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H == 41.67, (
+        f"REGRESSION: gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H is "
+        f"{gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H}, expected 41.67 (the recalibrated value)."
+    )
+    assert gasifier_mass_balance.ASH_FRACTION == 0.10 and gasifier_mass_balance.CARBON_BLACK_FRACTION == 0.05, (
+        "REGRESSION: the ash/carbon-black FRACTIONS changed -- they should be untouched by the "
+        "feed-rate recalibration, only the absolute feed rate should have changed."
+    )
+    _flows = gasifier_mass_balance.byproduct_mass_flows()
+    assert abs(_flows["ash_kg_h"] - 4.167) < 1e-6, f"REGRESSION: recalibrated ash_kg_h is {_flows['ash_kg_h']}, expected 4.167."
+    assert abs(_flows["carbon_black_kg_h"] - 2.0835) < 1e-6, (
+        f"REGRESSION: recalibrated carbon_black_kg_h is {_flows['carbon_black_kg_h']}, expected 2.0835."
+    )
+    _circ = circularity.circularity_summary()
+    assert abs(_circ["diversion_fraction"] - 0.15) < 1e-9, (
+        f"REGRESSION: diversion_fraction is {_circ['diversion_fraction']}, expected exactly 0.15 (10%+5%) "
+        f"-- a pure ratio, must be UNCHANGED by the recalibration."
+    )
+    print(f"PASSED -- gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H = 41.67 kg/h (recalibrated), "
+          f"ASH_FRACTION/CARBON_BLACK_FRACTION untouched (0.10/0.05), computed ash/carbon-black "
+          f"flows match the recalibrated values (4.167/2.0835 kg/h), and circularity.py's "
+          f"diversion_fraction is still exactly 15% -- a pure ratio, correctly unaffected.")
 
     print("\n=== Final count (task requirement 6 — not rounded up) ===")
     counts = summarize()
@@ -1042,6 +1104,7 @@ if __name__ == "__main__":
     print(f"'Confirmed answer:' blocks in the generated document: {confirmed_blocks} (expected 17)")
     assert question_blocks == 17, f"REGRESSION: document has {question_blocks} question blocks, expected 17."
     assert confirmed_blocks == 17, f"REGRESSION: document has {confirmed_blocks} Confirmed-answer blocks, expected 17."
-    assert "KNOWN DISCREPANCY" in draft, "REGRESSION: the Known Discrepancy flag didn't make it into the generated document."
-    print("PASSED -- the generated Markdown document renders all 17 as Confirmed, with the Known "
-          "Discrepancy flag visible in it.")
+    assert "DISCREPANCY RESOLVED" in draft, "REGRESSION: the discrepancy-resolved note didn't make it into the generated document."
+    assert "KNOWN DISCREPANCY" not in draft, "REGRESSION: the old open-discrepancy flag is still in the generated document."
+    print("PASSED -- the generated Markdown document renders all 17 as Confirmed, with the "
+          "discrepancy-resolved note visible and the old open-discrepancy flag gone.")
