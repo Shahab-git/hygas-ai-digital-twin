@@ -2126,3 +2126,5 @@ if __name__ == "__main__":
     print("PASSED -- EU and AI are byte-for-byte identical to the pre-overlay data.")
 
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
+
+# (touch: force fresh Streamlit Cloud rebuild after adding HB-001..HB-018 estimates, 2026-08-28)
