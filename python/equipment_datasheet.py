@@ -775,3 +775,5 @@ if __name__ == "__main__":
           f"data -- {combined['populated_category_slots'] / combined['total_category_slots'] * 100:.1f}%.")
 
 
+
+# (touch: force fresh Streamlit Cloud rebuild after adding STATUS_ESTIMATE, 2026-08-28)
