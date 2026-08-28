@@ -1,8 +1,62 @@
 """
-Project Design Basis tracker v3 — the 17 RFI questions DOK-ING actually
+Project Design Basis tracker v4 — the 17 RFI questions DOK-ING actually
 sent, verbatim from data/rfi_dokink.md, grouped exactly as that document
 groups them: Feedstock (5), Hydrogen Product (5), Site & Infrastructure
 (2), Regulatory & Commercial (4), Project Scope (1).
+
+v4 REAL RFI RESPONSE RECEIVED — the first real (not Assumed, not
+reconstructed, not a hedge to reconcile) answers this tracker has ever
+had. DOK-ING answered all 17 questions formally, via Ankica Kovac; the
+verbatim answers are committed at data/dokink_rfi_answers.md and applied
+here via apply_dokink_rfi_response(), called automatically at the bottom
+of this module (import-time, not something app.py or the self-test has
+to remember to call) — the first REAL use of the set_confirmed()
+mechanism this module has had since it was built. All 17 questions are
+now STATUS_CONFIRMED; every prior STATUS_ASSUMED/STATUS_UNKNOWN base
+status from the v3 reconciliation stays on the entry as historical
+record (QUESTIONS[key]["status"]) and IS still what clear_confirmed()
+reverts to, but is no longer what status_of() returns day-to-day.
+
+Two things this real response changed beyond just filling in blanks:
+  - #1 (feed rate): DOK-ING confirmed "1 tonne/day (1,000 kg/day)" as
+    nominal capacity — a DIFFERENT number than this project's own
+    physics-model design point (37.5 kg/h dry feed = 900 kg/day,
+    gasifier_mass_balance.py's DEFAULT_DRY_FEED_KG_H, and everything
+    built on it: kinetics.py's GHSV defaults, circularity.py,
+    equipment_data_requests.py's citations, etc.). Per explicit
+    instruction, NO physics constant anywhere in this repo was changed
+    because of this — recalibrating the design point is a decision for
+    the user to make explicitly, not something to resolve silently by
+    picking a number. Flagged as a "Known Discrepancy — Requires User
+    Decision" on this entry's confirmed_notes, and the same flag is
+    surfaced in app.py wherever the app itself cites the feed rate
+    (the Circularity Scoring section) — see that section's own comment
+    for exactly where.
+  - #9 (end use) and #10 (co-products): DOK-ING's real answers CORRECT
+    the prior Assumed framing, not just supersede it. The prior answer
+    read EU-006's PEM fuel cell and the CHP/heat-recovery equipment
+    train as evidence the plant leaned toward specific end
+    uses/co-product commitments; DOK-ING's real answer is broader and
+    different in kind — end use is "no fixed limitation, depends
+    entirely on contracts," and CHP is explicitly "optional, not
+    fixed." EU-006 and the CHP suite remain real, valid, DEPLOYABLE
+    equipment configurations — just not confirmed as THE decision the
+    way the prior Assumed answer implied. See #9/#10's confirmed_notes.
+  - #14 (RFNBO): DOK-ING confirmed RFNBO qualification is NOT required
+    — optional, pursued only for its effect on hydrogen's economic
+    value. This CORRECTS python/compliance.py's own prior framing
+    (which treated RFNBO as this project's implicit target) and
+    app.py's top-line tagline — both updated; see compliance.py's own
+    docstring for the correction and why regulatory_drafting.py needed
+    no separate fix (it reads compliance.py's checklist live).
+  - New, unmodeled information documented but NOT built out anywhere in
+    this repo (per explicit instruction — document, don't build): a
+    liquid-carrier H2 storage alternative (room temperature/pressure,
+    #8) alongside the compressed-gas route this project's equipment
+    registry already models, and larger reactor sizes up to 25 tonnes/
+    day (#1) — this whole repo's physics and equipment registry cover
+    ONLY the 1 tpd unit. Both also noted in CLAUDE.md's "Not yet built"
+    list.
 
 v3 RECONCILIATION, against an unsourced walkthrough claiming 8/17
 Assumed: that walkthrough was treated as a claim to verify, not copied
@@ -117,18 +171,15 @@ confirmation_loop.py/uncertainty.py:
     confirmation_loop.py) is a natural next step at that point, out of
     scope here since there's no real response yet to persist.
 
-FINAL COUNT, verified live by this module's own self-test: 8 of the 17
-real RFI questions have a real, cited answer somewhere in this project
-(STATUS_ASSUMED); 9 are genuinely open (STATUS_UNKNOWN). This is DOWN
-BY ONE from v2's reported 9/8, entirely because of the #12 fix above —
-every other question's status is unchanged from v2. (It happens to
-match the unsourced walkthrough's own 8/17 headline number, but for a
-different reason than the walkthrough gave: the walkthrough's own count
-excluded #12 by hedging rather than by applying a stated rule, and
-undercounted #2 as fully separate from its ash-content evidence without
-citing GA-005 specifically. The convergence on 8/17 here comes from
-independently re-deriving #12 against #11's own precedent, not from
-adopting the walkthrough's number.) Not rounded up in either direction.
+FINAL COUNT, verified live by this module's own self-test: all 17 of 17
+real RFI questions are now STATUS_CONFIRMED, with DOK-ING's own real
+answer, applied via set_confirmed() in apply_dokink_rfi_response()
+below. This SUPERSEDES the v3 reconciliation's 8 Assumed / 9 Unknown
+split — that split remains visible per-entry (QUESTIONS[key]["status"])
+as the historical pre-RFI-response baseline, and is exactly what
+clear_confirmed() reverts a question to, but summarize()/status_of()
+now report Confirmed for all 17 day-to-day. Not rounded up in either
+direction: 17 Confirmed, not "basically all of them."
 """
 from datetime import datetime, timezone
 
@@ -142,16 +193,18 @@ CATEGORIES = [
 ]
 
 RFI_SOURCE = "data/rfi_dokink.md — the real, verbatim RFI DOK-ING sent"
+RFI_ANSWERS_SOURCE = "data/dokink_rfi_answers.md — DOK-ING's real RFI response, via Ankica Kovac"
 
 DESIGN_BASIS_DISCLAIMER = (
-    "**DRAFT — NOT SENT.** This is a design-basis tracker for the real RFI DOK-ING sent "
-    "(data/rfi_dokink.md), generated from this project's own real data where an answer already "
-    "exists, and marked \"Unknown — Required\" honestly everywhere it doesn't. It has no real "
-    "correspondence capability and no authority to represent you externally — review and edit "
-    "before actually sending anything to DOK-ING. Nothing marked \"Assumed\" here is a confirmed "
-    "DOK-ING answer to this RFI; see each question's own citation for exactly which real source "
-    "(DOK-ING's own prior stated data, captured in the equipment registry, or this project's own "
-    "explicit default assumption) it's drawn from."
+    "**Design-basis tracker for the real RFI DOK-ING sent** (data/rfi_dokink.md). All 17 "
+    "questions are now **Confirmed** with DOK-ING's own real, formal answers (via Ankica Kovac — "
+    "see data/dokink_rfi_answers.md), applied through this module's set_confirmed() mechanism. "
+    "This document still has no real correspondence capability and no authority to represent you "
+    "externally on its own — it's a record of what's confirmed, not a live channel to DOK-ING. "
+    "Where a Confirmed answer differs materially from what this project's own physics/equipment "
+    "data previously assumed (see #1's feed-rate discrepancy in particular), that's flagged "
+    "explicitly rather than silently overwritten — nothing in this repo's physics constants was "
+    "changed just because a real answer arrived; see each such question's own confirmed_notes."
 )
 
 # Order matches the 5 real RFI categories and the real question numbering
@@ -541,12 +594,17 @@ def status_of(key):
 
 
 def set_confirmed(key, value, source, notes=""):
-    """Records a REAL DOK-ING answer to this RFI question. Not called
-    anywhere in this module or app.py yet — see module docstring's
-    STATUS MECHANISM section for why: no real RFI response exists to
-    record. Mirrors uncertainty.set_confirmed()'s in-memory pattern
-    exactly, ready for a confirmation_loop.py-style Supabase-backed
-    wrapper the moment a real response needs to be persisted."""
+    """Records a REAL DOK-ING answer to this RFI question. Called for
+    real, for all 17 questions, by apply_dokink_rfi_response() below —
+    see the v4 docstring section for what changed. Mirrors
+    uncertainty.set_confirmed()'s in-memory pattern exactly; a
+    confirmation_loop.py-style Supabase-backed wrapper (to persist a
+    FUTURE re-confirmation or amendment across process restarts, the
+    way confirmation_loop.py does for the six kinetics/PSA assumptions)
+    remains a natural next step, not yet needed since the current real
+    response is already committed to this repo as a file
+    (data/dokink_rfi_answers.md), which survives a process restart on
+    its own."""
     if key not in QUESTIONS:
         raise KeyError(key)
     QUESTIONS[key]["confirmed_value"] = value
@@ -631,6 +689,235 @@ def generate_request_list_markdown():
     return "\n".join(lines)
 
 
+def apply_dokink_rfi_response():
+    """Applies DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md,
+    received via Ankica Kovac) to all 17 questions via set_confirmed() —
+    the first real use of that mechanism. Called once, automatically, at
+    the bottom of this module (import time), so every consumer (app.py,
+    this module's own self-test) sees the Confirmed state without having
+    to remember to call this — the same "apply once per fresh process"
+    shape confirmation_loop.py's sync_confirmed_from_db() uses for the
+    six kinetics/PSA assumptions, except the source here is a real file
+    already committed to this repo, not a live database query, so a
+    plain function call at import time is enough; no Supabase round trip
+    needed to survive a process restart.
+
+    Each call's `notes` argument carries forward exactly what task
+    requirements 2-5 asked for: the #1 feed-rate discrepancy flagged
+    explicitly (not resolved), the #9/#10 corrections to the prior
+    Assumed framing, and the #1/#8 new-but-unmodeled information (larger
+    reactor sizes, the liquid-carrier storage alternative)."""
+    set_confirmed(
+        "feedstock_rate_variation",
+        "Nominal capacity fixed at 1 tonne/day (1,000 kg/day) for continuous 24/7 operation, with "
+        "operational turndown ~70-120%. Larger seasonal swings handled by parallel modular units. "
+        "Other reactor sizes exist, up to 25 tonnes/day for the largest.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #1)",
+        "⚠️ KNOWN DISCREPANCY — REQUIRES USER DECISION: DOK-ING's confirmed nominal "
+        "capacity (1,000 kg/day) is a DIFFERENT number than this project's own physics-model "
+        "design point (37.5 kg/h dry feed = 900 kg/day — python/gasifier_mass_balance.py's "
+        "DEFAULT_DRY_FEED_KG_H, and everything built on it: kinetics.py's operating assumptions, "
+        "circularity.py, equipment_data_requests.py's citations). These MAY partly reconcile on a "
+        "wet-vs-dry basis (1,000 kg/day as-received at ~10% design inlet moisture, FE-005, would "
+        "leave ~900 kg/day dry — consistent with the 900 kg/day figure), but DOK-ING's answer "
+        "does not state which basis the 1,000 kg/day figure is measured on, so this is NOT assumed "
+        "resolved here. Recalibrating kinetics.py/gasifier_mass_balance.py/psa.py's design-point "
+        "constants to either number is a decision for the user to make explicitly — nothing in "
+        "this repo's physics was changed because of this confirmation. NEW, UNMODELED INFORMATION: "
+        "DOK-ING's product line extends well beyond the 1 tpd unit this whole project models — "
+        "up to 25 tonnes/day for the largest reactor. This repo's physics and equipment registry "
+        "cover ONLY the 1 tpd unit; larger units are not modeled anywhere here (also noted in "
+        "CLAUDE.md's \"Not yet built\" list).",
+    )
+    set_confirmed(
+        "feedstock_composition",
+        "Moisture 5-15(20)%, Ash 5-15%, Volatile Matter >65%, Carbon >45%, Hydrogen >5%, LHV "
+        "15-20 MJ/kg (dry basis). Trace S/Cl captured via downstream scrubbing/dry gas cleaning.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #2)",
+        "This project's own design-basis default of ~10% ash (dry basis, GA-005, "
+        "gasifier_mass_balance.py's ASH_FRACTION) falls inside DOK-ING's confirmed 5-15% ash "
+        "range — consistent, not contradicted. The 200 ppm S / 150 ppm Cl defaults in "
+        "python/uncertainty.py (this project's own assumption, not previously DOK-ING-sourced) "
+        "aren't directly checkable against this answer, since S/Cl are described qualitatively "
+        "here (\"captured via downstream scrubbing/dry gas cleaning\") rather than as a specific "
+        "ppm figure — the 200/150 ppm default remains this project's own assumption, now not "
+        "contradicted but also not confirmed at that precision. LHV (15-20 MJ/kg dry basis) and "
+        "the full C/H/O/N breakdown are genuinely new information — this project never had a "
+        "raw-feedstock LHV or elemental analysis to compare against.",
+    )
+    set_confirmed(
+        "feedstock_presorting",
+        "Pre-sorted and shredded (<20-30mm particle size) — plastic, dried sewage sludge, "
+        "wood chips, textiles. No RDF/SRF pre-production needed. Pre-sorting handled by local "
+        "waste utilities/MRFs before the Looper's inlet hopper.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #3)",
+        "Confirms this project's own prior finding (FE-002's registry remarks: \"DOK-ING's feed "
+        "is already pre-sorted at the MRF\") was directionally correct. New information: DOK-ING's "
+        "product is named \"the Looper\" (not previously named anywhere in this repo), and no "
+        "RDF/SRF pre-production step is needed, contrary to what the RFI question's own framing "
+        "might have implied.",
+    )
+    set_confirmed(
+        "feedstock_supply_contract",
+        "Guaranteed, but system tolerates gaps via hot-standby state and accepts substitute "
+        "feedstocks (RDF, waste biomass, textiles, dried sludge).",
+        f"{RFI_ANSWERS_SOURCE} (RFI #4)",
+        "New information: FE-001's hopper being sized for a hot-standby buffer (equipment_registry"
+        ".json remarks) turns out to match a real, confirmed design feature — DOK-ING's own "
+        "answer explicitly cites hot-standby tolerance for supply gaps, not just a buffer-sizing "
+        "coincidence.",
+    )
+    set_confirmed(
+        "feedstock_source_location",
+        "Flexible by deployment site — single municipal utility, wastewater treatment "
+        "facility (sludge), or local industrial/commercial waste streams.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #5)",
+        "",
+    )
+    set_confirmed(
+        "hydrogen_production_target",
+        "~50 kg/day from 1 tpd of standard high-calorific plastic waste, varying with feedstock "
+        "C/H ratio and moisture.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #6)",
+        "Matches this project's own prior figure (~50 kg/day, HB-013/HB-007 remarks) closely — "
+        "confirms rather than contradicts. DOK-ING's answer clarifies the figure is "
+        "feedstock-dependent (varies with C/H ratio and moisture), not a fixed guarantee "
+        "regardless of feed composition.",
+    )
+    set_confirmed(
+        "hydrogen_purity",
+        "99.97% (ISO 14687 Grade D), suitable for mobility/fuel-cell vehicle use.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #7)",
+        "Exact match to this project's own prior figure (HB-006's registry remarks, already "
+        "labeled there as \"DOK-ING's actual stated target... not an assumption, used directly\") "
+        "— now formally confirmed via the real RFI response too, not just carried over from "
+        "the equipment registry's own citation.",
+    )
+    set_confirmed(
+        "hydrogen_delivery_pressure",
+        "PSA discharges at 3-10 bar. Multi-stage booster compression to 350/700 bar for mobility "
+        "dispensing/tube trailers. Alternative: a liquid carrier storing H2 at room "
+        "temperature/pressure also exists as an option.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #8)",
+        "Matches this project's own prior figures closely: HB-008's 7 bar(g) PSA adsorption "
+        "pressure falls inside the confirmed 3-10 bar range; HB-013's 350/700 bar(g) "
+        "operating/dispensing range matches exactly. NEW, UNMODELED INFORMATION: a liquid-carrier "
+        "H2 storage alternative (room temperature/pressure) exists as an option alongside the "
+        "compressed-gas route this project's equipment registry models. HB-014 through HB-017 "
+        "already model an LOHC (Dibenzyltoluene) hydrogenation/storage/dehydrogenation train as "
+        "an \"Auxiliary/Optional\" path, so this MAY be the same alternative DOK-ING is "
+        "describing — but the RFI response doesn't name the carrier chemistry explicitly, so "
+        "this is documented as a real, confirmed option, not assumed identical to the existing "
+        "LOHC entries without DOK-ING saying so. Not built out further here.",
+    )
+    set_confirmed(
+        "hydrogen_end_use",
+        "No fixed limitation — depends entirely on contracts and contracted prices.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #9)",
+        "CORRECTS this project's own prior framing: the previous Assumed answer treated EU-006 (a "
+        "real, specified PEM H2 Fuel Cell in the equipment registry) and HB-013's dispensing-"
+        "pressure range as evidence the intended end use leaned toward stationary power and/or "
+        "mobility specifically. DOK-ING's real answer is broader and different in kind: end use is "
+        "explicitly NOT fixed to any one path — it's a commercial/contractual decision. EU-006's "
+        "own equipment data remains real and valid as ONE deployable configuration this plant "
+        "supports; it is not, and was never confirmed to be, THE definitive end-use decision.",
+    )
+    set_confirmed(
+        "hydrogen_coproducts",
+        "H2 is primary; CHP using excess heat/syngas is optional, not fixed. Ash residue recovered "
+        "for construction applications (aggregate/brick). Carbon black recovered as a raw material.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #10)",
+        "Partly corrects this project's own prior framing: the previous Assumed answer treated the "
+        "full CHP suite (EU-001 through EU-006) and heat-export train (EU-011/EU-012/EU-013) as "
+        "confirming electricity AND heat are both explicit co-products on equal footing with H2. "
+        "DOK-ING's real answer reframes this: H2 is PRIMARY, CHP is explicitly OPTIONAL, not "
+        "fixed — the equipment registry's CHP/heat-recovery items remain real, valid OPTIONAL "
+        "configurations, not a confirmed always-on co-product commitment. Newly confirmed and "
+        "consistent with this project's own circularity.py: ash recovered for construction use "
+        "(matches GA-009's real EN 12620 aggregate-standard equipment) and carbon black recovered "
+        "as a raw material (matches GA-008/GA-010's real equipment) — circularity.py's own "
+        "byproduct-recovery framing holds up well, even though its specific EUR/kg prices remain "
+        "this project's own placeholder assumption, not DOK-ING-sourced.",
+    )
+    set_confirmed(
+        "site_utilities_available",
+        "Grid power connection and water supply both available.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #11)",
+        "Doesn't state a connected CAPACITY (kW) or supply VOLUME — EU-009's own 0-50 kW "
+        "metering design range remains this project's own equipment spec, not a stated grid "
+        "capacity. Existing steam/heat network availability specifically wasn't addressed in "
+        "DOK-ING's answer (which only confirms grid power and water).",
+    )
+    set_confirmed(
+        "site_nearby_infrastructure",
+        "No.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #12)",
+        "A clean, direct negative answer — confirms the v3 reconciliation-pass correction "
+        "(flipping this question from Assumed to Unknown) was the right call: there genuinely is "
+        "NO existing nearby waste-handling/industrial infrastructure to interface with, consistent "
+        "with treating the plant's own design equipment (MRF supply-chain link, district-heating "
+        "interconnect capability) as NOT the same thing as confirmed nearby infrastructure.",
+    )
+    set_confirmed(
+        "project_driver",
+        "Dual commercial/environmental model — gate fees for processing waste, plus revenue "
+        "from green H2 sales, process heat, and upcycled mineral residues.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #13)",
+        "New information beyond any single one of the RFI's own listed driver options (regulatory "
+        "compliance, decarbonization targets, new revenue stream, grant funding) — DOK-ING's "
+        "answer is a genuinely dual, more specific commercial model (gate fees + product sales "
+        "across three revenue lines), closer to \"a new revenue stream\" but more specific than "
+        "that framing captured.",
+    )
+    set_confirmed(
+        "rfnbo_requirement",
+        "Not required — but increases hydrogen's economic value/price if achieved.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #14)",
+        "CORRECTS this project's own prior framing: python/compliance.py's checklist and its "
+        "\"RFNBO compliance documentation\" framing (plus app.py's own former \"RFNBO-compliant "
+        "green hydrogen\" tagline) treated RFNBO qualification as this project's implicit target. "
+        "DOK-ING's real answer reframes this explicitly: RFNBO is OPTIONAL, pursued only for its "
+        "economic upside, not a compliance obligation — compliance.py and its app.py UI have "
+        "been updated accordingly; see compliance.py's own docstring for the correction.",
+    )
+    set_confirmed(
+        "jurisdiction_permits",
+        "Holds a waste processing permit (specific jurisdiction not stated).",
+        f"{RFI_ANSWERS_SOURCE} (RFI #15)",
+        "Confirms a permit IS held (a real, positive fact this project had no prior basis for), "
+        "but does NOT name the specific jurisdiction, permitting authority, or permit scope/type "
+        "— so the earlier country-level context (Zagreb, Croatia, CLAUDE.md/README.md) remains "
+        "the only location information on file; this answer neither confirms nor contradicts that, "
+        "it just doesn't independently state a jurisdiction.",
+    )
+    set_confirmed(
+        "landfill_diversion_target",
+        "No general tonnage target — this phase specifically targets high-value contaminated "
+        "waste streams (oiled plastic, contaminated construction packaging) that currently go to "
+        "specialized processing or incineration (e.g., Vienna), not landfill.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #16)",
+        "CONFIRMS the v3 reconciliation-pass reasoning that circularity.py's \"diversion_fraction\" "
+        "(~15%, ash+carbon-black byproduct mass / feed mass) was correctly kept separate from this "
+        "question — DOK-ING's real answer describes something entirely different (a targeted "
+        "contaminated-waste-stream strategy, not a general landfill-diversion tonnage target, and "
+        "not related to circularity.py's byproduct-mass metric at all). New information: the "
+        "specific competing disposal route named is incineration in Vienna.",
+    )
+    set_confirmed(
+        "project_budget",
+        "No fixed capital cost goal or limit — the modular, factory-assembled design is "
+        "inherently intended to minimize cost versus traditional large-scale plants.",
+        f"{RFI_ANSWERS_SOURCE} (RFI #17)",
+        "A real, if qualitative, answer — no numeric CAPEX ceiling exists (consistent with the "
+        "prior Unknown status), but the design PHILOSOPHY (modular, factory-assembled, "
+        "cost-minimizing vs. traditional large-scale plants) is new, real information this project "
+        "had no prior citation for anywhere.",
+    )
+
+
+apply_dokink_rfi_response()
+
+
 if __name__ == "__main__":
     print(f"Total questions: {len(QUESTIONS)} (expected 17)")
     assert len(QUESTIONS) == 17, f"REGRESSION: expected exactly 17 RFI questions, found {len(QUESTIONS)}."
@@ -654,47 +941,107 @@ if __name__ == "__main__":
             f"REGRESSION: {category} has {n} questions, expected {EXPECTED_CATEGORY_COUNTS[category]}."
         )
 
-    print("\n=== Per-question status ===")
+    print("\n=== Historical base-status check (the pre-RFI-response v3 baseline) ===")
+    EXPECTED_BASE_COUNTS = {STATUS_ASSUMED: 8, STATUS_UNKNOWN: 9}
+    base_counts = {STATUS_ASSUMED: 0, STATUS_UNKNOWN: 0}
     for key, cfg in sorted(QUESTIONS.items(), key=lambda kv: kv[1]["rfi_number"]):
-        print(f"  [{status_of(key)}] RFI #{cfg['rfi_number']} ({cfg['category']}) — {key}")
+        base_counts[cfg["status"]] += 1
         if cfg["status"] == STATUS_ASSUMED:
             assert cfg["answer"] is not None and cfg["source"] is not None, (
-                f"REGRESSION: {key} is marked Assumed but has no answer/source on file."
+                f"REGRESSION: {key}'s base status is Assumed but has no answer/source on file."
             )
         else:
             assert cfg["status"] == STATUS_UNKNOWN, f"REGRESSION: {key} has an unrecognized base status {cfg['status']!r}."
             assert cfg["answer"] is None and cfg["source"] is None, (
-                f"REGRESSION: {key} is marked Unknown but has a non-null answer/source — should be Assumed instead."
+                f"REGRESSION: {key}'s base status is Unknown but has a non-null answer/source."
             )
+    print(f"  Base (pre-RFI-response) split: {base_counts[STATUS_ASSUMED]} Assumed / "
+          f"{base_counts[STATUS_UNKNOWN]} Unknown (expected 8/9 -- the v3 reconciliation result, "
+          f"preserved as QUESTIONS[key]['status'] even though it's no longer the LIVE status)")
+    assert base_counts == EXPECTED_BASE_COUNTS, f"REGRESSION: base status split is {base_counts}, expected {EXPECTED_BASE_COUNTS}."
 
-    print("\n=== Final count (task requirement 4 — not rounded up) ===")
+    print("\n=== apply_dokink_rfi_response() actually worked -- task requirement 1: verify, don't just run ===")
+    print("(apply_dokink_rfi_response() already ran once at module import, above -- checking its effect here)")
+    for key, cfg in sorted(QUESTIONS.items(), key=lambda kv: kv[1]["rfi_number"]):
+        assert is_confirmed(key), f"REGRESSION: {key} is not confirmed after apply_dokink_rfi_response()."
+        assert status_of(key) == STATUS_CONFIRMED, f"REGRESSION: {key}'s live status is {status_of(key)!r}, expected Confirmed."
+        assert cfg["confirmed_value"] and cfg["confirmed_value"].strip(), f"REGRESSION: {key} has an empty confirmed_value."
+        assert RFI_ANSWERS_SOURCE in cfg["confirmed_source"], (
+            f"REGRESSION: {key}'s confirmed_source doesn't cite data/dokink_rfi_answers.md: {cfg['confirmed_source']!r}"
+        )
+        assert cfg["confirmed_at"] is not None, f"REGRESSION: {key} has no confirmed_at timestamp."
+        print(f"  [Confirmed] RFI #{cfg['rfi_number']} ({cfg['category']}) — {key}")
+    print("PASSED -- all 17 questions are genuinely Confirmed, each with a non-empty answer, a "
+          "source citing data/dokink_rfi_answers.md, and a timestamp -- not just is_confirmed() "
+          "returning True by accident.")
+
+    print("\n=== Spot-check specific confirmed values against the real answers ===")
+    SPOT_CHECKS = [
+        ("feedstock_rate_variation", "1 tonne/day (1,000 kg/day)"),
+        ("feedstock_rate_variation", "25 tonnes/day"),  # larger-reactor new info, in the notes
+        ("hydrogen_purity", "99.97%"),
+        ("hydrogen_delivery_pressure", "liquid carrier"),  # new-info flag, in the notes
+        ("site_nearby_infrastructure", "No."),
+        ("rfnbo_requirement", "Not required"),
+        ("project_budget", "No fixed capital cost goal"),
+    ]
+    for key, expected_substring in SPOT_CHECKS:
+        haystack = QUESTIONS[key]["confirmed_value"] + " " + (QUESTIONS[key]["confirmed_notes"] or "")
+        assert expected_substring in haystack, (
+            f"REGRESSION: expected {expected_substring!r} in {key}'s confirmed value/notes, not found."
+        )
+    print(f"PASSED -- {len(SPOT_CHECKS)} spot-checks against the real DOK-ING answer text all matched.")
+
+    print("\n=== Known Discrepancy flag check (task requirement 2) ===")
+    q1_notes = QUESTIONS["feedstock_rate_variation"]["confirmed_notes"]
+    assert "KNOWN DISCREPANCY" in q1_notes, "REGRESSION: #1's confirmed_notes lost the Known Discrepancy flag."
+    assert "1,000 kg/day" in q1_notes and "900 kg/day" in q1_notes, (
+        "REGRESSION: #1's discrepancy flag doesn't state both numbers."
+    )
+    assert "decision for the user" in q1_notes, "REGRESSION: #1's discrepancy flag doesn't defer the decision to the user."
+    print("PASSED -- #1's Known Discrepancy flag states both numbers (1,000 kg/day vs. 900 kg/day) "
+          "and explicitly defers the recalibration decision to the user, not auto-resolved.")
+
+    print("\n=== Final count (task requirement 6 — not rounded up) ===")
     counts = summarize()
     print(f"Assumed (real, cited answer already in this project): {counts[STATUS_ASSUMED]} of 17")
     print(f"Unknown — Required (genuinely open, needs DOK-ING):    {counts[STATUS_UNKNOWN]} of 17")
     print(f"Confirmed (DOK-ING has actually answered):             {counts[STATUS_CONFIRMED]} of 17")
-    assert counts[STATUS_ASSUMED] == 8, f"REGRESSION: expected exactly 8 Assumed, got {counts[STATUS_ASSUMED]}."
-    assert counts[STATUS_UNKNOWN] == 9, f"REGRESSION: expected exactly 9 Unknown, got {counts[STATUS_UNKNOWN]}."
-    assert counts[STATUS_CONFIRMED] == 0, "REGRESSION: something is marked Confirmed before any real RFI response exists."
-    assert counts[STATUS_ASSUMED] + counts[STATUS_UNKNOWN] + counts[STATUS_CONFIRMED] == 17
-    print("PASSED -- 8 Assumed + 9 Unknown = 17, matches the documented count exactly (down from v2's 9/8 after the #12 fix).")
+    assert counts[STATUS_CONFIRMED] == 17, f"REGRESSION: expected exactly 17 Confirmed, got {counts[STATUS_CONFIRMED]}."
+    assert counts[STATUS_ASSUMED] == 0 and counts[STATUS_UNKNOWN] == 0
+    print("PASSED -- 17 of 17 Confirmed, with DOK-ING's real RFI response applied to every question.")
 
-    print("\n=== set_confirmed()/clear_confirmed() mechanism check (for future use) ===")
-    assert status_of("project_budget") == STATUS_UNKNOWN
-    set_confirmed("project_budget", "EUR 4.2M CAPEX ceiling", "DOK-ING RFI response, 2026-XX-XX", "Illustrative test value, cleared below.")
-    assert status_of("project_budget") == STATUS_CONFIRMED
-    print("  [OK] set_confirmed() flips status to Confirmed live.")
-    counts_after = summarize()
-    assert counts_after[STATUS_CONFIRMED] == 1 and counts_after[STATUS_ASSUMED] == 8 and counts_after[STATUS_UNKNOWN] == 8
-    print("  [OK] summarize() reflects the confirmation immediately: 8 Assumed / 8 Unknown / 1 Confirmed.")
-    clear_confirmed("project_budget")
-    assert status_of("project_budget") == STATUS_UNKNOWN
-    counts_cleared = summarize()
-    assert counts_cleared == {STATUS_ASSUMED: 8, STATUS_UNKNOWN: 9, STATUS_CONFIRMED: 0}
-    print("  [OK] clear_confirmed() reverts cleanly -- back to 8 Assumed / 9 Unknown / 0 Confirmed.")
+    print("\n=== set_confirmed()/clear_confirmed() round-trip check (proves the mechanism, not just that it runs) ===")
+    # Pick one question whose historical base status was Assumed, and one whose base status was
+    # Unknown, to prove clear_confirmed() reverts to the CORRECT per-question baseline -- not a
+    # single hardcoded status -- and that re-confirming restores the real DOK-ING answer exactly.
+    for probe_key in ("hydrogen_purity", "project_budget"):
+        expected_base = QUESTIONS[probe_key]["status"]
+        saved_value = QUESTIONS[probe_key]["confirmed_value"]
+        saved_source = QUESTIONS[probe_key]["confirmed_source"]
+        saved_notes = QUESTIONS[probe_key]["confirmed_notes"]
+        clear_confirmed(probe_key)
+        assert status_of(probe_key) == expected_base, (
+            f"REGRESSION: clearing {probe_key} didn't revert to its own base status {expected_base!r}."
+        )
+        assert not is_confirmed(probe_key)
+        print(f"  [OK] clear_confirmed({probe_key!r}) reverts to its real base status ({expected_base}).")
+        set_confirmed(probe_key, saved_value, saved_source, saved_notes)
+        assert status_of(probe_key) == STATUS_CONFIRMED and QUESTIONS[probe_key]["confirmed_value"] == saved_value
+        print(f"  [OK] re-confirming {probe_key!r} restores the exact real DOK-ING answer.")
+    counts_restored = summarize()
+    assert counts_restored[STATUS_CONFIRMED] == 17, "REGRESSION: not all 17 are Confirmed again after the round-trip probes."
+    print("PASSED -- the mechanism genuinely reverts to each question's own historical baseline and "
+          "restores exactly, not just returning True/False without real state changes.")
 
     draft = generate_request_list_markdown()
     question_blocks = sum(1 for line in draft.splitlines() if line.startswith("### RFI #"))
+    confirmed_blocks = draft.count("**Confirmed answer:**")
     print(f"\nMarkdown document length (chars): {len(draft)}")
     print(f"Question blocks in the generated document: {question_blocks} (expected 17)")
+    print(f"'Confirmed answer:' blocks in the generated document: {confirmed_blocks} (expected 17)")
     assert question_blocks == 17, f"REGRESSION: document has {question_blocks} question blocks, expected 17."
-    print("PASSED -- the generated Markdown document's own question count matches 17 exactly.")
+    assert confirmed_blocks == 17, f"REGRESSION: document has {confirmed_blocks} Confirmed-answer blocks, expected 17."
+    assert "KNOWN DISCREPANCY" in draft, "REGRESSION: the Known Discrepancy flag didn't make it into the generated document."
+    print("PASSED -- the generated Markdown document renders all 17 as Confirmed, with the Known "
+          "Discrepancy flag visible in it.")

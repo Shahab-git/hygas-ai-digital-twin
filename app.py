@@ -49,7 +49,11 @@ with tab1:
         _confirmation_status = None
 
     st.title("HYGAS-AI — Digital Twin Status")
-    st.caption("Physics-informed, agent-driven digital twin for RFNBO-compliant green hydrogen from waste")
+    st.caption(
+        "Physics-informed, agent-driven digital twin for green hydrogen from waste "
+        "(RFNBO qualification is an optional value-add DOK-ING may pursue, confirmed NOT a "
+        "requirement — see the Design Basis tab, RFI #14)"
+    )
 
     st.divider()
 
@@ -527,14 +531,20 @@ with tab1:
     # ---------------------------------------------------------------------
     st.header("Compliance Documentation")
     st.warning(
-        "**This is NOT RFNBO certification.** Real RFNBO (Renewable Fuel of Non-Biological Origin) "
-        "certification requires an accredited third-party auditor assessing the plant against EU "
-        "Delegated Regulation (EU) 2023/1184 and the related methodology regulation (EU) 2023/1185 — "
-        "additionality, temporal/geographic correlation for renewable electricity, greenhouse-gas "
-        "savings thresholds, mass-balance chain-of-custody, and more. This repo cannot implement that "
-        "process or make that legal determination, and makes no such claim. What this **does** do: "
-        "organize the plant's actual data into the checklist shape a real audit would start from, and "
-        "clearly separate what's genuinely validated from what's still an assumption or undocumented.",
+        "**RFNBO qualification is OPTIONAL, not a requirement — confirmed directly by DOK-ING.** "
+        "Their real RFI response (RFI #14, see the Design Basis tab): \"Not required — but "
+        "increases hydrogen's economic value/price if achieved.\" This checklist is a "
+        "certification-READINESS tracker for that optional economic decision, not a \"must "
+        "comply\" tracker. **This is also NOT RFNBO certification itself.** Real RFNBO "
+        "(Renewable Fuel of Non-Biological Origin) certification requires an accredited "
+        "third-party auditor assessing the plant against EU Delegated Regulation (EU) 2023/1184 "
+        "and the related methodology regulation (EU) 2023/1185 — additionality, "
+        "temporal/geographic correlation for renewable electricity, greenhouse-gas savings "
+        "thresholds, mass-balance chain-of-custody, and more. This repo cannot implement that "
+        "process or make that legal determination, and makes no such claim. What this **does** "
+        "do: organize the plant's actual data into the checklist shape a real audit would start "
+        "from, and clearly separate what's genuinely validated from what's still an assumption "
+        "or undocumented.",
         icon="⚠️",
     )
 
@@ -756,6 +766,19 @@ with tab1:
         "figures use our own assumed placeholder prices, not real market pricing** — there's no real "
         "market data in this project yet. The diversion fraction needs no price assumption at all; "
         "it's a real mass-balance ratio."
+    )
+    st.warning(
+        "**⚠️ Known Discrepancy — Requires User Decision.** The 37.5 kg/h (900 kg/day) default "
+        "below is this project's own physics-model design point (python/gasifier_mass_balance.py). "
+        "DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, RFI #1) confirms a "
+        "DIFFERENT nominal capacity: **1 tonne/day (1,000 kg/day)**. These may partly reconcile on "
+        "a wet-vs-dry basis (1,000 kg/day as-received at ~10% design inlet moisture would leave "
+        "~900 kg/day dry), but DOK-ING's answer doesn't state which basis its figure uses, so this "
+        "is NOT assumed resolved. Recalibrating this design point is a decision for you to make "
+        "explicitly — nothing in this repo's physics constants (kinetics.py, "
+        "gasifier_mass_balance.py, psa.py) has been changed because of this. See the Design Basis "
+        "tab (RFI #1) for the full detail.",
+        icon="⚠️",
     )
 
     circ_feed_kg_h = st.number_input(
@@ -1481,29 +1504,38 @@ with tab1:
 
 with tab2:
     st.header("Project Design Basis — DOK-ING RFI Tracker (17 questions)")
+    st.success(
+        "**DOK-ING answered the real RFI.** All 17 questions are now Confirmed with DOK-ING's "
+        "own real, formal answers (via Ankica Kovac) — see `data/dokink_rfi_answers.md`. Applied "
+        "via `python/design_basis.py`'s `set_confirmed()` mechanism, the first real use of it. "
+        "One real, unresolved discrepancy came out of this: DOK-ING's confirmed feed rate "
+        "(1,000 kg/day) differs from this project's own physics-model design point (900 kg/day) "
+        "— flagged below (RFI #1) and in the Circularity Scoring section, **not** silently "
+        "resolved. Two corrections to this project's own prior framing: RFNBO qualification "
+        "(RFI #14) is confirmed OPTIONAL, not required — see the Compliance Documentation "
+        "section; and hydrogen end use / co-products (RFI #9/#10) are confirmed contractually "
+        "flexible, not fixed to any one configuration.",
+        icon="✅",
+    )
     st.warning(
         "**Does NOT send anything to DOK-ING.** Same drafting-not-correspondence spirit as the "
         "Draft Compliance Summary, Confirmation Tracker, and Data Request List sections. These "
-        "are the real, verbatim 17 questions from DOK-ING's actual RFI — see "
-        "`data/rfi_dokink.md` — grouped exactly as that document groups them: Feedstock (5), "
-        "Hydrogen Product (5), Site & Infrastructure (2), Regulatory & Commercial (4), Project "
-        "Scope (1). Every question was checked against this project's own real data (kinetics.py, "
-        "psa.py, compliance.py, uncertainty.py, safety_flags.py, circularity.py, the equipment "
-        "registry, CLAUDE.md/README.md) before writing an answer — nothing is invented because a "
-        "plausible number could be guessed at. An earlier version of this tracker had to "
-        "reconstruct plausible RFI questions before the real document existed in this repo; that "
-        "reconstruction is gone — see `python/design_basis.py`'s own docstring for exactly which "
-        "answers changed once checked against the real wording.",
+        "are the real, verbatim 17 questions from DOK-ING's actual RFI (`data/rfi_dokink.md`), "
+        "grouped exactly as that document groups them: Feedstock (5), Hydrogen Product (5), "
+        "Site & Infrastructure (2), Regulatory & Commercial (4), Project Scope (1). Before the "
+        "real response arrived, every question was checked against this project's own real data "
+        "(kinetics.py, psa.py, compliance.py, uncertainty.py, safety_flags.py, circularity.py, "
+        "the equipment registry, CLAUDE.md/README.md) — that historical Assumed/Unknown baseline "
+        "is preserved in `python/design_basis.py` and is what a question reverts to if its "
+        "confirmation is ever cleared, but it's no longer what's shown day-to-day now that real "
+        "answers exist.",
         icon="⚠️",
     )
     st.caption(
-        "**Status mechanism, same as the Confirmation Tracker below:** every question is either "
-        "**Assumed** (a real, cited answer already exists in this project — either DOK-ING's own "
-        "previously stated data, captured in the equipment registry, or this project's own "
-        "explicit default assumption pending confirmation) or **Unknown — Required** (genuinely "
-        "absent, needs a real answer from DOK-ING). Nothing shows as **Confirmed** until DOK-ING "
-        "actually answers this RFI for real — `set_confirmed()` exists in "
-        "`python/design_basis.py`, ready for that moment, but isn't called anywhere yet."
+        "**Status mechanism, same as the Confirmation Tracker below:** a question starts "
+        "**Assumed** (a real, cited answer already existed in this project) or **Unknown — "
+        "Required** (genuinely absent) until DOK-ING actually answers the RFI for real — at "
+        "which point `set_confirmed()` flips it to **Confirmed**, as it now has for all 17."
     )
 
     _db_counts = design_basis.summarize()
@@ -1512,9 +1544,11 @@ with tab2:
     b2.metric("Unknown — Required", f"{_db_counts[design_basis.STATUS_UNKNOWN]} / 17")
     b3.metric("Confirmed by DOK-ING", f"{_db_counts[design_basis.STATUS_CONFIRMED]} / 17")
     st.caption(
-        f"{_db_counts[design_basis.STATUS_ASSUMED]} of the 17 questions could be answered "
-        f"directly from this project's existing data; {_db_counts[design_basis.STATUS_UNKNOWN]} "
-        f"are genuinely open and need a real answer from DOK-ING. Not rounded up."
+        f"{_db_counts[design_basis.STATUS_CONFIRMED]} of the 17 questions are now Confirmed with "
+        f"DOK-ING's real answer. Before that real response arrived, this project's own data could "
+        f"answer 8 of the 17 (Assumed, with a real citation each); the other 9 were genuinely "
+        f"open (Unknown — Required) — see each question below for that historical baseline "
+        f"alongside its real Confirmed answer."
     )
 
     if st.button("Generate design basis RFI tracker (.md)"):
@@ -1545,13 +1579,26 @@ with tab2:
                 if design_basis.is_confirmed(_key):
                     st.write(f"**Confirmed answer:** {_cfg['confirmed_value']}")
                     st.caption(f"**Confirmed source:** {_cfg['confirmed_source']}")
+                    if _cfg["confirmed_notes"]:
+                        if "KNOWN DISCREPANCY" in _cfg["confirmed_notes"]:
+                            st.error(_cfg["confirmed_notes"])
+                        else:
+                            st.caption(_cfg["confirmed_notes"])
+                    if _cfg["answer"] is not None:
+                        with st.expander("Historical baseline (before DOK-ING's real response)", expanded=False):
+                            st.write(f"**{_cfg['status']} answer (this project's own prior data):** {_cfg['answer']}")
+                            st.caption(f"**Source:** {_cfg['source']}")
+                            if _cfg["note"]:
+                                st.caption(_cfg["note"])
                 elif _cfg["answer"] is not None:
                     st.write(f"**Answer (from this project):** {_cfg['answer']}")
                     st.caption(f"**Source:** {_cfg['source']}")
+                    if _cfg["note"]:
+                        st.caption(_cfg["note"])
                 else:
                     st.write("**Answer:** None on file in this project — required from DOK-ING.")
-                if _cfg["note"]:
-                    st.caption(_cfg["note"])
+                    if _cfg["note"]:
+                        st.caption(_cfg["note"])
 
 # ---------------------------------------------------------------------
 # Shared equipment-datasheet rendering toolkit — used by every per-

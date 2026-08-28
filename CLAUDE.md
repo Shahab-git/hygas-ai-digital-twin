@@ -74,6 +74,17 @@ ratio (0.4), air equivalence ratio (0.25), feed sulfur/H2S (200 ppm),
 feed chlorine/HCl (150 ppm) — treat these as assumptions, not established
 facts, in any new work.
 
+DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, applied
+in python/design_basis.py) has since confirmed all 17 design-basis RFI
+questions. One real, unresolved discrepancy came out of it: DOK-ING's
+confirmed nominal feed rate (1 tonne/day, 1,000 kg/day) differs from
+this project's own physics-model design point (37.5 kg/h dry feed =
+900 kg/day, python/gasifier_mass_balance.py). Recalibrating the physics
+core to either number is a decision for the user to make explicitly —
+do NOT resolve this automatically in any new work; see
+python/design_basis.py's feedstock_rate_variation entry for the full
+detail.
+
 ## The 19 innovations and what equipment each belongs to
 
 Organise new modules around these, grouped by category. Each maps to a
@@ -142,3 +153,14 @@ Still missing:
 5. AI agents — start with operator copilot and vendor-sourcing agent.
 6. Everything in the "Rare methods" category above.
 7. Monte Carlo uncertainty propagation for the 6 unconfirmed assumptions.
+8. Liquid-carrier H2 storage (room temperature/pressure) — DOK-ING's real
+   RFI response (data/dokink_rfi_answers.md, RFI #8) confirms this exists
+   as an alternative to the compressed-gas route (HB-013's 875 bar(g)
+   tanks) this repo already models. May or may not be the same carrier
+   chemistry as HB-014 through HB-017's existing LOHC (Dibenzyltoluene)
+   entries — DOK-ING's answer doesn't name the carrier, so this isn't
+   assumed identical. Documented, not built.
+9. Larger reactor sizes beyond the 1 tpd unit this whole project models —
+   DOK-ING's product line goes up to 25 tonnes/day for the largest
+   reactor (RFI #1). This repo's physics and equipment registry cover
+   ONLY the 1 tpd unit; scaling behavior for larger units is unmodeled.

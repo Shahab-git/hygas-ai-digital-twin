@@ -1,5 +1,24 @@
 """
-RFNBO compliance documentation v1.
+RFNBO compliance documentation v2 — an OPTIONAL value-add pathway, NOT a
+project requirement.
+
+CORRECTED per DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md,
+RFI #14, received via Ankica Kovac — applied in python/design_basis.py's
+rfnbo_requirement entry): "Not required — but increases hydrogen's
+economic value/price if achieved." Earlier versions of this module (and
+of the app.py UI, and this project's own top-line tagline) treated RFNBO
+qualification as this project's implicit target/goal, organizing the
+whole checklist around it as if it were something the plant NEEDED to
+satisfy. That framing is now known to be wrong: DOK-ING's own answer is
+explicit that RFNBO/green-hydrogen certification is entirely OPTIONAL —
+pursued, if at all, because it increases the hydrogen's commercial value
+and sale price, not because of any compliance obligation this project is
+under. This module's checklist remains genuinely useful for exactly that
+reason: an OPTIONAL certification-readiness tracker for a real economic
+decision DOK-ING may choose to make, not a "must comply" tracker for an
+obligation that doesn't exist. Nothing else about what this module DOES
+changes because of this — the checklist's data, sourcing, and honesty
+discipline are unaffected; only the FRAMING of why it exists is corrected.
 
 HARD LIMITATION, stated explicitly here and in the app.py UI: this does
 NOT perform actual legal RFNBO (Renewable Fuel of Non-Biological Origin)
@@ -10,7 +29,9 @@ regulation (EU) 2023/1185 — additionality and temporal/geographic
 correlation for renewable electricity inputs, greenhouse-gas savings
 thresholds, mass-balance chain-of-custody, and more. This repo cannot
 implement that process or make that legal determination, and this module
-makes no such claim.
+makes no such claim. This limitation statement is unchanged by the
+optionality correction above — it was already true regardless of whether
+RFNBO qualification is required or optional.
 
 What this module DOES do: organize the plant's ACTUAL data — validated
 physics results, stated design assumptions with their real uncertainty
