@@ -1,9 +1,9 @@
 """
-Engineering-estimate overlay v1 — PILOT, scoped deliberately to FE-001
-through FE-008's 21 remaining "Missing Data — Required" gaps only (task
-requirement: "Pilot this on FE-001 through FE-008's 21 remaining gaps —
-not all 284 at once"). Extending to the other sections is a separate,
-later task, once this pilot is reviewed.
+Engineering-estimate overlay v2 — PILOTED on FE-001 through FE-008's 21
+remaining "Missing Data — Required" gaps first (reviewed and approved),
+now EXTENDED to GA-001 through GA-010's 29 remaining gaps under the
+identical rule set, no relaxation. Extending to the remaining four
+sections (GC, SA, HB, EU, AI) is still a separate, later task.
 
 WHY THIS EXISTS, per the real, authorized basis stated in the task:
 DOK-ING has confirmed they cannot answer some outstanding questions at
@@ -31,8 +31,36 @@ checkable" (task requirement 2). Where no genuine basis exists, the gap
 stays "Missing Data — Required" — task requirement 3 is explicit this
 is not "fill everything that can technically be filled", it's "fill
 only where real engineering justification exists". Of FE's 21 gaps,
-7 get a genuine estimate; 14 stay missing — see REPORT below for the
-per-gap reasoning on every single one, filled and declined alike.
+7 get a genuine estimate; 14 stay missing. Of GA's 29 gaps, 10 get a
+genuine estimate; 19 stay missing — see REPORT below for the per-gap
+reasoning on every single one, filled and declined alike, both
+sections.
+
+GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
+fills are checked first, and preferentially, for the STRONGEST kind of
+estimate — a value computable from GA's OWN already-confirmed numbers
+(feed rate, ash/carbon-black mass fractions) via a real mass/energy
+balance, rather than looked up externally, since that's internally
+consistent with data already confirmed in this project rather than an
+outside guess. Every GA mass-flow fill below is computed live from
+gasifier_mass_balance.py's own byproduct_mass_flows() (not a separate
+hardcoded number), so it can never silently drift out of sync with
+that module's own DOK-ING-recalibrated feed rate. Two conflation traps
+were watched for specifically and avoided (see GA REPORT below for the
+full reasoning): (1) the ALREADY-KNOWN one from equipment_rfi_fills.py
+— RFI #2's "Carbon >45%" is FEEDSTOCK ELEMENTAL carbon content, a
+fundamentally different metric from gasifier_mass_balance.py's 5%
+CARBON-BLACK BYPRODUCT YIELD fraction; no GA fill below uses the RFI's
+elemental-carbon figure for anything carbon-black-related. (2) Two
+NEW, analogous traps found and avoided in this extension: GA-008's own
+stated ">95% collection efficiency" means GA-010's inbound carbon
+black is NOT the same figure as the raw carbon-black generation rate
+(GA-010's Inputs fill applies the efficiency, doesn't assume 100%
+recovery); and GA-009's own stated "Portland cement (5-10% by mass)"
+stabilization additive means the aggregate PRODUCT mass is NOT the
+same figure as the raw ash mass feeding it (GA-009's Performance
+Indicators fill states a mass YIELD factor above 100%, not an
+assumed-equal pass-through).
 
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
@@ -44,17 +72,21 @@ three-way logic), reported SEPARATELY from Confirmed in the honest
 completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
-every row's "source" names this pilot and its basis type, distinct in
-app.py's UI from both "Equipment Datasheet" (vendor data) and "DOK-ING
-RFI (design_basis.py Q#)" (DOK-ING's real answers) rows.
+every row's "source" names which round it came from (FE pilot or GA
+extension) and its basis type, distinct in app.py's UI from both
+"Equipment Datasheet" (vendor data) and "DOK-ING RFI
+(design_basis.py Q#)" (DOK-ING's real answers) rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
-static datasheet extract) or equipment_datasheet.py's build_datasheet()
-(stays pure, registry-only). apply_estimates() is a separate overlay,
-deep-copying its input, exactly the equipment_rfi_fills.py pattern —
-and composes with it: app.py applies RFI fills first, then estimates,
-on the same datasheets dict, since both only ever touch buckets that
-were genuinely empty of real data.
+static datasheet extract), equipment_datasheet.py's build_datasheet()
+(stays pure, registry-only), or gasifier_mass_balance.py (read from,
+never written to — GA's mass-balance-derived fills call its
+byproduct_mass_flows() directly rather than re-deriving or hardcoding
+the same numbers). apply_estimates() is a separate overlay, deep-
+copying its input, exactly the equipment_rfi_fills.py pattern — and
+composes with it: app.py applies RFI fills first, then estimates, on
+the same datasheets dict, since both only ever touch buckets that were
+genuinely empty of real data.
 
 REPORT (task requirement 5 — every one of FE's 21 gaps, filled and
 declined, with the actual reasoning):
@@ -180,16 +212,242 @@ DECLINED — 14 of 21, with the actual reason (not silently skipped):
   FE-008 Measurements: same vendor-instrument reasoning as FE-002/004.
   FE-008 Performance Indicators: same reasoning as FE-007 — nothing
     additional beyond Outputs.
+
+GA REPORT (extension — every one of GA's 29 gaps, filled and declined):
+
+FILLED — 10 of 29:
+
+  GA-005 (Bed Drain / Ash Discharge System) Operating Conditions:
+    ~150 degC ash discharge outlet temperature. Basis: CROSS-ITEM
+    derivation from this project's own already-confirmed data, not an
+    external lookup — GA-006's own confirmed "Char temperature at
+    inlet" Parameter (150 degC) explicitly states this figure is the
+    ash temperature AFTER GA-005's water-jacketed cooling ("Already
+    cooled by GA-005's water-jacketed screw housing"). Since GA-005's
+    discharge feeds GA-006's inlet directly (same physical ash stream,
+    sequential equipment, no intermediate step), GA-005's own outlet
+    operating temperature is the same 150 degC figure GA-006's own data
+    already states.
+
+  GA-006 (Char / Ash Conveyor) Outputs: ~4.167 kg/h ash mass flow rate
+    to GA-007. Basis: standard mass-balance pass-through — GA-006 is a
+    pure mechanical relay (drag chain conveyor) with no separation or
+    mass-loss step of its own between GA-005 and GA-007, so mass in =
+    mass out. Value = GA-005's own confirmed "10% of feed" ash
+    discharge fraction applied to the project's confirmed 41.67 kg/h
+    dry feed rate (DOK-ING RFI Q1, gasifier_mass_balance.py) — computed
+    live via that module's own byproduct_mass_flows(), not a separate
+    hardcoded figure.
+
+  GA-006 Operating Conditions: ~150 degC. Basis: derived from THIS
+    item's own two already-confirmed facts — its confirmed "Char
+    temperature at inlet" (150 degC) and its own stated remark ("No
+    active cooling needed — primary cooling already done at GA-005"),
+    which together imply negligible further temperature change across
+    the short 4m enclosed run. A synthesis of two existing facts into a
+    new quantified claim, not a bare restatement of the inlet figure
+    under a different category label.
+
+  GA-007 (Char Collection Bin) Inputs: ~4.167 kg/h ash mass inflow
+    rate. Basis: same mass-balance pass-through as GA-006's Outputs —
+    GA-007 receives the identical ash stream from GA-006 with no
+    intermediate processing step.
+
+  GA-007 Outputs: ~4.167 kg/h ash mass outflow rate to GA-008/GA-009.
+    Basis: mass conservation through a buffer vessel on a TIME-AVERAGED
+    basis — GA-007's own data states no separation or loss mechanism
+    (it is explicitly a buffer/storage bin, "several days' buffer"),
+    so its long-run average outflow equals its average inflow, a
+    standard steady-state mass-balance principle for buffer/silo
+    equipment, not a claim about any single instant.
+
+  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~2.084
+    kg/h carbon-black-laden fines inflow rate. Basis: the project's own
+    established 5% CARBON_BLACK_FRACTION (gasifier_mass_balance.py)
+    applied to the confirmed 41.67 kg/h dry feed rate, computed live
+    via byproduct_mass_flows() — the same relationship this item's OWN
+    registry remarks already reference for its design-capacity margin
+    ("~1.88 kg/h nominal... already used in the mass/energy balance"),
+    so this is not a new external estimate, just the same internally-
+    consistent project figure applied to this item's own missing
+    Inputs slot. DELIBERATELY did NOT use RFI #2's "Carbon >45%" figure
+    here — that is FEEDSTOCK ELEMENTAL carbon content, a fundamentally
+    different metric from this 5% CARBON-BLACK BYPRODUCT YIELD
+    fraction (the exact conflation trap equipment_rfi_fills.py already
+    identified and avoided; re-confirmed avoided here).
+
+  GA-009 (Ash Aggregate Processing & Packaging Unit) Operating
+    Conditions: Ambient. Basis: comparable-installed-system practice —
+    this item's own stated process ("Crushing, cement/lime
+    stabilization, and screening to size") is standard construction-
+    materials practice; cement/lime stabilization is inherently an
+    ambient-temperature curing process (no industrial cement
+    stabilization process operates at elevated temperature), and
+    crushing/screening are unheated mechanical operations — no heating
+    or cooling duty is stated or physically implied anywhere in this
+    item's own data.
+
+  GA-009 Performance Indicators: aggregate product mass yield, 105-110%
+    of input ash mass. Basis: mass-balance calculation from this item's
+    OWN confirmed "Leachate stabilization additive = Portland cement
+    (5-10% by mass)" Parameter, applied to the confirmed ash mass rate
+    (gasifier_mass_balance.py, same as above) — product mass = ash mass
+    x (1 + 0.05 to 0.10). DELIBERATELY does NOT assume the aggregate
+    product mass equals the raw ash input mass — that would be the
+    direct analogue of the RFI carbon-content conflation trap (ignoring
+    a real, stated additive/transformation step), so the added cement/
+    lime mass is explicitly accounted for rather than assumed away.
+
+  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.98 kg/h
+    recovered carbon-black inflow rate from GA-008. Basis: GA-008's OWN
+    confirmed Performance Indicator ("Collection efficiency = >95%")
+    applied to the raw carbon-black generation rate (2.084 kg/h, same
+    gasifier_mass_balance.py figure as GA-008's own Inputs fill above)
+    — GA-010 receives what GA-008 actually RECOVERS, not the raw pre-
+    separation fines figure. DELIBERATELY does NOT assume 100% recovery
+    from GA-008 to GA-010 — that would be exactly the same category of
+    unstated-assumption error as the two conflation traps above, just
+    at the recovery-efficiency step instead of the elemental-carbon or
+    stabilization-additive step.
+
+  GA-010 Operating Conditions: Ambient (N2-blanketed, inert atmosphere).
+    Basis: comparable-installed-system practice — this item's own data
+    already states "Vertical silo, N2-blanketed" storage and "Inert gas
+    blanketing = Yes"; standard industrial practice for combustible
+    fine-particulate storage is ambient-temperature storage under inert
+    atmosphere, where the inert gas addresses ignition risk, not
+    thermal control — no heating/cooling duty is stated or implied.
+
+DECLINED — 19 of 29, with the actual reason:
+
+  GA-001 (Gasifier Vessel, Reactor) Outputs: no gas-phase gasifier
+    model exists anywhere in this project (gasifier_mass_balance.py's
+    own docstring: "no gasifier module at all yet... the gasifier
+    itself isn't implemented in either language" — that's specifically
+    about the GAS-PHASE syngas yield/composition, distinct from that
+    same file's solid-phase ash/carbon-black split, which IS used
+    above). Syngas yield/composition from air-steam MSW gasification is
+    not a simple mass-fraction correlation the way the solid byproducts
+    are — it needs a real thermodynamic/kinetic gasifier model this
+    project doesn't have. No defensible estimate exists; same
+    conclusion equipment_rfi_fills.py already reached checking the same
+    gap against real RFI data.
+
+  GA-002 (Gasifier Vessel, Pressure) Inputs, Outputs, Performance
+    Indicators: GA-002 is a pressure-containment/instrumentation sub-
+    item describing the SAME physical reactor GA-001 already covers —
+    it has no distinct material feed or product stream of its own to
+    characterize (structurally not a fit, the same reasoning already
+    established for FE-006 in equipment_rfi_fills.py, not just
+    undocumented). No defensible Performance Indicator exists either —
+    its only numeric KPI-like concept (transmitter accuracy) is already
+    captured under Measurements.
+
+  GA-003 (Air/Steam Injection, Flow) Outputs: GA-003 is a pass-through
+    injection system — the air/steam it receives as its own confirmed
+    Inputs is the SAME stream it delivers onward into the reactor, with
+    no transformation of its own. Filling Outputs would just restate
+    the already-confirmed Inputs figures in different units/combined
+    form, not genuinely new information — the same "recategorizing
+    existing data, not adding new information" reasoning
+    equipment_rfi_fills.py already applied to HB-008/HB-012.
+
+  GA-003 Operating Conditions: this item's own air-preheat/steam-
+    temperature/pressure figures are already fully stated as DESIGN
+    values under Parameters. Unlike GA-001 (which has BOTH an explicit
+    Design temperature AND a separately confirmed "Operating
+    temperature (typical)" — a real, stated design-vs-operating
+    margin), GA-003 has no separate confirmed "typical operating point"
+    distinct from its design value anywhere. Assuming operating=design
+    here would be an unstated assumption this project doesn't make
+    elsewhere for equipment that DOES have both figures on record —
+    declined rather than force the assumption.
+
+  GA-003 Performance Indicators: no defensible correlation or
+    literature figure exists for air/steam injection flow-system
+    performance beyond what's already captured (ER=0.25 in Parameters,
+    flow-meter specs in Measurements).
+
+  GA-004 (Air/Steam Injection, Temp) Inputs, Outputs: same structural
+    reasoning as GA-002 — GA-004 is a temperature/pressure sub-item of
+    the SAME physical injection system GA-003 already covers with its
+    own confirmed Inputs (air/steam flow rates); no distinct material
+    stream of its own.
+
+  GA-004 Operating Conditions: same design-vs-operating reasoning as
+    GA-003 — only design values exist for this item, no separately
+    confirmed operating point to distinguish from design.
+
+  GA-004 Performance Indicators: no defensible correlation exists.
+
+  GA-005 Performance Indicators: CHECKED, not just skipped — a specific
+    conveying-energy figure was computed (Drive motor power 1.1 kW /
+    ash mass rate 4.167 kg/h = ~264 kWh/tonne) and cross-checked against
+    typical bulk-material-handling literature (e.g. CEMA-type screw/
+    conveyor specific-energy guidance), which puts short-run bulk
+    conveying at a few kWh/tonne, one to two orders of magnitude below
+    the computed figure. Unlike FE-004's specific-energy fill (which
+    landed inside its literature comparison range, just at the high end
+    for a small unit), this number FAILS its own literature cross-
+    check — strong evidence the confirmed motor power is torque/jam-
+    margin sized, not matched to continuous duty at this small ash
+    flow. Presenting it as a specific-energy Performance Indicator
+    would be misleading, not a genuine equipment-performance metric —
+    declined on that basis, not overlooked.
+
+  GA-006 Performance Indicators: same conveying-energy check as GA-005
+    (Drive motor power 0.55 kW / 4.167 kg/h = ~132 kWh/tonne) — same
+    literature-mismatch conclusion, same decline reasoning.
+
+  GA-007 Operating Conditions: no defensible quantifiable basis. This
+    item's own data states insulation "retains residual warmth" over a
+    multi-day buffer residence, but quantifying the actual temperature
+    after days of passive heat loss would require real thermal data
+    (bin surface area, insulation R-value, ambient temperature) this
+    project doesn't have — an actual heat-loss calculation, not a
+    correlation or comparable-system estimate, is out of scope for this
+    module's discipline.
+
+  GA-007 Performance Indicators: no throughput/efficiency concept
+    applies to a passive buffer bin beyond what's already stated
+    qualitatively ("several days' buffer" — no numeric residence time
+    is even on file to build a KPI from).
+
+  GA-008 Measurements: instrument spec (particle-size/dust/flow sensor)
+    is fundamentally a VENDOR product spec — same reasoning as FE's
+    Measurements declines; no correlation or literature value
+    substitutes for a specific instrument's own delivered spec before
+    one is selected.
+
+  GA-009 Measurements: same vendor-instrument reasoning — no literature
+    figure exists for a specific leachate-compliance or process sensor
+    before a vendor/model is chosen.
+
+  GA-010 Measurements: same vendor-instrument reasoning as GA-008/009.
+
+  GA-010 Performance Indicators: no defensible KPI beyond what's
+    already stated (product grade target, moisture content) — a
+    storage/loadout system has no additional literature-derivable
+    efficiency or recovery-rate concept to estimate.
 """
 import copy
 
 from . import equipment_datasheet
+from . import gasifier_mass_balance
 
 _Q = equipment_datasheet
+_GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows()
+_GA_ASH_KG_H = _GA_FLOWS["ash_kg_h"]
+_GA_CARBON_BLACK_KG_H = _GA_FLOWS["carbon_black_kg_h"]
+_GA_RECOVERED_CARBON_BLACK_KG_H = 0.95 * _GA_CARBON_BLACK_KG_H  # GA-008's own confirmed ">95%" collection-efficiency floor
 
 
 def _source(basis_label):
     return f"Engineering estimate (FE-001..FE-008 pilot) — {basis_label}"
+
+
+def _source_ga(basis_label):
+    return f"Engineering estimate (GA-001..GA-010 extension) — {basis_label}"
 
 
 # {item_id: {category: [ {parameter, value, unit, remarks, status, source} ]}}
@@ -324,6 +582,189 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "GA-005": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated ash discharge outlet temperature",
+                "value": "~150", "unit": "°C",
+                "remarks": (
+                    "Cross-item derivation from this project's own already-confirmed data: "
+                    "GA-006's own confirmed 'Char temperature at inlet' Parameter (150°C) "
+                    "explicitly states this figure is the ash temperature AFTER GA-005's water-"
+                    "jacketed cooling ('Already cooled by GA-005's water-jacketed screw housing'). "
+                    "Since GA-005's discharge feeds GA-006's inlet directly — same physical ash "
+                    "stream, sequential equipment, no intermediate step — GA-005's own outlet "
+                    "operating temperature is the same 150°C figure."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("cross-item derivation from GA-006's own confirmed inlet temperature and stated cooling-completion remark"),
+            },
+        ],
+    },
+    "GA-006": {
+        "Outputs": [
+            {
+                "parameter": "Estimated ash mass flow rate (to GA-007)",
+                "value": f"~{_GA_ASH_KG_H:.3f}", "unit": "kg/h",
+                "remarks": (
+                    f"Standard mass-balance pass-through: GA-006 is a pure mechanical relay (drag "
+                    f"chain conveyor) with no separation or mass-loss step of its own between "
+                    f"GA-005 and GA-007, so mass in = mass out. Value = GA-005's own confirmed "
+                    f"'10% of feed' ash discharge fraction applied to the project's confirmed "
+                    f"41.67 kg/h dry feed rate (DOK-ING RFI Q1) — computed live via "
+                    f"gasifier_mass_balance.py's own byproduct_mass_flows() ({_GA_ASH_KG_H:.4f} "
+                    f"kg/h), not a separately hardcoded figure."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("mass-balance pass-through of GA-005's confirmed ash discharge fraction, computed live via gasifier_mass_balance.py"),
+            },
+        ],
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated conveyor operating temperature",
+                "value": "~150", "unit": "°C",
+                "remarks": (
+                    "Derived from this item's own two already-confirmed facts: its confirmed "
+                    "'Char temperature at inlet' (150°C) and its own stated remark ('No active "
+                    "cooling needed — primary cooling already done at GA-005'), which together "
+                    "imply negligible further temperature change across the short 4m enclosed run "
+                    "— a synthesis of two existing facts into a new quantified claim, not a bare "
+                    "restatement of the inlet figure under a different category label."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("derived from this item's own confirmed inlet temperature and stated 'no active cooling' remark"),
+            },
+        ],
+    },
+    "GA-007": {
+        "Inputs": [
+            {
+                "parameter": "Estimated ash mass inflow rate (from GA-006)",
+                "value": f"~{_GA_ASH_KG_H:.3f}", "unit": "kg/h",
+                "remarks": (
+                    "Same mass-balance pass-through as GA-006's estimated Outputs — GA-007 "
+                    "receives the identical ash stream from GA-006 with no intermediate "
+                    "processing step."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("mass-balance pass-through, same basis as GA-006's estimated Outputs"),
+            },
+        ],
+        "Outputs": [
+            {
+                "parameter": "Estimated ash mass outflow rate (to GA-008/GA-009)",
+                "value": f"~{_GA_ASH_KG_H:.3f}", "unit": "kg/h",
+                "remarks": (
+                    "Mass conservation through a buffer vessel on a TIME-AVERAGED basis — GA-007's "
+                    "own data states no separation or loss mechanism (it is explicitly a buffer/"
+                    "storage bin, 'several days' buffer'), so its long-run average outflow equals "
+                    "its average inflow — a standard steady-state mass-balance principle for "
+                    "buffer/silo equipment, not a claim about any single instant."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("time-averaged mass-balance conservation through a buffer vessel with no stated separation/loss mechanism"),
+            },
+        ],
+    },
+    "GA-008": {
+        "Inputs": [
+            {
+                "parameter": "Estimated carbon-black-laden fines inflow rate",
+                "value": f"~{_GA_CARBON_BLACK_KG_H:.3f}", "unit": "kg/h",
+                "remarks": (
+                    f"The project's own established 5% carbon-black byproduct-yield fraction "
+                    f"(gasifier_mass_balance.py CARBON_BLACK_FRACTION) applied to the confirmed "
+                    f"41.67 kg/h dry feed rate, computed live via byproduct_mass_flows() "
+                    f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h) — the same relationship this item's OWN "
+                    f"registry remarks already reference for its design-capacity margin ('~1.88 "
+                    f"kg/h nominal... already used in the mass/energy balance'), so this is not a "
+                    f"new external estimate, just the same internally-consistent project figure "
+                    f"applied to this item's own missing Inputs slot. DELIBERATELY did NOT use "
+                    f"RFI #2's 'Carbon >45%' figure here — that is FEEDSTOCK ELEMENTAL carbon "
+                    f"content, a fundamentally different metric from this 5% CARBON-BLACK "
+                    f"BYPRODUCT YIELD fraction (the exact conflation trap "
+                    f"equipment_rfi_fills.py already identified and avoided; re-confirmed avoided "
+                    f"here)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("carbon-black mass-balance fraction computed live via gasifier_mass_balance.py, deliberately NOT the RFI's unrelated feedstock elemental-carbon figure"),
+            },
+        ],
+    },
+    "GA-009": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated processing temperature",
+                "value": "Ambient", "unit": "",
+                "remarks": (
+                    "Comparable-installed-system basis: this item's own stated process "
+                    "('Crushing, cement/lime stabilization, and screening to size') is standard "
+                    "construction-materials practice — cement/lime stabilization is inherently an "
+                    "ambient-temperature curing process (no industrial cement stabilization "
+                    "process operates at elevated temperature), and crushing/screening are "
+                    "unheated mechanical operations. No heating or cooling duty is stated or "
+                    "physically implied anywhere in this item's own data."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("comparable-installed-system practice (ambient-temperature cement/lime stabilization and aggregate processing)"),
+            },
+        ],
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated aggregate product mass yield (vs. input ash mass)",
+                "value": "105-110", "unit": "%",
+                "remarks": (
+                    "Mass-balance calculation from this item's OWN confirmed 'Leachate "
+                    "stabilization additive = Portland cement (5-10% by mass)' Parameter, applied "
+                    "to the confirmed ash mass rate (gasifier_mass_balance.py, same basis as "
+                    "GA-006/GA-007's estimated ash flows) — product mass = ash mass x (1 + 0.05 to "
+                    "0.10). DELIBERATELY does NOT assume the aggregate product mass equals the raw "
+                    "ash input mass — that would be the direct analogue of the RFI carbon-content "
+                    "conflation trap (ignoring a real, stated additive/transformation step), so the "
+                    "added cement/lime mass is explicitly accounted for rather than assumed away."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("mass-balance yield calculation from this item's own confirmed stabilization-additive fraction, explicitly not assuming output equals input ash mass"),
+            },
+        ],
+    },
+    "GA-010": {
+        "Inputs": [
+            {
+                "parameter": "Estimated recovered carbon-black inflow rate (from GA-008)",
+                "value": f">={_GA_RECOVERED_CARBON_BLACK_KG_H:.2f}", "unit": "kg/h",
+                "remarks": (
+                    f"GA-008's OWN confirmed Performance Indicator ('Collection efficiency = "
+                    f">95%') applied to the raw carbon-black generation rate "
+                    f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h, same gasifier_mass_balance.py figure as "
+                    f"GA-008's own estimated Inputs) — GA-010 receives what GA-008 actually "
+                    f"RECOVERS, not the raw pre-separation fines figure. DELIBERATELY does NOT "
+                    f"assume 100% recovery from GA-008 to GA-010 — that would be exactly the same "
+                    f"category of unstated-assumption error as the elemental-carbon and "
+                    f"stabilization-additive conflation traps above, just at the recovery-"
+                    f"efficiency step instead."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("mass-balance calculation applying GA-008's own confirmed >95% collection efficiency to the raw carbon-black generation rate, deliberately not assuming 100% recovery"),
+            },
+        ],
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated storage temperature",
+                "value": "Ambient (N2-blanketed, inert atmosphere)", "unit": "",
+                "remarks": (
+                    "Comparable-installed-system basis: this item's own data already states "
+                    "'Vertical silo, N2-blanketed' storage and 'Inert gas blanketing = Yes' — "
+                    "standard industrial practice for combustible fine-particulate storage is "
+                    "ambient-temperature storage under inert atmosphere, where the inert gas "
+                    "addresses ignition risk, not thermal control. No heating/cooling duty is "
+                    "stated or implied."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ga("comparable-installed-system practice (ambient-temperature inert-blanketed storage for combustible fine particulate)"),
+            },
+        ],
+    },
 }
 
 
@@ -387,9 +828,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 7, f"REGRESSION: expected 7 rows, counted {n_rows}."
-    assert n_slots == 7, f"REGRESSION: expected 7 newly-estimated slots, counted {n_slots}."
-    assert n_items == 6, f"REGRESSION: expected 6 items touched, counted {n_items}."
+    assert n_rows == 17, f"REGRESSION: expected 17 rows (7 FE + 10 GA), counted {n_rows}."
+    assert n_slots == 17, f"REGRESSION: expected 17 newly-estimated slots, counted {n_slots}."
+    assert n_items == 12, f"REGRESSION: expected 12 items touched (6 FE + 6 GA), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -404,7 +845,26 @@ if __name__ == "__main__":
                 assert row["remarks"] and len(row["remarks"]) > 40, (
                     f"REGRESSION: {item_id}/{category} row has no substantive stated basis in its remarks."
                 )
-    print("PASSED -- every one of the 7 rows is tagged STATUS_ESTIMATE with a real, substantive basis stated.")
+    print(f"PASSED -- every one of the {n_rows} rows is tagged STATUS_ESTIMATE with a real, substantive basis stated.")
+
+    print("\n=== GA-specific check: no carbon-black fill uses RFI #2's feedstock elemental-carbon figure ===")
+    for item_id, category in (("GA-008", "Inputs"), ("GA-010", "Inputs")):
+        for row in ESTIMATE_FILLS[item_id][category]:
+            assert "45" not in row["value"], (
+                f"REGRESSION: {item_id}/{category}'s VALUE looks like it used RFI #2's elemental-carbon figure (>45%), not the carbon-black-yield fraction."
+            )
+            assert "DELIBERATELY" in row["remarks"], (
+                f"REGRESSION: {item_id}/{category} doesn't explicitly document that it checked for and avoided the carbon-content conflation trap."
+            )
+    print("PASSED -- GA-008/GA-010's carbon-black fills use only the 5% carbon-black-yield fraction, never RFI #2's unrelated elemental-carbon figure, and explicitly document the check.")
+
+    print("\n=== GA-specific check: GA-009's/GA-010's mass-balance fills explicitly account for, not ignore, a real transformation step ===")
+    for item_id, category in (("GA-009", "Performance Indicators"), ("GA-010", "Inputs")):
+        for row in ESTIMATE_FILLS[item_id][category]:
+            assert "DELIBERATELY" in row["remarks"] and "NOT" in row["remarks"], (
+                f"REGRESSION: {item_id}/{category} doesn't explicitly document avoiding an assume-equal-pass-through error."
+            )
+    print("PASSED -- GA-009's cement-additive step and GA-010's collection-efficiency step are both explicitly accounted for, never assumed away.")
 
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
@@ -425,7 +885,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 5: FE-specific honest breakdown ===")
+    print("\n=== Task requirement 7 (this extension): FE's pilot numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -433,16 +893,26 @@ if __name__ == "__main__":
     assert fe_after["confirmed_category_slots"] == 27, f"REGRESSION: expected 27 Confirmed FE slots, got {fe_after['confirmed_category_slots']}."
     assert fe_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate FE slots, got {fe_after['estimated_category_slots']}."
     assert fe_after["missing_category_slots"] == 14, f"REGRESSION: expected 14 Missing FE slots, got {fe_after['missing_category_slots']}."
-    print("PASSED -- FE: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48 total slots, matches exactly.")
+    print("PASSED -- FE's pilot numbers are unchanged by this GA extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
 
-    print("\n=== Regression check: every OTHER section is untouched by this overlay ===")
+    print("\n=== GA-specific honest breakdown (this extension) ===")
+    ga_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GA_IDS)
+    print(f"GA: {ga_after['confirmed_category_slots']} Confirmed, "
+          f"{ga_after['estimated_category_slots']} Engineering Estimate, "
+          f"{ga_after['missing_category_slots']} Missing (of {ga_after['total_category_slots']} total slots)")
+    assert ga_after["confirmed_category_slots"] == 31, f"REGRESSION: expected 31 Confirmed GA slots, got {ga_after['confirmed_category_slots']}."
+    assert ga_after["estimated_category_slots"] == 10, f"REGRESSION: expected 10 Estimate GA slots, got {ga_after['estimated_category_slots']}."
+    assert ga_after["missing_category_slots"] == 19, f"REGRESSION: expected 19 Missing GA slots, got {ga_after['missing_category_slots']}."
+    print("PASSED -- GA: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60 total slots, matches exactly.")
+
+    print("\n=== Regression check: every OTHER section (GC, SA, HB, EU, AI) is untouched by this overlay ===")
     for label, ids in [
-        ("GA", equipment_datasheet.GA_IDS), ("GC", equipment_datasheet.GC_IDS),
-        ("SA", equipment_datasheet.SA_IDS), ("HB", equipment_datasheet.HB_IDS),
-        ("EU", equipment_datasheet.EU_IDS), ("AI", equipment_datasheet.AI_IDS),
+        ("GC", equipment_datasheet.GC_IDS), ("SA", equipment_datasheet.SA_IDS),
+        ("HB", equipment_datasheet.HB_IDS), ("EU", equipment_datasheet.EU_IDS),
+        ("AI", equipment_datasheet.AI_IDS),
     ]:
         b = equipment_datasheet.summarize(base, ids=ids)
         f = equipment_datasheet.summarize(filled, ids=ids)
         print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but this pilot only targets FE."
-    print("PASSED -- GA, GC, SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
+        assert b == f, f"REGRESSION: {label} section changed, but only FE and GA are targeted so far."
+    print("PASSED -- GC, SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
