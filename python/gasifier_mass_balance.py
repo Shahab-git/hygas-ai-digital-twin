@@ -97,3 +97,4 @@ if __name__ == "__main__":
     assert abs(doubled["ash_kg_h"] / base["ash_kg_h"] - 2.0) < 1e-9
     assert abs(doubled["carbon_black_kg_h"] / base["carbon_black_kg_h"] - 2.0) < 1e-9
     print("PASS: genuinely linear, not just plausible-looking numbers.")
+
