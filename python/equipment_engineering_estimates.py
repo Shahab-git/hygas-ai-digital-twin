@@ -1,9 +1,11 @@
 """
-Engineering-estimate overlay v2 — PILOTED on FE-001 through FE-008's 21
+Engineering-estimate overlay v3 — PILOTED on FE-001 through FE-008's 21
 remaining "Missing Data — Required" gaps first (reviewed and approved),
-now EXTENDED to GA-001 through GA-010's 29 remaining gaps under the
-identical rule set, no relaxation. Extending to the remaining four
-sections (GC, SA, HB, EU, AI) is still a separate, later task.
+EXTENDED to GA-001 through GA-010's 29 remaining gaps (reviewed and
+approved), now EXTENDED AGAIN to GC-001 through GC-015's 38 remaining
+gaps under the identical rule set, no relaxation. Extending to the
+remaining three sections (SA, HB, EU, AI) is still a separate, later
+task.
 
 WHY THIS EXISTS, per the real, authorized basis stated in the task:
 DOK-ING has confirmed they cannot answer some outstanding questions at
@@ -32,9 +34,12 @@ stays "Missing Data — Required" — task requirement 3 is explicit this
 is not "fill everything that can technically be filled", it's "fill
 only where real engineering justification exists". Of FE's 21 gaps,
 7 get a genuine estimate; 14 stay missing. Of GA's 29 gaps, 10 get a
-genuine estimate; 19 stay missing — see REPORT below for the per-gap
-reasoning on every single one, filled and declined alike, both
-sections.
+genuine estimate; 19 stay missing. Of GC's 38 gaps, only 7 get a
+genuine estimate; 31 stay missing — GC is mostly specific vendor
+equipment-performance specs with no literature basis, so a notably
+lower fill rate than FE/GA is the CORRECT, honest outcome here, not a
+gap in effort — see REPORT below for the per-gap reasoning on every
+single one, filled and declined alike, all three sections.
 
 GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
 fills are checked first, and preferentially, for the STRONGEST kind of
@@ -62,6 +67,45 @@ same figure as the raw ash mass feeding it (GA-009's Performance
 Indicators fill states a mass YIELD factor above 100%, not an
 assumed-equal pass-through).
 
+GC-SPECIFIC DISCIPLINE (task requirements 3-5): same "own already-
+confirmed numbers first" priority applied to GC's gas-cleaning train.
+The train's own real gas-flow chain (GC-001/GC-003 confirm 50 Nm3/h
+upstream of the quench tower; GC-009/GC-013 independently confirm the
+SAME 50 Nm3/h downstream of it) is used to fill two items that had NO
+gas-flow figure of their own (GC-006, GC-012) via cross-item
+interpolation between two ALREADY-CONFIRMED bracketing points — never
+by re-deriving or asserting anything about the quench tower itself.
+Two exact-calculation fills come from a SINGLE item's own confirmed
+inlet/outlet concentrations (GC-007 tar removal efficiency, GC-010
+dust removal efficiency), the same "derived from confirmed inputs"
+pattern as FE-004's specific energy. One fill (GC-008 Operating
+Conditions) interpolates a missing temperature between two sequential
+scrubbers' own confirmed values. A "compute-then-verify" catch (task
+requirement 4) is reported explicitly: GC-004's Outputs (post-quench
+gas flow) was checked and DECLINED — unlike the cyclones' trace-
+particulate removal or GC-006's trace-tar removal, the quench tower's
+own confirmed remarks state a real, non-trivial gas-volume change
+("~70% contraction" cooling from 860 to 65 degC) and it is the very
+step that generates the condensate GC-015 collects — assuming its
+outlet gas flow equals its inlet would rest on an unstated, physically
+unsound assumption this project has no confirmed water-vapor/
+condensation data to actually calculate, so it stays Missing Data -
+Required rather than presenting a number built on that assumption.
+Two apparent MISLABELED cross-references were found in the pre-
+existing registry remarks while checking for exactly the adjacent-
+stage conflation risk task requirement 5 warns about, and are reported
+here rather than silently used or silently ignored: GC-007's own
+remark attributes its 0.5 g/Nm3 tar inlet figure to "GC-008's bulk
+packed-bed removal", but GC-008 is the H2S wet scrubber — GC-006 (the
+actual packed-bed tar adsorber) is almost certainly the intended
+reference; and GC-012's own remark compares its <0.1 ppm H2S/COS
+target against "GC-006's <1 ppm H2S target", but GC-006 is the tar
+removal unit — GC-008 (the actual H2S scrubber, whose own confirmed
+target is <1 ppm) is almost certainly intended. data/
+equipment_registry.json is off-limits to edit (DOK-ING's own static
+extract), so neither is fixed here, but no GC fill below relies on
+either mislabeled reference — both are flagged, not propagated.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE
@@ -72,9 +116,9 @@ three-way logic), reported SEPARATELY from Confirmed in the honest
 completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
-every row's "source" names which round it came from (FE pilot or GA
-extension) and its basis type, distinct in app.py's UI from both
-"Equipment Datasheet" (vendor data) and "DOK-ING RFI
+every row's "source" names which round it came from (FE pilot, GA
+extension, or GC extension) and its basis type, distinct in app.py's UI
+from both "Equipment Datasheet" (vendor data) and "DOK-ING RFI
 (design_basis.py Q#)" (DOK-ING's real answers) rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
@@ -429,6 +473,199 @@ DECLINED — 19 of 29, with the actual reason:
     already stated (product grade target, moisture content) — a
     storage/loadout system has no additional literature-derivable
     efficiency or recovery-rate concept to estimate.
+
+GC REPORT (extension — every one of GC's 38 gaps, filled and declined).
+GC is mostly specific equipment-performance specs (cut sizes, removal
+efficiencies, instrument accuracies) that only exist once a vendor/
+model is chosen — a notably lower fill rate than FE/GA is the correct,
+honest outcome, not a shortfall in effort:
+
+FILLED — 7 of 38:
+
+  GC-006 (Tar Removal Unit) Inputs and Outputs: ~50 Nm3/h gas flow
+    rate, both directions. Basis: cross-item interpolation between two
+    ALREADY-CONFIRMED bracketing points in this exact train — GC-003's
+    own confirmed 50 Nm3/h (upstream, pre-quench) and GC-009's/
+    GC-013's own confirmed 50 Nm3/h (downstream, post-quench) — GC-009
+    and GC-013 EACH independently state this figure "matches the [flow
+    rate/gas flow] established through the rest/entire gas cleaning
+    train," so this is the project's own already-established
+    convention for the whole downstream segment GC-006 sits inside of,
+    not a number this module invented. Physically supported further by
+    GC-006 being isothermal (its own confirmed Operating temperature
+    matches GC-004's quench outlet exactly) and removing only a trace
+    tar mass fraction — no meaningful gas-volume change of its own,
+    unlike the quench tower (see GC-004 DECLINED below).
+
+  GC-007 (Wet Scrubber, Tar) Performance Indicators: tar removal
+    efficiency, >=90%. Basis: EXACT calculation from this item's own
+    two already-CONFIRMED values — Tar inlet concentration (design,
+    0.5 g/Nm3 = 500 mg/Nm3) and Tar outlet concentration (target,
+    <50 mg/Nm3): (500-50)/500 = 90%, stated as a floor since the
+    outlet figure is itself an upper-bound target, not a point value.
+    Same "derived from this item's own confirmed inputs" pattern as
+    FE-004's specific energy. Consistent with published wet-scrubber
+    tar-polishing performance (single-stage water/venturi scrubbers
+    commonly cited in gasification tar-removal literature in the
+    80-95% range for a polishing duty following bulk upstream removal)
+    — the derived 90%+ sits inside that range, not flagged as an
+    outlier the way FE-004's was.
+
+  GC-008 (Wet Scrubber, H2S) Operating Conditions: ~55-60 degC. Basis:
+    interpolation between two ALREADY-CONFIRMED bracketing values on
+    either side of this item in the train sequence (tar scrubber ->
+    H2S scrubber -> HCl scrubber, per the three items' own names) —
+    GC-007's own confirmed 60 degC operating temperature (immediately
+    upstream) and GC-009's own confirmed 55 degC operating temperature
+    (immediately downstream), which GC-009's own remark explicitly
+    describes as continuing "the gradual cooling trend" already
+    documented at every other stage in this train. A range, not a
+    false-precision point value, since this is an interpolation
+    between two real values, not a direct measurement or calculation.
+
+  GC-010 (Bag Filter, Dust) Performance Indicators: dust removal
+    efficiency, >=98.3%. Basis: EXACT calculation from this item's own
+    two already-CONFIRMED values — Inlet dust loading (300 mg/Nm3) and
+    Outlet dust loading (design, <5 mg/Nm3): (300-5)/300 = 98.33%,
+    stated as a floor for the same upper-bound-target reason as
+    GC-007. Consistent with published pulse-jet/PTFE-membrane baghouse
+    filtration literature, which commonly cites >99% removal at this
+    equipment class — this item's derived 98.3%+ sits just below that
+    typical high end, plausible given its comparatively generous
+    <5 mg/Nm3 outlet target (not an ultra-tight <1 mg/Nm3 spec).
+
+  GC-012 (Activated Carbon Filter) Inputs and Outputs: ~50 Nm3/h gas
+    flow rate, both directions. Basis: same cross-item interpolation
+    as GC-006 — GC-012 sits between the bag filter (GC-010/GC-011) and
+    the blower (GC-013), both fully downstream of the quench tower,
+    bracketed on the flow-confirmed side by GC-009's and GC-013's own
+    stated figures without needing to touch the quench-tower question
+    at all.
+
+DECLINED — 31 of 38, with the actual reason (not silently skipped):
+
+  GC-001 (Primary Cyclone, Temp) Outputs: this item's own confirmed
+    Inputs ALREADY states "Design gas flow rate = 50 Nm3/h" — an
+    Outputs value restating the identical figure for the identical
+    item (cyclones don't meaningfully change gas volume by removing
+    trace particulate) would be recategorizing existing data, not
+    genuinely new information, the same discipline the FE pilot
+    already applied to FE-003's Outputs (a conveyor's throughput
+    equals its own confirmed Inputs). GC-001 Operating Conditions: no
+    separately confirmed "typical operating" point distinct from this
+    item's own DESIGN temperature values exists — unlike GA-001, which
+    has both a Design temperature AND a separately confirmed Operating
+    temperature (typical), establishing a real margin; assuming
+    operating=design here would be the same unstated assumption
+    already declined for GA-003/GA-004. GC-001 Performance Indicators:
+    the collection-efficiency figure for THIS physical cyclone is
+    already Confirmed, just attributed to GC-002 (the ΔP/instrument
+    sub-item of the same equipment) — no distinct new PI exists for
+    GC-001 itself.
+
+  GC-002 (Primary Cyclone, ΔP) Inputs, Outputs: GC-002 is the pressure-
+    instrumentation sub-item of the SAME physical cyclone GC-001
+    already covers with its own confirmed Inputs — no distinct
+    material stream of its own (structurally not a fit, the same
+    reasoning already applied to GA-002/GA-004).
+
+  GC-003 (Secondary Cyclone) Outputs: same recategorization reasoning
+    as GC-001 — this item's own confirmed Inputs already states
+    "Design gas flow rate = 50 Nm3/h." GC-003 Measurements: vendor-
+    only instrument spec (temperature/pressure sensor), no correlation
+    or literature figure substitutes for a specific instrument before
+    one is selected. GC-003 Operating Conditions: same "no separately
+    confirmed operating-vs-design point" reasoning as GC-001 — this
+    item's own inlet gas temperature (870 degC) is already Confirmed
+    under Inputs; restating it under Operating Conditions would be the
+    same recategorization the FE pilot's HB-008 precedent already
+    declines.
+
+  GC-004 (Quench Tower, Temp) Outputs: CHECKED with an actual physical
+    argument, not just skipped — see the GC-SPECIFIC DISCIPLINE section
+    above for the full compute-then-verify reasoning (task requirement
+    4). Unlike the cyclones or GC-006, the quench tower's own confirmed
+    remarks state a real, non-trivial gas-volume change from cooling
+    ("~70% contraction"), and this is the exact stage that generates
+    the condensate GC-015 collects — a genuine compositional/molar-flow
+    change, not a units artifact, that this project has no confirmed
+    water-vapor data to actually calculate. GC-004 Operating
+    Conditions: same no-separate-operating-point reasoning as GC-001/
+    GC-003. GC-004 Performance Indicators: no standard, checkable
+    "quench efficiency" metric exists the way collection/removal
+    efficiency does for filters/scrubbers — a real one (e.g. approach
+    to adiabatic saturation temperature) would need wet-bulb data this
+    project doesn't have.
+
+  GC-005 (Quench Tower, Water) Inputs, Outputs: this item's own
+    Parameters ALREADY state "Water consumption (design) = 0.5 m3/h"
+    and "Blowdown rate = 0.05 m3/h" — filling Inputs/Outputs with the
+    identical already-Confirmed figures for the identical item would
+    be recategorization, not new information, same FE-003/GC-001
+    precedent. GC-005 Performance Indicators: no defensible KPI exists
+    for a passive quench-water supply subsystem beyond what's already
+    stated.
+
+  GC-006 Measurements: vendor-only instrument spec (no tar-breakthrough
+    sensor type stated anywhere to estimate from). GC-006 Performance
+    Indicators: CHECKED, not skipped — this item has no confirmed
+    INLET tar concentration of its own to compute a removal efficiency
+    from (only its approximate OUTLET, inferred from GC-007's confirmed
+    Inputs — see the MISLABELED cross-reference flagged in the GC-
+    SPECIFIC DISCIPLINE section above); estimating a raw inlet tar
+    loading from external literature would be too wide-ranging (raw
+    MSW-gasification tar loadings commonly cited across 1-100+ g/Nm3
+    depending on gasifier type/temperature) to state with any real
+    confidence for this specific project — declined rather than
+    guessed.
+
+  GC-009 (HCl Scrubber) Measurements: vendor-only instrument spec (HCl
+    analyser type/model not yet selected).
+
+  GC-011 (Bag Filter, ΔP) Inputs, Outputs: same structural reasoning as
+    GC-002/GC-014 — GC-011 is the pressure-drop/cleaning-cycle sub-item
+    of the SAME physical bag filter GC-010 already covers with its own
+    confirmed Inputs/Outputs (dust loading); no distinct material
+    stream of its own. GC-011 Performance Indicators: the dust-removal-
+    efficiency figure for THIS physical bag filter is filled above,
+    correctly attributed to GC-010 (which holds the actual inlet/
+    outlet dust-loading data) — no distinct new PI exists for GC-011
+    itself.
+
+  GC-012 Performance Indicators: CHECKED, not skipped — same reasoning
+    as GC-006's decline: no confirmed INLET H2S/COS concentration
+    exists for this item to compute a removal efficiency from, only an
+    OUTLET target (see the second MISLABELED cross-reference flagged in
+    the GC-SPECIFIC DISCIPLINE section above).
+
+  GC-013 (Gas Blower, Flow) Outputs: same recategorization reasoning as
+    GC-001/GC-003/GC-005 — this item's own confirmed Inputs already
+    states the design/min/max gas flow rates; a blower doesn't consume
+    or generate gas, so an Outputs figure would restate the identical
+    already-Confirmed numbers for the identical item. GC-013 Operating
+    Conditions: no separately confirmed operating-vs-design point.
+    GC-013 Performance Indicators: no defensible KPI beyond the flow/
+    pressure figures already stated.
+
+  GC-014 (Gas Blower, Pressure) Inputs, Outputs: same structural
+    reasoning as GC-002/GC-011 — pressure-instrumentation sub-item of
+    the SAME physical blower GC-013 already covers. GC-014 Operating
+    Conditions: no separately confirmed operating-vs-design point.
+    GC-014 Performance Indicators: no defensible KPI.
+
+  GC-015 (Condensate Tank) Outputs: this item's own Inputs already
+    states "Pump flow rate = 0.5 m3/h" (the discharge-pump rate, swept
+    into Inputs by the same keyword-classification quirk that affects
+    a few other items across this project, not something in scope to
+    fix here) — filling Outputs with the identical figure would be the
+    same recategorization already declined elsewhere. GC-015 Operating
+    Conditions: no defensible basis — this tank collects a MIXTURE of
+    several different blowdown streams (GC-005 quench blowdown plus
+    scrubber blowdowns) at different confirmed temperatures, in
+    unstated relative proportions; computing a meaningful mixed
+    temperature would need flow-weighting data this project doesn't
+    have. GC-015 Performance Indicators: no efficiency/recovery-rate
+    concept applies to a passive buffer tank.
 """
 import copy
 
@@ -448,6 +685,13 @@ def _source(basis_label):
 
 def _source_ga(basis_label):
     return f"Engineering estimate (GA-001..GA-010 extension) — {basis_label}"
+
+
+def _source_gc(basis_label):
+    return f"Engineering estimate (GC-001..GC-015 extension) — {basis_label}"
+
+
+_GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
 
 
 # {item_id: {category: [ {parameter, value, unit, remarks, status, source} ]}}
@@ -765,6 +1009,133 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "GC-006": {
+        "Inputs": [
+            {
+                "parameter": "Estimated inlet gas flow rate",
+                "value": f"~{_GC_TRAIN_GAS_FLOW_NM3_H}", "unit": "Nm³/h",
+                "remarks": (
+                    "Cross-item interpolation between two ALREADY-CONFIRMED bracketing points in "
+                    "this exact train: GC-003's own confirmed 50 Nm³/h (upstream, pre-quench) and "
+                    "GC-009's/GC-013's own confirmed 50 Nm³/h (downstream, post-quench), which "
+                    "GC-009 and GC-013 EACH independently state 'matches the flow rate established "
+                    "through the rest/entire gas cleaning train' — the project's own already-"
+                    "established convention for the whole downstream segment GC-006 sits inside "
+                    "of. Supported further by GC-006 being isothermal (its own confirmed Operating "
+                    "temperature matches GC-004's quench outlet exactly) and removing only a trace "
+                    "tar mass fraction — no meaningful gas-volume change of its own, unlike the "
+                    "quench tower itself (see GC-004, deliberately declined for this reason)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("cross-item interpolation between GC-003's and GC-009's/GC-013's own confirmed downstream gas flow figures"),
+            },
+        ],
+        "Outputs": [
+            {
+                "parameter": "Estimated outlet gas flow rate",
+                "value": f"~{_GC_TRAIN_GAS_FLOW_NM3_H}", "unit": "Nm³/h",
+                "remarks": (
+                    "Same basis as this item's own estimated Inputs — isothermal, trace-tar-"
+                    "removal-only operation with no meaningful gas-volume change, consistent with "
+                    "the project's own already-confirmed downstream train gas flow (GC-009, "
+                    "GC-013)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("cross-item interpolation, same basis as this item's estimated Inputs"),
+            },
+        ],
+    },
+    "GC-007": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated tar removal efficiency",
+                "value": ">=90", "unit": "%",
+                "remarks": (
+                    "Exact calculation from this item's own two already-CONFIRMED values: Tar "
+                    "inlet concentration (design, 0.5 g/Nm³ = 500 mg/Nm³) and Tar outlet "
+                    "concentration (target, <50 mg/Nm³): (500-50)/500 = 90%, stated as a floor "
+                    "since the outlet figure is itself an upper-bound target, not a point value. "
+                    "Not an independent guess, flagged Estimate since no vendor/DOK-ING source "
+                    "states this removal-efficiency figure directly. For context: single-stage "
+                    "wet/venturi scrubbers used for tar polishing (following bulk upstream "
+                    "removal) are commonly cited in gasification tar-removal literature in the "
+                    "80-95% range for this duty — this item's derived 90%+ sits inside that range."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("calculated from this item's own confirmed inlet/outlet tar concentrations, compared against published literature range"),
+            },
+        ],
+    },
+    "GC-008": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature",
+                "value": "55-60", "unit": "°C",
+                "remarks": (
+                    "Interpolation between two ALREADY-CONFIRMED bracketing values on either side "
+                    "of this item in the train sequence (tar scrubber -> H2S scrubber -> HCl "
+                    "scrubber, per the three items' own names): GC-007's own confirmed 60°C "
+                    "operating temperature (immediately upstream) and GC-009's own confirmed 55°C "
+                    "operating temperature (immediately downstream), which GC-009's own remark "
+                    "explicitly describes as continuing 'the gradual cooling trend' documented at "
+                    "every other stage in this train. A range, not a false-precision point value, "
+                    "since this is an interpolation between two real values, not a direct "
+                    "measurement or calculation."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("interpolation between GC-007's and GC-009's own confirmed operating temperatures, bracketing this item in the train sequence"),
+            },
+        ],
+    },
+    "GC-010": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated dust removal efficiency",
+                "value": ">=98.3", "unit": "%",
+                "remarks": (
+                    "Exact calculation from this item's own two already-CONFIRMED values: Inlet "
+                    "dust loading (300 mg/Nm³) and Outlet dust loading (design, <5 mg/Nm³): "
+                    "(300-5)/300 = 98.33%, stated as a floor for the same upper-bound-target "
+                    "reason as GC-007. For context: pulse-jet, PTFE-membrane baghouse filtration "
+                    "is commonly cited in industrial filtration literature as achieving >99% "
+                    "removal at this equipment class — this item's derived 98.3%+ sits just below "
+                    "that typical high end, plausible given its comparatively generous <5 mg/Nm³ "
+                    "outlet target (not an ultra-tight <1 mg/Nm³ spec)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("calculated from this item's own confirmed inlet/outlet dust loading, compared against published literature range"),
+            },
+        ],
+    },
+    "GC-012": {
+        "Inputs": [
+            {
+                "parameter": "Estimated inlet gas flow rate",
+                "value": f"~{_GC_TRAIN_GAS_FLOW_NM3_H}", "unit": "Nm³/h",
+                "remarks": (
+                    "Same cross-item interpolation basis as GC-006's estimated Inputs/Outputs — "
+                    "GC-012 sits between the bag filter (GC-010/GC-011) and the blower (GC-013), "
+                    "both fully downstream of the quench tower, bracketed on the flow-confirmed "
+                    "side by GC-009's and GC-013's own stated 50 Nm³/h figures without needing to "
+                    "touch the quench-tower question at all."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("cross-item interpolation between GC-009's and GC-013's own confirmed downstream gas flow figures"),
+            },
+        ],
+        "Outputs": [
+            {
+                "parameter": "Estimated outlet gas flow rate",
+                "value": f"~{_GC_TRAIN_GAS_FLOW_NM3_H}", "unit": "Nm³/h",
+                "remarks": (
+                    "Same basis as this item's own estimated Inputs — trace-species (H2S/COS) "
+                    "polishing removal only, no meaningful gas-volume change."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_gc("cross-item interpolation, same basis as this item's estimated Inputs"),
+            },
+        ],
+    },
 }
 
 
@@ -828,9 +1199,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 17, f"REGRESSION: expected 17 rows (7 FE + 10 GA), counted {n_rows}."
-    assert n_slots == 17, f"REGRESSION: expected 17 newly-estimated slots, counted {n_slots}."
-    assert n_items == 12, f"REGRESSION: expected 12 items touched (6 FE + 6 GA), counted {n_items}."
+    assert n_rows == 24, f"REGRESSION: expected 24 rows (7 FE + 10 GA + 7 GC), counted {n_rows}."
+    assert n_slots == 24, f"REGRESSION: expected 24 newly-estimated slots, counted {n_slots}."
+    assert n_items == 17, f"REGRESSION: expected 17 items touched (6 FE + 6 GA + 5 GC), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -866,6 +1237,23 @@ if __name__ == "__main__":
             )
     print("PASSED -- GA-009's cement-additive step and GA-010's collection-efficiency step are both explicitly accounted for, never assumed away.")
 
+    print("\n=== GC-specific check: the declined quench-tower gas flow (GC-004 Outputs) was never actually filled ===")
+    assert "GC-004" not in ESTIMATE_FILLS, (
+        "REGRESSION: GC-004 appears in ESTIMATE_FILLS -- the module docstring explicitly declines its Outputs "
+        "(post-quench gas flow) as physically unsound to assert without confirmed condensation data; it must stay Missing."
+    )
+    print("PASSED -- GC-004 (Quench Tower, Temp) has no fill of any kind, exactly as declined in the GC REPORT.")
+
+    print("\n=== GC-specific check: GC-006's/GC-012's estimated gas flow matches the train's own confirmed downstream figure exactly ===")
+    for item_id in ("GC-006", "GC-012"):
+        for category in ("Inputs", "Outputs"):
+            for row in ESTIMATE_FILLS[item_id][category]:
+                assert str(_GC_TRAIN_GAS_FLOW_NM3_H) in row["value"], (
+                    f"REGRESSION: {item_id}/{category}'s value doesn't match the train's confirmed 50 Nm3/h figure."
+                )
+    print(f"PASSED -- GC-006's and GC-012's estimated gas flows both use the exact same {_GC_TRAIN_GAS_FLOW_NM3_H} Nm3/h "
+          f"the train's own GC-003/GC-009/GC-013 already confirm, not a separately invented number.")
+
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
     after = equipment_datasheet.summarize(filled)
@@ -885,7 +1273,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 7 (this extension): FE's pilot numbers, regression-verified unchanged ===")
+    print("\n=== Task requirement 8 (this extension): FE's and GA's numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -893,9 +1281,8 @@ if __name__ == "__main__":
     assert fe_after["confirmed_category_slots"] == 27, f"REGRESSION: expected 27 Confirmed FE slots, got {fe_after['confirmed_category_slots']}."
     assert fe_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate FE slots, got {fe_after['estimated_category_slots']}."
     assert fe_after["missing_category_slots"] == 14, f"REGRESSION: expected 14 Missing FE slots, got {fe_after['missing_category_slots']}."
-    print("PASSED -- FE's pilot numbers are unchanged by this GA extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
+    print("PASSED -- FE's pilot numbers are unchanged by this GC extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
 
-    print("\n=== GA-specific honest breakdown (this extension) ===")
     ga_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GA_IDS)
     print(f"GA: {ga_after['confirmed_category_slots']} Confirmed, "
           f"{ga_after['estimated_category_slots']} Engineering Estimate, "
@@ -903,16 +1290,25 @@ if __name__ == "__main__":
     assert ga_after["confirmed_category_slots"] == 31, f"REGRESSION: expected 31 Confirmed GA slots, got {ga_after['confirmed_category_slots']}."
     assert ga_after["estimated_category_slots"] == 10, f"REGRESSION: expected 10 Estimate GA slots, got {ga_after['estimated_category_slots']}."
     assert ga_after["missing_category_slots"] == 19, f"REGRESSION: expected 19 Missing GA slots, got {ga_after['missing_category_slots']}."
-    print("PASSED -- GA: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60 total slots, matches exactly.")
+    print("PASSED -- GA's extension numbers are unchanged by this GC extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
 
-    print("\n=== Regression check: every OTHER section (GC, SA, HB, EU, AI) is untouched by this overlay ===")
+    print("\n=== GC-specific honest breakdown (this extension) ===")
+    gc_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GC_IDS)
+    print(f"GC: {gc_after['confirmed_category_slots']} Confirmed, "
+          f"{gc_after['estimated_category_slots']} Engineering Estimate, "
+          f"{gc_after['missing_category_slots']} Missing (of {gc_after['total_category_slots']} total slots)")
+    assert gc_after["confirmed_category_slots"] == 52, f"REGRESSION: expected 52 Confirmed GC slots, got {gc_after['confirmed_category_slots']}."
+    assert gc_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate GC slots, got {gc_after['estimated_category_slots']}."
+    assert gc_after["missing_category_slots"] == 31, f"REGRESSION: expected 31 Missing GC slots, got {gc_after['missing_category_slots']}."
+    print("PASSED -- GC: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90 total slots, matches exactly.")
+
+    print("\n=== Regression check: every OTHER section (SA, HB, EU, AI) is untouched by this overlay ===")
     for label, ids in [
-        ("GC", equipment_datasheet.GC_IDS), ("SA", equipment_datasheet.SA_IDS),
-        ("HB", equipment_datasheet.HB_IDS), ("EU", equipment_datasheet.EU_IDS),
-        ("AI", equipment_datasheet.AI_IDS),
+        ("SA", equipment_datasheet.SA_IDS), ("HB", equipment_datasheet.HB_IDS),
+        ("EU", equipment_datasheet.EU_IDS), ("AI", equipment_datasheet.AI_IDS),
     ]:
         b = equipment_datasheet.summarize(base, ids=ids)
         f = equipment_datasheet.summarize(filled, ids=ids)
         print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but only FE and GA are targeted so far."
-    print("PASSED -- GC, SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
+        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, and GC are targeted so far."
+    print("PASSED -- SA, HB, EU, and AI are byte-for-byte identical to the pre-overlay data.")
