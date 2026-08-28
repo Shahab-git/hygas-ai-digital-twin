@@ -16,6 +16,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
+    equipment_engineering_estimates,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1614,28 +1615,34 @@ with tab2:
 # equipment section: its own dedicated tab, not appended to an existing
 # one.
 # ---------------------------------------------------------------------
-_eq_datasheets = equipment_rfi_fills.apply_rfi_fills(equipment_datasheet.build_all_datasheets())
+_eq_datasheets = equipment_engineering_estimates.apply_estimates(
+    equipment_rfi_fills.apply_rfi_fills(equipment_datasheet.build_all_datasheets())
+)
 
 
 def _render_equipment_honest_count(summary, n_items):
     st.subheader("Honest count: how complete is this section, really?")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Real data points", summary["total_real_data_points"])
-    c2.metric(f"Category slots ({n_items} items × 6)", summary["total_category_slots"])
-    c3.metric("Populated categories", summary["populated_category_slots"])
+    c2.metric("Confirmed", summary["confirmed_category_slots"])
+    c3.metric("Engineering Estimate", summary["estimated_category_slots"])
     c4.metric("Missing Data — Required", summary["missing_category_slots"],
                delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
                delta_color="inverse")
     st.caption(
         f"{summary['total_real_data_points']} real parameter values are on file across these "
-        f"{n_items} items, but only {summary['populated_category_slots']} of the "
-        f"{summary['total_category_slots']} possible (item × category) slots actually have real "
-        f"data mapped to them — the registry simply doesn't carry every category for every item. "
-        f"That gap is reported honestly, not rounded up. Most values below come from the equipment "
-        f"registry (DOK-ING's own vendor datasheets); a small, deliberately curated set are instead "
-        f"confirmed by DOK-ING's real RFI response — each such row's **Source** column says "
-        f"\"DOK-ING RFI (design_basis.py Q#)\" so the two provenances stay distinguishable, never "
-        f"presented as the same kind of fact (see python/equipment_rfi_fills.py)."
+        f"{n_items} items, across {summary['total_category_slots']} possible (item × category) "
+        f"slots: **{summary['confirmed_category_slots']} Confirmed** (real vendor-datasheet or "
+        f"DOK-ING RFI data), **{summary['estimated_category_slots']} Engineering Estimate** "
+        f"(correlation/literature/comparable-system basis, explicitly NOT vendor/DOK-ING "
+        f"confirmed — DOK-ING has authorized this FEED-stage practice, to be calibrated once the "
+        f"real plant exists), and **{summary['missing_category_slots']} Missing Data — "
+        f"Required** — reported as three separate, honest numbers, never blended into one "
+        f"\"populated\" figure that would overstate how solid an estimated value actually is. "
+        f"Each row's **Source** column names exactly where it came from — \"Equipment Datasheet\" "
+        f"(vendor), \"DOK-ING RFI (design_basis.py Q#)\", or \"Engineering estimate (FE-001..FE-008 "
+        f"pilot) — ...\" naming its actual basis (see python/equipment_rfi_fills.py and "
+        f"python/equipment_engineering_estimates.py)."
     )
 
 
@@ -1650,10 +1657,14 @@ def _render_equipment_items(ids, per_item_stats):
         with st.expander(f"**{_item_id}** — {_item['name']}  ·  {_stat['populated_categories']}/6 categories populated"):
             for _cat in equipment_datasheet.CATEGORIES:
                 _rows = _sheet[_cat]
-                if not _rows:
+                _status = equipment_datasheet.slot_status(_rows)
+                if _status == equipment_datasheet.STATUS_MISSING:
                     st.error(f"**{_cat}:** Missing Data — Required")
                     continue
-                st.markdown(f"**{_cat}**")
+                if _status == equipment_datasheet.STATUS_ESTIMATE:
+                    st.warning(f"**{_cat}** — Engineering Estimate (Not Vendor/DOK-ING Confirmed)")
+                else:
+                    st.markdown(f"**{_cat}**")
                 _cat_df = pd.DataFrame([
                     {
                         "Parameter": p["parameter"], "Value": p["value"], "Unit": p["unit"],
@@ -1673,12 +1684,18 @@ with tab3:
         "Analysers, Hydrogen & BoP, Electrical & Utilities, and Automation & Instrumentation tabs "
         "for GA-001–010, GC-001–015, SA-001–012, HB-001–018, EU-001–013, and AI-001–015 — all 91 "
         "registry items are now covered, one section per tab, not appended into a single one). "
-        "Every data point below is read "
+        "Every Confirmed data point below is read "
         "directly from `equipment_registry.load_registry()` — the same loader Vendor Sourcing "
-        "(Tab 1) already uses, not a re-derived or simplified copy. Nothing here infers, estimates, "
-        "or backfills a value that isn't literally present in the registry. See "
-        "`python/equipment_datasheet.py` for the full categorization methodology and the exact "
-        "keyword rule used to sort each real parameter into a category.",
+        "(Tab 1) already uses, not a re-derived or simplified copy. **This is also the pilot "
+        "section for engineering estimates**: DOK-ING has confirmed it cannot answer some "
+        "outstanding questions at this stage and has authorized proceeding with correlation/"
+        "literature/comparable-system estimates for 7 of FE's 21 remaining gaps — each one tagged "
+        "**Engineering Estimate (Not Vendor/DOK-ING Confirmed)**, visually distinct below, with its "
+        "own stated basis in the Remarks/Source columns, never presented as confirmed data. The "
+        "other 14 gaps have no defensible basis and stay **Missing Data — Required**. See "
+        "`python/equipment_datasheet.py` for the categorization methodology and "
+        "`python/equipment_engineering_estimates.py` for the full per-gap estimate/decline "
+        "reasoning.",
         icon="⚠️",
     )
     st.caption(
@@ -1742,18 +1759,19 @@ with tab5:
 
     _gc_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.GC_IDS)
     _render_equipment_honest_count(_gc_summary, 15)
-    if (_fe_summary["total_real_data_points"] == 71 and _fe_summary["populated_category_slots"] == 27
+    if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 90 and _ga_summary["populated_category_slots"] == 31):
         st.success(
-            "Regression check: FE (71 real data points, 27/48 populated) and GA (90 real data "
-            "points, 31/60 populated) are both unchanged by adding this Gas Cleaning section."
+            "Regression check: FE (78 real data points, 34/48 populated — 27 Confirmed + 7 "
+            "Engineering Estimate) and GA (90 real data points, 31/60 populated) are both unchanged "
+            "by adding this Gas Cleaning section."
         )
     else:
         st.error(
             f"**Regression:** FE and/or GA's counts changed after adding Gas Cleaning — FE now "
             f"{_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, GA now "
             f"{_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']} "
-            f"(expected 71/27 and 90/31). See python/equipment_datasheet.py."
+            f"(expected 78/34 and 90/31). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.GC_IDS, _gc_summary["per_item"])
@@ -1779,13 +1797,14 @@ with tab6:
 
     _sa_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.SA_IDS)
     _render_equipment_honest_count(_sa_summary, 12)
-    if (_fe_summary["total_real_data_points"] == 71 and _fe_summary["populated_category_slots"] == 27
+    if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 90 and _ga_summary["populated_category_slots"] == 31
             and _gc_summary["total_real_data_points"] == 115 and _gc_summary["populated_category_slots"] == 52):
         st.success(
-            "Regression check: FE (71 real data points, 27/48 populated), GA (90 real data points, "
-            "31/60 populated), and GC (115 real data points, 52/90 populated) are all unchanged by "
-            "adding this Sensors & Analysers section."
+            "Regression check: FE (78 real data points, 34/48 populated — 27 Confirmed + 7 "
+            "Engineering Estimate), GA (90 real data points, 31/60 populated), and GC (115 real "
+            "data points, 52/90 populated) are all unchanged by adding this Sensors & Analysers "
+            "section."
         )
     else:
         st.error(
@@ -1793,7 +1812,7 @@ with tab6:
             f"Analysers — FE now {_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, "
             f"GA now {_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']}, "
             f"GC now {_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']} "
-            f"(expected 71/27, 90/31, and 115/52). See python/equipment_datasheet.py."
+            f"(expected 78/34, 90/31, and 115/52). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.SA_IDS, _sa_summary["per_item"])
@@ -1824,13 +1843,14 @@ with tab7:
 
     _hb_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.HB_IDS)
     _render_equipment_honest_count(_hb_summary, 18)
-    if (_fe_summary["total_real_data_points"] == 71 and _fe_summary["populated_category_slots"] == 27
+    if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 90 and _ga_summary["populated_category_slots"] == 31
             and _gc_summary["total_real_data_points"] == 115 and _gc_summary["populated_category_slots"] == 52
             and _sa_summary["total_real_data_points"] == 85 and _sa_summary["populated_category_slots"] == 26):
         st.success(
-            "Regression check: FE (71/27), GA (90/31), GC (115/52), and SA (85/26) — all real data "
-            "points/populated categories — are unchanged by adding this Hydrogen & BoP section."
+            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (90/31), GC "
+            "(115/52), and SA (85/26) — all real data points/populated categories — are unchanged "
+            "by adding this Hydrogen & BoP section."
         )
     else:
         st.error(
@@ -1839,7 +1859,7 @@ with tab7:
             f"GA now {_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']}, "
             f"GC now {_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']}, "
             f"SA now {_sa_summary['total_real_data_points']}/{_sa_summary['populated_category_slots']} "
-            f"(expected 71/27, 90/31, 115/52, and 85/26). See python/equipment_datasheet.py."
+            f"(expected 78/34, 90/31, 115/52, and 85/26). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.HB_IDS, _hb_summary["per_item"])
@@ -1868,15 +1888,15 @@ with tab8:
 
     _eu_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.EU_IDS)
     _render_equipment_honest_count(_eu_summary, 13)
-    if (_fe_summary["total_real_data_points"] == 71 and _fe_summary["populated_category_slots"] == 27
+    if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 90 and _ga_summary["populated_category_slots"] == 31
             and _gc_summary["total_real_data_points"] == 115 and _gc_summary["populated_category_slots"] == 52
             and _sa_summary["total_real_data_points"] == 85 and _sa_summary["populated_category_slots"] == 26
             and _hb_summary["total_real_data_points"] == 155 and _hb_summary["populated_category_slots"] == 57):
         st.success(
-            "Regression check: FE (71/27), GA (90/31), GC (115/52), SA (85/26), and HB (155/57) — "
-            "all real data points/populated categories — are unchanged by adding this Electrical & "
-            "Utilities section."
+            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (90/31), GC "
+            "(115/52), SA (85/26), and HB (155/57) — all real data points/populated categories — "
+            "are unchanged by adding this Electrical & Utilities section."
         )
     else:
         st.error(
@@ -1886,7 +1906,7 @@ with tab8:
             f"GC now {_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']}, "
             f"SA now {_sa_summary['total_real_data_points']}/{_sa_summary['populated_category_slots']}, "
             f"HB now {_hb_summary['total_real_data_points']}/{_hb_summary['populated_category_slots']} "
-            f"(expected 71/27, 90/31, 115/52, 85/26, and 155/57). See python/equipment_datasheet.py."
+            f"(expected 78/34, 90/31, 115/52, 85/26, and 155/57). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.EU_IDS, _eu_summary["per_item"])
@@ -1931,16 +1951,16 @@ with tab9:
 
     _ai_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.AI_IDS)
     _render_equipment_honest_count(_ai_summary, 15)
-    if (_fe_summary["total_real_data_points"] == 71 and _fe_summary["populated_category_slots"] == 27
+    if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 90 and _ga_summary["populated_category_slots"] == 31
             and _gc_summary["total_real_data_points"] == 115 and _gc_summary["populated_category_slots"] == 52
             and _sa_summary["total_real_data_points"] == 85 and _sa_summary["populated_category_slots"] == 26
             and _hb_summary["total_real_data_points"] == 155 and _hb_summary["populated_category_slots"] == 57
             and _eu_summary["total_real_data_points"] == 115 and _eu_summary["populated_category_slots"] == 46):
         st.success(
-            "Regression check: FE (71/27), GA (90/31), GC (115/52), SA (85/26), HB (155/57), and "
-            "EU (115/46) — all real data points/populated categories — are unchanged by adding "
-            "this Automation & Instrumentation section."
+            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (90/31), GC "
+            "(115/52), SA (85/26), HB (155/57), and EU (115/46) — all real data points/populated "
+            "categories — are unchanged by adding this Automation & Instrumentation section."
         )
     else:
         st.error(
@@ -1951,7 +1971,7 @@ with tab9:
             f"SA now {_sa_summary['total_real_data_points']}/{_sa_summary['populated_category_slots']}, "
             f"HB now {_hb_summary['total_real_data_points']}/{_hb_summary['populated_category_slots']}, "
             f"EU now {_eu_summary['total_real_data_points']}/{_eu_summary['populated_category_slots']} "
-            f"(expected 71/27, 90/31, 115/52, 85/26, 155/57, and 115/46). See python/equipment_datasheet.py."
+            f"(expected 78/34, 90/31, 115/52, 85/26, 155/57, and 115/46). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.AI_IDS, _ai_summary["per_item"])
@@ -1968,7 +1988,10 @@ with tab9:
         "hand. The totals below also include a small, deliberately curated set of DOK-ING RFI-"
         "sourced fills (`python/equipment_rfi_fills.py`) layered on top of the equipment registry — "
         "each visibly tagged with its own **Source** in the item view above, never presented as "
-        "vendor-datasheet data."
+        "vendor-datasheet data — and a small, explicitly-scoped pilot set of engineering estimates "
+        "for FE-001 through FE-008 (`python/equipment_engineering_estimates.py`), each tagged with "
+        "its own correlation/literature/comparable-system basis and never blended into the "
+        "Confirmed count."
     )
     _all_summary = equipment_datasheet.summarize(_eq_datasheets)
     _all_ids_seen = set()
@@ -1988,25 +2011,32 @@ with tab9:
         and _all_ids_seen == _registry_ids
         and len(_registry_ids) == 91
     )
-    g1, g2, g3, g4 = st.columns(4)
+    g1, g2, g3, g4, g5 = st.columns(5)
     g1.metric("Registry items covered", f"{len(_all_ids_seen)} / 91")
     g2.metric("Total real data points", _all_summary["total_real_data_points"])
-    g3.metric("Populated (item × category) slots",
-              f"{_all_summary['populated_category_slots']} / {_all_summary['total_category_slots']}")
-    g4.metric("Overall honest completion",
-              f"{_all_summary['populated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%")
+    g3.metric("Confirmed slots",
+              f"{_all_summary['confirmed_category_slots']} / {_all_summary['total_category_slots']}")
+    g4.metric("Engineering Estimate slots",
+              f"{_all_summary['estimated_category_slots']} / {_all_summary['total_category_slots']}")
+    g5.metric("Missing Data — Required",
+              f"{_all_summary['missing_category_slots']} / {_all_summary['total_category_slots']}")
     if _completeness_ok:
         st.success(
             f"Completeness check: all 91 registry items are covered across the nine tabs, with no "
             f"item ID duplicated across sections and none missing versus "
-            f"`equipment_registry.load_registry()`. Across the whole registry: "
-            f"{_all_summary['total_real_data_points']} total real data points, "
-            f"{_all_summary['populated_category_slots']} of {_all_summary['total_category_slots']} "
-            f"possible (item × category) slots populated — "
-            f"{_all_summary['populated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}% "
-            f"overall honest completion, with the remaining "
-            f"{_all_summary['missing_category_slots']} slots reported plainly as Missing Data — "
-            f"Required rather than smoothed over."
+            f"`equipment_registry.load_registry()`. Across the whole registry ("
+            f"{_all_summary['total_category_slots']} possible item × category slots), reported as "
+            f"three genuinely distinct numbers, not blended into one \"populated\" figure: "
+            f"**{_all_summary['confirmed_category_slots']} Confirmed** "
+            f"({_all_summary['confirmed_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
+            f"vendor datasheet or DOK-ING RFI answer), "
+            f"**{_all_summary['estimated_category_slots']} Engineering Estimate** "
+            f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
+            f"correlation/literature/comparable-system basis, not vendor- or DOK-ING-confirmed — "
+            f"currently the FE-001 through FE-008 pilot only), and "
+            f"**{_all_summary['missing_category_slots']} Missing Data — Required** "
+            f"({_all_summary['missing_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%), "
+            f"reported plainly rather than smoothed over."
         )
     else:
         st.error(

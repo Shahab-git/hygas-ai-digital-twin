@@ -419,6 +419,20 @@ CATEGORIES = [
     "Operating Conditions", "Performance Indicators",
 ]
 
+# Three genuine data-confidence statuses a category SLOT can have --
+# added for the engineering-estimate pilot (python/
+# equipment_engineering_estimates.py). STATUS_CONFIRMED is the default
+# for every parameter row that has no explicit "status" key -- true of
+# every registry row and every python/equipment_rfi_fills.py row ever
+# written, so this is fully backward compatible, not a breaking change.
+# A row instead carrying "status": STATUS_ESTIMATE marks it honestly as
+# a correlation/literature/comparable-system estimate, NOT vendor- or
+# DOK-ING-confirmed data -- see summarize()'s slot-status logic below
+# for exactly how a category's rows roll up into one of these three.
+STATUS_CONFIRMED = "Confirmed"
+STATUS_ESTIMATE = "Engineering Estimate (Not Vendor/DOK-ING Confirmed)"
+STATUS_MISSING = "Missing Data — Required"
+
 _MEASUREMENTS_KEYWORDS = (
     "sensor", "measurement", "accuracy", "calibration", "response time", "output signal",
     "flow meter", "transmitter", "analyser", "monitor", "power meter",
@@ -482,36 +496,69 @@ def build_all_datasheets(registry=None, ids=None):
     return out
 
 
+def slot_status(rows):
+    """Classifies ONE category bucket's real status: STATUS_MISSING if
+    empty; STATUS_CONFIRMED if at least one row in it is confirmed data
+    (real vendor-datasheet or DOK-ING-RFI data -- the default for any
+    row without an explicit "status" key, so a slot with a mix of
+    confirmed and estimate rows still counts as genuinely Confirmed,
+    since real confirmed data IS present); STATUS_ESTIMATE only if
+    every row present is an engineering estimate and none is confirmed.
+    Public because app.py's rendering needs the same per-slot
+    classification the honest count uses, not a separate copy of this
+    logic."""
+    if not rows:
+        return STATUS_MISSING
+    statuses = {r.get("status", STATUS_CONFIRMED) for r in rows}
+    return STATUS_CONFIRMED if STATUS_CONFIRMED in statuses else STATUS_ESTIMATE
+
+
 def summarize(datasheets=None, ids=None):
     """The honest count this module's own self-test and app.py both
     report: total real data points (individual parameter rows) across
-    the given items, versus total "Missing Data — Required" category
-    slots (empty category buckets) — the real measure of how far this
-    pass is from a complete profile, not rounded up. Pass `ids` to scope
-    to just FE, just GA, or the combined set (default: whatever is in
-    `datasheets`, or every covered item)."""
+    the given items, versus category slots split into three genuine
+    statuses -- STATUS_CONFIRMED, STATUS_ESTIMATE, STATUS_MISSING (task
+    requirement 4: Estimate is reported SEPARATELY, never blended into
+    a single "populated" figure that would overstate how solid an
+    estimated number actually is). `populated_category_slots` (=
+    confirmed + estimated) and `missing_category_slots` are kept for
+    backward compatibility with every caller that predates the
+    three-way split (equipment_data_requests.py's gap list only needs
+    to know "empty or not", which populated_category_slots still
+    answers correctly). Pass `ids` to scope to just FE, just GA, or the
+    combined set (default: whatever is in `datasheets`, or every
+    covered item)."""
     datasheets = datasheets if datasheets is not None else build_all_datasheets(ids=ids)
     if ids is not None:
         datasheets = {k: v for k, v in datasheets.items() if k in ids}
     total_real_data_points = 0
     total_category_slots = 0
+    confirmed_category_slots = 0
+    estimated_category_slots = 0
     missing_category_slots = 0
     per_item = {}
     for item_id, entry in datasheets.items():
         sheet = entry["datasheet"]
         n_real = sum(len(v) for v in sheet.values())
-        n_missing = sum(1 for v in sheet.values() if len(v) == 0)
+        n_confirmed = sum(1 for v in sheet.values() if slot_status(v) == STATUS_CONFIRMED)
+        n_estimated = sum(1 for v in sheet.values() if slot_status(v) == STATUS_ESTIMATE)
+        n_missing = sum(1 for v in sheet.values() if slot_status(v) == STATUS_MISSING)
         total_real_data_points += n_real
         total_category_slots += len(CATEGORIES)
+        confirmed_category_slots += n_confirmed
+        estimated_category_slots += n_estimated
         missing_category_slots += n_missing
         per_item[item_id] = {
             "real_data_points": n_real, "missing_categories": n_missing,
             "populated_categories": len(CATEGORIES) - n_missing,
+            "confirmed_categories": n_confirmed, "estimated_categories": n_estimated,
         }
     return {
         "total_real_data_points": total_real_data_points,
         "total_category_slots": total_category_slots,
         "populated_category_slots": total_category_slots - missing_category_slots,
+        "confirmed_category_slots": confirmed_category_slots,
+        "estimated_category_slots": estimated_category_slots,
         "missing_category_slots": missing_category_slots,
         "per_item": per_item,
     }
