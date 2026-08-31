@@ -1994,7 +1994,25 @@ with tab9:
         "instrument) still match \"monitor\"/\"response time\" and land in Measurements — both are "
         "single-item cases where a substring-only rule can't distinguish the two meanings without "
         "adding regex complexity the module deliberately doesn't have, and \"fixing\" either would "
-        "only lower the honest completion count, not correct a real error.",
+        "only lower the honest completion count, not correct a real error.\n\n"
+        "**This is also the final round of the engineering-estimate overlay** "
+        "(`python/equipment_engineering_estimates.py`) — with this section done, all 91 items in "
+        "all 7 sections have now gone through the same fill/decline discipline. AI has the lowest "
+        "fill rate of any section by absolute count: only **2 of 67** remaining gaps get a genuine "
+        "estimate (AI-002's and AI-004's Operating Conditions), 65 stay Missing Data — Required. "
+        "That's the correct, honest outcome, not a shortfall: AI-004 through AI-014 (PLC, gateway, "
+        "broker, SCADA server, edge server, firewall, cloud hub, database, model server, twin "
+        "engine, orchestration controller) are data-processing/network systems with no material or "
+        "energy stream of their own, so Inputs/Outputs as this project defines them structurally "
+        "don't apply — filling them anyway would be forcing a category, exactly what this module's "
+        "hard rule forbids. While building this section's fills, a mislabel sweep of every VALUE "
+        "and REMARKS field in all 15 AI items (the same discipline already applied to every other "
+        "section) turned up the largest batch found anywhere in the registry: 52 new erroneous "
+        "cross-references (5 systematic patterns plus 12 individual one-offs), bringing the "
+        "registry-wide running total to 75. Neither of this section's two fills relies on any of "
+        "them — both individually re-verified. Full reasoning for all 67 gaps (filled and "
+        "declined) and the complete mislabel list are in that module's own docstring and "
+        "`CLAUDE.md`'s \"Known source-data issues\" section.",
         icon="⚠️",
     )
     st.caption(
@@ -2046,10 +2064,10 @@ with tab9:
         "hand. The totals below also include a small, deliberately curated set of DOK-ING RFI-"
         "sourced fills (`python/equipment_rfi_fills.py`) layered on top of the equipment registry — "
         "each visibly tagged with its own **Source** in the item view above, never presented as "
-        "vendor-datasheet data — and a small, explicitly-scoped pilot set of engineering estimates "
-        "for FE-001 through FE-008 (`python/equipment_engineering_estimates.py`), each tagged with "
-        "its own correlation/literature/comparable-system basis and never blended into the "
-        "Confirmed count."
+        "vendor-datasheet data — and, now that this AI tab closes out the full pass, engineering "
+        "estimates spanning all 7 sections and all 91 items "
+        "(`python/equipment_engineering_estimates.py`), each tagged with its own correlation/"
+        "literature/comparable-system basis and never blended into the Confirmed count."
     )
     _all_summary = equipment_datasheet.summarize(_eq_datasheets)
     _all_ids_seen = set()
@@ -2091,8 +2109,9 @@ with tab9:
             f"**{_all_summary['estimated_category_slots']} Engineering Estimate** "
             f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"correlation/literature/comparable-system basis, not vendor- or DOK-ING-confirmed — "
-            f"currently FE-001 through FE-008, GA-001 through GA-010, GC-001 through GC-015, "
-            f"SA-001 through SA-012, HB-001 through HB-018, and EU-001 through EU-013 only), and "
+            f"spanning all 7 sections now that the full registry-wide pass is complete: FE-001 "
+            f"through FE-008, GA-001 through GA-010, GC-001 through GC-015, SA-001 through SA-012, "
+            f"HB-001 through HB-018, EU-001 through EU-013, and AI-001 through AI-015), and "
             f"**{_all_summary['missing_category_slots']} Missing Data — Required** "
             f"({_all_summary['missing_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%), "
             f"reported plainly rather than smoothed over."

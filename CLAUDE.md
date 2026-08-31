@@ -328,17 +328,166 @@ mislabeled remarks turned up instead, unrelated to the GC-006/008/009/
     is the actually-intended source; the remarks field already has it
     right, only the value field's citation is wrong.
 
-TOTAL: 23 distinct erroneous remarks found across the registry to date
+Found while building AI-001 through AI-015's engineering-estimate fills
+(2026-08-31, the final section) — by far the largest batch found in any
+single sweep. Every VALUE and REMARKS field across all 15 AI items was
+checked against the actual identity of every cross-referenced item (not
+just remarks — the HB-005/AI-002 precedent above already established
+that VALUE fields carry the same risk). AI's own data turned out to
+have an unusually high error rate: 52 new erroneous cross-references,
+organized as five systematic PATTERNS (the same wrong ID substituted
+for the same correct one, repeatedly) plus 12 individual one-offs.
+
+PATTERN A — AI-001 (Weather Station) mistakenly cited in place of
+AI-004 (PLC, Main Control), 12 occurrences. Every one involves a fact
+that only makes sense for a PLC (a "scan cycle," "~320 I/O points,"
+being called "AI-001 PLC" outright) attributed to the weather station,
+which has neither: AI-005's "Number of OPC-UA tags"/"Tag update rate"/
+"Communication interface" (x2)/"Redundancy" remarks; AI-007's "SCADA
+software" remark ("Ecosystem-consistent with AI-001's Siemens S7-1500
+PLC choice" — AI-001 states no vendor at all; AI-004's own confirmed
+CPU model IS a Siemens S7-1500); AI-008's "ATEX/Ex rating" value AND
+remarks (one row, both fields: "AI-001's PLC placement"); AI-012's
+"Fallback control mode" value ("Fallback to conventional PID control
+on AI-001 PLC" — a safety-architecture claim, wrong on the safety-
+critical fallback path) and "Inference latency" remarks; AI-013's
+"Twin platform software" remarks (paired with a Pattern D error in the
+same field, see below); AI-014's "Module health monitoring" value
+(paired with a Pattern E error, see below) and "Central vs. distributed
+control" value.
+
+PATTERN B — AI-003 (Bed Pressure-Drop Sensor) mistakenly cited in
+place of AI-005 (OPC-UA Gateway), 8 occurrences. Every one involves a
+fact that only makes sense for the gateway (being called a "gateway"
+outright, "1000 tags at 100ms," "SignAndEncrypt" — an OPC-UA security
+mode) attributed to the differential-pressure sensor, which has
+neither: AI-004's "Communication interfaces" value ("OPC-UA (to AI-003
+gateway)"); AI-006's "Max message throughput" and "TLS/SSL encryption"
+remarks; AI-006's "Hardware/cloud hosting" remarks ("OT gateway
+(AI-003)", paired with a Pattern C error in the same field); AI-007's
+"Number of I/O tags" remarks (explicitly says "mirrors the same tag
+universe as the OPC-UA gateway" while citing AI-003, self-contradictory
+on its face); AI-010's "Security standard" remarks ("AI-003's OPC-UA
+security approach", paired with an individual finding in the same
+field, see below); AI-013's "Number of live data tags" and "API type"
+remarks/value (each paired with a Pattern D error in the same field).
+
+PATTERN C — AI-006 (MQTT Broker) mistakenly cited in place of AI-010
+(Cloud IoT Hub), 7 occurrences, including a genuine SELF-REFERENCE
+(the same class of error as HB-005's, item 20 above): AI-006's own
+"Hardware/cloud hosting" row has TWO separate wrong-ID citations — its
+VALUE field reads "bridges to AI-006 Cloud IoT Hub," self-referencing
+its own item ID for a DIFFERENT item's role (AI-006 IS the MQTT Broker,
+not the Cloud IoT Hub), and its REMARKS field separately says "the
+cloud layer (AI-006)," the identical self-reference again. AI-011's
+"Deployment" value+remarks (one row, both fields: "co-located with
+AI-006 Cloud IoT Hub"), "Write throughput" remarks (cites "AI-006's
+~500,000 msg/day ingestion rate" — that figure is AI-010's own
+confirmed Message ingestion rate exactly), and "Data retention policy"
+remarks (cites both "AI-002" and "AI-006" for the "90 days hot tier...
+5 years cold/archive" figures, which are AI-010's own confirmed hot/
+cold retention values exactly — both wrong IDs point to the same
+correct one). AI-014's "Communication protocol" value ("MQTT (to
+AI-006 Cloud IoT Hub...)").
+
+PATTERN D — AI-002 (Camera / Vision System) mistakenly cited in place
+of AI-007 (DCS/SCADA Server, which holds the historian/VPN/
+cybersecurity-standard data actually being described), 8 occurrences.
+AI-002's own confirmed data (camera type, resolution, frame rate, FOV,
+AI model purpose/accuracy, interface, IP rating, housing) has none of
+these concepts at all: AI-009's "Firewall standard," "VPN support," and
+"Logging/SIEM integration" remarks (three separate rows on the SAME
+item, each citing AI-002 for a fact that exactly matches one of AI-007's
+own confirmed fields — IEC 62443, VPN with MFA, integrated historian,
+respectively); AI-010's "Data retention (cold/archive)" remarks (cites
+AI-002 for "5," which is AI-007's own confirmed Historian retention
+period exactly); AI-011's "High availability" remarks (cites "AI-002's
+historian," paired with a Pattern E error in the same field); AI-013's
+"Twin platform software" remarks (paired with a Pattern A error) and
+"Number of live data tags" remarks (paired with a Pattern B error);
+AI-015's "Reporting interface" value ("Automated reporting via AI-002
+historian").
+
+PATTERN E — AI-009 (Cybersecurity Firewall) mistakenly cited in place
+of AI-013 (Digital Twin Engine), 5 occurrences (4 high-confidence, 1
+lower-confidence): AI-010's "Integration with twin platform" remarks
+("Feeds AI-009's Digital Twin Engine directly" — AI-009 is the
+firewall, not the twin engine); AI-011's "High availability" remarks
+("AI-009's Digital Twin Engine," paired with a Pattern D error) and
+"API/query language" value (lists AI-009 among the API's consumers — a
+firewall doesn't consume a time-series database's query API the way a
+twin engine or model server would); AI-014's "Module health monitoring"
+value ("AI-009 digital twin instance," paired with a Pattern A error).
+Lower-confidence: AI-006's "Max concurrent clients" remarks lists
+AI-009 among the broker's publisher/subscriber ecosystem — a firewall
+doesn't publish/subscribe at the application layer either; flagged as
+likely the same confusion, not asserted with the same confidence as
+the other four.
+
+Twelve further INDIVIDUAL mislabels, outside the five patterns above:
+
+21. AI-002's own "AI model purpose" VALUE field says flagged material
+    is caught "before it reaches FE-003 shredder." FE-003 is the
+    Weighing Conveyor, not a shredder — FE-004 (Shredder / Size
+    Reducer) is the actual shredder.
+22. The SAME field's own REMARKS say it "Complements FE-008's magnetic
+    tramp-metal removal." FE-008 is the Air-lock / Rotary Valve, not a
+    magnetic separator — FE-002 (Magnetic & Eddy Current Separator) is
+    the actual magnetic-removal item.
+23. AI-002's own "Interface" VALUE field says it connects to the "AI
+    Model Server (AI-008)." AI-008 is the Edge Computing Server —
+    AI-012 is the actual "AI Model Server (MPC/RL)."
+24. AI-007's own "Cybersecurity standard" remarks say IEC 62443 is
+    "directly relevant given AI-012's dedicated ICS firewall role."
+    AI-012 is the AI Model Server, not a firewall — AI-009
+    (Cybersecurity Firewall, ICS) is the actual firewall.
+25. AI-010's own "Security standard" remarks separately say "AI-012's
+    ICS standard" (paired with the AI-003/AI-005 Pattern B error
+    already counted above) — the same AI-012-for-AI-009 confusion as
+    item 24, a second occurrence.
+26. AI-010's own "Max device connections" remarks say it "Matches
+    AI-004's established client capacity." AI-004 (PLC) has no client-
+    capacity concept — AI-006's own confirmed "Max concurrent clients =
+    50" is the exact match (AI-010's own value is also 50).
+27. AI-012's own "Hardware spec (inference)" remarks say this is a
+    "Heavier workload than AI-005's edge inference." AI-005 (OPC-UA
+    Gateway) does no inference — AI-008 (Edge Computing Server) is the
+    plant's actual edge-inference item.
+28. AI-013's own "State sync frequency" remarks say this is "Slower
+    than AI-008's 0.1Hz MPC cycle." AI-008 (Edge Computing Server) has
+    no MPC cycle — "0.1Hz" is AI-012's own confirmed Control loop
+    frequency exactly.
+29. AI-013's own "API type" VALUE field says it "reads from AI-003
+    gateway, AI-007 time-series DB" — TWO errors in one field: "AI-003
+    gateway" is the same Pattern B error (should be AI-005), and
+    "AI-007 time-series DB" is wrong on a different axis — AI-007 is
+    the DCS/SCADA Server, not a time-series database; AI-011 (Time-
+    Series Database) is the actual match.
+30. AI-014's own "Shared utility coordination" VALUE field cites
+    "steam (HB-004)." HB-004 is the WGS Reactor (LTS), which produces
+    no steam — HB-005 (Steam Generator) is the actual steam source.
+31. The SAME field also cites "cooling (EU-011)." EU-011 is the Heat
+    Recovery Unit (captures heat, the opposite function) — EU-008,
+    literally named "Cooling Tower," is almost certainly the intended
+    reference.
+32. AI-015's own "Renewable power verification method" VALUE and
+    REMARKS fields (one row, both fields) say this is "cross-referenced
+    with AI-010's weather data." AI-010 is the Cloud IoT Hub, which
+    generates no weather data — AI-001 (Weather Station) is the actual
+    source.
+
+TOTAL: 75 distinct erroneous remarks found across the registry to date
 (the 8 GC-006/GC-008/GC-009/GC-012 mix-ups already known before the
 first 2026-08-28 sweep, 8 more of the same pattern the dedicated sweep
 found in items 9-14, the 1 separate HB-003/HB-005 mix-up in item 15,
-and 6 more found while working EU in items 16-20, none of them
-involving the GC-006/008/009/012 pattern). None of the 23 is relied
-upon by any fill in `python/equipment_engineering_estimates.py` — each
-was checked individually against every FE/GA/GC/SA/HB/EU estimate
-actually shipped, and none was used as a stated basis; no previously-
-shipped estimate has needed correction or withdrawal as a result of
-either sweep.
+6 more found while working EU in items 16-20, and 52 more found while
+working AI — 5 systematic patterns totaling 40 occurrences plus 12
+individual one-offs, items 21-32 plus the pattern lists above). None of
+the 75 is relied upon by any fill in
+`python/equipment_engineering_estimates.py` — each was checked
+individually against every FE/GA/GC/SA/HB/EU/AI estimate actually
+shipped, and none was used as a stated basis; no previously-shipped
+estimate has needed correction or withdrawal as a result of any sweep.
 
 ## Not yet built (the actual current state)
 

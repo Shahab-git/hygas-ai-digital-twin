@@ -1,14 +1,16 @@
 """
-Engineering-estimate overlay v6 — PILOTED on FE-001 through FE-008's 21
+Engineering-estimate overlay v7 — PILOTED on FE-001 through FE-008's 21
 remaining "Missing Data — Required" gaps first (reviewed and approved),
 EXTENDED to GA-001 through GA-010's 29 remaining gaps (reviewed and
 approved), EXTENDED to GC-001 through GC-015's 38 remaining gaps
 (reviewed and approved), EXTENDED to SA-001 through SA-012's 46
 remaining gaps (reviewed and approved), EXTENDED to HB-001 through
-HB-018's 51 remaining gaps (reviewed and approved), now EXTENDED AGAIN
-to EU-001 through EU-013's 32 remaining gaps under the identical rule
-set, no relaxation. Extending to the one remaining section (AI) is
-still a separate, later task.
+HB-018's 51 remaining gaps (reviewed and approved), EXTENDED to
+EU-001 through EU-013's 32 remaining gaps (reviewed and approved), and
+now EXTENDED ONE LAST TIME to AI-001 through AI-015's 67 remaining
+gaps under the identical rule set, no relaxation. This closes out the
+full engineering-estimate pass across all 91 items in all 7 sections —
+no section remains untouched after this round.
 
 HB'S OWN GAP COUNT, VERIFIED LIVE, NOT ASSUMED: the task that requested
 this extension stated "52 remaining gaps." Checked directly against
@@ -75,8 +77,19 @@ verified basis and one without), a couple of comparable-installed-
 system fills grounded in a specifically-confirmed technology property
 rather than generic ambient hand-waving, and the same recategorization/
 shared-equipment/vendor-instrument declines already established
-everywhere else — see REPORT below for the per-gap reasoning on every
-single one, filled and declined alike, all six sections.
+everywhere else. Of AI's 67 gaps — the LAST section — only 2 get a
+genuine estimate; 65 stay missing, the lowest fill rate of any section
+by absolute count, exactly as expected going in: AI-004 through AI-014
+are PLC/gateway/broker/SCADA/edge-server/firewall/cloud-hub/database/
+model-server/twin-engine/orchestration items that process data, not a
+material or energy stream, so "Inputs"/"Outputs" as this project
+defines them structurally do not apply — not a shortfall in effort,
+the correct, honest outcome for software/network equipment. The 3
+physical field instruments (AI-001 weather station, AI-002 camera,
+AI-003 pressure-drop sensor) got the same SA-instrumentation-style
+check as everything else and yielded exactly 2 genuine fills between
+them — see REPORT below for the per-gap reasoning on every single one,
+filled and declined alike, all seven sections.
 
 GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
 fills are checked first, and preferentially, for the STRONGEST kind of
@@ -353,6 +366,107 @@ EU-012's own correctly-Confirmed secondary-side temperatures directly,
 explicitly noting the correction rather than propagating the
 mislabeled reference.
 
+AI-SPECIFIC DISCIPLINE (task requirements 2-5, the final section): task
+requirement 2's own explicit framing was checked against this project's
+actual data before doing anything else, not assumed — AI-004 through
+AI-014 (PLC, OPC-UA gateway, MQTT broker, DCS/SCADA server, edge
+computing server, cybersecurity firewall, cloud IoT hub, time-series
+database, AI model server, digital twin engine, multi-module
+orchestration controller) genuinely have no material or energy stream
+of their own; every one of their Inputs/Outputs gaps is declined as
+structurally not a fit, the same FE-006/SA-family "measurement/control
+equipment observes or processes data, it doesn't receive and transform
+a material stream" reasoning, just extended from single instruments to
+whole software/network systems. The one real, item-specific opportunity
+among these eleven items: AI-004 (PLC)'s Operating Conditions is filled
+using this item's OWN confirmed CPU family (Siemens SIMATIC S7-1500,
+CPU 1516-3 PN/DP) and its own confirmed control-room housing — a named,
+real, checkable product family's published operating-temperature
+envelope, the same comparable-installed-system basis category as
+EU-010's LiFePO4 fill, not a generic "control equipment runs at room
+temperature" hand-wave. Every OTHER OC/Measurements/PI gap among
+AI-005 through AI-014 was checked and declined because the item's own
+data names no specific product (only "or equivalent" generic
+descriptions) — a materially weaker basis than AI-004's named CPU
+model, so filling those would be forcing a category to apply where the
+"strongest kind of estimate" standard this project holds everywhere
+else genuinely isn't met.
+
+Task requirement 3's instrumentation check (AI-001 Weather Station,
+AI-002 Camera, AI-003 Bed Pressure-Drop Sensor): AI-003's Inputs/
+Outputs/Performance Indicators are declined the same structural way
+(a differential-pressure sensor reading GA-002's own existing taps has
+no material stream or removal-efficiency concept of its own — its own
+Operating Conditions and Accuracy are already Confirmed). AI-001's
+Inputs/Operating Conditions/Performance Indicators are all declined —
+Inputs structurally (a weather station observes ambient conditions, it
+doesn't receive a stream), Operating Conditions as recategorization
+(its own confirmed Temperature range parameter already states this
+exact fact under a different category), Performance Indicators for
+lack of any stated basis. AI-002's one genuine fill: Operating
+Conditions, using its OWN confirmed remark that places it physically
+"at FE-001's hopper/conveyor" (verified correct — see the mislabel
+sweep below, this specific cross-reference is one of the FEW in this
+item that checks out) combined with FE-001's own separately-Confirmed
+site ambient range — the same cross-item-location derivation pattern
+this project's very first fills (FE-002/FE-003) already established,
+just applied here for the first time to an AI-section item. AI-002's
+other three gaps (Inputs, Outputs, Performance Indicators) are
+declined: Inputs/Outputs structurally (a machine-vision camera
+observes, it doesn't receive/output a material stream), and Performance
+Indicators as recategorization (its own confirmed "AI model accuracy
+(design) = 90%" already states the one number that would go there,
+just filed under Parameters instead).
+
+Task requirement 4 (compute then verify) — a genuine, worth-reporting
+case for this section: AI-008 (Edge Computing Server) Performance
+Indicators was checked for a computed availability/uptime figure from
+this item's own confirmed MTBF (80,000 h) — but availability requires
+BOTH MTBF and Mean Time To Repair, and no MTTR figure is confirmed
+anywhere in this project for this item. Presenting an availability
+percentage built on an assumed MTTR would be exactly the kind of
+unstated-assumption fabrication this module's hard rule forbids, so
+AI-008 Performance Indicators stays declined — the number one might be
+tempted to compute doesn't actually check out.
+
+Task requirement 5's mislabel sweep (now at 23 documented entries
+before this round) turned up an unusually large batch in AI's own
+data — by far the highest concentration found in any section, which
+is itself a genuine, worth-reporting finding about this section's
+source data quality. Every value AND remarks field across all 15 AI
+items was checked against the actual identity of every cross-
+referenced item (not just remarks, per the HB-005/AI-002 precedent
+that VALUE fields carry the same risk). Five systematic PATTERNS
+account for most of it — the same wrong ID substituted for the same
+correct one, repeatedly, across many different fields: AI-001 (Weather
+Station) mistakenly cited in place of AI-004 (PLC) 12 times (mostly
+"AI-001's scan cycle"/"AI-001's I/O points"/"AI-001 PLC", none of
+which describe a weather station); AI-003 (Bed Pressure-Drop Sensor)
+mistakenly cited in place of AI-005 (OPC-UA Gateway) 8 times (mostly
+"AI-003 gateway"/"AI-003's OPC-UA tags", none of which describe a
+differential-pressure transmitter); AI-006 (MQTT Broker) mistakenly
+cited in place of AI-010 (Cloud IoT Hub) 7 times, including AI-006's
+OWN row self-referencing "AI-006 Cloud IoT Hub" while AI-006 itself IS
+the MQTT Broker, not the Cloud IoT Hub; AI-002 (Camera) mistakenly
+cited in place of AI-007 (DCS/SCADA Server, which holds the historian/
+VPN/cybersecurity-standard data actually being described) 8 times; and
+AI-009 (Cybersecurity Firewall) mistakenly cited in place of AI-013
+(Digital Twin Engine) 5 times. Twelve further individual, one-off
+mislabels were found outside these five patterns (full list in
+CLAUDE.md's "Known source-data issues" section, items 21 onward) —
+including AI-002's own "AI model purpose" field citing "FE-003
+shredder" (FE-003 is the Weighing Conveyor; FE-004 is the actual
+Shredder/Size Reducer) and "FE-008's magnetic tramp-metal removal"
+(FE-008 is the Air-lock/Rotary Valve; FE-002 is the actual Magnetic &
+Eddy Current Separator) in the same field. EVERY ONE of these 52 new
+findings was individually checked against both of this round's actual
+fills (AI-002 Operating Conditions, AI-004 Operating Conditions) —
+neither relies on any of them: AI-002's fill uses its own SEPARATELY-
+VERIFIED-CORRECT "FE-001" reference (not one of the mislabeled ones),
+and AI-004's fill uses only its own confirmed CPU model, no cross-
+reference at all. Running total: 23 + 52 = 75 distinct erroneous
+remarks found across the registry to date.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE
@@ -364,10 +478,10 @@ completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
 every row's "source" names which round it came from (FE pilot, GA
-extension, GC extension, SA extension, HB extension, or EU extension)
-and its basis type, distinct in app.py's UI from both "Equipment
-Datasheet" (vendor data) and "DOK-ING RFI (design_basis.py Q#)"
-(DOK-ING's real answers) rows.
+extension, GC extension, SA extension, HB extension, EU extension, or
+AI extension) and its basis type, distinct in app.py's UI from both
+"Equipment Datasheet" (vendor data) and "DOK-ING RFI (design_basis.py
+Q#)" (DOK-ING's real answers) rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
 static datasheet extract), equipment_datasheet.py's build_datasheet()
@@ -1380,6 +1494,117 @@ DECLINED — 24 of 32, with the actual reason:
     accuracy is already Confirmed (Parameters, "Metered energy accuracy
     class = Class 2") — no additional efficiency/recovery-rate concept
     applies to a passive meter.
+
+AI REPORT (extension, the final section — every one of AI's 67 gaps,
+filled and declined). AI is automation/software/network equipment —
+PLC, gateway, broker, SCADA, edge server, firewall, cloud hub,
+database, model server, twin engine, orchestration controller — plus 3
+physical field instruments; the lowest fill rate of any section by
+absolute count is the correct, honest outcome here, not a shortfall:
+
+FILLED — 2 of 67:
+
+  AI-002 (Camera / Vision System) Operating Conditions: ~-20 to +50
+    degC ambient. Basis: cross-item derivation from this item's own
+    confirmed remark, verified correct (not one of the mislabeled
+    references found in this section — see the mislabel sweep above),
+    that places it physically "at FE-001's hopper/conveyor," combined
+    with FE-001's own separately-Confirmed "Operating temperature
+    (ambient) = (-20 to +50) degC" — the same cross-item-location
+    derivation pattern this project's very first fills (FE-002/FE-003)
+    established, applied here for the first time to an AI item.
+
+  AI-004 (PLC, Main Control) Operating Conditions: ~0-60 degC. Basis:
+    this item's own confirmed CPU family (Siemens SIMATIC S7-1500, CPU
+    1516-3 PN/DP) and its own confirmed control-room housing (non-
+    hazardous area, per its own ATEX/Ex rating remark) — the published
+    standard operating-temperature range for this specific, real,
+    named PLC product family, a comparable-installed-system basis in
+    the same category as EU-010's LiFePO4 fill, not a generic "control
+    equipment runs at room temperature" claim. No other AI item names a
+    specific enough product (all others say "or equivalent" generically)
+    to support the same kind of fill — checked for every one of them,
+    not just assumed absent.
+
+DECLINED — 65 of 67, with the actual reason:
+
+  AI-001 (Weather Station) Inputs: structurally not a fit — a weather
+    station observes ambient conditions, it doesn't receive a material
+    or energy stream of its own. Operating Conditions: this item's own
+    confirmed "Temperature range = (-40 to +60) degC" Parameter already
+    states this exact fact — recategorization, not new information.
+    Performance Indicators: no efficiency/recovery-rate concept applies
+    to a passive weather sensor, and this item states no accuracy
+    figure of its own to build one from.
+
+  AI-002 Inputs, Outputs: structurally not a fit — a machine-vision
+    camera observes a video stream, it doesn't receive/output a
+    material stream. Performance Indicators: this item's own confirmed
+    "AI model accuracy (design) = 90%" Parameter already states the one
+    number that would go here — recategorization.
+
+  AI-003 (Bed Pressure-Drop Sensor) Inputs, Outputs: structurally not a
+    fit — a differential-pressure transmitter reading GA-002's own
+    existing pressure taps has no material stream of its own to
+    characterize (the same GA-002/GC-002/SA-family sub-item pattern).
+    Performance Indicators: this item's own confirmed Accuracy
+    (±0.1%) already covers the one quantified concept this item has —
+    no distinct new PI exists.
+
+  AI-004 Inputs: structurally not a fit — a PLC receives electrical
+    I/O signals (already fully captured as its own confirmed digital/
+    analogue input/output counts), not a process material/energy
+    stream in the sense this project's Inputs category means elsewhere.
+    Measurements: no sensor-accuracy/response-time concept applies to a
+    controller — it isn't a measurement instrument itself. Performance
+    Indicators: no efficiency/recovery-rate concept applies to a PLC.
+
+  AI-005 through AI-013 (OPC-UA Gateway, MQTT Broker, DCS/SCADA Server,
+    Edge Computing Server, Cybersecurity Firewall, Cloud IoT Hub,
+    Time-Series Database, AI Model Server, Digital Twin Engine) —
+    EVERY Inputs/Outputs gap across all nine items: structurally not a
+    fit, same reasoning as AI-004's Inputs — these are data-processing/
+    data-transport/data-storage/data-orchestration systems, not
+    material- or energy-handling equipment; forcing a category to
+    apply here would contradict this project's own established "not
+    just undocumented, structurally doesn't have one" standard (task
+    requirement 2's own explicit instruction not to force this). EVERY
+    Measurements gap across all nine: no sensor-accuracy/response-time
+    concept applies to any of them — they aren't measurement
+    instruments. EVERY Performance Indicators gap across all nine: no
+    genuine, item-specific efficiency/recovery-rate basis exists that
+    isn't either already-Confirmed-elsewhere recategorization (e.g.
+    AI-012's "Inference latency"/"Control loop frequency" are already
+    Confirmed Parameters) or an unstated-assumption fabrication (see
+    AI-008's MTBF-without-MTTR case, discussed above under AI-SPECIFIC
+    DISCIPLINE, task requirement 4). EVERY Operating Conditions gap
+    across AI-005/006/007/009/010/011/012/013 (AI-008's own OC is
+    already Confirmed at -20 to +60 degC): declined — AI-010/011/013
+    structurally, since these are cloud-hosted software platforms with
+    no physical installation of their own to have an ambient
+    temperature at all; AI-005/006/007/009/012 checked and declined
+    because, unlike AI-004's named Siemens CPU model, none of these
+    items' own data names a specific enough product ("or equivalent"
+    generic descriptions only) to support a comparable-installed-system
+    fill without forcing it.
+
+  AI-014 (Multi-Module Orchestration Controller) Inputs, Outputs: same
+    structural reasoning — a fleet-orchestration/coordination system
+    processes status/setpoint data, not a material stream. Operating
+    Conditions: same cloud/software reasoning as AI-010/011/013 — this
+    item's own data describes a coordination layer across modules, no
+    physical installation of its own. Performance Indicators: this
+    item's own confirmed "Max modules supported = 25" Parameter already
+    states the one quantified design target this item has —
+    recategorization.
+
+  AI-015 (RFNBO Compliance & GO Monitor — Auxiliary/Optional) Inputs,
+    Outputs, Measurements, Operating Conditions, Performance
+    Indicators: structurally not a fit across the board — a compliance/
+    reporting software system (applies only if HB-011 is activated) has
+    no material stream, no sensor of its own, no physical installation,
+    and no efficiency/recovery-rate concept beyond what's already
+    stated qualitatively.
 """
 import copy
 
@@ -1417,6 +1642,10 @@ def _source_hb(basis_label):
 
 def _source_eu(basis_label):
     return f"Engineering estimate (EU-001..EU-013 extension) — {basis_label}"
+
+
+def _source_ai(basis_label):
+    return f"Engineering estimate (AI-001..AI-015 extension) — {basis_label}"
 
 
 _GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
@@ -2263,6 +2492,44 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "AI-002": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature range",
+                "value": "~-20 to +50", "unit": "°C",
+                "remarks": (
+                    "Cross-item derivation from this item's own confirmed 'Field of view' remark, "
+                    "which places it physically at FE-001's hopper/conveyor (independently "
+                    "verified correct against the mislabel sweep -- this is one of the few "
+                    "cross-references in this item's own data that checks out), combined with "
+                    "FE-001's own separately-Confirmed Operating temperature (ambient), "
+                    "(-20 to +50) degC. Same cross-item-location derivation pattern this "
+                    "project's very first fills (FE-002/FE-003) established."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ai("cross-item derivation from FE-001's own confirmed site ambient range, via this item's own confirmed installation location"),
+            },
+        ],
+    },
+    "AI-004": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature range",
+                "value": "~0-60", "unit": "°C",
+                "remarks": (
+                    "Comparable-installed-system practice, tied to a specifically NAMED, real "
+                    "product -- this item's own confirmed CPU model (Siemens SIMATIC S7-1500, "
+                    "CPU 1516-3 PN/DP), whose published vendor operating-temperature "
+                    "specification is the basis, not a generic 'control equipment runs at room "
+                    "temperature' claim. Consistent with this item's own confirmed non-hazardous "
+                    "control-room housing (per its own ATEX/Ex rating remark) -- not exposed to "
+                    "outdoor or hazardous-area extremes."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_ai("comparable-installed-system practice (published operating-temperature range for this item's own confirmed CPU product family)"),
+            },
+        ],
+    },
 }
 
 
@@ -2326,9 +2593,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 46, f"REGRESSION: expected 46 rows (7 FE + 10 GA + 7 GC + 1 SA + 13 HB + 8 EU), counted {n_rows}."
-    assert n_slots == 46, f"REGRESSION: expected 46 newly-estimated slots, counted {n_slots}."
-    assert n_items == 34, f"REGRESSION: expected 34 items touched (6 FE + 6 GA + 5 GC + 1 SA + 10 HB + 6 EU), counted {n_items}."
+    assert n_rows == 48, f"REGRESSION: expected 48 rows (7 FE + 10 GA + 7 GC + 1 SA + 13 HB + 8 EU + 2 AI), counted {n_rows}."
+    assert n_slots == 48, f"REGRESSION: expected 48 newly-estimated slots, counted {n_slots}."
+    assert n_items == 36, f"REGRESSION: expected 36 items touched (6 FE + 6 GA + 5 GC + 1 SA + 10 HB + 6 EU + 2 AI), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -2458,6 +2725,42 @@ if __name__ == "__main__":
     print("PASSED -- EU-011 (ambiguous heat-capacity rates) has no fill, EU-012 (confirmed-equal heat-capacity rates) does -- "
           "the same compute-then-verify discipline applied consistently to two similar-looking calculations with different outcomes.")
 
+    print("\n=== AI-specific check: exactly two AI fills (AI-002, AI-004 Operating Conditions), the lowest of any section ===")
+    ai_items_filled = sorted(item_id for item_id in ESTIMATE_FILLS if item_id.startswith("AI-"))
+    assert ai_items_filled == ["AI-002", "AI-004"], (
+        f"REGRESSION: expected only AI-002 and AI-004 to have a fill, found {ai_items_filled}."
+    )
+    for item_id in ai_items_filled:
+        cats = list(ESTIMATE_FILLS[item_id].keys())
+        assert cats == ["Operating Conditions"], (
+            f"REGRESSION: expected {item_id}'s only fill to be Operating Conditions, found {cats}."
+        )
+    print("PASSED -- AI's only fills are AI-002 and AI-004, both Operating Conditions, exactly as reported.")
+
+    print("\n=== AI-specific check: AI-008's computed-then-declined MTBF/availability gap was never actually filled ===")
+    assert "AI-008" not in ESTIMATE_FILLS, (
+        "REGRESSION: AI-008 appears in ESTIMATE_FILLS -- the module docstring explicitly declines an "
+        "availability figure computed from MTBF alone, with no confirmed MTTR to pair it with; it must stay Missing."
+    )
+    print("PASSED -- AI-008 (Edge Computing Server) has no fill of any kind, exactly as declined in the AI REPORT.")
+
+    print("\n=== AI-specific check: neither AI fill relies on any of the mislabeled AI-section cross-references ===")
+    ai002_remarks = ESTIMATE_FILLS["AI-002"]["Operating Conditions"][0]["remarks"]
+    assert "FE-001" in ai002_remarks, (
+        "REGRESSION: AI-002's fill no longer cites FE-001 as its basis."
+    )
+    for wrong_id in ("AI-008", "AI-001", "AI-003", "AI-006", "AI-009", "AI-012"):
+        assert wrong_id not in ai002_remarks, (
+            f"REGRESSION: AI-002's fill mentions {wrong_id!r} -- possible use of a mislabeled cross-reference."
+        )
+    ai004_remarks = ESTIMATE_FILLS["AI-004"]["Operating Conditions"][0]["remarks"]
+    for wrong_id in ("AI-001", "AI-003", "HB-013"):
+        assert wrong_id not in ai004_remarks, (
+            f"REGRESSION: AI-004's fill mentions {wrong_id!r} -- this fill is meant to be self-contained (its own CPU model only), not cross-item."
+        )
+    print("PASSED -- AI-002's fill uses only its own verified-correct FE-001 reference; AI-004's fill uses only its "
+          "own confirmed CPU model, no cross-item reference at all -- neither touches any of the newly-found mislabels.")
+
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
     after = equipment_datasheet.summarize(filled)
@@ -2477,7 +2780,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 7 (this extension): FE's, GA's, GC's, SA's, and HB's numbers, regression-verified unchanged ===")
+    print("\n=== Task requirement 7 (this extension): FE's, GA's, GC's, SA's, HB's, and EU's numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -2523,7 +2826,6 @@ if __name__ == "__main__":
     assert hb_after["missing_category_slots"] == 38, f"REGRESSION: expected 38 Missing HB slots, got {hb_after['missing_category_slots']}."
     print("PASSED -- HB's extension numbers are unchanged by this EU extension: 57 Confirmed + 13 Engineering Estimate + 38 Missing = 108.")
 
-    print("\n=== EU-specific honest breakdown (this extension) ===")
     eu_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.EU_IDS)
     print(f"EU: {eu_after['confirmed_category_slots']} Confirmed, "
           f"{eu_after['estimated_category_slots']} Engineering Estimate, "
@@ -2531,17 +2833,35 @@ if __name__ == "__main__":
     assert eu_after["confirmed_category_slots"] == 46, f"REGRESSION: expected 46 Confirmed EU slots, got {eu_after['confirmed_category_slots']}."
     assert eu_after["estimated_category_slots"] == 8, f"REGRESSION: expected 8 Estimate EU slots, got {eu_after['estimated_category_slots']}."
     assert eu_after["missing_category_slots"] == 24, f"REGRESSION: expected 24 Missing EU slots, got {eu_after['missing_category_slots']}."
-    print("PASSED -- EU: 46 Confirmed + 8 Engineering Estimate + 24 Missing = 78 total slots, matches exactly.")
+    print("PASSED -- EU's extension numbers are unchanged by this AI extension: 46 Confirmed + 8 Engineering Estimate + 24 Missing = 78.")
 
-    print("\n=== Regression check: the last remaining section (AI) is untouched by this overlay ===")
-    for label, ids in [
-        ("AI", equipment_datasheet.AI_IDS),
-    ]:
-        b = equipment_datasheet.summarize(base, ids=ids)
-        f = equipment_datasheet.summarize(filled, ids=ids)
-        print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, SA, HB, and EU are targeted so far."
-    print("PASSED -- AI is byte-for-byte identical to the pre-overlay data.")
+    print("\n=== AI-specific honest breakdown (this extension, the final section) ===")
+    ai_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.AI_IDS)
+    print(f"AI: {ai_after['confirmed_category_slots']} Confirmed, "
+          f"{ai_after['estimated_category_slots']} Engineering Estimate, "
+          f"{ai_after['missing_category_slots']} Missing (of {ai_after['total_category_slots']} total slots)")
+    assert ai_after["confirmed_category_slots"] == 23, f"REGRESSION: expected 23 Confirmed AI slots, got {ai_after['confirmed_category_slots']}."
+    assert ai_after["estimated_category_slots"] == 2, f"REGRESSION: expected 2 Estimate AI slots, got {ai_after['estimated_category_slots']}."
+    assert ai_after["missing_category_slots"] == 65, f"REGRESSION: expected 65 Missing AI slots, got {ai_after['missing_category_slots']}."
+    print("PASSED -- AI: 23 Confirmed + 2 Engineering Estimate + 65 Missing = 90 total slots, matches exactly -- "
+          "the lowest fill rate (by absolute count) of any of the seven sections, exactly as expected going in.")
+
+    print("\n=== ALL SEVEN SECTIONS COMPLETE -- registry-wide grand total across all 91 items ===")
+    grand = equipment_datasheet.summarize(filled)
+    print(f"Registry-wide: {grand['confirmed_category_slots']} Confirmed "
+          f"({grand['confirmed_category_slots'] / grand['total_category_slots'] * 100:.1f}%) + "
+          f"{grand['estimated_category_slots']} Engineering Estimate "
+          f"({grand['estimated_category_slots'] / grand['total_category_slots'] * 100:.1f}%) + "
+          f"{grand['missing_category_slots']} Missing Data - Required "
+          f"({grand['missing_category_slots'] / grand['total_category_slots'] * 100:.1f}%) = "
+          f"{grand['total_category_slots']} total slots across all 91 items in all 7 sections "
+          "(FE, GA, GC, SA, HB, EU, AI).")
+    assert grand["confirmed_category_slots"] == 262, f"REGRESSION: expected 262 Confirmed registry-wide, got {grand['confirmed_category_slots']}."
+    assert grand["estimated_category_slots"] == 48, f"REGRESSION: expected 48 Estimate registry-wide, got {grand['estimated_category_slots']}."
+    assert grand["missing_category_slots"] == 236, f"REGRESSION: expected 236 Missing registry-wide, got {grand['missing_category_slots']}."
+    assert grand["total_category_slots"] == 546, f"REGRESSION: expected 546 total slots registry-wide, got {grand['total_category_slots']}."
+    print("PASSED -- the full engineering-estimate pass across the entire 91-item registry is complete: no section "
+          "remains untouched, no gap was force-filled to raise a count, and every fill states a real, checkable basis.")
 
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
 
