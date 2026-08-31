@@ -262,6 +262,17 @@ task requirement 5 warns about (on top of the four already found in
 GC/SA) — see CLAUDE.md's "Known source-data issues" section for the
 full list; none is relied upon by anything filled here.
 
+REGISTRY-WIDE SWEEP (2026-08-28, a dedicated follow-up task, not
+opportunistic section-by-section discovery): every mention of GC-006,
+GC-008, GC-009, or GC-012 anywhere in all 91 registry items was
+checked against what those four items actually are. Found 8 MORE
+mismatched remarks beyond the 8 already known from working FE/GA/GC/
+SA/HB directly (17 total across the whole registry, all now in
+CLAUDE.md's "Known source-data issues" section). Every ESTIMATE_FILLS
+entry above was individually re-checked against this complete list —
+none uses any of the 17 mismatched remarks as its stated basis; no
+previously-shipped estimate required correction or withdrawal.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE

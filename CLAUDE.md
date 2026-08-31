@@ -160,9 +160,12 @@ layer is built.
 
 Found while building `python/equipment_engineering_estimates.py`'s
 GC-001 through GC-015, SA-001 through SA-012, and HB-001 through HB-018
-(all 2026-08-28) engineering-estimate fills — pre-existing errors in
-the original registry data itself, unrelated to that work. NOT fixed
-at the source: `data/equipment_registry.json` is DOK-ING's own static
+(all 2026-08-28) engineering-estimate fills, then confirmed complete by
+a dedicated, systematic sweep of the ENTIRE 91-item registry (also
+2026-08-28, not just the sections already worked) for every mention of
+GC-006/GC-008/GC-009/GC-012 specifically — pre-existing errors in the
+original registry data itself, unrelated to that work. NOT fixed at
+the source: `data/equipment_registry.json` is DOK-ING's own static
 datasheet extract and off-limits to edit (see that module's own
 docstring). Worth correcting whenever the registry maintainer next
 reviews the source spreadsheet:
@@ -188,6 +191,11 @@ reviews the source spreadsheet:
    Scrubber — its own confirmed target is <5 ppm HCl, a different
    species entirely. GC-012 (Activated Carbon Filter)'s own confirmed
    "<0.1 ppm outlet" H2S/COS removal target is the actual, exact match.
+   (The SAME item's own "Alarm setpoint H2S" remark repeats this exact
+   mix-up a second time, describing "GC-009 bed breakthrough" — GC-009
+   is a wet scrubber with no adsorbent bed to break through at all;
+   GC-012, the item with an actual carbon bed, is almost certainly
+   intended there too.)
 
 A REPEATED PATTERN found in HB's own data (three more occurrences of
 essentially the same GC-009/GC-006-vs-GC-012/GC-008 confusion already
@@ -211,20 +219,78 @@ Removal Unit, GC-009 HCl Scrubber):
    GC-009 uses NaOH wet scrubbing, not activated carbon — GC-012 (the
    actual Activated Carbon Filter) is almost certainly intended.
 
+SIX MORE occurrences found by the dedicated, registry-wide sweep
+(2026-08-28) — every mention of GC-006, GC-008, GC-009, or GC-012 in
+all 91 items was checked, not just the sections already worked on:
+
+9. GC-005 (Quench Tower, Water)'s own remark for "pH of quench water"
+   says absorbed HCl/H2S lowers pH "before dedicated downstream
+   scrubbing (GC-006/GC-015) removes these species properly." GC-006 is
+   the Tar Removal Unit (a dry packed-bed adsorber, not a scrubber for
+   HCl/H2S) and GC-015 is the Condensate Tank (not a scrubber at all).
+   GC-008 (Wet Scrubber, H2S) and GC-009 (HCl Scrubber) — the actual
+   dedicated downstream scrubbers for exactly these two species — are
+   almost certainly the intended reference.
+10. GC-010 (Bag Filter, Dust)'s own remark for "Outlet dust loading
+    (design)" says the tight target "protects GC-009's carbon bed."
+    GC-009 (HCl Scrubber) uses random packing, not a carbon bed — GC-012
+    (Activated Carbon Filter), which sits directly downstream of GC-010/
+    GC-011 in the train and is the item that actually has a carbon bed,
+    is almost certainly intended.
+11. GC-015 (Condensate Tank)'s own remark for "Condensate flow rate
+    (design)" attributes its inflow to "quench blowdown (GC-005) plus
+    scrubber blowdowns (GC-006, GC-007, GC-015)." GC-006 is a dry
+    adsorber with no liquid blowdown, and citing GC-015 as a source
+    feeding itself is a self-reference. GC-007, GC-008, and GC-009 — the
+    train's three actual WET scrubbers, each with a genuine liquid
+    blowdown — are almost certainly the intended list.
+12. SA-007 (Tar Sampling Port)'s own remark for "Sampling frequency"
+    ties its schedule to "the media-replacement interval already set at
+    GC-008." GC-008 is the H2S scrubber, unrelated to tar. GC-006 (Tar
+    Removal Unit, whose own confirmed Service interval is ~3 months —
+    the exact figure SA-007 is a tar-sampling item tied to) is almost
+    certainly intended.
+13. A THIRD confusion pair, distinct from the tar/H2S/HCl species
+    mix-up above (this one is simply the wrong GC item NUMBER, "012"
+    instead of "013" — GC-012, the Activated Carbon Filter, has no
+    flow-meter data of any kind): SA-010 (Gas Flow Meter, Clean)'s own
+    remarks for "Flow meter type" ("Same approach as GA-003/GC-012")
+    and "Measurement range" ("Matches GC-012's margin approach
+    directly"), plus HB-007 (PSA Unit, H2 Recovery)'s own remark for
+    "Feed gas flow rate" ("established... through the whole gas train
+    (GC-012/013...)"), all cite GC-012 for gas-flow-meter type/range
+    facts. GC-013 (Gas Blower/ID Fan, Flow), whose own confirmed Flow
+    meter type ("Thermal mass flow meter") and Flow meter range
+    ("0-100 Nm3/h") are EXACT matches for what all three remarks
+    describe, is almost certainly the intended reference in all three
+    places.
+14. HB-007's own remark for "H2 recovery rate (design)" says this
+    unconfirmed assumption has been "flagged and tracked since GC-006."
+    GC-006 (Tar Removal Unit) has no logical connection to a PSA H2-
+    recovery-rate assumption. Unlike the other findings here, no
+    specific correct GC item suggests itself — the intended reference
+    may be a project/task-history note rather than an equipment cross-
+    reference at all. Flagged as a genuine anomaly, not a confident
+    correction.
+
 A separate, unrelated mislabeling, also found in HB:
 
-8. HB-004's own remark for "Inlet temperature (design)" says it
-   "Matches HB-005's hot-side outlet directly." HB-005 is the Steam
-   Generator, which has no hot-side/cold-side terminology anywhere in
-   its own data — HB-003 (Heat Exchanger, WGS), whose own confirmed Hot
-   side outlet temperature is exactly 220°C (matching HB-004's stated
-   220°C inlet), is almost certainly the intended reference.
+15. HB-004's own remark for "Inlet temperature (design)" says it
+    "Matches HB-005's hot-side outlet directly." HB-005 is the Steam
+    Generator, which has no hot-side/cold-side terminology anywhere in
+    its own data — HB-003 (Heat Exchanger, WGS), whose own confirmed Hot
+    side outlet temperature is exactly 220°C (matching HB-004's stated
+    220°C inlet), is almost certainly the intended reference.
 
-None of the eight errors is relied upon by any fill in
-`python/equipment_engineering_estimates.py` — each was checked and
-explicitly worked around (see that module's own GC REPORT / SA REPORT /
-HB REPORT sections for the full reasoning), not silently used or
-silently ignored.
+TOTAL: 17 distinct erroneous remarks found across the registry (the 8
+above involving GC-006/GC-008/GC-009/GC-012 specifically that were
+already known before the 2026-08-28 sweep, plus the 8 new ones the
+sweep found in items 9-14, plus the 1 separate HB-003/HB-005 mix-up in
+item 15). None of the 17 is relied upon by any fill in
+`python/equipment_engineering_estimates.py` — each was checked
+individually against every FE/GA/GC/SA/HB estimate actually shipped,
+and none was used as a stated basis; no previously-shipped estimate
+needed correction or withdrawal as a result of the 2026-08-28 sweep.
 
 ## Not yet built (the actual current state)
 
