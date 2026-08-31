@@ -1918,7 +1918,18 @@ with tab8:
         "`python/equipment_datasheet.py` for the one genuine addition this electrical/utilities "
         "section needed (\"power meter\") and a real bug it caught and fixed in an earlier "
         "extension (a bare \"recovery\" keyword that would have wrongly swept EU-004's/EU-011's "
-        "heat-duty and medium-naming fields into Performance Indicators).",
+        "heat-duty and medium-naming fields into Performance Indicators). **This is the sixth "
+        "section (after the FE pilot and the GA/GC/SA/HB extensions) to receive engineering "
+        "estimates**: 8 of EU's 32 remaining gaps are filled — including this section's own "
+        "strongest fill, `python/chp.py`'s live-validated SOFC part-load efficiency curve (the "
+        "same discipline as HB-004's kinetics.py fill), plus two heat-exchanger-effectiveness "
+        "calculations that reach OPPOSITE conclusions (one filled, one declined) depending on "
+        "whether the underlying streams' heat-capacity rates are actually confirmed equal — a "
+        "direct demonstration of the compute-then-verify discipline. Six more apparent mislabeled "
+        "cross-references were found while reviewing this section's own remarks (unrelated to the "
+        "GC-006/008/009/012 pattern, of which EU has zero instances) — see "
+        "`python/equipment_engineering_estimates.py` for the full per-gap reasoning and "
+        "CLAUDE.md's \"Known source-data issues\" section for the complete list.",
         icon="⚠️",
     )
     st.caption(
@@ -2000,13 +2011,14 @@ with tab9:
             and _gc_summary["total_real_data_points"] == 122 and _gc_summary["populated_category_slots"] == 59
             and _sa_summary["total_real_data_points"] == 86 and _sa_summary["populated_category_slots"] == 27
             and _hb_summary["total_real_data_points"] == 168 and _hb_summary["populated_category_slots"] == 70
-            and _eu_summary["total_real_data_points"] == 115 and _eu_summary["populated_category_slots"] == 46):
+            and _eu_summary["total_real_data_points"] == 123 and _eu_summary["populated_category_slots"] == 54):
         st.success(
             "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 "
             "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering "
             "Estimate), SA (86/27 — 26 Confirmed + 1 Engineering Estimate), HB (168/70 — 57 "
-            "Confirmed + 13 Engineering Estimate), and EU (115/46) — all real data points/populated "
-            "categories — are unchanged by adding this Automation & Instrumentation section."
+            "Confirmed + 13 Engineering Estimate), and EU (123/54 — 46 Confirmed + 8 Engineering "
+            "Estimate) — all real data points/populated categories — are unchanged by adding this "
+            "Automation & Instrumentation section."
         )
     else:
         st.error(
@@ -2017,7 +2029,7 @@ with tab9:
             f"SA now {_sa_summary['total_real_data_points']}/{_sa_summary['populated_category_slots']}, "
             f"HB now {_hb_summary['total_real_data_points']}/{_hb_summary['populated_category_slots']}, "
             f"EU now {_eu_summary['total_real_data_points']}/{_eu_summary['populated_category_slots']} "
-            f"(expected 78/34, 100/41, 122/59, 86/27, 168/70, and 115/46). See python/equipment_datasheet.py."
+            f"(expected 78/34, 100/41, 122/59, 86/27, 168/70, and 123/54). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.AI_IDS, _ai_summary["per_item"])
@@ -2080,7 +2092,7 @@ with tab9:
             f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"correlation/literature/comparable-system basis, not vendor- or DOK-ING-confirmed — "
             f"currently FE-001 through FE-008, GA-001 through GA-010, GC-001 through GC-015, "
-            f"SA-001 through SA-012, and HB-001 through HB-018 only), and "
+            f"SA-001 through SA-012, HB-001 through HB-018, and EU-001 through EU-013 only), and "
             f"**{_all_summary['missing_category_slots']} Missing Data — Required** "
             f"({_all_summary['missing_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%), "
             f"reported plainly rather than smoothed over."

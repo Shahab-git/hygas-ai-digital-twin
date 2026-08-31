@@ -1,13 +1,14 @@
 """
-Engineering-estimate overlay v5 — PILOTED on FE-001 through FE-008's 21
+Engineering-estimate overlay v6 — PILOTED on FE-001 through FE-008's 21
 remaining "Missing Data — Required" gaps first (reviewed and approved),
 EXTENDED to GA-001 through GA-010's 29 remaining gaps (reviewed and
 approved), EXTENDED to GC-001 through GC-015's 38 remaining gaps
 (reviewed and approved), EXTENDED to SA-001 through SA-012's 46
-remaining gaps (reviewed and approved), now EXTENDED AGAIN to HB-001
-through HB-018's remaining gaps under the identical rule set, no
-relaxation. Extending to the remaining two sections (EU, AI) is still
-a separate, later task.
+remaining gaps (reviewed and approved), EXTENDED to HB-001 through
+HB-018's 51 remaining gaps (reviewed and approved), now EXTENDED AGAIN
+to EU-001 through EU-013's 32 remaining gaps under the identical rule
+set, no relaxation. Extending to the one remaining section (AI) is
+still a separate, later task.
 
 HB'S OWN GAP COUNT, VERIFIED LIVE, NOT ASSUMED: the task that requested
 this extension stated "52 remaining gaps." Checked directly against
@@ -64,9 +65,18 @@ yields the STRONGEST kind of fill this whole project has produced, a
 parallel/optional technology spread (membrane separation, electrolysis,
 LOHC) that is more genuinely vendor/design-dependent, and the usual
 recurring patterns (shared-physical-equipment sub-items, same-item
-recategorization risk) already established in every prior section —
-see REPORT below for the per-gap reasoning on every single one, filled
-and declined alike, all five sections.
+recategorization risk) already established in every prior section. Of
+EU's 32 gaps, 8 get a genuine estimate; 24 stay missing — EU is CHP/
+electrical/utilities: a validated part-load physics correlation
+(chp.py) that yields one genuine new fact beyond what's already
+Confirmed, several exact calculations from an item's own confirmed
+values (a cooling-tower range, an HX effectiveness with a clean,
+verified basis and one without), a couple of comparable-installed-
+system fills grounded in a specifically-confirmed technology property
+rather than generic ambient hand-waving, and the same recategorization/
+shared-equipment/vendor-instrument declines already established
+everywhere else — see REPORT below for the per-gap reasoning on every
+single one, filled and declined alike, all six sections.
 
 GA-SPECIFIC DISCIPLINE, per the task's explicit instruction: GA's
 fills are checked first, and preferentially, for the STRONGEST kind of
@@ -273,6 +283,76 @@ entry above was individually re-checked against this complete list —
 none uses any of the 17 mismatched remarks as its stated basis; no
 previously-shipped estimate required correction or withdrawal.
 
+EU-SPECIFIC DISCIPLINE (task requirements 2-5): task requirement 2's
+explicit priority — check chp.py's/dispatch_ga.py's own validated
+outputs first, the same way HB-004 leveraged kinetics.py — was
+followed through completely, not just nominally: dispatch_ga.py was
+ruled OUT entirely (its output is a live, slider-dependent GA
+optimization result for a specific fuel-budget scenario, not a fixed
+design-basis fact an equipment datasheet can state); chp.py's RATED-
+point efficiencies (100% load) were also ruled out, since all four
+CHP units already have their own rated efficiency Confirmed in the
+registry (EU-002/EU-003/EU-005/EU-006) with zero room to add anything
+(EU-002 has no missing categories at all). The one genuine opportunity
+survived a careful check: EU-001 (SOFC Stack, Temp) is the temperature-
+aspect sub-item of the SAME physical stack EU-002 (Efficiency aspect)
+already covers, so its own Performance Indicators gap can't be filled
+with EU-002's already-Confirmed 55% rated figure (shared-physical-
+equipment recategorization) — but chp.py's own PART-LOAD correlation
+(sub-100% load) is genuinely NEW information nowhere in the registry,
+which only ever states the single rated point. Filled with chp.py's
+own characterized turndown range (x=0.01 to x=1.0), not an arbitrary
+single load point. Task requirement 3 (don't confuse one CHP
+technology's parameters with another's) is trivially satisfied here —
+only ONE technology (SOFC) has a genuine chp.py-linked gap at all, and
+the fill calls chp_efficiency() with unit_name="SOFC" only, never
+touching the Gas Engine/Microturbine/PEM entries in the same dict.
+
+Two "compute then verify" cases with opposite, individually-justified
+outcomes (task requirement 5), a direct pair worth contrasting: EU-012
+(District Heating HX) Performance Indicators — a thermal-effectiveness
+calculation — IS filled, because this item's own four confirmed
+temperatures show BOTH streams have the SAME 30 degC temperature drop
+on matched flow rates of the same fluid (water), meaning their heat-
+capacity rates are equal and the standard effectiveness formula gives
+the identical answer computed from EITHER stream (85.7% both ways) —
+no inferred, unconfirmed intermediate quantity needed, unlike HB-003's
+case. EU-011 (Heat Recovery Unit) Performance Indicators — the SAME
+KIND of naive effectiveness calculation — is DECLINED for the SAME
+reason HB-003's was: this item's own confirmed data doesn't establish
+which stream has the lower heat-capacity rate, and resolving that would
+require inferring an unstated water-side inlet temperature rather than
+reading values directly on file.
+
+Two general equipment-class literature-range fills (the same basis
+category FE-005's dryer-efficiency fill already established as valid):
+EU-007 (Flare)'s destruction efficiency (>98%, the widely-recognized
+regulatory presumption for a properly-designed and operated enclosed
+flare with adequate residence time, exit velocity, and heating value —
+not derived from this item's own specific data, stated as such) and
+EU-010 (UPS)'s round-trip efficiency (92-96%, a commonly-published
+range for online double-conversion UPS systems at this power class).
+One comparable-installed-system fill grounded in a SPECIFICALLY
+confirmed technology property, not generic ambient hand-waving: EU-010
+Operating Conditions cites a LiFePO4 battery's own real, standard
+operating-temperature envelope, tied directly to this item's own
+confirmed Battery technology field — the same discipline already used
+for GC-006's PSA-adsorbent temperature fill.
+
+EU's OWN cross-references were checked specifically for the GC-006/
+GC-008/GC-009/GC-012 pattern (task requirement 4) — ZERO new instances
+(EU's own data contains no reference to any of those four items at
+all). Six MORE mislabeled remarks turned up anyway while reviewing
+EU's own cross-references generally, unrelated to that specific
+pattern — see CLAUDE.md's "Known source-data issues" section (items
+16-20) for the full list; none is relied upon by anything filled here.
+One of those findings (EU-013's own remarks citing "EU-007" three
+times when EU-012 is almost certainly intended) is used constructively
+here, not just flagged: EU-013's Operating Conditions is filled using
+EU-012's own correctly-Confirmed secondary-side temperatures directly,
+explicitly noting the correction rather than propagating the
+mislabeled reference.
+
 STATUS, DISTINCT FROM BOTH "Confirmed" AND "Missing Data — Required"
 (task requirement 1): every row added here carries
 "status": equipment_datasheet.STATUS_ESTIMATE
@@ -284,10 +364,10 @@ completion percentage, never blended into it (task requirement 4).
 
 PROVENANCE, same "source" field convention as equipment_rfi_fills.py:
 every row's "source" names which round it came from (FE pilot, GA
-extension, GC extension, SA extension, or HB extension) and its basis
-type, distinct in app.py's UI from both "Equipment Datasheet" (vendor
-data) and "DOK-ING RFI (design_basis.py Q#)" (DOK-ING's real answers)
-rows.
+extension, GC extension, SA extension, HB extension, or EU extension)
+and its basis type, distinct in app.py's UI from both "Equipment
+Datasheet" (vendor data) and "DOK-ING RFI (design_basis.py Q#)"
+(DOK-ING's real answers) rows.
 
 Does NOT modify data/equipment_registry.json (off-limits, DOK-ING's own
 static datasheet extract), equipment_datasheet.py's build_datasheet()
@@ -1156,12 +1236,157 @@ DECLINED — 38 of 51, with the actual reason:
     spec (the confirmed "Metering/billing system" names the meter
     TYPE, not a specific accuracy/certification spec, which is a
     vendor/model decision not yet made).
+
+EU REPORT (extension — every one of EU's 32 gaps, filled and declined).
+EU is CHP generation (SOFC/Gas Engine/Microturbine/PEM), grid/thermal
+interconnection, and BoP utilities:
+
+FILLED — 8 of 32:
+
+  EU-001 (SOFC Stack, Temp) Performance Indicators: SOFC electrical
+    efficiency ranges from ~39.4% (chp.py's own defined near-zero-load
+    floor, x=0.01) up to the rated 55% at full load (x=1.0). Basis:
+    chp.py's own live, independently-validated part-load correlation
+    for SOFC specifically (this project's single strongest possible
+    basis for this section, the same discipline as HB-004's kinetics.py
+    fill) — genuinely NEW information, since the registry only ever
+    states the single rated-load point (already Confirmed at EU-002,
+    the efficiency-aspect sibling item for this same physical stack).
+
+  EU-007 (Flare/Emergency Burner) Performance Indicators: >=98%
+    combustion/destruction efficiency. Basis: comparable-installed-
+    system practice — the widely-recognized regulatory presumption for
+    a properly-designed and operated enclosed ground flare with
+    adequate residence time, exit velocity, and heating value (e.g. the
+    threshold commonly cited in general flare-design/regulatory
+    guidance) — a general equipment-class figure, not derived from this
+    item's own specific data, stated as such.
+
+  EU-008 (Cooling Tower) Performance Indicators: cooling range, 10 degC.
+    Basis: EXACT calculation from this item's own two already-Confirmed
+    temperatures (30 degC return - 20 degC supply) — "range" is a
+    standard, named cooling-tower performance term, not an invented
+    metric.
+
+  EU-010 (UPS/Battery Buffer) Inputs: ~400V, 3-phase AC mains input.
+    Basis: matches the plant's established grid voltage standard
+    (EU-009/HB-011/EU-003/EU-005, all independently confirmed at 400V)
+    — standard for an online double-conversion UPS (this item's own
+    confirmed type), which draws from and supplies the same facility
+    electrical system, so its input and output sides share the same
+    nominal voltage even though the topology itself doesn't require it.
+
+  EU-010 Operating Conditions: ~15-35 degC recommended (0-45 degC
+    charge range). Basis: comparable-installed-system practice, tied
+    directly to this item's own confirmed Battery technology (Lithium-
+    ion, LiFePO4) — a real, standard, checkable temperature-performance
+    and safety envelope for this specific chemistry, not a generic
+    "ambient" claim.
+
+  EU-010 Performance Indicators: ~92-96% round-trip efficiency. Basis:
+    a commonly-published range for online double-conversion UPS systems
+    at this power class (e.g. per major UPS manufacturer datasheets) —
+    a general equipment-class range, same basis category already
+    established as valid by FE-005's dryer-efficiency fill.
+
+  EU-012 (District Heating HX) Performance Indicators: ~85.7% thermal
+    effectiveness. Basis: EXACT calculation from this item's own four
+    already-Confirmed temperatures, verified via BOTH the primary-side
+    and secondary-side formulas independently — they agree exactly
+    (85.7% both ways) because the two streams (internal loop water,
+    district network water) have EQUAL heat-capacity rates: same fluid,
+    matched flow rates (~0.72 m3/h each), matched 30 degC temperature
+    drops, all already Confirmed — no inferred intermediate quantity
+    needed, unlike EU-011's case (see DECLINED below). Consistent with
+    the high effectiveness typically achievable by this item's own
+    confirmed HX type (plate heat exchanger).
+
+  EU-013 (Thermal Energy Metering) Operating Conditions: ~45-75 degC.
+    Basis: cross-item derivation from EU-012's own confirmed secondary
+    supply/return temperatures (75/45 degC) — this item's own existing
+    remarks cite "EU-007" (the Flare) for this same fact, an apparent
+    mislabeling (EU-007 has no secondary-side or district-heating data
+    of any kind) corrected here rather than propagated; see CLAUDE.md's
+    "Known source-data issues" section, item 19.
+
+DECLINED — 24 of 32, with the actual reason:
+
+  EU-001 Inputs, Outputs: the SAME physical SOFC stack as EU-002, which
+    already fully characterizes this exact fuel/power stream with its
+    own confirmed Inputs/Outputs — the shared-physical-equipment
+    pattern already established for GA-001/002, GC-001/002, HB-001/002.
+
+  EU-004 (Gas Engine, Thermal Eff.) Outputs: this item's own confirmed
+    Parameters ALREADY states the recovered-heat figures (Jacket
+    cooling 12 kWth, Exhaust heat 8 kWth, Total 20 kWth) — an Outputs
+    row would restate them, recategorization. Measurements: vendor-only
+    instrument spec. Operating Conditions: this item's own confirmed
+    exhaust/cooling temperatures already fully describe its operating
+    condition, under Parameters not a separate OC bucket —
+    recategorization, not new information.
+
+  EU-005 (Microturbine) Measurements: vendor-only instrument spec (no
+    sensor type stated for this item).
+
+  EU-006 (H2 Fuel Cell, Stationary) Inputs: this item's own confirmed
+    Parameters ALREADY states "H2 consumption (rated) = 10 Nm3/h" —
+    already the Inputs concept, recategorization. Measurements: vendor-
+    only instrument spec.
+
+  EU-007 Inputs: this item's own confirmed Parameters ALREADY states
+    "Flare capacity (100% design flow) = 100 Nm3/h" — already the
+    Inputs concept, recategorization. Outputs: no quantified combustion-
+    product figures exist anywhere to derive from. Measurements:
+    vendor-only instrument spec (flame detector TYPE is confirmed, not
+    its accuracy/response-time spec). Operating Conditions: no
+    defensible basis — this item's own data explicitly states its gas
+    composition is variable by design ("Raw syngas to pure H2...
+    depending on where in the process the emergency release
+    originates"), so no single operating temperature/pressure can be
+    stated with confidence.
+
+  EU-008 Outputs: this item's own confirmed cooling-water return
+    temperature and flow rate already describe its output stream —
+    recategorization. Measurements: vendor-only instrument spec.
+    Operating Conditions: this item's own confirmed supply/return
+    temperatures already describe its operating condition, under
+    Parameters — recategorization.
+
+  EU-009 (Electrical Metering, Grid) Outputs: structurally not a fit —
+    a measurement instrument observing the plant's power flows, not a
+    process stream of its own, the same pattern already established
+    for SA's analysers/sensors. Operating Conditions: no defensible
+    basis — this item has no process-gas/thermal interface of its own
+    to characterize, and no specific already-confirmed fact to derive
+    an ambient claim from (unlike EU-010's LiFePO4 case). Performance
+    Indicators: no efficiency/recovery-rate concept applies to a meter.
+
+  EU-011 (Heat Recovery Unit) Measurements: vendor-only instrument
+    spec. Performance Indicators: CHECKED, not skipped — see EU-
+    SPECIFIC DISCIPLINE above for the full "compute, verify, decline"
+    reasoning, directly contrasted with EU-012's successful fill (this
+    item's own confirmed data doesn't establish which stream has the
+    lower heat-capacity rate, unlike EU-012's case where the two
+    streams are confirmed equal).
+
+  EU-012 Measurements: vendor-only instrument spec. Operating
+    Conditions: this item's own confirmed four temperatures already
+    describe its operating condition, under Parameters —
+    recategorization.
+
+  EU-013 Outputs: structurally not a fit — a measurement instrument
+    observing the district-heating energy flow, not a process stream of
+    its own, same pattern as EU-009. Performance Indicators: metering
+    accuracy is already Confirmed (Parameters, "Metered energy accuracy
+    class = Class 2") — no additional efficiency/recovery-rate concept
+    applies to a passive meter.
 """
 import copy
 
 from . import equipment_datasheet
 from . import gasifier_mass_balance
 from . import kinetics
+from . import chp
 
 _Q = equipment_datasheet
 _GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows()
@@ -1190,6 +1415,10 @@ def _source_hb(basis_label):
     return f"Engineering estimate (HB-001..HB-018 extension) — {basis_label}"
 
 
+def _source_eu(basis_label):
+    return f"Engineering estimate (EU-001..EU-013 extension) — {basis_label}"
+
+
 _GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
 
 # HB-004's own strongest-possible fill: kinetics.py's live, independently-validated
@@ -1201,6 +1430,12 @@ _HB_HTS_OUTLET_CO_PCT = 28.0 * (1 - _HB_HTS_CONVERSION)  # should reproduce HB-0
 _HB_LTS_RELATIVE_CONVERSION_PCT = kinetics.lts_conversion(y_CO_in=_HB_HTS_OUTLET_CO_PCT / 100.0) * 100.0
 
 _HB_DBT_DENSITY_KG_M3 = 1040.0  # standard physical property of Dibenzyltoluene (DBT), not a design assumption -- used for every LOHC carrier-throughput fill below
+
+# EU-001's own strongest-possible fill: chp.py's live, independently-validated part-load
+# efficiency correlation for SOFC specifically -- genuinely new information (the registry
+# only states the single rated-load point, already Confirmed at EU-002).
+_EU_SOFC_EFF_MIN_PCT = chp.chp_efficiency(0.01, "SOFC") * 100.0
+_EU_SOFC_EFF_RATED_PCT = chp.chp_efficiency(1.0, "SOFC") * 100.0  # should reproduce EU-002's own confirmed 55%
 
 
 # {item_id: {category: [ {parameter, value, unit, remarks, status, source} ]}}
@@ -1891,6 +2126,143 @@ ESTIMATE_FILLS = {
             },
         ],
     },
+    "EU-001": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated part-load efficiency range",
+                "value": f"~{_EU_SOFC_EFF_MIN_PCT:.1f}-{_EU_SOFC_EFF_RATED_PCT:.1f}", "unit": "%",
+                "remarks": (
+                    f"chp.py's own live, independently-validated part-load correlation for SOFC "
+                    f"specifically (this project's strongest possible basis for this section, the "
+                    f"same discipline as HB-004's kinetics.py fill): electrical efficiency ranges "
+                    f"from ~{_EU_SOFC_EFF_MIN_PCT:.1f}% at chp.py's own defined near-zero-load floor "
+                    f"(x=0.01) up to {_EU_SOFC_EFF_RATED_PCT:.1f}% at full load (x=1.0, matching "
+                    f"EU-002's own confirmed rated efficiency exactly). Genuinely NEW information — "
+                    f"the registry only ever states the single rated-load point (already Confirmed "
+                    f"at EU-002, the efficiency-aspect sibling item for this same physical stack)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("chp.py's own live-validated part-load correlation for SOFC, cross-checked against EU-002's own confirmed rated efficiency"),
+            },
+        ],
+    },
+    "EU-007": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated combustion/destruction efficiency",
+                "value": ">=98", "unit": "%",
+                "remarks": (
+                    "Comparable-installed-system practice: the widely-recognized regulatory "
+                    "presumption for a properly-designed and operated enclosed ground flare with "
+                    "adequate residence time, exit velocity, and heating value (e.g. the threshold "
+                    "commonly cited in general flare-design and regulatory guidance). A general "
+                    "equipment-class figure, not derived from this item's own specific data, stated "
+                    "as such."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("comparable-installed-system practice (regulatory destruction-efficiency presumption for a properly-designed enclosed ground flare)"),
+            },
+        ],
+    },
+    "EU-008": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated cooling range",
+                "value": "10", "unit": "°C",
+                "remarks": (
+                    "Exact calculation from this item's own two already-Confirmed temperatures: "
+                    "Cooling water return temperature (30°C) - Cooling water supply temperature "
+                    "(20°C) = 10°C. 'Range' is a standard, named cooling-tower performance term, "
+                    "not an invented metric."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("calculated from this item's own confirmed supply/return water temperatures (standard cooling-tower 'range' metric)"),
+            },
+        ],
+    },
+    "EU-010": {
+        "Inputs": [
+            {
+                "parameter": "Estimated AC mains input",
+                "value": "~400, 3-phase", "unit": "V",
+                "remarks": (
+                    "Matches the plant's established grid voltage standard (EU-009/HB-011/EU-003/"
+                    "EU-005, all independently confirmed at 400V) — standard for an online double-"
+                    "conversion UPS (this item's own confirmed type), which draws from and supplies "
+                    "the same facility electrical system, so its input and output sides share the "
+                    "same nominal voltage even though the topology itself doesn't strictly require it."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("matches the plant's own established grid voltage standard, confirmed independently at four other items"),
+            },
+        ],
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature",
+                "value": "~15-35 (0-45 charge range)", "unit": "°C",
+                "remarks": (
+                    "Comparable-installed-system practice, tied directly to this item's own "
+                    "confirmed Battery technology (Lithium-ion, LiFePO4) — a real, standard, "
+                    "checkable temperature-performance and safety envelope for this specific "
+                    "chemistry, not a generic 'ambient' claim."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("comparable-installed-system practice (standard LiFePO4 operating-temperature envelope, tied to this item's own confirmed battery chemistry)"),
+            },
+        ],
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated round-trip efficiency",
+                "value": "~92-96", "unit": "%",
+                "remarks": (
+                    "A commonly-published range for online double-conversion UPS systems at this "
+                    "power class (e.g. per major UPS manufacturer datasheets) — a general "
+                    "equipment-class range, same basis category already established as valid by "
+                    "FE-005's dryer-efficiency fill."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("published literature range for the equipment class (online double-conversion UPS)"),
+            },
+        ],
+    },
+    "EU-012": {
+        "Performance Indicators": [
+            {
+                "parameter": "Estimated thermal effectiveness",
+                "value": "~85.7", "unit": "%",
+                "remarks": (
+                    "Exact calculation from this item's own four already-Confirmed temperatures, "
+                    "verified via BOTH the primary-side formula ((80-50)/(80-45)) and the "
+                    "secondary-side formula ((75-45)/(80-45)) independently — they agree exactly "
+                    "(85.7% both ways) because the two streams (internal loop water, district "
+                    "network water) have EQUAL heat-capacity rates: same fluid, matched flow rates "
+                    "(~0.72 m3/h each), matched 30°C temperature drops, all already Confirmed — no "
+                    "inferred intermediate quantity needed, unlike EU-011's declined case. "
+                    "Consistent with the high effectiveness typically achievable by this item's own "
+                    "confirmed HX type (plate heat exchanger)."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("calculated from this item's own confirmed temperatures, cross-verified via both the primary-side and secondary-side formulas since the two streams have equal heat-capacity rates"),
+            },
+        ],
+    },
+    "EU-013": {
+        "Operating Conditions": [
+            {
+                "parameter": "Estimated operating temperature range",
+                "value": "~45-75", "unit": "°C",
+                "remarks": (
+                    "Cross-item derivation from EU-012's own confirmed secondary supply/return "
+                    "temperatures (75°C / 45°C) — this item's own existing remarks cite 'EU-007' "
+                    "(the Flare) for this same fact, an apparent mislabeling (EU-007 has no "
+                    "secondary-side or district-heating data of any kind) corrected here rather "
+                    "than propagated; see CLAUDE.md's 'Known source-data issues' section, item 19."
+                ),
+                "status": _Q.STATUS_ESTIMATE,
+                "source": _source_eu("cross-item derivation from EU-012's own confirmed secondary-side temperatures, correcting this item's own mislabeled 'EU-007' reference"),
+            },
+        ],
+    },
 }
 
 
@@ -1954,9 +2326,9 @@ if __name__ == "__main__":
     print(f"\nRows added: {n_rows}")
     print(f"Distinct (item, category) slots newly estimated: {n_slots}")
     print(f"Distinct items touched: {n_items}")
-    assert n_rows == 38, f"REGRESSION: expected 38 rows (7 FE + 10 GA + 7 GC + 1 SA + 13 HB), counted {n_rows}."
-    assert n_slots == 38, f"REGRESSION: expected 38 newly-estimated slots, counted {n_slots}."
-    assert n_items == 28, f"REGRESSION: expected 28 items touched (6 FE + 6 GA + 5 GC + 1 SA + 10 HB), counted {n_items}."
+    assert n_rows == 46, f"REGRESSION: expected 46 rows (7 FE + 10 GA + 7 GC + 1 SA + 13 HB + 8 EU), counted {n_rows}."
+    assert n_slots == 46, f"REGRESSION: expected 46 newly-estimated slots, counted {n_slots}."
+    assert n_items == 34, f"REGRESSION: expected 34 items touched (6 FE + 6 GA + 5 GC + 1 SA + 10 HB + 6 EU), counted {n_items}."
 
     print("\n=== Every added row carries status=STATUS_ESTIMATE, distinct from Confirmed ===")
     for item_id, categories in ESTIMATE_FILLS.items():
@@ -2060,6 +2432,32 @@ if __name__ == "__main__":
     print("PASSED -- every LOHC carrier-throughput fill traces back to the same physical DBT-density constant "
           "(~1040 kg/m3), not five separately invented numbers.")
 
+    print("\n=== EU-specific check: chp.py's live SOFC part-load curve reproduces EU-002's own confirmed rated efficiency, and no other CHP technology's numbers leak in ===")
+    assert abs(_EU_SOFC_EFF_RATED_PCT - 55.0) < 0.01, (
+        f"REGRESSION: chp.py's chp_efficiency(1.0, 'SOFC') no longer reproduces EU-002's own confirmed 55% rated efficiency (got {_EU_SOFC_EFF_RATED_PCT})."
+    )
+    assert _EU_SOFC_EFF_MIN_PCT < _EU_SOFC_EFF_RATED_PCT, (
+        "REGRESSION: the SOFC part-load floor should be below the rated efficiency."
+    )
+    eu001_pi_remarks = ESTIMATE_FILLS["EU-001"]["Performance Indicators"][0]["remarks"]
+    for other_tech in ("Gas Engine", "Microturbine", "PEM"):
+        assert other_tech not in eu001_pi_remarks, (
+            f"REGRESSION: EU-001's SOFC fill mentions '{other_tech}' -- possible cross-technology conflation."
+        )
+    print(f"PASSED -- chp.py's live SOFC curve reproduces EU-002's own confirmed 55% exactly at full load "
+          f"({_EU_SOFC_EFF_RATED_PCT:.2f}%), and EU-001's fill never mentions another CHP technology.")
+
+    print("\n=== EU-specific check: the declined heat-exchanger effectiveness (EU-011 PI) was never actually filled, unlike its EU-012 counterpart ===")
+    assert "Performance Indicators" not in ESTIMATE_FILLS.get("EU-011", {}), (
+        "REGRESSION: EU-011 Performance Indicators appears filled -- the module docstring explicitly declines the "
+        "naive thermal-effectiveness calculation as resting on an unconfirmed heat-capacity-rate comparison; it must stay Missing."
+    )
+    assert "Performance Indicators" in ESTIMATE_FILLS.get("EU-012", {}), (
+        "REGRESSION: EU-012 Performance Indicators should be filled -- its two streams have confirmed-equal heat-capacity rates."
+    )
+    print("PASSED -- EU-011 (ambiguous heat-capacity rates) has no fill, EU-012 (confirmed-equal heat-capacity rates) does -- "
+          "the same compute-then-verify discipline applied consistently to two similar-looking calculations with different outcomes.")
+
     print("\n=== Task requirement 4: three-way honest totals, verified live (not blended) ===")
     before = equipment_datasheet.summarize(base)
     after = equipment_datasheet.summarize(filled)
@@ -2079,7 +2477,7 @@ if __name__ == "__main__":
     print(f"PASSED -- {n_slots} slots moved from Missing to Estimate (284 -> {after['missing_category_slots']}), "
           f"Confirmed slots genuinely unchanged, not blended together.")
 
-    print("\n=== Task requirement 7 (this extension): FE's, GA's, GC's, and SA's numbers, regression-verified unchanged ===")
+    print("\n=== Task requirement 7 (this extension): FE's, GA's, GC's, SA's, and HB's numbers, regression-verified unchanged ===")
     fe_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.FE_IDS)
     print(f"FE: {fe_after['confirmed_category_slots']} Confirmed, "
           f"{fe_after['estimated_category_slots']} Engineering Estimate, "
@@ -2087,7 +2485,7 @@ if __name__ == "__main__":
     assert fe_after["confirmed_category_slots"] == 27, f"REGRESSION: expected 27 Confirmed FE slots, got {fe_after['confirmed_category_slots']}."
     assert fe_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate FE slots, got {fe_after['estimated_category_slots']}."
     assert fe_after["missing_category_slots"] == 14, f"REGRESSION: expected 14 Missing FE slots, got {fe_after['missing_category_slots']}."
-    print("PASSED -- FE's pilot numbers are unchanged by this HB extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
+    print("PASSED -- FE's pilot numbers are unchanged by this EU extension: 27 Confirmed + 7 Engineering Estimate + 14 Missing = 48.")
 
     ga_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GA_IDS)
     print(f"GA: {ga_after['confirmed_category_slots']} Confirmed, "
@@ -2096,7 +2494,7 @@ if __name__ == "__main__":
     assert ga_after["confirmed_category_slots"] == 31, f"REGRESSION: expected 31 Confirmed GA slots, got {ga_after['confirmed_category_slots']}."
     assert ga_after["estimated_category_slots"] == 10, f"REGRESSION: expected 10 Estimate GA slots, got {ga_after['estimated_category_slots']}."
     assert ga_after["missing_category_slots"] == 19, f"REGRESSION: expected 19 Missing GA slots, got {ga_after['missing_category_slots']}."
-    print("PASSED -- GA's extension numbers are unchanged by this HB extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
+    print("PASSED -- GA's extension numbers are unchanged by this EU extension: 31 Confirmed + 10 Engineering Estimate + 19 Missing = 60.")
 
     gc_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.GC_IDS)
     print(f"GC: {gc_after['confirmed_category_slots']} Confirmed, "
@@ -2105,7 +2503,7 @@ if __name__ == "__main__":
     assert gc_after["confirmed_category_slots"] == 52, f"REGRESSION: expected 52 Confirmed GC slots, got {gc_after['confirmed_category_slots']}."
     assert gc_after["estimated_category_slots"] == 7, f"REGRESSION: expected 7 Estimate GC slots, got {gc_after['estimated_category_slots']}."
     assert gc_after["missing_category_slots"] == 31, f"REGRESSION: expected 31 Missing GC slots, got {gc_after['missing_category_slots']}."
-    print("PASSED -- GC's extension numbers are unchanged by this HB extension: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90.")
+    print("PASSED -- GC's extension numbers are unchanged by this EU extension: 52 Confirmed + 7 Engineering Estimate + 31 Missing = 90.")
 
     sa_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.SA_IDS)
     print(f"SA: {sa_after['confirmed_category_slots']} Confirmed, "
@@ -2114,9 +2512,8 @@ if __name__ == "__main__":
     assert sa_after["confirmed_category_slots"] == 26, f"REGRESSION: expected 26 Confirmed SA slots, got {sa_after['confirmed_category_slots']}."
     assert sa_after["estimated_category_slots"] == 1, f"REGRESSION: expected 1 Estimate SA slot, got {sa_after['estimated_category_slots']}."
     assert sa_after["missing_category_slots"] == 45, f"REGRESSION: expected 45 Missing SA slots, got {sa_after['missing_category_slots']}."
-    print("PASSED -- SA's extension numbers are unchanged by this HB extension: 26 Confirmed + 1 Engineering Estimate + 45 Missing = 72.")
+    print("PASSED -- SA's extension numbers are unchanged by this EU extension: 26 Confirmed + 1 Engineering Estimate + 45 Missing = 72.")
 
-    print("\n=== HB-specific honest breakdown (this extension) ===")
     hb_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.HB_IDS)
     print(f"HB: {hb_after['confirmed_category_slots']} Confirmed, "
           f"{hb_after['estimated_category_slots']} Engineering Estimate, "
@@ -2124,17 +2521,27 @@ if __name__ == "__main__":
     assert hb_after["confirmed_category_slots"] == 57, f"REGRESSION: expected 57 Confirmed HB slots, got {hb_after['confirmed_category_slots']}."
     assert hb_after["estimated_category_slots"] == 13, f"REGRESSION: expected 13 Estimate HB slots, got {hb_after['estimated_category_slots']}."
     assert hb_after["missing_category_slots"] == 38, f"REGRESSION: expected 38 Missing HB slots, got {hb_after['missing_category_slots']}."
-    print("PASSED -- HB: 57 Confirmed + 13 Engineering Estimate + 38 Missing = 108 total slots, matches exactly.")
+    print("PASSED -- HB's extension numbers are unchanged by this EU extension: 57 Confirmed + 13 Engineering Estimate + 38 Missing = 108.")
 
-    print("\n=== Regression check: every OTHER section (EU, AI) is untouched by this overlay ===")
+    print("\n=== EU-specific honest breakdown (this extension) ===")
+    eu_after = equipment_datasheet.summarize(filled, ids=equipment_datasheet.EU_IDS)
+    print(f"EU: {eu_after['confirmed_category_slots']} Confirmed, "
+          f"{eu_after['estimated_category_slots']} Engineering Estimate, "
+          f"{eu_after['missing_category_slots']} Missing (of {eu_after['total_category_slots']} total slots)")
+    assert eu_after["confirmed_category_slots"] == 46, f"REGRESSION: expected 46 Confirmed EU slots, got {eu_after['confirmed_category_slots']}."
+    assert eu_after["estimated_category_slots"] == 8, f"REGRESSION: expected 8 Estimate EU slots, got {eu_after['estimated_category_slots']}."
+    assert eu_after["missing_category_slots"] == 24, f"REGRESSION: expected 24 Missing EU slots, got {eu_after['missing_category_slots']}."
+    print("PASSED -- EU: 46 Confirmed + 8 Engineering Estimate + 24 Missing = 78 total slots, matches exactly.")
+
+    print("\n=== Regression check: the last remaining section (AI) is untouched by this overlay ===")
     for label, ids in [
-        ("EU", equipment_datasheet.EU_IDS), ("AI", equipment_datasheet.AI_IDS),
+        ("AI", equipment_datasheet.AI_IDS),
     ]:
         b = equipment_datasheet.summarize(base, ids=ids)
         f = equipment_datasheet.summarize(filled, ids=ids)
         print(f"  {label}: {b} == {f}: {b == f}")
-        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, SA, and HB are targeted so far."
-    print("PASSED -- EU and AI are byte-for-byte identical to the pre-overlay data.")
+        assert b == f, f"REGRESSION: {label} section changed, but only FE, GA, GC, SA, HB, and EU are targeted so far."
+    print("PASSED -- AI is byte-for-byte identical to the pre-overlay data.")
 
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
 

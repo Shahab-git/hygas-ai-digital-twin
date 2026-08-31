@@ -282,15 +282,63 @@ A separate, unrelated mislabeling, also found in HB:
     side outlet temperature is exactly 220°C (matching HB-004's stated
     220°C inlet), is almost certainly the intended reference.
 
-TOTAL: 17 distinct erroneous remarks found across the registry (the 8
-above involving GC-006/GC-008/GC-009/GC-012 specifically that were
-already known before the 2026-08-28 sweep, plus the 8 new ones the
-sweep found in items 9-14, plus the 1 separate HB-003/HB-005 mix-up in
-item 15). None of the 17 is relied upon by any fill in
-`python/equipment_engineering_estimates.py` — each was checked
-individually against every FE/GA/GC/SA/HB estimate actually shipped,
-and none was used as a stated basis; no previously-shipped estimate
-needed correction or withdrawal as a result of the 2026-08-28 sweep.
+Found while building EU-001 through EU-013's engineering-estimate fills
+(2026-08-28): checked EU's own remarks specifically for the GC-006/
+GC-008/GC-009/GC-012 pattern above — ZERO new instances (EU's own data
+contains no reference to any of those four GC items at all, consistent
+with the dedicated registry-wide sweep that already covered EU). While
+reviewing EU's OWN cross-references for correctness generally, six more
+mislabeled remarks turned up instead, unrelated to the GC-006/008/009/
+012 pattern — same discipline, flagged rather than fixed at the source:
+
+16. EU-004's own remark for "Cooling water supply temperature" cites
+    "the ambient plant utility water temperature already used elsewhere
+    (e.g. GA-004)." GA-004 (Air/Steam Injection, Temp) has no water
+    temperature anywhere in its own data (only steam temperatures,
+    200°C/350°C) — GC-005 and HB-003, both of which have their own
+    confirmed 20°C ambient water figure, are almost certainly the
+    intended reference.
+17. EU-011's own remark for "Heat exchanger type" cites "HB-005's
+    earlier heat-recovery design choice." HB-005 is the Steam Generator,
+    with no heat-exchanger-type field in its own data — HB-003 (Heat
+    Exchanger, WGS), whose own confirmed type is exactly "Shell-and-tube
+    heat exchanger," is almost certainly intended (this same item,
+    EU-011, correctly cites HB-003 elsewhere in its own data for a
+    similar claim, "Recovery medium," suggesting this one is a genuine
+    slip rather than a considered choice).
+18. EU-012's own remark for "Thermal output (design)" attributes part
+    of its combined capacity to "EU-006 (9kWth)." EU-006 (H2 Fuel Cell,
+    Stationary) has no thermal-output figure anywhere in its own data —
+    EU-011 (Heat Recovery Unit)'s own confirmed "Thermal duty recovered
+    = 9 kWth" is the exact, intended match.
+19. EU-013's own remarks (three occurrences — "Measured flow rate
+    range," "Supply/return temperature range," and "Heat delivery
+    point") all cite "EU-007." EU-007 is the Flare/Emergency Burner,
+    with no secondary-side flow, temperature, or district-heating data
+    of any kind — EU-012 (District Heating HX), whose own confirmed
+    secondary-side flow (~0.72 m3/h) and temperatures (75°C supply /
+    45°C return) are exact matches for all three, is almost certainly
+    intended throughout.
+20. HB-005's own "Heat source" parameter has an internal VALUE/REMARKS
+    inconsistency: its VALUE field reads "Preheated feed water from
+    HB-005 (150°C)..." — a self-reference — while its OWN REMARKS field
+    for the SAME row correctly says "Closes the loop with HB-003
+    directly." HB-003's own confirmed Cold side outlet temperature is
+    exactly 150°C, confirming HB-003 (not a self-reference to HB-005)
+    is the actually-intended source; the remarks field already has it
+    right, only the value field's citation is wrong.
+
+TOTAL: 23 distinct erroneous remarks found across the registry to date
+(the 8 GC-006/GC-008/GC-009/GC-012 mix-ups already known before the
+first 2026-08-28 sweep, 8 more of the same pattern the dedicated sweep
+found in items 9-14, the 1 separate HB-003/HB-005 mix-up in item 15,
+and 6 more found while working EU in items 16-20, none of them
+involving the GC-006/008/009/012 pattern). None of the 23 is relied
+upon by any fill in `python/equipment_engineering_estimates.py` — each
+was checked individually against every FE/GA/GC/SA/HB/EU estimate
+actually shipped, and none was used as a stated basis; no previously-
+shipped estimate has needed correction or withdrawal as a result of
+either sweep.
 
 ## Not yet built (the actual current state)
 
