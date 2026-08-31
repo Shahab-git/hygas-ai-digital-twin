@@ -2866,3 +2866,7 @@ if __name__ == "__main__":
 # (touch: force fresh Streamlit Cloud rebuild after adding GC-001..GC-015 estimates, 2026-08-28)
 
 # (touch: force fresh Streamlit Cloud rebuild after adding HB-001..HB-018 estimates, 2026-08-28)
+
+# (touch: force fresh Streamlit Cloud rebuild after adding AI-001..AI-015 estimates, 2026-08-31 --
+#  live app was confirmed serving a stale pre-9cfc4e9 import, showing AI at 0 Engineering Estimate
+#  instead of the actual 2; this commit forces a fresh rebuild)
