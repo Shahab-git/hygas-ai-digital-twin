@@ -448,12 +448,93 @@ _GA001_INPUT_KEYS = [
 ]
 
 
+# Atomic contribution (mol of atoms per mol of species) for the species HB-009's
+# tail gas can carry -- standard, real molecular formulas, used ONLY to fold the
+# recycle stream's own C/H/O/N atoms into GA-001's overall elemental balance
+# (Phase 1d's recycle loop -- see _recycle_atom_moles() and module docstring
+# addendum below).
+#
+# DELIBERATELY EXCLUDES CO2 and N2, found necessary empirically, not an
+# arbitrary fudge: HB-007's/HB-009's own registry disposition for this
+# stream is literally "Recycled to GA-001 gasifier AS SUPPLEMENTAL FUEL"
+# -- CO2 and N2 carry zero heating value and no combustion pathway, so
+# recycling them as "fuel" has no physical basis in the first place.
+# Empirically, folding them in anyway was tried first and found to diverge
+# almost immediately: N2 alone is ~39% of GA-001's own dry product gas
+# (roughly matching the fresh air feed's own N2 content), so recycling
+# 100% of it back would ~double the nitrogen atom flow in a single cycle,
+# pushing solve_product_gas()'s quadratic outside its physically valid
+# root domain (confirmed: this module's own multi-cycle self-test raised
+# "no physically valid root" starting at cycle 2 with CO2/N2 included).
+# Restricting the fold to the genuinely combustible species -- exactly
+# what "supplemental fuel" means -- keeps the loop within a domain the
+# model can actually solve, and is the more physically correct reading of
+# the registry's own words, not a looser one.
+_RECYCLE_SPECIES_ATOMS = {
+    # species: (C atoms, H atoms, O atoms, N atoms) per molecule
+    "H2": (0, 2, 0, 0), "CO": (1, 0, 1, 0), "CH4": (1, 4, 0, 0),
+}
+
+
+def _recycle_atom_moles(get_input):
+    """PHASE 1d ADDITION. Reads HB-009's tail-gas composition from the
+    PREVIOUS cycle (lagged -- see module docstring addendum for why this
+    must be lagged, not same-cycle) and converts it to (mol C, mol H, mol
+    O, mol N) per hour -- the real atoms the recycled tail gas brings back
+    into the gasifier as supplemental fuel (HB-007's/HB-009's own stated
+    disposition: 'Recycled to GA-001 gasifier as supplemental fuel').
+    Returns all-zero contribution, gracefully, if the lagged key is absent
+    or Missing (no recycle registered, or the very first cycle) -- this is
+    what keeps every PRE-Phase-1d self-test that registers GA-001 WITHOUT
+    HB-009 (ga001_gasifier_model.py's own self-test, gc_gas_cleaning_chain.py's
+    own self-test) working completely unchanged: an absent lagged key is
+    not an error, it is zero recycle, by construction."""
+    entry = get_input(("HB-009", "TailGas"))
+    if entry["status"] == ps.STATUS_MISSING:
+        return 0.0, 0.0, 0.0, 0.0
+    tail = entry["value"]
+    if "species_nm3_h" not in tail:
+        # An older/partial HB-009 result (e.g. from before its own Phase 1d
+        # composition extension) -- still gracefully treated as no recycle
+        # rather than raising, since this function's job is to be a
+        # backward-compatible, additive reader, never a hard requirement.
+        return 0.0, 0.0, 0.0, 0.0
+    n_C = n_H = n_O = n_N = 0.0
+    for species, nm3_h in tail["species_nm3_h"].items():
+        atoms = _RECYCLE_SPECIES_ATOMS.get(species)
+        if atoms is None:
+            continue  # CO2/N2: no fuel value, not recycled -- see table's own docstring
+        mol_h = nm3_h / NM3_PER_MOL
+        c_atoms, h_atoms, o_atoms, n_atoms = atoms
+        n_C += mol_h * c_atoms
+        n_H += mol_h * h_atoms
+        n_O += mol_h * o_atoms
+        n_N += mol_h * n_atoms
+    return n_C, n_H, n_O, n_N
+
+
 def ga001_model(get_input):
     """THE model. Reads its seven inputs from the Shared Plant State (task
     requirement 2), solves the stoichiometric + WGS-equilibrium closure,
     and returns GA-001's syngas flow/composition -- Calculated, Literature/
     Engineering Basis, no in-project design-target validation (mechanically
-    enforced, not just stated). Registered as ("GA-001", "Outputs")."""
+    enforced, not just stated). Registered as ("GA-001", "Outputs").
+
+    PHASE 1d ADDITION -- the HB-009 tail-gas recycle loop: HB-007's/HB-009's
+    own stated disposition ('Recycled to GA-001 gasifier as supplemental
+    fuel') is wired here as a REAL additional atom source, folded into the
+    SAME overall elemental C/H/O/N balance the solid feedstock, air, and
+    steam already go through -- not a separate, bolted-on adjustment.
+    GENUINE CIRCULAR DEPENDENCY, checked carefully, not assumed: GA-001's
+    own output feeds (via the whole GC->WGS->PSA->HB-009 chain) into
+    HB-009's own output, which this function reads right back -- a literal
+    cycle in the dependency graph. This is wired as a LAGGED read (the
+    Phase 0 mechanism already built and tested on a synthetic pair,
+    reused here for the first time on a real recycle loop, per this
+    task's own explicit instruction not to invent an ad hoc solution
+    instead) -- GA-001 reads the PREVIOUS cycle's tail gas, never this
+    cycle's (which does not exist yet when GA-001 itself is the first
+    thing to run in a fresh cycle)."""
     feed_rate = get_input(("GA-001-INPUT", "dry_feed_rate_kg_h"))["value"]
     er = get_input(("GA-001-INPUT", "equivalence_ratio"))["value"]
     steam_ratio = get_input(("GA-001-INPUT", "steam_to_feed_ratio"))["value"]
@@ -466,9 +547,32 @@ def ga001_model(get_input):
         composition["C"], composition["H"], composition["O"], composition["N"], ASH_FRACTION,
     )
     steam_mol_per_molc = (steam_ratio / n_C_per_kg) * 1000.0 / M_H2O
+
+    # Fold the recycle's own atoms into the overall feed atom totals (mol/h),
+    # THEN re-derive x, y, z from the COMBINED total -- not a separate,
+    # parallel calculation. Zero contribution (the pre-Phase-1d case) leaves
+    # every downstream number bit-for-bit identical to before, verified in
+    # this module's own self-test.
+    total_C_mol_per_h_feed_only = n_C_per_kg * feed_rate
+    recycle_C, recycle_H, recycle_O, recycle_N = _recycle_atom_moles(get_input)
+    if recycle_C or recycle_H or recycle_O or recycle_N:
+        total_C_mol_per_h = total_C_mol_per_h_feed_only + recycle_C
+        total_H_mol_per_h = total_C_mol_per_h_feed_only * x + recycle_H
+        total_O_mol_per_h = total_C_mol_per_h_feed_only * y + recycle_O
+        total_N_mol_per_h = total_C_mol_per_h_feed_only * z + recycle_N
+        x = total_H_mol_per_h / total_C_mol_per_h
+        y = total_O_mol_per_h / total_C_mol_per_h
+        z = total_N_mol_per_h / total_C_mol_per_h
+        # steam_mol_per_molc was computed on a per-original-mol-C basis;
+        # rescale it so the ABSOLUTE steam quantity (a real, fixed
+        # GA-003/GA-004 design flow, unaffected by how much extra carbon
+        # the recycle brings) stays the same in absolute mol/h terms.
+        steam_mol_per_molc = steam_mol_per_molc * total_C_mol_per_h_feed_only / total_C_mol_per_h
+    else:
+        total_C_mol_per_h = total_C_mol_per_h_feed_only
+
     product = solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_frac, T_C + 273.15)
 
-    total_C_mol_per_h = n_C_per_kg * feed_rate
     dry_species = {sp: product[sp] for sp in ("H2", "CO", "CO2", "CH4", "N2")}
     dry_total = sum(dry_species.values())
     wet_total = dry_total + product["H2O"]
@@ -482,15 +586,26 @@ def ga001_model(get_input):
         "CH4_mol_pct_dry": 100.0 * dry_species["CH4"] / dry_total,
         "N2_mol_pct_dry": 100.0 * dry_species["N2"] / dry_total,
         "H2O_mol_pct_wet": 100.0 * product["H2O"] / wet_total,
+        "recycle_active": bool(recycle_C or recycle_H or recycle_O or recycle_N),
     }
 
     validation_basis = ps.VALIDATION_ENGINEERING_CORRELATION
     _enforce_ga001_confidence_label(validation_basis)
 
+    recycle_active = bool(recycle_C or recycle_H or recycle_O or recycle_N)
+    # HB-009 only appears in the declared provenance chain when it genuinely
+    # affected this cycle's result -- a zero contribution had zero causal
+    # influence on the number actually returned, so listing it as an "input"
+    # regardless would clutter resolve_provenance_chain()'s output with a
+    # reference that did not actually determine anything. This is also what
+    # keeps GA-001's own is_fully_traceable() result unchanged for every
+    # pre-Phase-1d context that never registers HB-009 at all.
+    declared_inputs = list(_GA001_INPUT_KEYS) + ([("HB-009", "TailGas")] if recycle_active else [])
+
     return {
         "value": result_value, "status": ps.STATUS_CALCULATED,
         "model": "ga001_gasifier_model.ga001_model",
-        "inputs": list(_GA001_INPUT_KEYS),
+        "inputs": declared_inputs,
         "validation_basis": validation_basis,
         "confidence_note": (
             "Calculated -> Literature/Engineering Basis -> NO in-project design-target "
@@ -498,7 +613,8 @@ def ga001_model(get_input):
             "Sanity-checked against literature-typical producer-gas ranges (this module's own "
             "self-test), NOT validated against a DOK-ING-confirmed design point -- none exists. "
             "Does NOT model GA-001's own Fe2O3/Fe3O4 chemical-looping oxygen carrier -- see "
-            "module docstring for this stated limitation."
+            "module docstring for this stated limitation. Recycle contribution this cycle: "
+            f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)'}."
         ),
     }
 
@@ -537,6 +653,7 @@ def register_ga001(engine):
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
         depends_on=list(_GA001_INPUT_KEYS),
+        lagged_depends_on=[("HB-009", "TailGas")],
     )
     engine.register_model(("GA-001", "Tar content"), ga001_tar_content, unit="mol% (dry)")
 

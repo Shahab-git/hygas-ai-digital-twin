@@ -356,32 +356,69 @@ def hb006_psa_recovery(get_input):
 # ============================================================================
 
 def hb009_tail_gas(get_input):
-    """Real mass balance: tail-gas flow = feed - product; tail-gas H2
-    content from H2 mass conservation (H2 in tail = H2 fed - H2
-    recovered). NOT wired back to GA-001 in this phase (HB-007's/HB-009's
-    own stated 'recycled to GA-001' disposition stays a real, documented,
-    but explicitly NOT-YET-CLOSED feedback loop -- Phase 2+ work)."""
-    psa_result = get_input(("HB-006", "PSA"))["value"]
+    """Real mass balance, PER SPECIES (task requirement 1's Phase 1d
+    recycle needs the full tail-gas composition, not just an aggregate
+    flow, to fold real C/H/O/N atoms back into GA-001's own balance).
+    PSA product modeled as ~pure H2 (HB-006's own Confirmed 99.97% purity
+    target -- a defensible simplification at that purity level) -- CO2/
+    CH4/CO/N2 pass 100% to tail; H2 splits feed*(1-recovery) to tail.
+
+    BUG FOUND AND FIXED while extending this function for Phase 1d: this
+    function's own Phase 1c version used GC-013's PRE-WGS dry flow
+    directly as the PSA feed flow. The WGS reaction (CO+H2O->CO2+H2) NET
+    INCREASES dry-gas moles (consuming non-dry-counted steam to produce
+    two dry-counted products per one dry-counted reactant consumed) -- so
+    the real post-WGS dry flow differs from GC-013's own pre-WGS figure.
+    Corrected here by scaling GC-013's flow by the WGS Composition's own
+    net dry-mole-count change, not a new assumption -- both quantities
+    were already being computed elsewhere, just never connected."""
+    wgs = get_input(("WGS", "Composition"))["value"]
     gc013 = get_input(("GC-013", "Gas"))["value"]
-    feed_flow_nm3_h = gc013["dry_flow_nm3_h"]
-    h2_feed_nm3_h = feed_flow_nm3_h * psa_result["y_H2"]
-    h2_recovered_nm3_h = h2_feed_nm3_h * psa_result["recovery"]
-    product_flow_nm3_h = h2_recovered_nm3_h  # PSA product taken as ~pure H2
-    tail_flow_nm3_h = feed_flow_nm3_h - product_flow_nm3_h
-    h2_in_tail_nm3_h = h2_feed_nm3_h - h2_recovered_nm3_h
-    tail_h2_fraction = h2_in_tail_nm3_h / tail_flow_nm3_h if tail_flow_nm3_h > 0 else 0.0
+    psa_result = get_input(("HB-006", "PSA"))["value"]
+
+    # wgs_full_composition()'s own docstring: its CO/H2/CO2/CH4/N2 values
+    # are mole FRACTIONS of the ORIGINAL pre-WGS 100-unit dry-gas-
+    # equivalent basis (i.e. gc013's own dry mole percentages / 100, NOT
+    # renormalized post-reaction) -- so their sum, dry_total_new, is
+    # ALREADY the correct multiplier against gc013["dry_flow_nm3_h"]
+    # directly (it equals 1.0 + co_consumed_total, not ~100 -- dividing by
+    # 100 here would be double-counting the /100 that module already did).
+    dry_total_new = wgs["CO"] + wgs["H2"] + wgs["CO2"] + wgs["CH4"] + wgs["N2"]
+    scale_factor = dry_total_new
+    feed_flow_nm3_h = gc013["dry_flow_nm3_h"] * scale_factor
+
+    feed_species_nm3_h = {
+        "CO": feed_flow_nm3_h * psa_result["y_CO"], "H2": feed_flow_nm3_h * psa_result["y_H2"],
+        "CO2": feed_flow_nm3_h * psa_result["y_CO2"], "CH4": feed_flow_nm3_h * psa_result["y_CH4"],
+        "N2": feed_flow_nm3_h * psa_result["y_N2"],
+    }
+    h2_recovered_nm3_h = feed_species_nm3_h["H2"] * psa_result["recovery"]
+    product_flow_nm3_h = h2_recovered_nm3_h
+
+    tail_species_nm3_h = {
+        "CO": feed_species_nm3_h["CO"], "CO2": feed_species_nm3_h["CO2"],
+        "CH4": feed_species_nm3_h["CH4"], "N2": feed_species_nm3_h["N2"],
+        "H2": feed_species_nm3_h["H2"] - h2_recovered_nm3_h,
+    }
+    tail_flow_nm3_h = sum(tail_species_nm3_h.values())
+    tail_h2_fraction = tail_species_nm3_h["H2"] / tail_flow_nm3_h if tail_flow_nm3_h > 0 else 0.0
+
     return {
-        "value": {"tail_flow_nm3_h": tail_flow_nm3_h, "tail_h2_fraction": tail_h2_fraction,
-                   "product_flow_nm3_h": product_flow_nm3_h},
+        "value": {
+            "tail_flow_nm3_h": tail_flow_nm3_h, "tail_h2_fraction": tail_h2_fraction,
+            "product_flow_nm3_h": product_flow_nm3_h, "species_nm3_h": tail_species_nm3_h,
+        },
         "status": ps.STATUS_CALCULATED,
         "model": "hb_wgs_psa_storage_chain.hb009_tail_gas",
-        "inputs": [("HB-006", "PSA"), ("GC-013", "Gas")],
+        "inputs": [("HB-006", "PSA"), ("GC-013", "Gas"), ("WGS", "Composition")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Mass balance: tail = feed({feed_flow_nm3_h:.2f}) - product({product_flow_nm3_h:.2f}) "
-            f"= {tail_flow_nm3_h:.2f} Nm3/h. NOT recycled back to GA-001 in this phase -- HB-007's/"
-            f"HB-009's own stated disposition ('recycled to GA-001 as supplemental fuel') stays a "
-            f"real, documented, explicitly NOT-YET-CLOSED feedback loop."
+            f"Feed flow scaled by the WGS reaction's own net dry-mole change "
+            f"({scale_factor:.4f}x GC-013's pre-WGS dry flow) -- see this function's own "
+            f"docstring for the bug this corrects. Tail = {tail_flow_nm3_h:.2f} Nm3/h, "
+            f"per-species: {tail_species_nm3_h}. NOW WIRED to GA-001 as a real recycle input "
+            f"(Phase 1d, lagged -- see ga001_gasifier_model.py's own docstring addendum), "
+            f"superseding this function's earlier Phase 1c note that it stayed unwired."
         ),
     }
 
@@ -431,25 +468,65 @@ def hb013_storage_level(get_input):
     Lagged self-dependency (the same real, generic Phase 0 mechanism
     proven on a synthetic pair, now used on a real item for the first
     time) -- bootstraps at 0 kg on the first cycle, an honest, stated
-    modeling choice (module docstring)."""
+    modeling choice (module docstring).
+
+    PHASE 1d ADDITIONS, both lagged and both gracefully defaulting to zero
+    when the source isn't registered/hasn't produced a value yet -- this
+    is what keeps this function's own Phase 1c self-test (which registers
+    neither HB-011 nor HB-018) working completely unchanged:
+      - a second inflow from HB-011 (Electrolyser), reading its PREVIOUS
+        cycle's H2 output (lagged for the same reason HB-012's own inflow
+        doesn't need to be: HB-011 is a parallel, independent H2 source
+        feeding the SAME shared vessel, not a same-cycle chain link off
+        GA-001 -- lagging it avoids forcing an arbitrary same-cycle
+        ordering between two otherwise-independent producers);
+      - an outflow to HB-018 (Dispensing), reading its PREVIOUS cycle's
+        dispensed amount (necessarily lagged: HB-018 itself reads HB-013's
+        level to decide how much it CAN dispense this cycle -- a genuine
+        mutual pair, same Phase 0 mechanism, not an ad hoc one)."""
     compressor = get_input(("HB-012", "Compressor"))["value"]
     prev = get_input(("HB-013", "Storage"))  # lagged, self
     prev_level = 0.0 if prev["status"] == ps.STATUS_MISSING else prev["value"]["level_kg"]
-    inflow_kg_h = compressor["h2_kg_h"]
-    new_level = min(prev_level + inflow_kg_h * ASSUMED_HOURS_PER_CYCLE, H2_STORAGE_CAPACITY_KG)
+
+    electrolyser = get_input(("HB-011", "Electrolyser"))  # lagged
+    electrolyser_inflow_kg_h = (
+        0.0 if electrolyser["status"] == ps.STATUS_MISSING else electrolyser["value"]["h2_kg_h"]
+    )
+    dispensing = get_input(("HB-018", "Dispensing"))  # lagged
+    outflow_kg_h = (
+        0.0 if dispensing["status"] == ps.STATUS_MISSING else dispensing["value"]["dispensed_kg_h"]
+    )
+
+    inflow_kg_h = compressor["h2_kg_h"] + electrolyser_inflow_kg_h
+    net_kg = (inflow_kg_h - outflow_kg_h) * ASSUMED_HOURS_PER_CYCLE
+    new_level = min(max(prev_level + net_kg, 0.0), H2_STORAGE_CAPACITY_KG)
+
+    # Same discipline as GA-001's own recycle input (ga001_gasifier_model.py's
+    # module docstring addendum): a lagged source only enters the DECLARED
+    # provenance list when it genuinely affected this cycle's number. This is
+    # also what keeps this function's own Phase 1c self-test (neither HB-011
+    # nor HB-018 registered there) is_fully_traceable() unchanged.
+    declared_inputs = [("HB-012", "Compressor"), ("HB-013", "Storage")]
+    if electrolyser["status"] != ps.STATUS_MISSING:
+        declared_inputs.append(("HB-011", "Electrolyser"))
+    if dispensing["status"] != ps.STATUS_MISSING:
+        declared_inputs.append(("HB-018", "Dispensing"))
+
     return {
-        "value": {"level_kg": new_level, "inflow_kg_h": inflow_kg_h,
+        "value": {"level_kg": new_level, "inflow_kg_h": inflow_kg_h, "outflow_kg_h": outflow_kg_h,
                    "fraction_full": new_level / H2_STORAGE_CAPACITY_KG},
         "status": ps.STATUS_CALCULATED,
         "model": "hb_wgs_psa_storage_chain.hb013_storage_level",
-        "inputs": [("HB-012", "Compressor"), ("HB-013", "Storage")],
+        "inputs": declared_inputs,
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"level = prev_level({prev_level:.4f} kg) + inflow({inflow_kg_h:.4f} kg/h) x "
-            f"ASSUMED {ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} "
-            f"kg] (HB-013's own Confirmed capacity). The hours-per-cycle mapping is a stated, "
-            f"explicit modeling choice -- this project's update cycle has no defined wall-clock "
-            f"duration yet."
+            f"level = prev_level({prev_level:.4f} kg) + [inflow(PSA route {compressor['h2_kg_h']:.4f} "
+            f"+ electrolyser route {electrolyser_inflow_kg_h:.4f}) - outflow({outflow_kg_h:.4f})] kg/h "
+            f"x ASSUMED {ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
+            f"(HB-013's own Confirmed capacity). Electrolyser inflow and dispensing outflow both read "
+            f"the PREVIOUS cycle's value (lagged), zero when absent -- see this function's own "
+            f"docstring. The hours-per-cycle mapping is a stated, explicit modeling choice -- this "
+            f"project's update cycle has no defined wall-clock duration yet."
         ),
     }
 
@@ -483,7 +560,8 @@ def register_hb_chain(engine):
                            depends_on=[("HB-006", "PSA"), ("HB-009", "TailGas")])
     engine.register_model(
         ("HB-013", "Storage"), hb013_storage_level, unit="kg dict",
-        depends_on=[("HB-012", "Compressor")], lagged_depends_on=[("HB-013", "Storage")],
+        depends_on=[("HB-012", "Compressor")],
+        lagged_depends_on=[("HB-013", "Storage"), ("HB-011", "Electrolyser"), ("HB-018", "Dispensing")],
     )
 
 
@@ -594,31 +672,44 @@ if __name__ == "__main__":
           f"~2.083 kg/h -- a real, unforced, unprompted cross-check: this independently-derived "
           f"rate lands within ~5% of DOK-ING's own real production target, not tuned to match it)")
 
-    print("\n=== H2 storage level over 24 cycles ('1 day', ASSUMED_HOURS_PER_CYCLE=1.0), ER=0.25 ===")
-    snap_25 = _run_full_chain(0.25, n_cycles=24)
+    # Phase 1d's own HB-009->GA-001 recycle loop (see ga001_gasifier_model.py's
+    # own docstring addendum) genuinely raises the converged H2 production rate
+    # -- recycled CO/H2/CH4 fuel value gets re-processed through the SAME
+    # steam-rich equilibrium, a real, expected effect, not a bug (see this
+    # module's own commit history for the "no physically valid root" divergence
+    # found and fixed by excluding non-fuel CO2/N2 from the recycle fold).
+    # Because that rate is now substantially higher than Phase 1c's own
+    # (pre-recycle) figures, 24 cycles now saturates HB-013's 50 kg capacity at
+    # BOTH ER points -- no longer useful for a propagation proof (a clamped
+    # value can't show a numeric difference against another clamped value).
+    # Shortened to 8 cycles here, well below saturation at either ER point, to
+    # keep this check meaningful instead of hard-coding a stale window.
+    N_PROPAGATION_CYCLES = 8
+    print(f"\n=== H2 storage level over {N_PROPAGATION_CYCLES} cycles, ER=0.25 ===")
+    snap_25 = _run_full_chain(0.25, n_cycles=N_PROPAGATION_CYCLES)
     level_25 = snap_25[("HB-013", "Storage")]["value"]["level_kg"]
     rate_25 = snap_25[("HB-013", "Storage")]["value"]["inflow_kg_h"]
-    print(f"  HB-013 storage level after 24 cycles at ER=0.25: {level_25:.4f} kg "
+    print(f"  HB-013 storage level after {N_PROPAGATION_CYCLES} cycles at ER=0.25: {level_25:.4f} kg "
           f"({snap_25[('HB-013','Storage')]['value']['fraction_full']*100:.2f}% of {H2_STORAGE_CAPACITY_KG} kg capacity)")
-    print(f"  Underlying inflow rate at ER=0.25: {rate_25:.4f} kg/h -- the tank (sized by DOK-ING for "
-          f"'roughly one day's production') clamps at its own 50 kg capacity within the 24-cycle window "
-          f"because this rate x 24h = {rate_25*24:.2f} kg slightly exceeds 50 kg -- consistent with the "
-          f"vessel's own stated sizing intent, not a modeling error (see the cross-check above).")
+    print(f"  Underlying inflow rate (final cycle) at ER=0.25: {rate_25:.4f} kg/h.")
 
-    print("\n=== H2 storage level over 24 cycles, ER=0.35 (task requirement 6's real proof) ===")
-    snap_35 = _run_full_chain(0.35, n_cycles=24)
+    print(f"\n=== H2 storage level over {N_PROPAGATION_CYCLES} cycles, ER=0.35 (task requirement 6's real proof) ===")
+    snap_35 = _run_full_chain(0.35, n_cycles=N_PROPAGATION_CYCLES)
     level_35 = snap_35[("HB-013", "Storage")]["value"]["level_kg"]
     rate_35 = snap_35[("HB-013", "Storage")]["value"]["inflow_kg_h"]
-    print(f"  HB-013 storage level after 24 cycles at ER=0.35: {level_35:.4f} kg "
+    print(f"  HB-013 storage level after {N_PROPAGATION_CYCLES} cycles at ER=0.35: {level_35:.4f} kg "
           f"({snap_35[('HB-013','Storage')]['value']['fraction_full']*100:.2f}% of {H2_STORAGE_CAPACITY_KG} kg capacity)")
-    print(f"  Underlying inflow rate at ER=0.35: {rate_35:.4f} kg/h ({rate_35*24:.2f} kg/day) -- "
-          f"stays below the 50 kg cap over the same 24-cycle window, unlike ER=0.25 above.")
+    print(f"  Underlying inflow rate (final cycle) at ER=0.35: {rate_35:.4f} kg/h.")
 
     print(f"\n  SUMMARY -- GC-013 H2 mol%: ER=0.25 -> {snap_25[('GC-013','Gas')]['value']['H2_mol_pct_dry']:.3f}%  "
           f"ER=0.35 -> {snap_35[('GC-013','Gas')]['value']['H2_mol_pct_dry']:.3f}%")
     print(f"  SUMMARY -- H2 production rate: ER=0.25 -> {rate_25:.4f} kg/h   ER=0.35 -> {rate_35:.4f} kg/h")
-    print(f"  SUMMARY -- HB-013 level after 24 cycles: ER=0.25 -> {level_25:.4f} kg (capacity-clamped)   "
-          f"ER=0.35 -> {level_35:.4f} kg (not clamped)")
+    print(f"  SUMMARY -- HB-013 level after {N_PROPAGATION_CYCLES} cycles: ER=0.25 -> {level_25:.4f} kg   "
+          f"ER=0.35 -> {level_35:.4f} kg")
+    assert level_25 < H2_STORAGE_CAPACITY_KG - 1e-6 and level_35 < H2_STORAGE_CAPACITY_KG - 1e-6, (
+        "Test setup issue: this shortened window still saturates HB-013's capacity at one or both ER "
+        "points -- shorten N_PROPAGATION_CYCLES further; a clamped value cannot prove propagation."
+    )
     assert abs(level_25 - level_35) > 1e-6, (
         "REGRESSION: changing GA-001's ER did not visibly change HB-013's own final storage level -- "
         "end-to-end sequential propagation from gasifier to H2 storage is not actually working."
