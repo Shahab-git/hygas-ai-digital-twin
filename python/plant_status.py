@@ -137,10 +137,11 @@ def validate_entry_shape(key, entry):
         raise ValueError(f"{key!r}: source must be a dict with 'model' and 'inputs' keys.")
     if not isinstance(source["inputs"], (list, tuple)):
         raise ValueError(f"{key!r}: source['inputs'] must be a list/tuple of keys.")
-    if status in (STATUS_CALCULATED,) and source["model"] is None:
+    if status in (STATUS_CALCULATED, STATUS_ESTIMATED) and source["model"] is None:
         raise ValueError(
-            f"{key!r}: status=Calculated but source['model'] is None -- a Calculated value "
-            f"must always name the model/function that produced it (Input -> Model -> "
+            f"{key!r}: status={status} but source['model'] is None -- every Calculated or "
+            f"Estimated value must always name the model/function (or, for an Estimated value, "
+            f"the estimate-producing source) that produced it (Input -> Model -> "
             f"Equation/Correlation -> Output)."
         )
 
@@ -259,6 +260,16 @@ if __name__ == "__main__":
     try:
         validate_entry_shape(("TEST-006", "Inputs"), bad4)
         raise AssertionError("REGRESSION: a Calculated entry with no model was NOT rejected.")
+    except ValueError as e:
+        print(f"PASSED -- correctly rejected: {e}")
+
+    print("\n=== validate_entry_shape: REJECTS an Estimated entry with no model named ===")
+    bad5 = dict(good_measured)
+    bad5["status"] = STATUS_ESTIMATED
+    bad5["source"] = {"model": None, "inputs": []}
+    try:
+        validate_entry_shape(("TEST-007", "Inputs"), bad5)
+        raise AssertionError("REGRESSION: an Estimated entry with no model was NOT rejected.")
     except ValueError as e:
         print(f"PASSED -- correctly rejected: {e}")
 
