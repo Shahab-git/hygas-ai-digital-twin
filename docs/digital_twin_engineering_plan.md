@@ -9,7 +9,57 @@ demo** into a **coordinated, online engineering simulation** where every tab pro
 real operational results from real equipment models, those models interact through
 the actual process dependencies, and Tab 1 (currently "Digital Twin Status") becomes
 the genuine integrated output of that coordination rather than a grab-bag of 20
-unrelated sections.
+unrelated sections. **The target is not "91 equipment cards displaying live
+numbers"** — it is a coordinated simulation where every item gets the representation
+appropriate to its actual nature (physics model, engineering calculation, mass/energy
+balance, logic/state model, virtual sensor, infrastructure/connectivity state, or an
+honest `Missing / Cannot Calculate`), each tab produces its own real operational
+result from that, and Tab 1 presents the integrated plant-level result of all of it
+coordinated together — never physics equations forced onto equipment where physics
+is not the correct abstraction.
+
+## Decisions log (recorded after review — this document has been updated to reflect these)
+
+Three architectural decisions were made after reviewing this plan's Section 10 open
+questions and the 73-item classification derived from it. Each is applied throughout
+the document below, not just noted here; this log exists so the document is
+self-consistent to a reader who starts here rather than at Section 10.
+
+1. **Open Question 1 (Section 10, item 9) is RESOLVED: build GA-001 now**, as a
+   genuine literature-grounded engineering model, not deferred. Non-negotiable
+   condition attached to this decision: GA-001's outputs must never be presented as
+   validated against DOK-ING design data, because no in-project design target
+   currently exists for it — every value it produces is traceable as `Calculated →
+   Literature/Engineering Basis → No in-project design-target validation`, a status
+   distinct from, and weaker than, every other Tier 1 model's `Calculated →
+   Engineering Basis → Design-target validated`. See Section 2.2 (updated) and
+   Section 9 (which already defines these as its general four validation classes)
+   for the full distinction between literature-grounded calculation,
+   engineering-correlation validation, internal mass/energy consistency, DOK-ING
+   design-target validation, and future real-plant validation
+   — five genuinely different things this plan does not allow to blur into one
+   another.
+2. **Open Question 2 (Section 10, item 10) is RESOLVED: automated enforcement**,
+   wherever practical, for the five-way status framework and the
+   `Input → Model → Equation/Correlation → Output` traceability chain — not
+   documentation convention alone. See Section 8 (updated).
+3. **AI-013 is reframed, based on evidence already in this plan's own Section 2.7
+   row for it, not a new assumption:** AI-013 does NOT duplicate the Central
+   Simulation/Digital Twin Engine (Section 6) — it is the **AI/Optimization/
+   Intelligence Layer**, a consumer that reads the Shared Plant State the way
+   `optimizer.py`, `predictive_maintenance.py`, and the rest of Section 2.8's
+   modules already do, not the engine that produces that state. This is a
+   correction to the previous draft's own framing ("this item IS Tab 1's own
+   role"), made because the plan's own registry data for AI-013 supports it more
+   strongly than the framing it replaces — see Section 6.0 (new) for the full
+   reasoning and the evidence that changed this.
+
+Additionally, two documentation issues flagged during review are resolved explicitly
+below, not silently: the AI-007/AI-011 tier contradiction between Section 2.7 and the
+old Section 5 Tier 5 paragraph (resolved in Section 5, using Section 2.7 as
+authoritative, per instruction), and FE-002/HB-010/HB-014/HB-016's dual
+Calculated-and-Missing nature is made explicit in their own rows (Sections 2.1, 2.5)
+rather than left as a footnote-level caveat.
 
 **The one rule that governs every section below, restated because it is the point of
 the whole exercise:** every proposed calculated output must trace as
@@ -317,7 +367,7 @@ almost every needed input is already Confirmed in the registry.
 | ID | Name | C/E/M | Model type | Key inputs | Equation/basis | Outputs → feeds | Tier |
 |---|---|---|---|---|---|---|---|
 | FE-001 | MSW Receiving Hopper | C-M-C-C-C-M | Engineering calc | Confirmed hopper capacity (2 t / 1.7 t usable), confirmed discharge opening, downstream draw rate (FE-003) | Inventory mass balance: `level(t+dt) = level(t) + inflow·dt − outflow(FE-003)·dt`, clamped to [0, 1.7 t] | Feedstock buffer level → gates FE-003's state (starved if level=0) | T3 |
-| FE-002 | Magnetic & Eddy Current Separator | C-M-C-M-E-C | Logic/state (mass pass-through) + **Not modelable** for reject rate | FE-001 outflow | Mass out ≈ mass in (already-established recategorization finding: no distinct Outputs concept). Reject/tramp-metal mass fraction: **not modelable** — needs a feedstock tramp-metal content this project has no source for (already declined in `equipment_engineering_estimates.py` for the identical reason) | Feed mass (unchanged) → FE-003 | T3 |
+| FE-002 | Magnetic & Eddy Current Separator | C-M-C-M-E-C | **Dual: Logic/state (Calculated) for mass pass-through, Missing/Cannot Calculate for reject rate — deliberately not forced into one bucket** | FE-001 outflow | Mass out ≈ mass in (already-established recategorization finding: no distinct Outputs concept) — this half is genuinely **Calculated**, every cycle. Reject/tramp-metal mass fraction is separately, permanently `Missing / Cannot Calculate` — needs a feedstock tramp-metal content this project has no source for (already declined in `equipment_engineering_estimates.py` for the identical reason; carried forward in Section 10, limitation 5). One equipment item, two independently-tracked output statuses — see Section 8.1's per-VALUE (not per-item) status principle | Feed mass (unchanged, Calculated) → FE-003; reject rate stays Missing, propagated as such, never estimated | T3 |
 | FE-003 | Weighing Conveyor | C-M-C-C-E-M | Logic/state (pass-through + measurement) | FE-002 outflow | Mass out = mass in (own confirmed "Nominal feed rate" IS both). This is the plant's real feed-rate SETPOINT/measurement point | Feed rate (kg/h) → FE-004, and → GA-001 as the gasifier's dry-feed-equivalent input | T3 |
 | FE-004 | Shredder / Size Reducer | C-C-C-M-E-E | Logic/state (pass-through) + Engineering calc (power) | FE-003 feed rate; confirmed drive motor power | Mass out = mass in (no chemical change). Specific energy = motor power / throughput (already exact-calculated: 150 kWh/tonne) | Shredded feed mass (unchanged) → FE-005; specific-energy KPI → Tab-level Feed Handling KPI | T3 |
 | FE-005 | Feed Dryer (Rotary/Belt) | C-C-C-M-C-E | **Engineering calc** | FE-004 outflow; confirmed inlet moisture (10%) and outlet moisture target (<1%) | Moisture mass balance (the same relationship FE-007's existing static fill used, made LIVE): dry-solids mass = feed × (1 − moisture_in); outlet wet mass = dry-solids mass / (1 − moisture_out); evaporation load = feed − outlet wet mass | Post-drying feed mass, evaporation duty (kg/h water, a real thermal-utility demand) → FE-006, FE-007, and → EU thermal balance as a heat consumer | T3 |
@@ -346,9 +396,48 @@ syngas yield (Nm³ per kg feed) from feed composition and gasifier operating
 conditions — and every single downstream item in GC and HB depends on exactly that
 number. This is Section 5's #1 priority for exactly this reason.
 
+**DECISION (see Decisions log): build GA-001 now.** The choice Section 10's original
+open question 9 left unresolved — build it now accepting its validation limitation,
+or defer it and feed GC/HB a manually-supplied placeholder — is resolved: build it
+now. The non-negotiable condition attached to that decision governs everything below:
+GA-001's outputs are never presented as validated against DOK-ING design data, because
+no such data exists in this project. Every GA-001 output carries the status
+`Calculated → Literature/Engineering Basis → No in-project design-target validation`,
+distinct from — and explicitly weaker than — the `Calculated → Engineering Basis →
+Design-target validated` status every other Tier 1 model in this plan carries. Five
+genuinely different things, not to be blurred into one another (Section 9 formalizes
+the same five as this plan's general validation-class taxonomy; GA-001 is the one
+item in the whole plan that only ever reaches classes 1-3 of the five, never 4), all
+of which apply to GA-001 at different stages of its life:
+1. **Literature-grounded calculation** — the model runs, using a real, citable
+   correlation (below), on whatever inputs are live.
+2. **Engineering-correlation validation** — the correlation itself is a real, standard
+   one (stoichiometry + simplified equilibrium/yield), citable to a real reference
+   (e.g. Basu), but that only validates the METHOD, not that this specific
+   plant's numbers are correct.
+3. **Internal mass/energy consistency** — the model's own outputs close a mass/energy
+   balance (carbon in = carbon out across gas+char+tar, etc.) — a real, automatable
+   check (Section 9's own "Mass/energy balance closure" validation class), but one
+   that would pass even for a wrong-but-internally-consistent set of assumptions.
+4. **DOK-ING design-target validation** — reproducing a real, DOK-ING-confirmed
+   design-point number exactly, the way `kinetics.py`/`psa.py` already do. **GA-001
+   cannot claim this today, and this plan does not pretend otherwise: no DOK-ING
+   gasifier performance data exists anywhere in this project to validate against.**
+5. **Future real-plant validation** — once DOK-ING provides real gasifier performance
+   data (Section 10, limitation 1), GA-001's literature-grounded correlation
+   parameters get RECALIBRATED against it, the same `confirmation_loop.py`-style
+   promotion pattern (Section 1.4) already used for `uncertainty.py`'s six
+   assumptions — a real value replaces an assumed one, in place, with every
+   downstream consumer picking it up automatically, **without redesigning GA-001
+   itself, any GC/HB model downstream of it, the Shared Plant State, or any Tab.**
+   This is possible specifically because GA-001's inputs/outputs are accessed by
+   every consumer through the one named-getter discipline Section 8.3 already
+   requires — recalibrating what happens INSIDE `gasifier_correlation()` never
+   requires changing what calls it.
+
 | ID | Name | C/E/M | Model type | Key inputs | Equation/basis | Outputs → feeds | Tier |
 |---|---|---|---|---|---|---|---|
-| GA-001 | Gasifier Vessel (Reactor) | C-M-C-C-C-C | **Engineering calc** (new — the critical gap) | FE-008 dry feed rate; GA-003/004 air+steam flow/temp; an assumed/literature carbon-conversion efficiency and a stoichiometric or simplified-equilibrium product-gas model | A real, citable, but NOT-yet-built model: air-blown/steam gasification stoichiometry with an assumed carbon-conversion efficiency (literature range, e.g. Basu, *Biomass Gasification, Pyrolysis and Torrefaction*) combined with a simplified thermodynamic-equilibrium or empirical yield correlation for H2/CO/CO2/CH4 split as a function of equivalence ratio (ER, already used elsewhere in this project at 0.25) and temperature. **Honestly flagged: this model would have no in-project calibration point the way `kinetics.py`/`psa.py` have a stated design target to reproduce exactly — it would be a literature-grounded estimate, not a validated design match, until DOK-ING provides real gasifier performance data.** | Syngas flow (Nm³/h) + composition (H2/CO/CO2/CH4/tar/H2O mole %) → **GC-001 (first item with a real gas stream to clean)**; char/ash split → GA-005 | T1 (highest priority, hardest lift) |
+| GA-001 | Gasifier Vessel (Reactor) | C-M-C-C-C-C | **Engineering calc — APPROVED TO BUILD NOW** (new — the critical gap) | FE-008 dry feed rate; GA-003/004 air+steam flow/temp; an assumed/literature carbon-conversion efficiency and a stoichiometric or simplified-equilibrium product-gas model | A real, citable model: air-blown/steam gasification stoichiometry with an assumed carbon-conversion efficiency (literature range, e.g. Basu, *Biomass Gasification, Pyrolysis and Torrefaction*) combined with a simplified thermodynamic-equilibrium or empirical yield correlation for H2/CO/CO2/CH4 split as a function of equivalence ratio (ER, already used elsewhere in this project at 0.25) and temperature. **Status: `Calculated → Literature/Engineering Basis → No in-project design-target validation`, never presented as DOK-ING-validated — this model has no in-project calibration point the way `kinetics.py`/`psa.py` have a stated design target to reproduce exactly, and stays that way until DOK-ING provides real gasifier performance data (Section 10, limitation 1), at which point it is recalibrated in place without touching any downstream model.** | Syngas flow (Nm³/h) + composition (H2/CO/CO2/CH4/tar/H2O mole %) → **GC-001 (first item with a real gas stream to clean)**; char/ash split → GA-005 | T1 (highest priority, hardest lift) |
 | GA-002 | Gasifier Vessel (Pressure) | M-M-C-C-C-M | Logic/state (shared-equipment sub-item) | GA-001's operating pressure | No distinct model — this is the pressure/instrumentation aspect of the SAME physical vessel GA-001 already covers (established shared-equipment pattern, same as GC-002/GC-014 etc.) | Bed pressure (feeds AI-003's virtual sensor reading) | T4 |
 | GA-003 | Air/Steam Injection (Flow) | C-M-C-C-M-M | Logic/state (pass-through) | Confirmed air/steam design flow, ER=0.25 | Flow delivered = flow set (this is an operator/control setpoint, not a computed quantity) | Air+steam flow → GA-001 as a real reactant input | T3 |
 | GA-004 | Air/Steam Injection (Temp) | M-M-C-C-M-M | Logic/state (shared-equipment sub-item) | GA-003's own confirmed temperature setpoints | Same shared-equipment reasoning as GA-002 | Air/steam temperature → GA-001 | T4 |
@@ -470,13 +559,13 @@ electrolyser path, and a parallel LOHC carrier-storage path.
 | HB-007 | PSA Unit (H₂ Recovery) | C-C-C-M-M-C | Physics (shared-equipment sub-item of HB-006) | Same as HB-006 | Same `psa.psa_recovery()` call | H2 recovery % → Tab KPI, → HB-014 (LOHC feed, IF the confirmed split fraction is ever established — currently correctly declined) | T1 |
 | HB-008 | PSA Unit (Pressure) | M-M-C-C-C-M | Logic/state (shared-equipment sub-item of HB-006) | HB-006's own operating pressure | Same shared-equipment reasoning as GA-002/GC-002 | Adsorption/purge pressure → Tab KPI | T4 |
 | HB-009 | PSA Tail Gas Handler | C-M-C-C-E-M | **Engineering calc** | HB-006/007's feed flow and recovery fraction | Mass balance: tail-gas flow = feed flow × (1 − recovery) | Tail gas → EU-007 (Flare) or EU-003/004 (CHP fuel supplement) | T1 |
-| HB-010 | Membrane Separator | C-C-C-M-C-C | **Engineering calc**, limited — see 10.2 | A stated permeance/selectivity figure, IF one becomes available | A simplified permeation-based recovery correlation is the honest ceiling; a rigorous solution-diffusion membrane model needs real membrane spec data this project does not have (**flagged, not fabricated**) | Purified H2 stream (parallel/alternative path to HB-006..008) | T3 |
+| HB-010 | Membrane Separator | C-C-C-M-C-C | **Dual: Missing/Cannot Calculate for recovery/purity (blocked), Logic/state (Calculated) for pass-through flow accounting** | A stated permeance/selectivity figure — **not currently available; this is the blocking input, not a design choice** | No recovery/purity number is calculated at all until a real membrane permeance/selectivity figure exists — stays `Missing / Cannot Calculate`, explicitly, not a placeholder value. What IS calculable without it: this item still participates in the plant's mass-balance accounting (flow in = flow through, pending the missing split) so the rest of the Shared Plant State doesn't stall waiting on this one item. See Section 10, limitation 3 | Purified H2 stream (parallel/alternative path to HB-006..008) — Missing until the membrane spec exists | T3 |
 | HB-011 | Electrolyser (Green H₂) — Auxiliary/Optional | E-C-C-M-C-C | **Engineering calc** (new) | Confirmed electrolyser rated power/efficiency; AI-001's weather/renewable-availability signal | Standard electrolyser efficiency-vs-load correlation (kWh/kg H2 vs. load factor — the same "part-load curve" shape as `chp.py`, but for electrolysis; real, citable, e.g. PEM/alkaline electrolyser vendor-curve literature) | H2 output (parallel input) → **HB-013 (shared storage)**, per this item's own confirmed remark | T2 |
 | HB-012 | H₂ Compressor | C-M-C-M-C-E | **Engineering calc** | HB-006 H2 flow; confirmed suction/discharge pressure | Polytropic/isentropic compression work: `W = (n/(n−1))·P1·V1·[(P2/P1)^((n−1)/n) − 1]` — standard, textbook, citable | Compressed H2 flow → HB-013; compressor power → Tab-level electrical-consumption KPI | T1 |
 | HB-013 | H₂ Storage Vessel | C-E-C-C-C-M | **Engineering calc** (a Tab-1-critical KPI) | HB-012 inflow; HB-018/EU-006 outflow; HB-011 parallel inflow; confirmed 875 bar(g) design pressure, volume | Inventory mass balance + real-gas equation of state (compressibility-corrected, not ideal-gas, given >700 bar(g) operating range) for level/pressure from cumulative mass | **H2 storage level — a literal Tab 1 KPI** → HB-018, EU-006 | T1 |
-| HB-014 | LOHC Hydrogenation / Loading Reactor | M-E-C-M-C-C | **Engineering calc**, mass-balance only | H2 flow (IF a confirmed split fraction from HB-007 exists — currently correctly declined); confirmed DBT carrier density | Stoichiometric H2-loading mass balance (already the basis of the existing DBT-density-based fills); **true (de)hydrogenation reaction KINETICS are Not modelable — no catalyst kinetic data exists in this project**, honestly distinct from the mass-balance level | Loaded (rich) LOHC carrier mass → HB-015 | T3 |
-| HB-015 | LOHC Storage Tank (Lean/Rich Oil) | E-E-C-M-C-M | Engineering calc (inventory) | HB-014 inflow, HB-016 outflow | Same inventory pattern as FE-001/GA-007 | Lean/rich carrier levels → HB-016 | T3 |
-| HB-016 | LOHC Dehydrogenation Unit — Aux/Optional | E-E-C-M-C-C | Engineering calc, mass-balance only (same limitation as HB-014) | HB-015 rich-carrier outflow | Same stoichiometric release mass balance | Released H2 → HB-017 | T3 |
+| HB-014 | LOHC Hydrogenation / Loading Reactor | M-E-C-M-C-C | **Dual: Calculated for carrier mass balance (IF its own blocking input is resolved), Missing/Cannot Calculate for reaction kinetics (permanently, absent new data)** | H2 flow — **Missing today: needs a confirmed split fraction from HB-007 that does not exist and is correctly declined, not assumed**; confirmed DBT carrier density | Stoichiometric H2-loading mass balance is Calculated once (and only once) the HB-007 split fraction exists — until then this item's carrier-mass output is ALSO `Missing / Cannot Calculate`, not a partial estimate. **True (de)hydrogenation reaction KINETICS are permanently `Missing / Cannot Calculate` — no catalyst kinetic data exists in this project and none is assumed in its place** (Section 10, limitation 3) | Loaded (rich) LOHC carrier mass → HB-015, Missing until both blockers above clear | T3 |
+| HB-015 | LOHC Storage Tank (Lean/Rich Oil) | E-E-C-M-C-M | Engineering calc (inventory) | HB-014 inflow, HB-016 outflow | Same inventory pattern as FE-001/GA-007 — genuinely Calculated as a MODEL, but its live VALUE stays `Missing / Cannot Calculate` for as long as HB-014's own blocking input does, since it has nothing real to hold an inventory of yet — this is real, honest downstream propagation of a Missing status (Section 6, step 4/5), not this item's own limitation | Lean/rich carrier levels → HB-016 | T3 |
+| HB-016 | LOHC Dehydrogenation Unit — Aux/Optional | E-E-C-M-C-C | **Dual: Calculated for release mass balance (IF fed), Missing/Cannot Calculate for reaction kinetics (permanently)** — same limitation shape as HB-014 | HB-015 rich-carrier outflow (itself Missing until HB-014 clears) | Same stoichiometric release mass balance; same permanent kinetics limitation as HB-014 (Section 10, limitation 3) | Released H2 → HB-017, Missing until the chain above clears | T3 |
 | HB-017 | H₂ Purification (Post-LOHC) | M-M-C-M-C-C | **Engineering calc** | HB-016 released H2 + confirmed purity target | Removal-efficiency-style purification calc, same class as GC's polishing stages | Purified H2 → **HB-013 (re-merges with primary route, per this item's own confirmed remark)** | T3 |
 | HB-018 | H₂ Dispensing Station | M-M-C-M-C-M | Logic/state | HB-013 storage level/pressure | Dispensing limited by min(demand, available storage flow) — a real but simple flow-limiting rule, not a continuous equation | H2 dispensed (mass/time) → Tab KPI (H2 delivered) | T3 |
 
@@ -543,16 +632,18 @@ for operational modeling.
 | AI-010 | Cloud IoT Hub | M-M-C-M-M-M | Logic/state, minimal | Infrastructure | T5 |
 | AI-011 | Time-Series Database | M-M-C-M-M-M | **Logic/state — the real home for Section 6's operational-state log/history** | Where every update cycle's results would be persisted (Section 6, step 12) | T1 (architectural) |
 | AI-012 | AI Model Server (MPC/RL) | M-M-C-M-M-M | **This item IS `optimizer.py`/`dispatch_ga.py`, already real code** | No new model needed — this is a relabeling of existing code onto its own equipment identity | T1 (already exists) |
-| AI-013 | Digital Twin Engine | M-M-C-M-M-M | **This item IS Tab 1's own proposed integrated-state role (Section 7), described from the equipment side** | Not a separate thing to build — Section 7 IS AI-013's model | — (identity, not a build item) |
+| AI-013 | Digital Twin Engine | M-M-C-M-M-M | **REFRAMED (see Decisions log, decision 3): the AI/Optimization/Intelligence Layer — a CONSUMER of the Shared Plant State, not the Central Simulation Engine that produces it** | Not the same thing as Section 6's update-cycle engine, and not a duplicate of it — this item is the equipment-registry-side description of the SAME collection of analytics/optimization modules Section 2.8 already maps (`optimizer.py`, `predictive_maintenance.py`, `root_cause.py`, `pinn_kinetics.py`, `sim_to_real.py`, `federated_learning.py`, `time_series_sim.py`, `tda_analysis.py`, `uncertainty.py`), operating strictly downstream of the Shared Plant State, the same relationship `optimizer.py` already has today. Evidence for this reframing, not an assumption: this item's own confirmed "Twin platform software" parameter names Siemens Xcelerator/MindSphere, Azure Digital Twins, or AVEVA — real commercial products that ingest live plant data and provide analytics/visualization, not control-loop execution engines — consistent with a consumer role, not a producer role. See Section 6.0 for the full responsibility-boundary definition | T1 (architectural — an intelligence-layer consumer, not the engine) |
 | AI-014 | Multi-Module Orchestration Controller | M-M-C-C-M-M | Logic/state (already partial code) | `multi_module_orchestration.py` exists for a hypothetical multi-train scenario; for this ONE real plant with one gasifier train, its real operational content is minimal | T4 |
 | AI-015 | RFNBO Compliance Monitor | M-M-C-M-M-M | Logic/state (already real code) | `compliance.py` + `regulatory_drafting.py` + `confirmation_loop.py`, conditional on HB-011 active | T3 (already exists) |
 
 **Tab-level Automation & Instrumentation result this section can genuinely produce:**
 plant-wide equipment operational-state summary (every other tab's state, aggregated —
 this tab's real job), connectivity/health status for the infrastructure items, and the
-live optimizer/orchestration results AI-012/AI-014 already partially compute. **This
-tab does not get its own independent physics — its honest role is to BE the
-architecture, not to model equipment the way FE-GC-HB do.**
+live optimizer/orchestration/analytics results AI-012/AI-013/AI-014 already partially
+compute or map onto. **This tab does not get its own independent physics — its
+honest role is to BE the architecture (AI-004/007/011) or to CONSUME the architecture's
+output as an intelligence layer (AI-012/013), not to model equipment the way
+FE-GC-HB do.**
 
 ### 2.8 Tab 1's 19 innovation modules — where they fit once the registry is live
 
@@ -583,6 +674,16 @@ integration work, not new modeling:
 - **`safety_flags.py`** — strengthens directly once GC-008/012 have live outlet H2S
   values (Section 2.3): today's static feed-assumption comparison becomes a real,
   continuously-updated margin against the LTS catalyst tolerance.
+- **AI-013 (Digital Twin Engine), per the Decisions log's reframing:** this equipment
+  item IS the "Directly reusable" bullet above, collectively — `uncertainty.py`,
+  `optimizer.py`, `predictive_maintenance.py`, `root_cause.py`, `pinn_kinetics.py`,
+  `sim_to_real.py`, `federated_learning.py`, `time_series_sim.py`, `tda_analysis.py`,
+  plus `copilot.py` and `multi_module_orchestration.py` — is what AI-013 names, at
+  the registry level, once those modules read live Shared Plant State instead of
+  sliders. AI-012 (`optimizer.py`/`dispatch_ga.py`) is the narrower MPC/RL-specific
+  subset of that same collection. Neither AI-012 nor AI-013 is Section 6's Central
+  Simulation Engine — both are consumers of what that engine produces, not producers
+  of it (Section 6.0).
 
 ### 2.9 Equation/correlation index (task requirement 7, consolidated)
 
@@ -876,17 +977,54 @@ rows scattered across Tiers 1-3's own parent items are naturally Tier 4 in isola
 model regardless of how ready its parent tier is.
 
 **Tier 5 — Genuinely infeasible with current knowledge, explicitly flagged:**
-AI-002 (vision processing), AI-005/006/007/009/010/011 (pure IT infrastructure —
-AI-004/012/013 are excluded from this tier since they have a genuine architectural
-role per Section 2.7), every item's Measurements category across all 91 items
-(vendor-only instrument specs), FE-002's tramp-metal reject rate. **Reasoning
-verified as proposed**, with AI-007/011/013 moved OUT of a naive "AI = Tier 5"
-reading and into Tier 1 (AI-004/007/011 are architectural, not equipment to model —
-Section 2.7) or treated as an identity (AI-013) rather than a build item at all.
+AI-002 (vision processing), AI-005/006/008/009/010 (pure IT infrastructure —
+AI-004/007/011/012/013 are excluded from this tier since they have a genuine
+architectural role per Section 2.7), every item's Measurements category across all
+91 items (vendor-only instrument specs), FE-002's tramp-metal reject rate (the
+Missing half of its dual status — see Section 2.1).
+
+**CONTRADICTION RESOLVED, not silently fixed (per review instruction):** an earlier
+draft of this paragraph listed "AI-005/006/**007**/009/010/**011**" as Tier 5 in its
+first sentence, then said "AI-007/011/013 moved OUT of a naive 'AI = Tier 5' reading
+and into Tier 1" in its very next sentence — a direct, self-contradictory statement
+about AI-007's and AI-011's own tier, caught on review. **Resolution: Section 2.7's
+own per-item table is authoritative**, per instruction, because it is the more
+granular Step 2/3 source and because it is internally consistent with itself (it
+gives AI-007 and AI-011 each a distinct, real architectural role — "the real home for
+cross-tab state aggregation" and "the real home for Section 6's operational-state
+log/history," respectively — clearly distinct language from the "Infrastructure,
+minimal, no operational result beyond that" language it uses for the five items that
+genuinely stay in Tier 5). AI-007 and AI-011 are corrected to **Tier 1** in the list
+above; the Tier 5 list now reads AI-002, AI-005, AI-006, AI-008, AI-009, AI-010 —
+five pure-connectivity items, not seven.
 
 ---
 
 ## Section 6 — Central online simulation / update-cycle architecture (task requirement 14)
+
+### 6.0 Responsibility boundaries — one Digital Twin, not two (Decisions log, decision 3)
+
+Added on review, because the original draft's AI-013 framing risked exactly the
+duplication this subsection now rules out. Seven components, each with ONE job, no
+overlap:
+
+| Component | What it is | What it does | What it does NOT do |
+|---|---|---|---|
+| **Equipment Models** | Section 2's ~55 new + 18 existing per-item models | Compute ONE item's own outputs from its own inputs, per its own named equation (Section 2.9) | Never call another item's model directly, never decide execution order, never own shared state |
+| **Central Simulation / Digital Twin Engine** | Section 6, steps 1-12 below | The ONE orchestrator: evaluates states, executes Equipment Models in dependency order (Section 4), resolves the utility-balance circularity (step 6), writes results into the Shared Plant State | Does not render UI, does not do analytics/optimization/prediction — it produces the state those things consume |
+| **Shared Plant State** | Section 6, step 4's data structure | The single read/write surface every Equipment Model, every Tab, and AI-012/AI-013 access through named getters (Section 8.3) | Not itself a piece of logic — a data structure, not an engine |
+| **AI-013 (Digital Twin Engine, equipment item)** | The **AI/Optimization/Intelligence Layer** — Section 2.8's collected 19-module mapping | READS the Shared Plant State (uncertainty propagation, predictive maintenance, root-cause, PINN, sim-to-real, federated learning, time-series/TDA anomaly detection) | Does **not** compute the Shared Plant State itself, does not duplicate the Central Simulation Engine's job — it is downstream of it, exactly the relationship `optimizer.py` already has with `kinetics.py`/`psa.py` today |
+| **AI-012 (AI Model Server)** | The narrower MPC/RL-specific subset of the same intelligence layer | `optimizer.py`/`dispatch_ga.py`, recommending setpoints back into the Central Simulation Engine's NEXT cycle (Section 6, step 7) | Not a second optimizer separate from AI-013 — AI-012 is AI-013's optimization-specific component, not a rival to it |
+| **Individual Tabs (3-9)** | Section 3's per-tab specification | READ the Shared Plant State for their own equipment IDs, render Tab-level results | Never compute a value independently that the Shared Plant State already holds — no tab keeps its own shadow copy |
+| **Tab 1 (integrated view)** | Section 7 | READS the Shared Plant State's aggregate (Section 7.2) plus AI-012/AI-013's analytics outputs, presents the system-level result | Does not compute anything the Central Simulation Engine hasn't already computed — Tab 1 is a view, not a second engine |
+| **Future real Sensor/PLC inputs** | Section 8.3 | Replace a simulated INPUT at the Shared Plant State's input boundary | Never bypass the Central Simulation Engine to write a result directly — a real sensor replaces what feeds a model, not the model's output |
+
+**The one-sentence version, since it is the point of this whole subsection:** there is
+exactly ONE thing that computes the plant's state (the Central Simulation Engine),
+exactly ONE place that state lives (the Shared Plant State), and everything else —
+every Tab, Tab 1, AI-012, AI-013 — is a reader of it, not a second copy of it.
+AI-013 is not an exception to that rule; it is one more reader, distinguished from a
+Tab only by what it does with what it reads (analytics/optimization vs. display).
 
 Design-level only, per the task — no code below, only the shape every implementation
 task in a later phase would fill in. Twelve steps, matching the task's own list
@@ -1098,21 +1236,28 @@ already exists:
 | **Assumed** | A design-basis default with a stated uncertainty range, not yet DOK-ING-confirmed | New as its own status, but not a new CONCEPT — this is precisely `uncertainty.py`'s `ASSUMPTIONS` dict, today folded silently into whatever category reads it; giving it its own visible status makes the existing distinction VISIBLE rather than inventing a new one |
 | **Missing** | Exactly today's `STATUS_MISSING` | Unchanged, reused as-is |
 
-### 8.2 Traceability chain, enforced structurally, not by convention
+### 8.2 Traceability chain — DECIDED: automated enforcement, not documentation convention
 
-Every **Calculated** value must carry, alongside the number itself: (a) which model
+**DECISION (Decisions log, resolving Section 10's former open question 10):
+automated enforcement, wherever practical.** This is no longer a recommendation
+weighed against an alternative — it is the approach this plan commits to. Every
+**Calculated** value must carry, alongside the number itself: (a) which model
 produced it (module + function, e.g. `kinetics.hts_conversion`), (b) which INPUTS it
 was computed from, each with ITS OWN status (so a Calculated value fed by an Assumed
 input is visibly less certain than one fed entirely by Measured inputs — a real,
 useful distinction a flat "Calculated" label alone would hide), and (c) a timestamp/
 cycle number (Section 6, step 12). This is the literal
 `Input → Model → Equation/Correlation → Output` chain the task requires, and it is
-enforceable the same way `equipment_engineering_estimates.py`'s existing self-test
+enforced the same way `equipment_engineering_estimates.py`'s existing self-test
 already enforces a weaker version of it today (asserting every estimate row states a
-real basis in its own remarks) — the implementation-phase task list should include an
-analogous automated check that every Calculated value's declared inputs actually
-exist and are themselves properly statused, not just a documentation convention
-trusted to hold.
+real basis in its own remarks): **every new model's implementation task must ship
+with an automated check that its Calculated values' declared inputs actually exist
+and are themselves properly statused** — a documentation convention alone is
+explicitly not sufficient, per the decision above. Section 21 of the implementation
+roadmap makes this a first-class testing workstream, not an afterthought. The one
+thing this decision does NOT resolve (stated honestly, not glossed over): the exact
+coverage bar — 100% of Calculated values vs. a risk-weighted subset — is left to the
+implementation task breakdown, per the original open question's own scoping note.
 
 ### 8.3 Path to real sensor/PLC replacement, per variable class
 
@@ -1263,22 +1408,31 @@ Stated directly, per the task's own instruction not to paper over gaps:
    other combustion sources' pollutant speciation, and any regulatory emissions
    accounting are out of scope, since no emissions-monitoring equipment or literature
    basis for them exists anywhere in the current registry.
-9. **Open question for the user/DOK-ING, not resolved by this plan:** should GA-001's
-   gasification correlation be built now, accepting the "no in-project design target"
-   limitation stated in point 1 above and revisiting it once real data exists, or
-   should Tier 1 begin with everything EXCEPT GA-001 (i.e., GC/HB models built and
-   validated against a manually-supplied syngas composition placeholder, with GA-001
-   itself deferred until DOK-ING data exists)? Both are legitimate, honest choices;
-   this plan does not make that call, since it is a genuine project-priority decision,
-   not an engineering-feasibility one.
-10. **Open question: how much of the five-way status/traceability framework (Section
-    8) should be enforced by automated tests vs. documentation convention** in the
-    implementation phase? The existing precedent
-    (`equipment_engineering_estimates.py`'s self-test) leans toward automated
-    enforcement wherever practical; this plan recommends the same for Section 8's
-    traceability chain but leaves the exact test-coverage bar for the implementation
-    task breakdown to decide, since it is a scoping decision, not an architectural
-    one.
+9. **~~Open question for the user/DOK-ING, not resolved by this plan~~ — RESOLVED
+   (Decisions log, decision 1):** should GA-001's gasification correlation be built
+   now, accepting the "no in-project design target" limitation stated in point 1
+   above and revisiting it once real data exists, or should Tier 1 begin with
+   everything EXCEPT GA-001 (i.e., GC/HB models built and validated against a
+   manually-supplied syngas composition placeholder, with GA-001 itself deferred
+   until DOK-ING data exists)? Both are legitimate, honest choices; this plan
+   originally did not make that call, since it is a genuine project-priority
+   decision, not an engineering-feasibility one. **Decision made on review: BUILD
+   GA-001 NOW**, subject to the non-negotiable condition that it is never presented
+   as DOK-ING-validated (see Section 2.2's updated GA-001 row and its five-way
+   validation-status breakdown). Limitation 1 above is otherwise unchanged and still
+   applies in full — this decision does not make the validation gap go away, it
+   chooses to build with that gap openly stated rather than defer around it.
+10. **~~Open question: how much of the five-way status/traceability framework
+    (Section 8) should be enforced by automated tests vs. documentation
+    convention~~ — RESOLVED (Decisions log, decision 2):** in the implementation
+    phase? The existing precedent (`equipment_engineering_estimates.py`'s
+    self-test) leans toward automated enforcement wherever practical; this plan
+    originally recommended the same while leaving it formally open. **Decision made
+    on review: automated enforcement, wherever practical** — see Section 8.2's
+    updated text. What remains genuinely open, unchanged by this decision: the exact
+    test-coverage bar (100% of Calculated values vs. a risk-weighted subset) is left
+    for the implementation task breakdown to set, since it is a scoping decision,
+    not an architectural one.
 
 ---
 
