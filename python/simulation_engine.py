@@ -136,6 +136,36 @@ class SimulationEngine:
             "depends_on": tuple(depends_on), "lagged_depends_on": tuple(lagged_depends_on),
         }
 
+    def promote_to_measurement(self, key, reader_fn):
+        """Phase 6 (roadmap Part 17) -- the real sensor/PLC migration
+        mechanism. Replaces an ALREADY-REGISTERED model's own function with
+        `reader_fn`, preserving the SAME key, unit, depends_on, and
+        lagged_depends_on this key was originally registered with -- the
+        engine's own scheduling/structural-Missing behavior around this key
+        is completely unchanged; only the underlying VALUE SOURCE changes.
+
+        `reader_fn(get_input) -> dict` must return the exact same shape
+        every model function already returns (value/status/model/inputs/
+        validation_basis/confidence_note/missing_reason). This method does
+        NOT force status=Measured for you -- the reader function itself
+        decides (a real, connected sensor reader tags Measured; a reader
+        that's currently unavailable/disconnected can honestly report
+        Missing, exactly like any other model).
+
+        NOT a new, separate path into the store (task requirement 4): the
+        swapped-in function is still only ever called from run_cycle()'s
+        own existing loop, and its result still only ever reaches
+        SharedPlantState through THIS engine's own single WriterHandle via
+        set_entry() -- the same call, the same validate_entry_shape()
+        enforcement, as every other model. This method only changes WHICH
+        FUNCTION gets called for `key`; it performs no write of its own."""
+        if key not in self._models:
+            raise KeyError(
+                f"promote_to_measurement: {key!r} is not a registered model -- promote an "
+                f"existing, already-simulated key; this does not create a new one."
+            )
+        self._models[key]["fn"] = reader_fn
+
     def _topological_order(self):
         """Kahn's algorithm over the same-cycle (depends_on) edges only --
         a standard, textbook algorithm for exactly this problem, not
