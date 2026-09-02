@@ -34,3 +34,33 @@ create policy "vendor_quotes_insert_all"
 -- grants for the role the anon/publishable key authenticates as.
 grant select, insert on vendor_quotes to anon;
 grant usage, select on sequence vendor_quotes_id_seq to anon;
+
+-- digital_twin_cycle_log table for AI-011 (Time-Series Database), Phase 4 --
+-- python/ai_automation_layer.py's own get_ai011_logging_status(). Same
+-- pattern as vendor_quotes above, reusing python/vendor_log.py's own
+-- Supabase client. Run this once in the same Supabase project's SQL Editor.
+
+create table if not exists digital_twin_cycle_log (
+    id               bigint generated always as identity primary key,
+    logged_at        timestamptz not null,
+    ga_dry_flow_nm3_h numeric,
+    gc_h2_pct        numeric,
+    hb_storage_kg    numeric,
+    eu_net_kw        numeric,
+    created_at       timestamptz not null default now()
+);
+
+create index if not exists digital_twin_cycle_log_logged_at_idx on digital_twin_cycle_log (logged_at);
+
+alter table digital_twin_cycle_log enable row level security;
+
+create policy "digital_twin_cycle_log_select_all"
+    on digital_twin_cycle_log for select
+    using (true);
+
+create policy "digital_twin_cycle_log_insert_all"
+    on digital_twin_cycle_log for insert
+    with check (true);
+
+grant select, insert on digital_twin_cycle_log to anon;
+grant usage, select on sequence digital_twin_cycle_log_id_seq to anon;
