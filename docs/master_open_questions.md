@@ -1,0 +1,431 @@
+# HYGAS-AI — Master List of Open Questions and Missing Parameters
+
+**Purpose.** This document consolidates *every* open question and missing
+parameter currently on file across the whole project — the original RFI,
+the equipment registry gap-analysis, and every "permanently Missing" or
+"honest mismatch" finding surfaced while building the live Digital Twin
+(Phases 0–6). **It supersedes the need to check the older lists
+separately** for the purpose of deciding what to ask whom next; those
+older lists (`equipment_data_requests.py`'s generated document,
+`equipment_request_routing.py`'s routed document, `design_basis.py`'s RFI
+tracker, CLAUDE.md's registry-issue log) remain the *itemized, full-detail*
+backing record for the large generic buckets referenced below — this
+document does not reproduce all 291+ of those lines, because doing so
+would recreate exactly the "too numerous to answer" problem this document
+exists to avoid.
+
+**How this was built.** Every figure below was pulled by directly running
+or reading the project's current, real state on 2026-09-02 — `design_basis.py`
+was executed (not recalled), `equipment_data_requests.py` and
+`equipment_request_routing.py` were executed, `CLAUDE.md`'s own numbered
+list was read to its actual end (32 items), and the digital-twin build's
+own "honest mismatch"/"permanently Missing" findings were re-verified
+against the live self-test output of the relevant module, not against
+memory of earlier conversation.
+
+**Deduplication note.** Feedstock composition, for example, appears as an
+old RFI item, an engineering-plan limitation, a GA-001 model input, and a
+Tab 1 KPI blocker — all four are the *same underlying unknown* and are
+consolidated into ONE entry (Section 1, item 3) with every downstream
+implication listed together, not four separate near-identical asks.
+
+---
+
+## Section 1 — DOK-ING (technical/design team)
+
+Ordered by real consequence, biggest first, per the explicit request. Every
+entry states the exact parameter/unit, the exact equipment ID(s) affected,
+a specific answerable question, and what it unlocks or corrects.
+
+### 1. EU-008 real installed cooling-tower capacity — the single biggest finding
+- **Equipment ID(s):** EU-008 (Cooling Tower); consumers GC-004/GC-005
+  (Quench), HB-003 (WGS interstage HX), HB-012 (H₂ Compressor).
+- **Parameter:** Actual installed/specified cooling capacity, in **kW**
+  (thermal duty), and/or actual cooling water flow rate in **m³/h** at the
+  Confirmed 20→30°C temperature rise.
+- **The question:** *EU-008's own registry entry states a Confirmed 20 kW
+  cooling duty. This project's own live model — summing GC-004's real
+  quench sensible-heat duty, HB-003's real cold-side duty, and HB-012's
+  real compressor power, all three independently already-validated
+  figures — computes a real peak demand of ~58 kW at the ER=0.25 baseline
+  (up to ~66.7 kW across the ER=0.25–0.55 operating envelope), roughly
+  2.9–3.3× the Confirmed rating. Is the 20 kW figure the actual installed/
+  specified capacity, or a placeholder/typo? If it is real, was EU-008
+  sized against a narrower duty than these three consumers (e.g., only
+  EU-004's gas-engine jacket cooling, which the registry's own remark
+  suggests), and is a fourth, separate cooling path serving GC-004/HB-003/
+  HB-012 that this model doesn't know about?*
+- **Why it matters:** This determines whether the plant's real cooling
+  tower needs replacing/upsizing (a real capital-cost and schedule impact)
+  or whether this project's own ~58 kW demand estimate is itself wrong
+  (a modeling correction). The Digital Twin already surfaces this live —
+  as a `FAULT` state in the PLC state machine (AI-004), as a dual-scenario
+  comparison (`fault_status_as_specified: FAULT` vs. `fault_status_if_
+  resized: RUNNING` at an Estimated 66.7 kW), and as a named bottleneck on
+  Tab 1 — so an answer here directly changes what the plant's own status
+  display shows every cycle.
+- **Source:** `python/eu_utilities_chp.py` (`eu008_cooling_supply`,
+  `eu008_recommended_capacity_estimate`); `python/ai_automation_layer.py`
+  (`get_ai004_eu009_state`, `get_ai004_eu009_state_if_resized`);
+  `docs/digital_twin_engineering_plan.md` Section 10, item 11.
+
+### 2. Feed-rate basis: is 41.67 kg/h (1,000 kg/day) wet (as-received) or dry?
+- **Equipment ID(s):** FE-003 (Weighing Conveyor), FE-005 (Feed Dryer),
+  GA-001 (Gasifier).
+- **Parameter:** DOK-ING's own confirmed **1,000 kg/day (41.67 kg/h)**
+  nominal feed-rate figure (RFI #1) — **basis: wet/as-received, or dry?**
+- **The question:** *DOK-ING's RFI #1 answer confirms 1,000 kg/day as the
+  plant's nominal feed rate, but does not state whether this is the
+  as-delivered (wet, ~10% moisture per FE-005's own Confirmed inlet
+  moisture) mass or the dry-solids mass. This project found the two
+  existing internal treatments of this number actually disagreed:
+  `equipment_engineering_estimates.py`'s own FE-007 static fill already
+  treated it as WET, deriving ~37.5 kg/h dry; an earlier recalibration
+  decision in this project treated the same number as already DRY. Which
+  is correct?*
+- **Why it matters:** This is now a **resolved-by-project-decision**
+  question (Phase 3: treated as wet, per the FE-007 precedent), but it
+  changes GA-001's own live dry feed rate by ~10% (41.67 → 37.5 kg/h),
+  which ripples through every downstream number in the plant (syngas
+  flow, H₂ production, electrical/thermal output). A direct DOK-ING
+  confirmation would close this out definitively rather than resting on
+  an internal precedent match.
+- **Source:** `python/fe_feed_handling.py` module docstring (full
+  resolution history); `CLAUDE.md`, "Phase 3 update" note.
+
+### 3. Full feedstock ultimate analysis — precise C/H/O/N split, not just ranges
+- **Equipment ID(s):** GA-001 (Gasifier — direct model input); also
+  affects the "Overall efficiency" and "H₂ yield" KPIs (Tab 1),
+  `gasifier_mass_balance.py`, `circularity.py`.
+- **Parameter:** Elemental (C/H/O/N, dry ash-free basis, **wt%**), and
+  volatile matter / fixed carbon (**wt%, dry basis**).
+- **The question:** *DOK-ING's RFI #2 answer already confirms real
+  RANGES — Moisture 5–15(20)%, Ash 5–15%, Volatile Matter >65%, Carbon
+  >45%, Hydrogen >5%. This project's own GA-001 model currently uses a
+  literature-typical point-value ultimate analysis (Tchobanoglous et al.,
+  representative "typical MSW/RDF"), which falls inside these confirmed
+  ranges but is not DOK-ING's own figure. Can DOK-ING provide (a) a
+  precise point-value C/H/O/N split (not a range), OR (b) confirm the
+  literature point value this project currently uses is an acceptable
+  stand-in given the confirmed range, OR (c) is a full proximate/
+  ultimate lab analysis of the actual feedstock blend available/
+  plannable?*
+- **Why it matters:** Feed composition is the single largest assumption
+  in the whole gasifier model (GA-001's own module docstring calls it
+  exactly that) — it directly sets the H/C, O/C, N/C ratios the entire
+  stoichiometric+WGS-equilibrium solve is built on. A precise value here
+  would let GA-001 be re-tagged from `Literature` to `DOKINGDesignTarget`
+  basis (once combined with real performance data — see item 8) and
+  would sharpen every downstream number in the plant.
+- **Found stale while building this document:** `python/ga001_gasifier_
+  model.py`'s own docstring (line ~466) still states *"design_basis.py's
+  RFI #2 remains status=Unknown"* — this is now **out of date**;
+  `design_basis.py` shows RFI #2 as Confirmed (with the ranges above).
+  Worth a follow-up code fix independent of this document.
+- **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/design_
+  basis.py` (`feedstock_composition`); `python/ga001_gasifier_model.py`.
+
+### 4. Feedstock LHV — precise value or confirm the range is final
+- **Equipment ID(s):** Tab 1 "Overall efficiency" KPI; GA-001 (indirectly).
+- **Parameter:** Feedstock LHV, **MJ/kg, dry basis**.
+- **The question:** *DOK-ING's RFI #2 answer already states LHV 15–20
+  MJ/kg (dry basis) — a real range. Tab 1's own "Overall efficiency" KPI
+  is currently reported `Missing / Cannot Calculate`, citing "no
+  feedstock LHV ever confirmed" — this framing is now stale given the
+  range above. Is a precise point value available, or should the 15–20
+  MJ/kg range itself be adopted as the calculation basis (reporting an
+  efficiency RANGE rather than a point value)?*
+- **Why it matters:** This is the single missing piece needed to compute
+  Tab 1's own "overall efficiency" KPI (useful output energy / feedstock
+  input energy) — currently the only Tab 1 KPI blocked purely by a
+  numeric gap rather than a genuine model limitation.
+- **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/tab1_
+  integration.py` (`compute_tab1_kpis`, `overall_efficiency`).
+
+### 5. Fe₂O₃/Fe₃O₄ chemical-looping oxygen-carrier circulation rate/capacity
+- **Equipment ID(s):** GA-001 (Gasifier).
+- **Parameter:** Oxygen-carrier circulation rate, **kg/h**, at nominal
+  load; oxygen-carrier conversion degree (reduction/oxidation extent),
+  **fraction**; oxygen-carrier inventory/capacity, **kg**.
+- **The question:** *GA-001's own Confirmed registry data states its
+  real technology is "Bubbling Fluidized Bed (BFB), steam-blown, Fe₂O₃/
+  Fe₃O₄ chemical looping oxygen carrier" — not a conventional simple
+  air-blown gasifier. This project's own live gasifier model captures
+  the real, confirmed air (ER=0.25) partial-oxidation contribution and
+  the real, confirmed steam addition, closed with standard elemental/
+  WGS-equilibrium stoichiometry — but it does NOT, and cannot, model the
+  oxygen carrier's own separate reduction/regeneration chemistry and
+  circulation loop, because no circulation rate, conversion degree, or
+  carrier inventory figure exists anywhere in this project. What is the
+  real Fe₂O₃/Fe₃O₄ circulation rate (kg/h) at nominal load, and the
+  carrier's own typical conversion degree per pass?*
+- **Why it matters:** This is a genuine, material simplification of the
+  real equipment (stated as such in the model's own docstring, not
+  hidden) — without it, GA-001's syngas composition/yield is a
+  partial-oxidation+WGS approximation, not a true chemical-looping-
+  gasification result. This is the single largest physics gap in the
+  entire Digital Twin.
+- **Source:** `python/ga001_gasifier_model.py` module docstring (the
+  "MAJOR FINDING" paragraph); `data/equipment_registry.json` GA-001.
+
+### 6. GA-001/GA-003 primary air-flow reconciliation
+- **Equipment ID(s):** GA-001, GA-003 (Air/Steam Injection, Flow).
+- **Parameter:** Primary air flow rate at ER=0.25, **Nm³/h**.
+- **The question:** *This model's own independently-derived air
+  requirement at ER=0.25 (37.5 kg/h dry feed basis) is 38.79 Nm³/h.
+  GA-003's own registry-stated "Primary air flow rate (design)" is 60
+  Nm³/h — a ratio of 0.646. GA-003's own remark states its 60 Nm³/h
+  figure was itself "Derived from ER=0.25 × stoichiometric air demand for
+  the dry feed rate — not DOK-ING-confirmed," i.e., a prior estimate
+  using the same method but evidently a different assumed feedstock
+  composition. Which of these two air-flow figures (if either) reflects
+  the actual specified/installed air-blower capacity, and what feedstock
+  composition was GA-003's own 60 Nm³/h figure originally computed from?*
+- **Why it matters:** This is the same underlying gap as item 3 (feed
+  composition) surfacing a second time as a numeric cross-check — closing
+  item 3 would very likely resolve this discrepancy directly, without a
+  separate answer.
+- **Source:** `python/ga001_gasifier_model.py` self-test ("Cross-check
+  against GA-003's own registry-stated air flow").
+
+### 7. HB-003 heat-exchanger duty reconciliation (three-way mismatch)
+- **Equipment ID(s):** HB-003 (Heat Exchanger, WGS interstage).
+- **Parameter:** Design heat duty, **kW**.
+- **The question:** *HB-003's own Confirmed "Design heat duty" is 5 kW.
+  This model's own two independently-computed values are: gas-side
+  (hot-side) sensible-heat duty = 6.360 kW; water-side (cold-side) duty
+  (feedwater heating to HB-005's own steam-generation requirement) =
+  9.436 kW. None of the three figures agree. Which is closest to the
+  real, installed unit's actual rating, and does the 5 kW Confirmed
+  figure include only part of the real duty (e.g., a different
+  temperature/flow basis)?*
+- **Why it matters:** This propagates into HB-005's own live steam
+  generation rate and, via GA-001's own recycle-moisture and steam
+  balance, into the whole downstream H₂ production chain.
+- **Source:** `python/hb_wgs_psa_storage_chain.py` self-test ("HB-003
+  duty" cross-check).
+
+### 8. GC-009 HCl removal efficiency — below its own stated target
+- **Equipment ID(s):** GC-009 (HCl Scrubber).
+- **Parameter:** HCl removal efficiency, **%**.
+- **The question:** *This model's own computed efficiency, using GC-009's
+  own Confirmed inlet/outlet concentrations, is 96.67% — GC-009's own
+  stated target is ">97%". Is the >97% figure a guarantee at a different
+  (e.g., lower) inlet loading than the Confirmed design-point figures
+  this calculation used, or is the scrubber's real performance genuinely
+  slightly below its own stated target at the stated design point?*
+- **Why it matters:** A real, if small, gap between a stated removal
+  target and the equipment's own Confirmed inlet/outlet numbers —
+  relevant to downstream WGS/PSA catalyst chlorine tolerance.
+- **Source:** `python/gc_gas_cleaning_chain.py` self-test.
+
+### 9. HB-007 H₂ split fraction — LOHC branch feed allocation
+- **Equipment ID(s):** HB-007 (PSA Unit, H₂ Recovery), HB-014 (LOHC
+  Hydrogenation), HB-015 (LOHC Storage), HB-016 (LOHC Dehydrogenation),
+  HB-017 (H₂ Purification, Post-LOHC).
+- **Parameter:** H₂ split fraction to the LOHC branch, **fraction (0–1)**
+  of HB-007's own PSA product H₂ flow.
+- **The question:** *No data anywhere specifies what fraction (if any) of
+  HB-007's own PSA product H₂ stream is diverted to the LOHC hydrogenation
+  branch (HB-014) versus the primary compressed-storage route (HB-012 →
+  HB-013). HB-014's own registry remark only describes its 2 kg H₂/h
+  capacity as a sizing "margin above HB-007's established ~1.85 kg/h PSA
+  product rate" — a capacity comparison, not a confirmed allocation. Is
+  there a real, planned split fraction (or a control strategy for
+  determining one dynamically)?*
+- **Why it matters:** This single missing value is the ONE root cause
+  blocking HB-014/015/016/017's entire mass-balance chain — proven by
+  this project's own structural-propagation mechanism (all four
+  downstream Missing statuses trace to this one key, not four
+  independent gaps). Answering it converts the whole LOHC branch from
+  Missing to genuinely live.
+- **Source:** `python/hb_remaining_chain.py` (`hb007_h2_split_fraction`).
+
+### 10. HB-010 membrane separator selectivity
+- **Equipment ID(s):** HB-010 (Membrane Separator).
+- **Parameter:** H₂/other-species selectivity (dimensionless ratio, e.g.
+  H₂/CO₂ selectivity), at the Confirmed 50 GPU H₂ permeance operating
+  point.
+- **The question:** *HB-010's own registry gives H₂ permeance (50 GPU)
+  and a static design-point recovery/purity figure (85% / 95–98%), but no
+  membrane selectivity. What is the real H₂/CO₂ (and H₂/CH₄, H₂/CO)
+  selectivity of the specified membrane?*
+- **Why it matters:** Solution-diffusion membrane transport theory needs
+  permeance AND selectivity together (with feed composition and pressure
+  ratio) to compute a live, composition-dependent recovery/purity — this
+  is the one piece needed to make HB-010's own second output (beyond
+  its already-live feed pass-through) genuinely calculated instead of
+  permanently Missing.
+- **Source:** `python/hb_remaining_chain.py` (`hb010_separation`).
+
+### 11. HB-014/HB-016 LOHC catalyst reaction kinetics
+- **Equipment ID(s):** HB-014 (LOHC Hydrogenation, Pt/Pd/Al₂O₃ catalyst),
+  HB-016 (LOHC Dehydrogenation, Pt/Al₂O₃ catalyst).
+- **Parameter:** Reaction rate constants / activation energy (kinetic
+  parameters) for both directions, at the Confirmed operating conditions
+  (HB-014: 170°C/40 bar; HB-016: 300°C/2 bar).
+- **The question:** *No catalyst kinetic data (rate constants, activation
+  energy) exists for either the DBT hydrogenation (HB-014) or
+  dehydrogenation (HB-016) reaction. Is vendor/catalyst-supplier kinetic
+  data available, or would this need dedicated lab characterization?*
+- **Why it matters:** Independent of item 9 (the split-fraction block) —
+  even once HB-007's split fraction is confirmed, HB-014/016's own
+  REACTION KINETICS outputs stay permanently Missing without this; only
+  their mass-balance outputs would become calculable.
+- **Source:** `python/hb_remaining_chain.py` (`hb014_reaction_kinetics`,
+  `hb016_reaction_kinetics`).
+
+### 12. Remaining registry-level project-knowledge gaps (bucketed)
+33 category-level gaps (Inputs/Operating Conditions for DOK-ING's own
+core process technology — the gasifier train and primary WGS+PSA route —
+plus site/external-infrastructure interconnection items for EU-009/
+EU-012/EU-013) were already classified by this project's own routing
+logic as realistically answerable only by DOK-ING (not a vendor, not a
+generic process engineer). **Not re-itemized here** — see `python.
+equipment_request_routing.generate_routed_request_markdown()`'s own
+"DOK-ING (project-level knowledge)" section for the full, itemized list
+(33 lines, each already stating the specific equipment/category and the
+routing rationale).
+
+---
+
+## Section 2 — Equipment vendors (once selected)
+
+**163 category-level gaps** (57.4% of the 284 already-routed registry
+gaps) are genuinely vendor-spec-dependent: instrument accuracy/response-
+time/calibration-interval (Measurements), a rated discharge/output
+capacity (Outputs), guaranteed efficiency/recovery-rate (Performance
+Indicators), dimensions/materials/construction (Parameters). **No amount
+of process engineering or DOK-ING's own project knowledge can supply
+these before a specific manufacturer/model is chosen** — this bucket
+closes only via the vendor-sourcing process (`python/vendor_log.py`).
+
+**Not re-itemized here** — the full, itemized 163-line list (plus the
+broader 291-line pre-routing list, which additionally includes items not
+yet run through the routing classifier) already exists as generated
+documents:
+- `python.equipment_data_requests.generate_request_list_markdown()` — all
+  291 real "Missing Data — Required" category slots, by equipment section
+  (FE 22, GA 33, GC 38, SA 46, HB 52, EU 33, AI 67).
+- `python.equipment_request_routing.generate_routed_request_markdown()` —
+  the 163 items specifically routed to "Vendor (equipment not yet
+  selected)," with the routing rationale stated per item.
+
+Representative categories, for context (not exhaustive): SA-001–012's own
+Measurements (accuracy, response time, calibration interval) for every
+gas analyser/sensor; AI-005–010's own infrastructure hardware specs; most
+equipment items' own Outputs/Performance Indicators once a specific
+vendor unit is picked.
+
+---
+
+## Section 3 — Process/design engineer
+
+**77 category-level gaps** (27.1% of the 284 routed) are a function of
+process DESIGN CHOICES this project's own physics can determine, not a
+vendor's product spec and not something DOK-ING would already know
+off-hand for generic balance-of-plant equipment (feed handling, gas
+cleaning, electrical/utilities, and the auxiliary H₂ pathways). **Not
+re-itemized here** — see `python.equipment_request_routing.
+generate_routed_request_markdown()`'s own "Design/process engineer"
+section for the full, itemized list.
+
+Specific, already-identified items worth an engineer's direct judgment
+(distinct from the bucketed 77, called out individually because they
+already have a real, documented consequence in the live model):
+
+1. **EU-008 sizing margin** (once item 1 above is answered): if a genuine
+   resizing is needed, this project's own live model uses a standard
+   10–20% HVAC/process-cooling design-margin convention (15% representative
+   point used) — a design engineer should confirm the actual margin
+   convention to apply for this specific duty/site.
+2. **ASSUMED_HOURS_PER_CYCLE mapping** (`python/hb_wgs_psa_storage_chain.py`):
+   this project's own simulation cycle currently has no defined real-world
+   wall-clock duration; 1 hour/cycle is a stated, explicit modeling choice
+   for inventory-accumulation demonstrations (HB-013 H₂ storage, FE-001
+   hopper, EU-010 battery SOC) — a control/automation engineer should set
+   the real intended PLC scan-to-digital-twin-cycle mapping once the
+   actual control architecture is designed.
+3. **Compressor polytropic exponent** (HB-012, `COMPRESSOR_POLYTROPIC_N =
+   1.3`): a standard, literature-typical value for a well-intercooled
+   multistage compressor, not derived from HB-012's own specific data —
+   confirm once a vendor unit (Section 2) is selected and its own
+   isentropic/polytropic efficiency curve is available.
+4. **PEM electrolyser (HB-011) part-load parameters**
+   (`HB011_MIN_LOAD_FRACTION = 0.10`, `HB011_BOP_POWER_FRACTION = 0.08`):
+   literature-typical PEM turndown/balance-of-plant figures, not
+   HB-011-specific — confirm against the selected stack's own real
+   part-load curve once available.
+
+---
+
+## Section 4 — Registry data-quality maintainer (kept explicitly separate)
+
+**This section is NOT for DOK-ING.** These are internal cross-reference
+errors within `data/equipment_registry.json`'s own free-text remarks
+(one item's remark citing the wrong other item's ID/name) — not a
+missing fact, but a mislabeled existing one. Conflating this list with
+Section 1 is exactly the kind of vagueness this document exists to avoid.
+
+**32 items** are already fully documented, each with the exact field, the
+wrong reference, and the almost-certainly-correct one, in `CLAUDE.md`'s
+own "Known source-data issues" section — not re-itemized here in full.
+Summary by pattern:
+- **Items 1–13:** a systematic GC-006 (Tar)/GC-008 (H₂S)/GC-009 (HCl)/
+  GC-012 (Activated Carbon) confusion, recurring across GC, SA, and HB
+  items' own remarks (the same species-handling mix-up appearing 13
+  times).
+- **Items 14–20:** a second cluster — HB-004/HB-005/EU-004/EU-011/EU-012/
+  EU-013's own cross-references to each other and to HB-003, including
+  the EU-012 "EU-004 + EU-006" thermal-output attribution (should read
+  EU-011, since EU-006 the H₂ Fuel Cell has no thermal output anywhere
+  in this project).
+- **Items 21–32:** AI-002/007/010/012/013/014/015's own cross-references
+  to FE, EU, and AI items.
+
+**Found during the digital twin build, not yet cross-posted into
+CLAUDE.md's own numbered list** — flagged here so they aren't lost:
+- **FE-002's** own remark calls FE-003 "the Shredder" — FE-003 is the
+  Weighing Conveyor; FE-004 is the actual Shredder/Size Reducer.
+- **FE-003's** own remark describes its connecting run as "between FE-008
+  and FE-003" — a literal self-reference, garbled (the real sequence is
+  FE-002 → FE-003 → FE-004).
+- **FE-006's** own remark says it "reads material right as it leaves
+  FE-007, before FE-005" — physically backwards (a moisture analyser
+  reading material as it leaves a RAM FEEDER, before a DRYER, makes no
+  sense); almost certainly means "leaves FE-005 [the dryer], before
+  FE-007 [the ram feeder]."
+- **FE-007's** own remark says its feed plug "works with FE-006
+  downstream to hold reactor pressure" — FE-006 is the Moisture Analyser,
+  not a valve; almost certainly FE-008 (the Air-lock/Rotary Valve).
+- **FE-008's** own remark says its own seal "works with FE-005's
+  compacted plug" — FE-005 is the Dryer, with no plug feature; FE-007's
+  own data is the one that actually describes a compacted feed plug.
+
+(Source: `python/fe_feed_handling.py` module docstring, Phase 3.)
+
+---
+
+## Final counts
+
+| Section | Item count |
+|---|---|
+| **1 — DOK-ING** | **11 individually detailed, high-value items** + 1 bucketed reference (33 registry-level gaps, itemized elsewhere) |
+| **2 — Equipment vendors** | **163 gaps** (bucketed/referenced; not re-itemized) |
+| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, itemized elsewhere) |
+| **4 — Registry data-quality maintainer** | **32 items** already in `CLAUDE.md` (bucketed/referenced) + **5 newly found, not yet cross-posted** (listed in full above) |
+
+**Grand total of distinct open items tracked across the project:** 291
+registry-level category gaps (Sections 1's bucket + all of Section 2 +
+Section 3's bucket) + 11 high-value DOK-ING-specific findings from the
+digital twin build (Section 1, individually detailed; these are largely
+NOT part of the 291, since they're numeric/model-structural findings, not
+registry category gaps) + 4 design-engineer-specific findings (Section 3)
++ 37 registry mislabels (Section 4) = **291 registry-category gaps + 15
+build-derived findings + 37 mislabels**, none double-counted between
+sections.
+
+*Generated 2026-09-02, from the project's actual current state — every
+number above was produced by running or reading the live code and
+documents listed as each item's own source, not recalled from earlier
+conversation.*
