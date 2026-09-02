@@ -16,7 +16,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates,
+    equipment_engineering_estimates, tab1_integration,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1499,6 +1499,31 @@ with tab1:
             "operation). Red band: the coordinated-anomaly period — a real detection shows the blue "
             "line rising above the dashed line inside the red band."
         )
+
+    st.divider()
+
+    # ---------------------------------------------------------------------
+    # Section — Integrated Plant Status (Digital Twin Engine, Phase 5 "Tab 1
+    # Finalization"). ADDITIVE only — every section above this one (WGS
+    # kinetics, PSA, CHP dispatch, the 19 innovation modules, safety
+    # flagging, equipment datasheets, novelty audit, etc.) is untouched.
+    # tab1_integration.render_tab1_section() is a pure function of a
+    # SharedPlantState snapshot — no independent calculation happens here or
+    # inside it (roadmap Part 13: render_tab1(shared_state) -> UI). The
+    # snapshot itself is cached (not a resource, a plain nested dict) so
+    # normal slider interactions on the sections above don't re-run the
+    # whole FE->GA->GC->HB->EU->SA->AI engine on every rerun.
+    # ---------------------------------------------------------------------
+    @st.cache_data(ttl=60, show_spinner="Running the Digital Twin engine (FE -> GA -> GC -> HB -> EU -> SA -> AI)...")
+    def _tab1_integration_snapshot(n_cycles=5):
+        _snap, _state, _engine = tab1_integration.build_live_snapshot(n_cycles=n_cycles)
+        return _snap
+
+    try:
+        _integrated_snapshot = _tab1_integration_snapshot()
+        tab1_integration.render_tab1_section(_integrated_snapshot)
+    except Exception as _tab1_integration_exc:
+        st.error(f"Integrated Plant Status section failed to render: {_tab1_integration_exc}")
 
     st.divider()
 
