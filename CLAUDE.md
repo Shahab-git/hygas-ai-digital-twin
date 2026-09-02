@@ -116,6 +116,26 @@ basis, not derived by this project's own code from the feed-rate
 constant. See python/design_basis.py's feedstock_rate_variation entry
 and python/gasifier_mass_balance.py's own docstring for the full detail.
 
+**Phase 3 update (python/fe_feed_handling.py) — the LIVE Digital Twin
+engine's own feed rate now differs from the 41.67 kg/h figure above,
+which stays UNCHANGED and still describes `gasifier_mass_balance.py`'s
+own separate static tooling (circularity.py etc., not the live engine).**
+Building FE-003 (Weighing Conveyor) and FE-005 (Dryer) live surfaced a
+real, pre-existing internal inconsistency: `equipment_engineering_
+estimates.py`'s own existing FE-007 static fill already treated DOK-ING's
+confirmed 41.67 kg/h as the AS-RECEIVED (WET, ~10% moisture) rate, not
+dry, deriving ~37.5 kg/h dry solids from it — contradicting the "41.67 kg/h
+dry feed" framing above. Resolved by explicit user decision (Phase 3):
+41.67 kg/h is FE-003's own confirmed WET rate; FE-005's own moisture mass
+balance converts it to ~37.5 kg/h dry, which is what the LIVE engine's
+GA-001 (`python/ga001_gasifier_model.py`) now actually receives as
+`("GA-001-INPUT","dry_feed_rate_kg_h")` once FE-001..008 are registered —
+a genuine ~10% drop from the Phase 1-2 placeholder, matching the existing
+FE-007 static fill almost exactly. `gasifier_mass_balance.py`'s own
+`DEFAULT_DRY_FEED_KG_H=41.67` constant is UNTOUCHED and still used,
+unchanged, as the graceful placeholder fallback when FE isn't registered,
+and by every static (non-live-engine) module that already depended on it.
+
 ## The 19 innovations and what equipment each belongs to
 
 Organise new modules around these, grouped by category. Each maps to a

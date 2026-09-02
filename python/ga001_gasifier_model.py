@@ -84,6 +84,26 @@ REAL CHEMISTRY BASIS, cited explicitly (task requirement 1):
      data exists for either) and both tagged Assumed, not Estimated or
      Calculated, per this task's explicit instruction. Representative
      literature figures, cited below at their point of definition.
+
+PHASE 3 ADDENDUM (Feed Handling fully live, fe_feed_handling.py): the
+placeholder feed rate this module used throughout Phases 1-2
+(_input_dry_feed_rate()) now reads FE-005's own live dry-solids mass
+balance, LAGGED, gracefully falling back to the original static
+placeholder when FE-001..008 aren't registered. GA-001's own MODEL BODY
+needed NO change to accept this -- it still just calls
+get_input(("GA-001-INPUT","dry_feed_rate_kg_h"))["value"], unaware of
+which function produced it; only _input_dry_feed_rate()'s OWN body and
+register_ga001()'s OWN registration (adding a lagged read) changed, not
+the physics. FE-005's own live outlet moisture is ALSO folded into
+ga001_model()'s own water/steam pool as a NEW, genuinely additive
+capability (_moisture_water_moles()) -- unlike the feed-rate swap, this
+IS a real, deliberate extension to ga001_model()'s own body, gracefully
+defaulting to zero effect when FE-005 is absent, same discipline as the
+Phase 1d recycle fold. See fe_feed_handling.py's own module docstring for
+the resolved wet/dry feed-rate basis finding (DOK-ING's confirmed
+41.67 kg/h is the AS-RECEIVED WET rate, not dry -- this key now correctly
+receives ~37.5 kg/h dry, matching equipment_engineering_estimates.py's own
+existing FE-007 static fill).
 """
 import math
 import random
@@ -304,25 +324,55 @@ def _enforce_ga001_confidence_label(validation_basis):
 # source behind one named getter" design (Section 8.3).
 
 def _input_dry_feed_rate(get_input):
-    """PLACEHOLDER, not a real Feed Handling model (roadmap Part 1.1's own
-    explicitly-acceptable interim state, Phase 3 not yet built). The NUMBER
-    is DOK-ING's own real, confirmed feed rate (RFI #1, 1,000 kg/day =
-    41.67 kg/h dry feed -- gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H, read
-    directly, not re-typed). Tagged Assumed, not Measured: plant_status.py's
-    own docstring explicitly reserves Measured for a real future sensor/PLC
-    reading (Section 8.1), which this static design constant, manually
-    placed here, is not -- a documented gap in the five-way framework's
-    coverage (a real, DOK-ING-confirmed constant serving as a temporary
-    live-system placeholder), flagged rather than mis-tagged."""
+    """PHASE 3: reads FE-005's own live dry-solids mass balance (LAGGED --
+    see register_ga001()'s own docstring addendum for why) when FE-001..008
+    are registered -- the real Feed Handling chain this function's own
+    PRE-Phase-3 docstring said would eventually replace it
+    (fe_feed_handling.py's own module docstring has the resolved wet/dry
+    feed-rate basis finding: DOK-ING's confirmed 41.67 kg/h (1,000 kg/day)
+    is the AS-RECEIVED WET rate, not the dry rate this key needs -- FE-005's
+    own 10% inlet moisture converts it to ~37.5 kg/h dry, matching
+    equipment_engineering_estimates.py's own existing FE-007 static fill).
+
+    Falls back, gracefully, to the SAME static placeholder as before
+    (DOK-ING's own confirmed feed rate, RFI #1, misapplied here as a dry
+    figure for want of a live Feed Handling model -- the honest interim
+    state this function's PRE-Phase-3 docstring described) when FE-005
+    isn't registered/hasn't produced a value yet -- this is what keeps
+    every PRE-Phase-3 self-test (Phase 1a/1b/1c/1d/2, none of which
+    register FE-001..008) producing byte-for-byte identical output,
+    verified in this module's own self-test."""
+    entry = get_input(("FE-005", "MoistureBalance"))
+    if entry["status"] != ps.STATUS_MISSING:
+        dry_solids_kg_h = entry["value"]["dry_solids_kg_h"]
+        return {
+            "value": dry_solids_kg_h, "status": ps.STATUS_CALCULATED,
+            "model": "fe_feed_handling.fe005_moisture_balance (read via GA-001's own feed-rate getter)",
+            "inputs": [("FE-005", "MoistureBalance")],
+            "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
+            "confidence_note": (
+                f"LIVE from FE-005's own dry-solids mass balance: {dry_solids_kg_h:.3f} kg/h dry "
+                f"-- replaces the PRE-Phase-3 static placeholder "
+                f"({gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H} kg/h). See this function's own "
+                f"docstring for the resolved wet/dry feed-rate basis finding."
+            ),
+        }
     return {
         "value": gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H, "status": ps.STATUS_ASSUMED,
+        # Explicit empty inputs -- the lagged FE-005 read had ZERO effect on this branch's
+        # returned value (it was Missing/absent, hence the fallback), so it must NOT appear
+        # in the declared provenance chain. Without this, the engine's own default (every
+        # key in this registration's lagged_depends_on) would wrongly claim FE-005 as a real
+        # input even when it contributed nothing -- the exact same pitfall already found and
+        # fixed for the HB-009 recycle in Phase 1d.
+        "inputs": [],
         "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "PLACEHOLDER, not a live measurement: DOK-ING's own confirmed feed rate "
-            "(RFI #1), standing in for FE-003's own live model until Phase 3. Tagged Assumed "
-            "as the closest honest fit in the five-way framework -- see this module's own "
-            "docstring for why Measured would overclaim and Calculated would misattribute a "
-            "real constant to a nonexistent model."
+            "PLACEHOLDER (FE-005 not registered in this context), not a live measurement: "
+            "DOK-ING's own confirmed feed rate (RFI #1), standing in for FE-005's own live "
+            "dry-solids mass balance. Tagged Assumed as the closest honest fit in the five-way "
+            "framework -- see this function's own docstring for why Measured would overclaim "
+            "and Calculated would misattribute a real constant to a nonexistent model."
         ),
     }
 
@@ -513,6 +563,27 @@ def _recycle_atom_moles(get_input):
     return n_C, n_H, n_O, n_N
 
 
+def _moisture_water_moles(get_input):
+    """PHASE 3 ADDITION. Reads FE-005's own live moisture mass balance
+    (LAGGED -- same reason as _input_dry_feed_rate()'s own read of the same
+    key: graceful fallback to zero when FE-005 isn't registered, not a
+    genuine circular dependency here, just the same "absent lagged key is
+    zero effect, by construction" convention already established for the
+    HB-009 recycle in Phase 1d) and returns the residual water still
+    physically present in the "dry" feed reaching GA-001 (FE-005's own
+    outlet moisture, ~1%, per its own Confirmed target) as extra H2O mol/h
+    -- the same physical role the external process steam already plays,
+    folded into the SAME water/steam pool, not a separate parallel
+    calculation. Returns 0.0, gracefully, if FE-005 isn't registered or
+    hasn't produced a value yet -- this is what keeps every PRE-Phase-3
+    self-test producing byte-for-byte identical output."""
+    entry = get_input(("FE-005", "MoistureBalance"))
+    if entry["status"] == ps.STATUS_MISSING:
+        return 0.0
+    residual_water_kg_h = entry["value"]["residual_water_kg_h"]
+    return residual_water_kg_h * 1000.0 / M_H2O
+
+
 def ga001_model(get_input):
     """THE model. Reads its seven inputs from the Shared Plant State (task
     requirement 2), solves the stoichiometric + WGS-equilibrium closure,
@@ -546,14 +617,25 @@ def ga001_model(get_input):
     x, y, z, n_C_per_kg = elemental_atomic_ratios(
         composition["C"], composition["H"], composition["O"], composition["N"], ASH_FRACTION,
     )
+    total_C_mol_per_h_feed_only = n_C_per_kg * feed_rate
     steam_mol_per_molc = (steam_ratio / n_C_per_kg) * 1000.0 / M_H2O
+
+    # PHASE 3 ADDITION -- fold FE-005's own live residual feed moisture into
+    # the SAME water/steam pool the external process steam already uses,
+    # BEFORE the recycle rescaling below (so recycle, if active, correctly
+    # rescales the COMBINED steam+moisture absolute quantity together, not
+    # separately). Zero contribution (pre-Phase-3, or FE-005 not registered)
+    # leaves every downstream number bit-for-bit identical to before,
+    # verified in this module's own self-test.
+    moisture_water_mol_h = _moisture_water_moles(get_input)
+    if moisture_water_mol_h:
+        steam_mol_per_molc = steam_mol_per_molc + moisture_water_mol_h / total_C_mol_per_h_feed_only
 
     # Fold the recycle's own atoms into the overall feed atom totals (mol/h),
     # THEN re-derive x, y, z from the COMBINED total -- not a separate,
     # parallel calculation. Zero contribution (the pre-Phase-1d case) leaves
     # every downstream number bit-for-bit identical to before, verified in
     # this module's own self-test.
-    total_C_mol_per_h_feed_only = n_C_per_kg * feed_rate
     recycle_C, recycle_H, recycle_O, recycle_N = _recycle_atom_moles(get_input)
     if recycle_C or recycle_H or recycle_O or recycle_N:
         total_C_mol_per_h = total_C_mol_per_h_feed_only + recycle_C
@@ -593,14 +675,19 @@ def ga001_model(get_input):
     _enforce_ga001_confidence_label(validation_basis)
 
     recycle_active = bool(recycle_C or recycle_H or recycle_O or recycle_N)
-    # HB-009 only appears in the declared provenance chain when it genuinely
-    # affected this cycle's result -- a zero contribution had zero causal
-    # influence on the number actually returned, so listing it as an "input"
-    # regardless would clutter resolve_provenance_chain()'s output with a
-    # reference that did not actually determine anything. This is also what
-    # keeps GA-001's own is_fully_traceable() result unchanged for every
-    # pre-Phase-1d context that never registers HB-009 at all.
-    declared_inputs = list(_GA001_INPUT_KEYS) + ([("HB-009", "TailGas")] if recycle_active else [])
+    # HB-009/FE-005 only appear in the declared provenance chain when they
+    # genuinely affected this cycle's result -- a zero contribution had zero
+    # causal influence on the number actually returned, so listing it as an
+    # "input" regardless would clutter resolve_provenance_chain()'s output
+    # with a reference that did not actually determine anything. This is
+    # also what keeps GA-001's own is_fully_traceable() result unchanged for
+    # every pre-Phase-1d/pre-Phase-3 context that never registers HB-009/
+    # FE-005 at all.
+    declared_inputs = (
+        list(_GA001_INPUT_KEYS)
+        + ([("HB-009", "TailGas")] if recycle_active else [])
+        + ([("FE-005", "MoistureBalance")] if moisture_water_mol_h else [])
+    )
 
     return {
         "value": result_value, "status": ps.STATUS_CALCULATED,
@@ -614,7 +701,9 @@ def ga001_model(get_input):
             "self-test), NOT validated against a DOK-ING-confirmed design point -- none exists. "
             "Does NOT model GA-001's own Fe2O3/Fe3O4 chemical-looping oxygen carrier -- see "
             "module docstring for this stated limitation. Recycle contribution this cycle: "
-            f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)'}."
+            f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)'}. "
+            f"FE-005 moisture contribution this cycle: "
+            f"{'active (' + f'{moisture_water_mol_h:.3f}' + ' mol/h extra H2O folded into the water/steam pool)' if moisture_water_mol_h else 'none (no prior-cycle FE-005 output available yet, or FE-005 not registered)'}."
         ),
     }
 
@@ -642,8 +731,17 @@ def register_ga001(engine):
     GA-001 outputs (syngas Outputs, and the permanently-Missing Tar content)
     with a Phase-0 SimulationEngine. Does NOT register, wire, or touch
     anything else -- no GC connection, no GA-005 char/ash link, no other
-    Phase 1 item (task requirement 8)."""
-    engine.register_model(("GA-001-INPUT", "dry_feed_rate_kg_h"), _input_dry_feed_rate, unit="kg/h")
+    Phase 1 item (task requirement 8).
+
+    PHASE 3 ADDITION: both the feed-rate input key and the Outputs key now
+    declare a lagged_depends_on FE-005's own MoistureBalance -- graceful,
+    not hard-blocking, exactly the HB-009 recycle's own precedent, so this
+    function's own registration works completely unchanged whether or not
+    fe_feed_handling.py's register_fe_chain() has been called."""
+    engine.register_model(
+        ("GA-001-INPUT", "dry_feed_rate_kg_h"), _input_dry_feed_rate, unit="kg/h",
+        lagged_depends_on=[("FE-005", "MoistureBalance")],
+    )
     engine.register_model(("GA-001-INPUT", "equivalence_ratio"), _input_equivalence_ratio, unit="-")
     engine.register_model(("GA-001-INPUT", "steam_to_feed_ratio"), _input_steam_to_feed_ratio, unit="kg/kg")
     engine.register_model(("GA-001-INPUT", "carbon_conversion_efficiency"), _input_carbon_conversion_efficiency, unit="-")
@@ -653,7 +751,7 @@ def register_ga001(engine):
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
         depends_on=list(_GA001_INPUT_KEYS),
-        lagged_depends_on=[("HB-009", "TailGas")],
+        lagged_depends_on=[("HB-009", "TailGas"), ("FE-005", "MoistureBalance")],
     )
     engine.register_model(("GA-001", "Tar content"), ga001_tar_content, unit="mol% (dry)")
 
