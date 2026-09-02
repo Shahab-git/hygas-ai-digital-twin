@@ -53,6 +53,18 @@ stated, one-cycle bootstrap convention, not fabricated dynamics), RUNNING
 (every other case). Lagged self-read of its own previous state is what
 lets it tell cycle 1 (STARTING) from every later cycle (RUNNING).
 
+EU-009 DUAL-SCENARIO ADDENDUM ("Dual-Scenario Fault Check for EU-008"
+follow-up task): get_ai004_eu009_state() (fault_status_as_specified) is
+completely UNCHANGED -- the real, Confirmed-20kW-basis fault verdict.
+get_ai004_eu009_state_if_resized() (fault_status_if_resized) is a NEW,
+SEPARATE key applying the SAME fault rule against EU-008's own Estimated
+RecommendedCapacityEstimate (the "Cooling Tower Resizing Estimate" task)
+instead -- tagged STATUS_ESTIMATED, never Calculated, so the five-way
+status framework itself mechanically distinguishes "real, currently
+FAULT" from "hypothetical, healthy if resized," not just a docstring
+label. Gives a future Tab 1 both a real verdict and a real remediation
+preview, side by side, from two separately-provenanced entries.
+
 === AI-005/006/008/009/010 -- task requirement 8 ===
 Exactly one function each, all built from the SAME small factory:
 Online/Offline/Degraded, Assumed (no real network/health monitoring
@@ -284,9 +296,52 @@ def get_ai004_eu009_state(get_input):
                         "STARTING(cycle 1)/RUNNING.")
 
 
-def _plc_result(state, fn_name, declared_inputs, rule_text):
+def get_ai004_eu009_state_if_resized(get_input):
+    """"Dual-Scenario Fault Check for EU-008" -- fault_status_if_resized.
+    THE SAME fault logic as get_ai004_eu009_state() above (task
+    requirement 1: "the same fault logic") -- ONLY the capacity basis
+    differs: EU-008's own Estimated RecommendedCapacityEstimate (the
+    "Cooling Tower Resizing Estimate" task's own 66.742 kW figure at this
+    baseline) instead of its real Confirmed 20 kW rating.
+
+    get_ai004_eu009_state() itself is completely UNCHANGED (task
+    requirement 1) -- that remains fault_status_as_specified, the real,
+    currently-confirmed equipment's own fault verdict.
+
+    NEVER presented as the plant's actual current state (task requirement
+    2): tagged STATUS_ESTIMATED, not Calculated -- reusing the five-way
+    status framework itself as the mechanical distinction, not just a
+    docstring label, so fault_status_as_specified (Calculated) and
+    fault_status_if_resized (Estimated) can never be mistaken for one
+    another anywhere in the Shared Plant State's own status/provenance
+    fields (task requirement 3)."""
+    eu009 = get_input(("EU-009", "GridBalance"))
+    estimate = get_input(("EU-008", "RecommendedCapacityEstimate"))
+    if estimate["status"] == ps.STATUS_MISSING:
+        overloaded_if_resized = False
+        capacity_note = "n/a (RecommendedCapacityEstimate not yet available)"
+    else:
+        recommended_kw = estimate["value"]["recommended_capacity_kw"]
+        demand_kw = estimate["value"]["current_demand_kw"]
+        overloaded_if_resized = recommended_kw > 0.0 and (demand_kw / recommended_kw) > 1.5
+        capacity_note = f"demand={demand_kw:.3f}kW / recommended={recommended_kw:.3f}kW = {demand_kw / recommended_kw * 100:.1f}%"
+    fault = eu009["status"] == ps.STATUS_MISSING or overloaded_if_resized
+    state = _plc_state(get_input, ("AI-004", "EU-009-State-IfResized"), False, fault)
+    return _plc_result(
+        state, "get_ai004_eu009_state_if_resized",
+        [("EU-009", "GridBalance"), ("EU-008", "RecommendedCapacityEstimate"), ("AI-004", "EU-009-State-IfResized")],
+        f"HYPOTHETICAL/ESTIMATED SCENARIO, never the plant's actual current state. Same fault rule as "
+        f"fault_status_as_specified (('AI-004','EU-009-State'), unchanged), evaluated against EU-008's "
+        f"own Estimated RecommendedCapacityEstimate instead of its real Confirmed 20kW rating: "
+        f"{capacity_note}. FAULT=EU-009 GridBalance Missing OR demand/recommended-capacity >150%; else "
+        f"STARTING(cycle 1)/RUNNING.",
+        status=ps.STATUS_ESTIMATED,
+    )
+
+
+def _plc_result(state, fn_name, declared_inputs, rule_text, status=ps.STATUS_CALCULATED):
     return {
-        "value": state, "status": ps.STATUS_CALCULATED, "model": f"ai_automation_layer.{fn_name}",
+        "value": state, "status": status, "model": f"ai_automation_layer.{fn_name}",
         "inputs": declared_inputs, "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": f"State={state}. Rule: {rule_text}",
     }
@@ -573,6 +628,11 @@ def register_ai_layer(engine):
         ("AI-004", "EU-009-State"), get_ai004_eu009_state, unit="state", depends_on=[],
         lagged_depends_on=[("EU-009", "GridBalance"), ("EU-008", "CoolingSupply"), ("AI-004", "EU-009-State")],
     )
+    engine.register_model(
+        ("AI-004", "EU-009-State-IfResized"), get_ai004_eu009_state_if_resized, unit="state", depends_on=[],
+        lagged_depends_on=[("EU-009", "GridBalance"), ("EU-008", "RecommendedCapacityEstimate"),
+                            ("AI-004", "EU-009-State-IfResized")],
+    )
     engine.register_model(("AI-005", "Connectivity"), get_ai005_connectivity_state, unit="state", depends_on=[])
     engine.register_model(("AI-006", "Connectivity"), get_ai006_connectivity_state, unit="state", depends_on=[])
     engine.register_model(
@@ -702,6 +762,55 @@ if __name__ == "__main__":
             assert state == "RUNNING", f"REGRESSION: {item} not RUNNING at a healthy baseline (state={state})."
     print("  GA-001/GC-013/HB-006/HB-013 RUNNING; EU-009 correctly FAULT (real, pre-existing "
           "overload) -- PASSED.")
+
+    print("\n=== Dual-Scenario Fault Check for EU-008 (task requirements 1-4) ===")
+    as_specified = snap[("AI-004", "EU-009-State")]
+    if_resized = snap[("AI-004", "EU-009-State-IfResized")]
+    estimate = snap[("EU-008", "RecommendedCapacityEstimate")]["value"]
+    print(f"  fault_status_as_specified: value={as_specified['value']}  status={as_specified['status']} "
+          f"(real Confirmed {eu.EU008_RATED_CAPACITY_KW:.0f}kW basis)")
+    print(f"  fault_status_if_resized:   value={if_resized['value']}  status={if_resized['status']} "
+          f"(Estimated {estimate['recommended_capacity_kw']:.3f}kW basis)")
+
+    # Requirement 1: fault_status_as_specified is UNCHANGED from Phase 4 -- still FAULT, still Calculated.
+    assert as_specified["value"] == "FAULT", (
+        f"REGRESSION: fault_status_as_specified changed from Phase 4's own FAULT verdict ({as_specified['value']}) "
+        f"-- this task must never weaken or remove the real fault detection."
+    )
+    assert as_specified["status"] == ps.STATUS_CALCULATED, (
+        f"REGRESSION: fault_status_as_specified's own status changed from Calculated ({as_specified['status']})."
+    )
+    print("  PASSED -- fault_status_as_specified genuinely unchanged: FAULT, Calculated, real Confirmed 20kW basis.")
+
+    # Requirement 3: fault_status_if_resized shows the plant healthy under the SAME live conditions.
+    assert if_resized["value"] == "RUNNING", (
+        f"REGRESSION: fault_status_if_resized expected RUNNING (healthy) once resized to the "
+        f"recommended capacity, got {if_resized['value']}."
+    )
+    assert if_resized["status"] == ps.STATUS_ESTIMATED, (
+        f"REGRESSION: fault_status_if_resized's own status should be Estimated, never Calculated or "
+        f"Measured (task requirement 2) -- got {if_resized['status']}."
+    )
+    print("  PASSED -- fault_status_if_resized genuinely healthy (RUNNING) once evaluated against the "
+          "resized 66.7kW Estimated capacity, tagged Estimated (never Calculated/Measured).")
+
+    # Requirement 3: neither value can be mistaken for the other, mechanically -- not just by name.
+    assert as_specified["status"] != if_resized["status"], (
+        "REGRESSION: fault_status_as_specified and fault_status_if_resized carry the SAME status -- "
+        "the five-way framework's own tagging no longer mechanically distinguishes real from hypothetical."
+    )
+    assert as_specified["value"] != if_resized["value"], (
+        "Expected these two to genuinely disagree at this baseline (that's the whole point being "
+        "demonstrated) -- got the same verdict for both, which would make this task's own example moot."
+    )
+    print(f"  PASSED -- the two scenarios carry DIFFERENT statuses ({as_specified['status']} vs "
+          f"{if_resized['status']}) AND different verdicts ({as_specified['value']} vs "
+          f"{if_resized['value']}) -- mechanically, not just nominally, distinguishable in the Shared "
+          f"Plant State's own fields.")
+
+    print(f"\n  Tab 1 summary at this baseline: as currently specified: {as_specified['value']} -- cooling "
+          f"tower undersized (20kW rated vs ~{estimate['peak_demand_kw']:.1f}kW demand); if resized to "
+          f"the recommended {estimate['recommended_capacity_kw']:.1f}kW: {if_resized['value']}.")
 
     state1, handle1, engine1 = _build_engine()
     engine1.run_cycle(now="2026-09-09T01:00:00Z")
