@@ -65,6 +65,29 @@ same synthetic-pair mechanism from Phase 0, now exercised for real for the
 first time on genuinely circular utility items, per the roadmap's own
 Part 8.
 
+=== EU-008 Cooling Tower Resizing Estimate ("Cooling Tower Resizing
+Estimate" follow-up task) ===
+The live model's own EU-008 demand (~58kW vs its Confirmed 20kW rating,
+see above) is a genuine, calculated sizing gap. eu008_recommended_capacity_
+estimate() adds a SEPARATE, ADDITIVE ("EU-008","RecommendedCapacityEstimate")
+entry -- EU-008's own existing Confirmed 20kW rating (EU008_RATED_CAPACITY_KW,
+already used above) is never overwritten, altered, or removed; both stand
+simultaneously visible. Tracks the RUNNING PEAK of EU-008's own real
+demand (lagged self, same mechanism as HB-013's inventory) across however
+many cycles/operating points this engine has run, so a sweep across a
+representative range (e.g. ER=0.25 through 0.55, already exercised
+elsewhere in this project) naturally captures the true peak, not a single
+point. recommended_capacity_kw = peak_demand_kw x (1 + a stated safety
+margin) -- 10-20% over calculated peak duty is the standard, commonly-
+cited HVAC/process-cooling design-margin convention; 15% is used here as
+a representative mid-range point within that convention, not independently
+invented. Tagged STATUS_ESTIMATED (never Measured or DOKINGDesignTarget) --
+per the five-way status framework, this is a real engineering judgment
+applied to a live computed number, not a strict pass-through calculation
+nor a vendor/DOK-ING-confirmed figure. Flagged in this project's own
+running DOK-ING data-request trackers (CLAUDE.md's "Validated milestones"
+section and the engineering plan's Section 10, item 11) -- see both.
+
 === EU-009 (Electrical Metering/Grid), task requirement 4 ===
 net = generation (EU-002/003/005/006's real live electrical output) -
 consumption (HB-012's compressor + HB-011's electrolyser + GC-013's own
@@ -139,6 +162,12 @@ EU008_DAMPING = 0.5                             # Assumed: represents the tower 
 EU008_ADEQUACY_DEROGATION_SPAN_C = 10.0          # Assumed: supply temp 10 degC above
                                                  # nominal -> effective duty derates to 0
                                                  # (a standard bounded linear approximation)
+EU008_SIZING_MARGIN_FRACTION = 0.15              # Estimated: standard HVAC/process-cooling
+                                                 # design-margin convention is 10-20% over
+                                                 # calculated peak duty; 15% used here as a
+                                                 # representative mid-range point within
+                                                 # that convention, not independently invented.
+                                                 # See eu008_recommended_capacity_estimate().
 
 # EU-010 UPS/Battery (Confirmed rated figures; capacity DERIVED from them).
 EU010_RATED_KVA = 10.0
@@ -465,6 +494,66 @@ def eu008_consumer_adequacy(get_input):
     }
 
 
+def eu008_recommended_capacity_estimate(get_input):
+    """Cooling Tower Resizing Estimate -- a SEPARATE, ADDITIVE entry.
+    Does NOT overwrite, alter, or remove EU-008's own existing Confirmed
+    20kW rating (EU008_RATED_CAPACITY_KW, used elsewhere in this module
+    unchanged) -- both this estimate and that Confirmed figure stand
+    simultaneously visible and traceable (task requirement 1/4).
+
+    Tracks the RUNNING PEAK of EU-008's own real computed demand (lagged
+    self, same mechanism as HB-013's own inventory / EU-008's own damped
+    supply temperature) across however many cycles/operating points this
+    engine has run -- so a self-test (or any caller) that sweeps a
+    representative range of real operating conditions (e.g. ER=0.25
+    through 0.55, already exercised elsewhere in this project) naturally
+    captures the model's own true peak across that range, not a single
+    point (task requirement 2).
+
+    recommended_capacity_kw = peak_demand_kw x (1 + EU008_SIZING_MARGIN_
+    FRACTION). The margin itself -- 10-20% over calculated peak duty -- is
+    the standard, commonly-cited HVAC/process-cooling design-margin
+    convention; 15% (this module's own EU008_SIZING_MARGIN_FRACTION) is a
+    representative mid-range point within that convention, not
+    independently invented.
+
+    STATUS_ESTIMATED, never Measured or DOKINGDesignTarget (task
+    requirement 3) -- this is a real engineering judgment (a margin
+    applied to a live computed peak), not a strict calculation from
+    already-Confirmed inputs, and certainly not a vendor/DOK-ING-
+    confirmed capacity."""
+    current = get_input(("EU-008", "CoolingSupply"))["value"]
+    current_demand_kw = current["demand_kw"]
+
+    prev = get_input(("EU-008", "RecommendedCapacityEstimate"))  # lagged, self
+    prev_peak_kw = 0.0 if prev["status"] == ps.STATUS_MISSING else prev["value"]["peak_demand_kw"]
+    peak_demand_kw = max(prev_peak_kw, current_demand_kw)
+    recommended_capacity_kw = peak_demand_kw * (1.0 + EU008_SIZING_MARGIN_FRACTION)
+
+    return {
+        "value": {
+            "peak_demand_kw": peak_demand_kw, "current_demand_kw": current_demand_kw,
+            "margin_fraction": EU008_SIZING_MARGIN_FRACTION,
+            "recommended_capacity_kw": recommended_capacity_kw,
+            "existing_confirmed_capacity_kw": EU008_RATED_CAPACITY_KW,
+        },
+        "status": ps.STATUS_ESTIMATED,
+        "model": "eu_utilities_chp.eu008_recommended_capacity_estimate",
+        "inputs": [("EU-008", "CoolingSupply"), ("EU-008", "RecommendedCapacityEstimate")],
+        "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
+        "confidence_note": (
+            f"Resizing estimate based on this model's own computed peak cooling demand "
+            f"({peak_demand_kw:.3f} kW, the running maximum observed across however many cycles/"
+            f"operating points this engine has run) plus a standard "
+            f"{EU008_SIZING_MARGIN_FRACTION*100:.0f}% safety margin (10-20% over calculated peak "
+            f"duty is standard HVAC/process cooling design practice); not a vendor-confirmed or "
+            f"DOK-ING-specified capacity. Recommended = {recommended_capacity_kw:.3f} kW, vs "
+            f"EU-008's own existing Confirmed {EU008_RATED_CAPACITY_KW:.0f} kW registry rating "
+            f"(unchanged, unmodified -- this entry is additive, not a replacement)."
+        ),
+    }
+
+
 # ============================================================================
 # EU-009 -- Electrical Metering (Grid balance)
 # ============================================================================
@@ -629,6 +718,11 @@ def register_eu_chain(engine):
         ("EU-008", "ConsumerAdequacy"), eu008_consumer_adequacy, unit="fraction + kW dict",
         depends_on=[("GC-004", "Cooling duty"), ("HB-003", "HeatExchanger"), ("HB-012", "Compressor")],
         lagged_depends_on=[("EU-008", "CoolingSupply")],
+    )
+    engine.register_model(
+        ("EU-008", "RecommendedCapacityEstimate"), eu008_recommended_capacity_estimate, unit="kW dict",
+        depends_on=[("EU-008", "CoolingSupply")],
+        lagged_depends_on=[("EU-008", "RecommendedCapacityEstimate")],
     )
     engine.register_model(
         ("EU-009", "GridBalance"), eu009_grid_balance, unit="kW dict",
@@ -868,5 +962,139 @@ if __name__ == "__main__":
     print(f"  EU-009 net electrical balance: {net_25:.3f} kW "
           f"({'export to' if net_25 >= 0 else 'import from'} grid)")
     print(f"  EU-012 district heating output: {dh_25:.3f} kW")
+
+    print("\n=== Cooling Tower Resizing Estimate -- direct-call sanity checks (task requirement 6) ===")
+
+    def _mock_missing():
+        return {"value": None, "status": ps.STATUS_MISSING, "missing_reason": "mock: absent"}
+
+    def _mock_cooling_supply(demand_kw):
+        return {"value": {"demand_kw": demand_kw}}
+
+    def _mock_prev_estimate(peak_kw):
+        return {"status": ps.STATUS_ESTIMATED, "value": {"peak_demand_kw": peak_kw}}
+
+    r1 = eu008_recommended_capacity_estimate(
+        lambda k: _mock_cooling_supply(50.0) if k == ("EU-008", "CoolingSupply") else _mock_missing()
+    )
+    assert r1["status"] == ps.STATUS_ESTIMATED, f"REGRESSION: status={r1['status']!r}, expected Estimated."
+    assert r1["validation_basis"] != ps.VALIDATION_DOKING_DESIGN_TARGET
+    assert abs(r1["value"]["peak_demand_kw"] - 50.0) < 1e-9
+    assert abs(r1["value"]["recommended_capacity_kw"] - 50.0 * 1.15) < 1e-9
+    print(f"  First cycle (no prior peak), demand=50kW: peak={r1['value']['peak_demand_kw']:.3f}kW  "
+          f"recommended={r1['value']['recommended_capacity_kw']:.3f}kW  status={r1['status']} -- PASSED")
+
+    def _get_input_2(k):
+        if k == ("EU-008", "CoolingSupply"):
+            return _mock_cooling_supply(30.0)  # LOWER than the prior peak
+        if k == ("EU-008", "RecommendedCapacityEstimate"):
+            return _mock_prev_estimate(50.0)
+        raise KeyError(k)
+
+    r2 = eu008_recommended_capacity_estimate(_get_input_2)
+    assert abs(r2["value"]["peak_demand_kw"] - 50.0) < 1e-9, (
+        f"REGRESSION: a LOWER instantaneous demand (30kW) after a higher prior peak (50kW) should "
+        f"leave the running peak at 50kW, got {r2['value']['peak_demand_kw']}."
+    )
+    print(f"  Second cycle, demand DROPS to 30kW (prior peak 50kW): peak stays at "
+          f"{r2['value']['peak_demand_kw']:.3f}kW (running max, doesn't fall) -- PASSED")
+
+    def _get_input_3(k):
+        if k == ("EU-008", "CoolingSupply"):
+            return _mock_cooling_supply(80.0)  # HIGHER than the prior peak
+        if k == ("EU-008", "RecommendedCapacityEstimate"):
+            return _mock_prev_estimate(50.0)
+        raise KeyError(k)
+
+    r3 = eu008_recommended_capacity_estimate(_get_input_3)
+    assert abs(r3["value"]["peak_demand_kw"] - 80.0) < 1e-9
+    assert abs(r3["value"]["recommended_capacity_kw"] - 80.0 * 1.15) < 1e-9
+    print(f"  Third cycle, demand RISES to 80kW (prior peak 50kW): peak updates to "
+          f"{r3['value']['peak_demand_kw']:.3f}kW, recommended="
+          f"{r3['value']['recommended_capacity_kw']:.3f}kW ({EU008_SIZING_MARGIN_FRACTION*100:.0f}% "
+          f"margin) -- PASSED, scales sensibly with its peak-demand input.")
+
+    print("\n=== Cooling Tower Resizing Estimate -- live sweep across ER=0.25..0.55 (task requirement 2) ===")
+    state4, handle4, engine4 = _build_engine()
+    ER_SWEEP = [0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55]
+    cycle_i = 0
+    for er in ER_SWEEP:
+        # ER_SWEEP starts exactly at the baseline (0.25), so the very first point needs no
+        # override (the engine's own default equivalence_ratio input already IS 0.25); every
+        # later point in the sweep differs from baseline and gets overridden.
+        if er != ga001.uncertainty.ASSUMPTIONS["air_equivalence_ratio"]["point"]:
+            def _perturbed_er(get_input, _v=er):
+                return {"value": _v, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+                        "confidence_note": "PERTURBATION TEST ONLY."}
+            engine4._models[("GA-001-INPUT", "equivalence_ratio")]["fn"] = _perturbed_er
+        for _ in range(3):  # let each ER point settle before sweeping to the next
+            engine4.run_cycle(now=f"2026-09-06T{cycle_i // 60:02d}:{cycle_i % 60:02d}:00Z")
+            cycle_i += 1
+    snap4 = state4.get_snapshot()
+    estimate = snap4[("EU-008", "RecommendedCapacityEstimate")]["value"]
+    cooling4 = snap4[("EU-008", "CoolingSupply")]["value"]
+    print(f"  Swept ER={ER_SWEEP}, 3 cycles each ({cycle_i} total cycles), same engine instance "
+          f"throughout (running peak accumulates across the whole sweep).")
+    print(f"  Peak demand observed across the sweep: {estimate['peak_demand_kw']:.3f} kW")
+    print(f"  Margin applied: {estimate['margin_fraction']*100:.0f}% (standard HVAC/process-cooling "
+          f"10-20% convention, 15% representative mid-range point used)")
+    print(f"  Recommended capacity: {estimate['recommended_capacity_kw']:.3f} kW")
+    print(f"  Existing Confirmed registry rating (reported alongside, unchanged): "
+          f"{estimate['existing_confirmed_capacity_kw']:.0f} kW")
+    assert estimate["existing_confirmed_capacity_kw"] == EU008_RATED_CAPACITY_KW == 20.0, (
+        "REGRESSION: EU-008's own Confirmed rating appears to have changed."
+    )
+    assert estimate["recommended_capacity_kw"] > estimate["existing_confirmed_capacity_kw"], (
+        "Expected the recommended capacity to exceed the existing Confirmed rating, given the "
+        "known real sizing gap."
+    )
+
+    print("\n=== Verify EU-008's own CoolingSupply entry is genuinely untouched by the new estimate ===")
+    state5, handle5, engine5 = _build_engine()  # includes the new estimate key
+    state6 = sps.SharedPlantState()
+    handle6 = state6.new_writer_handle()
+    engine6 = se.SimulationEngine(state6)
+    ga001.register_ga001(engine6); gc.register_gc_chain(engine6)
+    hbchain.register_hb_chain(engine6); hbrem.register_hb_remaining(engine6)
+    # Register EU chain WITHOUT the new RecommendedCapacityEstimate key, by registering
+    # everything then directly removing that one entry from the engine's own model table --
+    # the cleanest way to prove CoolingSupply's own numbers don't depend on it being present.
+    register_eu_chain(engine6)
+    del engine6._models[("EU-008", "RecommendedCapacityEstimate")]
+    for i in range(5):
+        engine5.run_cycle(now=f"2026-09-06T05:{i:02d}:00Z")
+        engine6.run_cycle(now=f"2026-09-06T05:{i:02d}:00Z")
+    cs5 = state5.get_entry(("EU-008", "CoolingSupply"))["value"]
+    cs6 = state6.get_entry(("EU-008", "CoolingSupply"))["value"]
+    assert cs5["demand_kw"] == cs6["demand_kw"] and cs5["supply_temp_c"] == cs6["supply_temp_c"], (
+        "REGRESSION: EU-008's own CoolingSupply entry differs depending on whether the new "
+        "RecommendedCapacityEstimate key is registered -- it must be a pure, additive reader."
+    )
+    print(f"  CoolingSupply demand/supply_temp identical whether or not RecommendedCapacityEstimate "
+          f"is registered ({cs5['demand_kw']:.3f}kW / {cs5['supply_temp_c']:.3f}C both ways) -- PASSED.")
+
+    print("\n=== Verify the STATIC registry's own EU-008 Confirmed figure is untouched on disk ===")
+    import json as _json
+    import pathlib as _pathlib
+    _registry_path = _pathlib.Path(__file__).resolve().parent.parent / "data" / "equipment_registry.json"
+    with open(_registry_path, encoding="utf-8") as _f:
+        _registry = _json.load(_f)
+    _items = _registry if isinstance(_registry, list) else _registry.get("equipment", _registry)
+    _eu008_item = next(it for it in _items if (it.get("ID") or it.get("id")) == "EU-008")
+    _cooling_duty_param = next(p for p in _eu008_item["parameters"] if p["parameter"] == "Cooling duty")
+    assert _cooling_duty_param["value"] == "20", (
+        f"REGRESSION: EU-008's own static registry 'Cooling duty' value changed to "
+        f"{_cooling_duty_param['value']!r} -- this task must never touch data/equipment_registry.json."
+    )
+    print(f"  data/equipment_registry.json's own EU-008 'Cooling duty' parameter still reads "
+          f"'{_cooling_duty_param['value']} {_cooling_duty_param['unit']}', untouched -- PASSED.")
+
+    print(f"\n=== Cooling Tower Resizing Estimate -- final report ===")
+    print(f"  Peak computed demand across ER=0.25..0.55: {estimate['peak_demand_kw']:.3f} kW")
+    print(f"  Margin: {estimate['margin_fraction']*100:.0f}% (standard 10-20% HVAC/process-cooling "
+          f"peak-duty design margin)")
+    print(f"  Recommended capacity: {estimate['recommended_capacity_kw']:.3f} kW")
+    print(f"  Existing Confirmed registry rating: {estimate['existing_confirmed_capacity_kw']:.0f} kW "
+          f"(intact, unmodified, in both the Shared Plant State and data/equipment_registry.json)")
 
     print("\nAll eu_utilities_chp.py self-tests PASSED.")

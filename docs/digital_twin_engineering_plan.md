@@ -1433,6 +1433,26 @@ Stated directly, per the task's own instruction not to paper over gaps:
     test-coverage bar (100% of Calculated values vs. a risk-weighted subset) is left
     for the implementation task breakdown to set, since it is a scoping decision,
     not an architectural one.
+11. **NEW (found during Phase 2's actual implementation, not predicted here at
+    planning time): EU-008's Confirmed 20 kW cooling-tower rating appears
+    significantly undersized against the live model's own computed peak
+    demand.** Limitation 4 above predicted the ARCHITECTURAL fact of a genuine
+    circular dependency between EU-008 and its real consumers (GC-004/HB-003/
+    HB-012); Phase 2's actual build put a real number on it: summing those three
+    items' own live cooling duty across ER=0.25 through 0.55 (the same
+    representative range already exercised elsewhere in this project) gives a
+    peak of ~58 kW, roughly 2.9x EU-008's own Confirmed 20 kW rating. This is a
+    genuine, calculated sizing gap, not a modeling error — reported honestly,
+    exactly this section's own established discipline. A separate, additive
+    `Estimated` resizing recommendation (peak demand x a standard 10-20%
+    HVAC/process-cooling margin, 15% used as the representative point) is
+    published alongside the untouched Confirmed 20 kW figure at
+    `("EU-008", "RecommendedCapacityEstimate")` in the Shared Plant State —
+    `python/eu_utilities_chp.py`'s own docstring and self-test have the full
+    derivation. **Flagged for DOK-ING** (also recorded in CLAUDE.md's own
+    "Validated milestones" section): recommend confirming the actual installed/
+    specified cooling capacity, or providing real operating data to check this
+    model's own assumptions.
 
 ---
 

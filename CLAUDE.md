@@ -74,6 +74,19 @@ ratio (0.4), air equivalence ratio (0.25), feed sulfur/H2S (200 ppm),
 feed chlorine/HCl (150 ppm) — treat these as assumptions, not established
 facts, in any new work.
 
+**New item to flag with DOK-ING (found during Phase 2's live EU-008
+implementation, `python/eu_utilities_chp.py`):** EU-008's Confirmed 20 kW
+cooling-tower rating appears significantly undersized against this
+model's own computed ~58 kW peak demand (GC-004 quench + HB-003 cold-side
++ HB-012 compressor, summed and swept across ER=0.25 through 0.55) —
+recommend confirming actual installed/specified cooling capacity, or
+providing real operating data to check this model's assumptions. A
+separate, additive `Estimated` resizing recommendation (peak demand x a
+15% margin) is published alongside the untouched Confirmed 20 kW figure
+at `("EU-008", "RecommendedCapacityEstimate")` in the Shared Plant State
+— see that module's own docstring and self-test for the full derivation.
+This does NOT modify `data/equipment_registry.json`'s own EU-008 row.
+
 DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, applied
 in python/design_basis.py) has since confirmed all 17 design-basis RFI
 questions. One real discrepancy came out of it — DOK-ING's confirmed
