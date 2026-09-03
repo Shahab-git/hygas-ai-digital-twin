@@ -265,36 +265,61 @@ what remains open is a narrower, more specific question.
   partial-oxidation+WGS approximation, not a true chemical-looping-
   gasification result. This is the single largest physics gap in the
   entire Digital Twin.
-- **UPDATE (Missing Parameter Resolution Protocol applied, 2026-09-03): a
-  literature-based ENGINEERING BASELINE now exists — the underlying
-  question above remains genuinely open, DOK-ING has not answered it.**
-  Evidence hierarchy walked top-down, not assumed empty: Level 1
-  (Confirmed) — none; Level 2 (Internal-model-derived) — no direct figure,
-  but this project's own already-confirmed O₂ partial-oxidation demand
-  (ER × stoichiometric O₂, the SAME quantity `ga001_model()` itself
-  computes) gives a real starting point; Level 3 (Comparable-equipment) —
-  none in this registry; Level 4/5 (Literature-based) — iron-based
-  chemical-looping oxygen carriers are a real, established research area
-  (Lyngfelt, Leckner & Mattisson 2001, *Chem. Eng. Sci.* 56(10); Adánez et
-  al. 2012, *Prog. Energy Combust. Sci.* 38(2)) — a representative 10–30%
-  per-pass carrier-utilization range from that general literature,
-  combined with Fe₂O₃/Fe₃O₄'s own real, computed theoretical oxygen
-  transport capacity (Ro = 3.34%, direct stoichiometry of 3Fe₂O₃ → 2Fe₃O₄
-  + ½O₂ — the SAME redox couple the registry confirms). Result:
-  **DIGITAL TWIN ENGINEERING BASELINE ≈ 1,161–3,482 kg/h at the ER=0.25/
-  37.5 kg/h dry-feed baseline** (`python/ga001_gasifier_model.py`:
-  `oxygen_carrier_circulation_estimate()`, registered as
-  `("GA-001","OxygenCarrierCirculationEstimate")`, live-wired to ER/feed-
-  rate/composition, tagged `Estimated`/`Literature-based` — does NOT feed
-  back into `ga001_model()`'s own physics; a full reduction/oxidation
-  reaction-network model remains the separate, larger physics gap named
-  above, not attempted here). **ACTUAL/DOK-ING VALUE: still none
-  confirmed** — the real open question (DOK-ING's own actual circulation
-  rate, carrier inventory, and per-pass conversion degree) is unchanged
-  and explicitly still open.
+- **UPDATE (Missing Parameter Resolution Protocol applied, 2026-09-03; REVISED
+  to a Comparable-equipment/Literature-based baseline, same date, after a
+  real literature search grounded the earlier draft's citations more
+  rigorously) — the underlying question above remains genuinely open,
+  DOK-ING has not answered it.** Levels 1–2 re-confirmed empty (re-searched
+  `design_basis.py`, `data/dokink_rfi_answers.md`, and the full equipment
+  registry specifically for "circulation", "carrier-to-fuel", "carrier
+  loading/inventory", "Fe₂O₃"/"Fe₃O₄" — nothing found beyond GA-001's own
+  technology-name field). Level 3 (Comparable-equipment) and Level 5
+  (peer-reviewed literature), COMBINED — a real, directly-numeric industrial
+  pilot-plant source: **Graf, C., Coors, F., Marx, F., Dieringer, P.,
+  Zeneli, M., Stamatopoulos, P., Atsonios, K., Alobaid, F., Ströhle, J., &
+  Epple, B. (2024), "Development of a CFD-DEM Model for a 1 MWth Chemical
+  Looping Gasification Pilot Plant Using Biogenic Residues as Feedstock,"
+  *Energy & Fuels*, 38(19), 18660–18673** (DOI 10.1021/acs.energyfuels.4c02571)
+  — reports EXPLICIT oxygen-carrier-circulation/fuel-feed-rate mass ratios
+  for three real biomass feedstocks (18.4×–44.7×), not a generic "literature
+  suggests" figure. Scaled to GA-001's own confirmed 37.5 kg/h dry feed
+  rate: **DIGITAL TWIN ENGINEERING BASELINE ≈ 690–1,676 kg/h.**
+  **Consistency check performed, not skipped (Section 4):** checked against
+  this project's own confirmed O₂ demand (ER × stoichiometric O₂) and
+  Fe₂O₃/Fe₃O₄'s own real, computed theoretical oxygen transport capacity
+  (Ro = 3.34%, direct stoichiometry of 3Fe₂O₃ → 2Fe₃O₄ + ½O₂) — the
+  literature-scaled range implies a **20.8%–50.5% per-pass carrier
+  utilization**, against a ~10–30% conservative-practice reference for iron
+  carriers. **Verdict: PARTIAL, flagged not forced** — the range's lower end
+  (higher implied utilization) sits above that conservative window. A
+  SEPARATE, structural caveat, not smoothed over: Graf et al.'s own carrier
+  is **ilmenite** (Fe₂O₃+TiO₂+FeTiO₃) in a **dual circulating fluidized
+  bed**, not GA-001's own confirmed **pure Fe₂O₃/Fe₃O₄** in a **bubbling**
+  fluidized bed — CFB systems are generally capable of materially higher
+  solids throughput than BFB, so the ratio may not transfer cleanly.
+  Supporting, non-numeric context: Adánez et al. (2012), *Prog. Energy
+  Combust. Sci.* 38(2), 215–282 (the field's foundational review); Sampron,
+  Diego, Garcia-Labiano, Izquierdo, Abad & Adánez (2020), *Bioresource
+  Technology* (a materially closer Fe₂O₃/Al₂O₃ carrier-chemistry match at
+  smaller scale — its own specific circulation figure was paywalled and
+  could not be directly verified, so not used as the quantitative source).
+  `python/ga001_gasifier_model.py`: `oxygen_carrier_circulation_estimate()`,
+  registered as `("GA-001","OxygenCarrierCirculationEstimate")`, tagged
+  `Estimated`/`Comparable-equipment, Literature-based` — does NOT feed back
+  into `ga001_model()`'s own physics; a full reduction/oxidation reaction-
+  network model remains the separate, larger physics gap named above, not
+  attempted here. **ACTUAL/DOK-ING VALUE: still Missing/Unverified** — the
+  real open question (DOK-ING's own actual circulation rate, carrier
+  inventory, and per-pass conversion degree) is unchanged and explicitly
+  still open, alongside a SEPARATE, deliberately undecided follow-up
+  question: whether/how this baseline should ever feed into GA-001's own
+  calculations at all.
 - **Source:** `python/ga001_gasifier_model.py` module docstring (the
   "MAJOR FINDING" paragraph) and `oxygen_carrier_circulation_estimate()`;
-  `data/equipment_registry.json` GA-001.
+  `data/equipment_registry.json` GA-001; Graf et al. (2024), *Energy &
+  Fuels* 38(19), 18660–18673 (DOI 10.1021/acs.energyfuels.4c02571), Table 8
+  (primary numeric source); Adánez et al. (2012), *Prog. Energy Combust.
+  Sci.* 38(2), 215–282 (supporting review).
 
 ### 6. GA-001/GA-003 primary air-flow reconciliation
 - **Equipment ID(s):** GA-001, GA-003 (Air/Steam Injection, Flow).

@@ -38,16 +38,21 @@ looping-gasification physics a dedicated CLG model would require -- flagged
 prominently here and in this phase's own report, not buried in a footnote.
 
 UPDATE (Missing Parameter Resolution Protocol, Fe2O3/Fe3O4 circulation-rate
-task): a literature-based ENGINEERING BASELINE circulation rate now exists
-(oxygen_carrier_circulation_estimate(), registered as ("GA-001",
-"OxygenCarrierCirculationEstimate")) -- this is NOT the "inventing a
-figure" this paragraph warns against: it is a clearly-tagged Estimated/
-Literature-based RANGE, built from this project's own already-confirmed O2
-demand + the redox couple's own real computed stoichiometry + a cited
-literature utilization range, with an explicit ACTUAL/DOK-ING VALUE field
-stating none is confirmed (see its own docstring for the full evidence-
-hierarchy walk). It does NOT feed back into this model's own physics below
--- ga001_model() is completely unchanged by it. The real gap this
+task): a Comparable-equipment/Literature-based ENGINEERING BASELINE
+circulation rate now exists (oxygen_carrier_circulation_estimate(),
+registered as ("GA-001","OxygenCarrierCirculationEstimate")) -- this is NOT
+the "inventing a figure" this paragraph warns against: it is a clearly-
+tagged Estimated RANGE built from a REAL, directly-reported oxygen-carrier-
+to-fuel mass ratio (18.4-44.7x, Graf et al. 2024, Energy & Fuels 38(19),
+18660-18673 -- a real 1 MWth chemical-looping GASIFICATION pilot), scaled
+to GA-001's own confirmed feed rate, cross-checked (not derived from) this
+project's own O2 demand and the redox couple's own real stoichiometry --
+with an explicit ACTUAL/DOK-ING VALUE field stating none is confirmed, and
+an honest, reported consistency-check verdict (see its own docstring for
+the full evidence-hierarchy walk, citations, and material caveats: the
+source pilot uses ilmenite in a dual-CFB, not GA-001's own confirmed pure
+Fe2O3/Fe3O4 in a BFB). It does NOT feed back into this model's own physics
+below -- ga001_model() is completely unchanged by it. The real gap this
 paragraph describes (a genuine reduction/oxidation reaction-network model)
 remains fully open.
 
@@ -857,48 +862,76 @@ def ga001_tar_content(get_input):
 # item 5): GA-001's own Confirmed registry data states its real technology is
 # "Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping
 # oxygen carrier" -- but NO circulation rate, carrier inventory, or per-pass
-# conversion-degree figure exists anywhere in this project (checked directly,
-# not assumed: design_basis.py's own RFI tracker and the full equipment
-# registry both come up empty). Evidence hierarchy walked top-down, not
-# assumed empty:
+# conversion-degree figure exists anywhere in this project (RE-checked
+# directly for this task, not assumed: design_basis.py's own RFI tracker,
+# data/dokink_rfi_answers.md, and the full equipment registry all searched
+# again for "circulation", "carrier-to-fuel", "carrier loading/inventory",
+# "Fe2O3"/"Fe3O4" -- still come up empty; the equipment registry's only two
+# other "carrier"-adjacent hits are HB-001's unrelated Fe2O3/Cr2O3 HTS
+# catalyst and a liquid COOLANT circulation loop, neither this parameter).
+# Evidence hierarchy walked top-down, not assumed empty:
 #   Level 1 (Confirmed): NONE.
 #   Level 2 (Internal-model-derived): no direct circulation figure, but this
 #     project's OWN already-confirmed oxygen demand (ER x stoichiometric O2 --
 #     the SAME real quantity ga001_model() itself already computes for the
-#     partial-oxidation air split) gives a genuine, non-fabricated starting
-#     point, reused below via elemental_atomic_ratios()/stoichiometric_
-#     o2_per_molc(), not re-derived.
-#   Level 3 (Comparable-equipment): NONE -- no other solids-circulation rate
-#     (ash handling, carbon black recovery) exists in this registry at a
-#     scale/basis usable as a real analog.
-#   Level 4/5 (Literature-based): iron-based (Fe2O3/Fe3O4) chemical-looping
-#     oxygen carriers are a real, established research area -- Lyngfelt, A.,
-#     Leckner, B., & Mattisson, T. (2001), "A fluidized-bed combustion
-#     process with inherent CO2 separation; application of chemical-looping
-#     combustion," Chemical Engineering Science 56(10), 3101-3113, and
-#     Adanez, J., Abad, A., Garcia-Labiano, F., Gayan, P., & de Diego, L.F.
-#     (2012), "Progress in Chemical-Looping Combustion and Reforming
-#     technologies," Progress in Energy and Combustion Science 38(2),
-#     215-282, are the two foundational/review references this field is
-#     built on. This project's own reading of that general literature:
-#     iron-based carriers are typically operated at a LOW per-pass
-#     conversion degree relative to their own theoretical oxygen transport
-#     capacity (a representative 10-30% range, not one figure lifted from a
-#     single table) to preserve mechanical strength/reactivity over many
-#     redox cycles -- the SAME "representative range within a known
-#     engineering convention, not independently invented" discipline this
-#     project's own EU008_SIZING_MARGIN_FRACTION already uses.
-# COMBINED below into a real derivation, not a bare literature number pasted
-# in: this project's own confirmed O2 demand, divided by the Fe2O3/Fe3O4
-# couple's own REAL, computed theoretical oxygen transport capacity (Ro --
-# direct stoichiometry of 3 Fe2O3 -> 2 Fe3O4 + 1/2 O2, the SAME redox couple
-# this project's own registry confirms for GA-001, not a deeper reduction to
-# FeO/Fe), divided by the literature utilization range above. Tagged
-# Estimated/Literature (NOT Calculated, NOT DOKINGDesignTarget). Does NOT
-# feed back into ga001_model()'s own physics -- this task's own explicit
-# scope is to report the estimate, not build a full reduction/oxidation
-# reaction-network model, which remains this model's own separate, larger,
-# already-stated physics gap (module docstring).
+#     partial-oxidation air split) is reused below, NOT as the primary
+#     derivation (see Level 3/5 below) but as an independent CONSISTENCY
+#     CHECK on the literature-derived baseline (Section 4's own "verify
+#     before concluding" discipline).
+#   Level 3 (Comparable-equipment) / Level 5 (Peer-reviewed literature),
+#     COMBINED -- a real industrial-scale chemical-looping GASIFICATION
+#     pilot plant, not a generic combustion reference: Graf, C., Coors, F.,
+#     Marx, F., Dieringer, P., Zeneli, M., Stamatopoulos, P., Atsonios, K.,
+#     Alobaid, F., Strohle, J., & Epple, B. (2024), "Development of a
+#     CFD-DEM Model for a 1 MWth Chemical Looping Gasification Pilot Plant
+#     Using Biogenic Residues as Feedstock," Energy & Fuels, 38(19),
+#     18660-18673 (DOI 10.1021/acs.energyfuels.4c02571) -- reports EXPLICIT
+#     oxygen-carrier circulation rates against fuel feed rates for three
+#     real biomass feedstocks (industrial wood pellets: 8,889 kg/h carrier /
+#     223 kg/h fuel = 39.9x; pine forest residue: 13,446/301 = 44.7x; wheat
+#     straw pellets: 6,478/352.5 = 18.4x), a genuine carrier-to-fuel MASS
+#     RATIO range of 18.4-44.7, not a single number lifted from one table.
+#   HONEST CAVEATS, not smoothed over (checked and found real, material
+#   differences from GA-001's own confirmed technology): (a) Graf et al.'s
+#   own oxygen carrier is Norwegian ILMENITE (modeled as Fe2O3+TiO2+FeTiO3),
+#   NOT the pure Fe2O3/Fe3O4 couple GA-001's own registry confirms -- a
+#   different, TiO2-diluted carrier chemistry with its own, different
+#   theoretical oxygen transport capacity; (b) their reactor is a DUAL
+#   CIRCULATING fluidized bed (CFB), NOT the BFB (bubbling fluidized bed)
+#   GA-001's own registry confirms -- CFB systems are specifically designed
+#   for materially HIGHER solids throughput than BFB; (c) their feedstock is
+#   woody biomass/agricultural residue, not this project's own MSW/RDF-type
+#   feed; (d) their scale (1 MWth) is larger than GA-001's own (~37.5 kg/h
+#   dry feed x ~17 MJ/kg dry LHV / 3.6 = ~177 kWth). Directly transplanting
+#   their ratio is therefore NOT assumed to transfer perfectly -- flagged
+#   explicitly in this parameter's own metadata, not hidden.
+#   SUPPORTING (general field context, NOT the source of the specific
+#   ratio number above): Adanez, J., Abad, A., Garcia-Labiano, F., Gayan,
+#   P., & de Diego, L.F. (2012), "Progress in Chemical-Looping Combustion
+#   and Reforming technologies," Progress in Energy and Combustion Science,
+#   38(2), 215-282 (the field's own foundational review); Sampron, I., de
+#   Diego, L.F., Garcia-Labiano, F., Izquierdo, M.T., Abad, A., & Adanez, J.
+#   (2020), "Biomass Chemical Looping Gasification of pine wood using a
+#   synthetic Fe2O3/Al2O3 oxygen carrier in a continuous unit," Bioresource
+#   Technology -- a materially CLOSER carrier-chemistry match (Fe2O3-based,
+#   not ilmenite) at smaller (~kWth) scale, cited here as corroborating
+#   context for the general field even though this project could not
+#   directly retrieve its own specific circulation-rate figure (paywalled).
+# CONSISTENCY CHECK (Section 4, required before accepting): the Graf et al.
+# ratio, scaled to GA-001's own feed rate, is checked against this project's
+# OWN confirmed O2 demand and Fe2O3/Fe3O4's own REAL, computed theoretical
+# oxygen transport capacity (Ro -- direct stoichiometry of 3 Fe2O3 -> 2
+# Fe3O4 + 1/2 O2, the SAME redox couple GA-001's own registry confirms, not
+# a deeper reduction to FeO/Fe) -- see oxygen_carrier_circulation_estimate()
+# for the actual computed result and whether it checks out. Tagged
+# Estimated/Comparable-equipment-Literature-based (NOT Calculated, NOT
+# DOKINGDesignTarget). Does NOT feed back into ga001_model()'s own physics
+# -- this task's own explicit scope is to report the baseline PARAMETER,
+# not build a full reduction/oxidation reaction-network model (that remains
+# this model's own separate, larger, already-stated physics gap) -- and
+# whether/how this parameter should EVER feed into GA-001's own
+# calculations is a SEPARATE, explicitly NOT-decided-here follow-up
+# question (see this function's own "real_open_question" field).
 # =============================================================================
 M_FE2O3 = 159.69    # g/mol (2x55.845 Fe + 3x16.00 O)
 M_FE3O4 = 231.535   # g/mol (3x55.845 Fe + 4x16.00 O)
@@ -906,24 +939,47 @@ M_O2 = 32.00        # g/mol
 
 # 3 Fe2O3 -> 2 Fe3O4 + 1/2 O2 -- real stoichiometry of the SAME redox couple
 # GA-001's own registry names, computed here, not assumed. Ro = mass of O2
-# released per unit mass of the FULLY OXIDIZED (Fe2O3) carrier.
+# released per unit mass of the FULLY OXIDIZED (Fe2O3) carrier. Used ONLY as
+# an independent consistency check below, not as the primary derivation.
 OXYGEN_CARRIER_RO_MASS_FRACTION = (0.5 * M_O2) / (3.0 * M_FE2O3)  # = 0.03340 (3.34%)
 
-OXYGEN_CARRIER_UTILIZATION_RANGE = (0.10, 0.30)  # literature-representative per-pass range, see above
+# Graf et al. (2024), Energy & Fuels 38(19), 18660-18673, Table 8 -- real,
+# directly reported oxygen-carrier-circulation / fuel-feed-rate mass ratios
+# for three biomass feedstocks in a 1 MWth chemical-looping gasification
+# pilot (ilmenite carrier, dual-CFB) -- see module-level docstring above for
+# the full citation and the honest caveats on transferring this ratio to
+# GA-001's own, different (Fe2O3/Fe3O4, BFB) confirmed technology.
+OXYGEN_CARRIER_TO_FUEL_RATIO_RANGE = (18.4, 44.7)
+
+# A per-pass carrier utilization outside this window is flagged (not
+# rejected) by the consistency check below as atypical for iron-based
+# carriers expected to survive many redox cycles -- a general, representative
+# range from CLC/CLG review-level discussion (Adanez et al. 2012's own field
+# survey), not one number lifted from a single table.
+OXYGEN_CARRIER_CONSERVATIVE_UTILIZATION_RANGE = (0.10, 0.30)
 
 
 def oxygen_carrier_circulation_estimate(get_input):
     """Missing Parameter Resolution Protocol candidate -- see the module-
     level constants' own docstring immediately above for the full evidence-
-    hierarchy walk. Returns a bounded kg/h RANGE (Section 5/9's own false-
-    precision rule -- the literature utilization itself is a range, not a
-    point), Section 6/7/8 structured, ADDITIVE (registered as its own
+    hierarchy walk, citations, and honest caveats. Returns a bounded kg/h
+    RANGE (Section 5/9's own false-precision rule), Section 6/7/8
+    structured, ADDITIVE (registered as its own
     ("GA-001","OxygenCarrierCirculationEstimate") key -- does NOT alter or
     feed ga001_model()'s own physics/Outputs in any way)."""
     feed_rate = get_input(("GA-001-INPUT", "dry_feed_rate_kg_h"))["value"]
     er = get_input(("GA-001-INPUT", "equivalence_ratio"))["value"]
     composition = get_input(("GA-001-INPUT", "feedstock_composition"))["value"]
 
+    # --- PRIMARY DERIVATION: Level 3/5, Graf et al. (2024)'s own real carrier-to-fuel
+    # ratio, scaled directly to GA-001's own live, confirmed dry feed rate. ---------
+    ratio_lo, ratio_hi = OXYGEN_CARRIER_TO_FUEL_RATIO_RANGE
+    circulation_lo_kg_h = ratio_lo * feed_rate
+    circulation_hi_kg_h = ratio_hi * feed_rate
+    baseline_range = (round(circulation_lo_kg_h, 0), round(circulation_hi_kg_h, 0))
+
+    # --- CONSISTENCY CHECK (Section 4): does this baseline make sense against GA-001's
+    # own confirmed O2 demand and Fe2O3/Fe3O4's own real stoichiometry? --------------
     x, y, z, n_C_per_kg = elemental_atomic_ratios(
         composition["C"], composition["H"], composition["O"], composition["N"], ASH_FRACTION,
     )
@@ -933,58 +989,96 @@ def oxygen_carrier_circulation_estimate(get_input):
     o2_demand_mol_h = o2_actual_per_molc * total_C_mol_h
     o2_demand_kg_h = o2_demand_mol_h * M_O2 / 1000.0
 
-    util_lo, util_hi = OXYGEN_CARRIER_UTILIZATION_RANGE
-    # Lower utilization -> MORE carrier mass must circulate to deliver the same O2 -> upper bound.
-    circulation_hi_kg_h = o2_demand_kg_h / (OXYGEN_CARRIER_RO_MASS_FRACTION * util_lo)
-    circulation_lo_kg_h = o2_demand_kg_h / (OXYGEN_CARRIER_RO_MASS_FRACTION * util_hi)
-    baseline_range = (round(circulation_lo_kg_h, 0), round(circulation_hi_kg_h, 0))
+    # Implied per-pass utilization = O2 demand / (Ro x circulation rate) -- inverted
+    # from the SAME relationship used in this parameter's earlier draft, now used only
+    # to CHECK the literature-scaled baseline, not to derive it.
+    implied_util_at_lo_circ = o2_demand_kg_h / (OXYGEN_CARRIER_RO_MASS_FRACTION * circulation_lo_kg_h)
+    implied_util_at_hi_circ = o2_demand_kg_h / (OXYGEN_CARRIER_RO_MASS_FRACTION * circulation_hi_kg_h)
+    cons_lo, cons_hi = OXYGEN_CARRIER_CONSERVATIVE_UTILIZATION_RANGE
+    lo_in_range = cons_lo <= implied_util_at_lo_circ <= cons_hi
+    hi_in_range = cons_lo <= implied_util_at_hi_circ <= cons_hi
+    if lo_in_range and hi_in_range:
+        consistency_verdict = "PASS"
+    elif hi_in_range or lo_in_range:
+        consistency_verdict = "PARTIAL"
+    else:
+        consistency_verdict = "FLAGGED"
+    consistency_note = (
+        f"O2-demand consistency check: the literature-scaled circulation range implies a "
+        f"{implied_util_at_hi_circ*100:.1f}%-{implied_util_at_lo_circ*100:.1f}% per-pass Fe2O3/"
+        f"Fe3O4 utilization of its own real theoretical oxygen transport capacity (Ro="
+        f"{OXYGEN_CARRIER_RO_MASS_FRACTION*100:.2f}%), against a "
+        f"{cons_lo*100:.0f}-{cons_hi*100:.0f}% conservative-practice reference range for iron-"
+        f"based carriers -- verdict: {consistency_verdict}. "
+        + (
+            "The full range checks out."
+            if consistency_verdict == "PASS" else
+            f"NOT a clean pass, flagged rather than forced: the "
+            f"{'lower' if not lo_in_range else 'upper'} end of the literature-scaled circulation "
+            f"range implies a utilization "
+            f"{'above' if (implied_util_at_lo_circ if not lo_in_range else implied_util_at_hi_circ) > cons_hi else 'below'} "
+            f"the conservative reference window -- plausible for a shorter pilot-scale campaign or "
+            f"a more reactive carrier, but more aggressive than typically recommended for carrier "
+            f"longevity over many redox cycles. A SEPARATE, structural caveat (see this parameter's "
+            f"own docstring): the source ratio comes from a dual-CFB pilot, a fundamentally "
+            f"higher-solids-throughput configuration than GA-001's own confirmed BFB technology, so "
+            f"the ratio itself may not transfer cleanly regardless of this utilization check."
+        )
+    )
 
     return {
         "value": {
             # Section 8 structure --------------------------------------------------
             "actual_dokking_value": (
-                "NONE CONFIRMED. GA-001's own registry data confirms the reactor TECHNOLOGY is "
-                "'Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping oxygen "
+                "MISSING / UNVERIFIED. GA-001's own registry data confirms the reactor TECHNOLOGY "
+                "is 'Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping oxygen "
                 "carrier' -- but no circulation rate, carrier inventory, or per-pass conversion "
                 "degree is stated anywhere in this project (design_basis.py's own RFI tracker and "
-                "the full equipment registry both checked directly, not assumed empty)."
+                "the full equipment registry both re-checked directly for this task, not assumed "
+                "empty)."
             ),
             "digital_twin_engineering_baseline": f"approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h",
             "digital_twin_engineering_baseline_range_kg_h": baseline_range,
-            "status_of_baseline": "Estimated / Literature-based",
+            "status_of_baseline": "Estimated / Comparable-equipment, Literature-based",
             "uncertainty": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h",
             "source_basis": (
-                "This project's own confirmed O2 partial-oxidation demand (ER x stoichiometric O2, "
-                "the SAME quantity ga001_model() already computes) / Fe2O3-Fe3O4's own real "
-                "theoretical oxygen transport capacity (Ro, computed stoichiometry) / a literature-"
-                "representative 10-30% per-pass carrier utilization range (Lyngfelt et al. 2001; "
-                "Adanez et al. 2012)"
+                "Graf et al. (2024, Energy & Fuels 38(19), 18660-18673) -- 1 MWth chemical-looping "
+                "GASIFICATION pilot plant, real reported oxygen-carrier-to-fuel mass ratios "
+                f"({ratio_lo}-{ratio_hi}x across 3 biomass feedstocks) x GA-001's own live, "
+                f"confirmed dry feed rate ({feed_rate:.2f} kg/h this cycle)"
             ),
+            "consistency_check": {"verdict": consistency_verdict, "note": consistency_note},
             # Section 6 metadata -----------------------------------------------------
             "metadata": {
                 "parameter_name": "GA-001 Fe2O3/Fe3O4 oxygen-carrier circulation rate",
                 "baseline_value": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h",
                 "unit": "kg/h",
                 "status": "Estimated",
-                "evidence_level": "Literature-based",
-                "source": "Fe2O3/Syngas Double-Counting fix follow-on: Fe2O3/Fe3O4 circulation-rate task",
+                "evidence_level": "Comparable-equipment / Literature-based",
+                "source": "Graf, C. et al. (2024), Energy & Fuels 38(19), 18660-18673, DOI 10.1021/acs.energyfuels.4c02571, Table 8",
                 "source_reference": "python/ga001_gasifier_model.py: oxygen_carrier_circulation_estimate()",
                 "engineering_basis": (
-                    "O2 demand (this project's own confirmed ER x stoichiometric O2) divided by "
-                    "Fe2O3/Fe3O4's own computed theoretical oxygen transport capacity (Ro=3.34%) "
-                    "divided by a literature-representative 10-30% per-pass utilization range"
+                    "Real, directly-reported oxygen-carrier-to-fuel mass ratio (18.4-44.7x, 3 "
+                    "biomass feedstocks) from a 1 MWth chemical-looping gasification pilot plant, "
+                    "scaled to GA-001's own confirmed dry feed rate; cross-checked (not derived "
+                    "from) this project's own confirmed O2 demand and Fe2O3/Fe3O4's own computed "
+                    "theoretical oxygen transport capacity (Ro=3.34%)"
                 ),
                 "uncertainty_or_range": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h",
                 "confidence": (
-                    "Low-Medium -- the O2-demand term and Ro are both real, computed quantities, "
-                    "but the 10-30% utilization range is this project's own representative reading "
-                    "of general iron-carrier CLC/CLG practice, not a DOK-ING-confirmed or single-"
-                    "paper-verified figure for THIS specific plant"
+                    "Medium -- the source ratio is a real, directly-reported, peer-reviewed pilot-"
+                    "plant figure (not a single derived/assumed number), but the source carrier "
+                    "(ilmenite, dual-CFB) differs materially from GA-001's own confirmed technology "
+                    "(pure Fe2O3/Fe3O4, BFB) -- see this entry's own consistency_check field for the "
+                    "quantitative result of checking this range against GA-001's own O2 demand."
                 ),
                 "assumptions": (
-                    "(1) The Fe2O3<->Fe3O4 redox couple only (matching the registry's own stated "
-                    "technology, not a deeper reduction to FeO/Fe). (2) 10-30% per-pass carrier "
-                    "utilization, a representative literature range, not plant-specific. (3) Ignores "
+                    "(1) Graf et al.'s own ilmenite carrier-to-fuel ratio is assumed to transfer, at "
+                    "least as an order-of-magnitude baseline, to GA-001's own different (pure "
+                    "Fe2O3/Fe3O4) carrier chemistry -- NOT verified, flagged explicitly. (2) Their "
+                    "dual-CFB reactor's own solids-circulation capability is assumed comparable to "
+                    "GA-001's own confirmed BFB -- a real, structural, unresolved caveat (CFB systems "
+                    "are generally capable of materially higher circulation than BFB). (3) Ignores "
                     "carrier attrition/makeup, particle size, and reactor residence-time constraints "
                     "entirely -- a genuine, stated simplification."
                 ),
@@ -992,16 +1086,20 @@ def oxygen_carrier_circulation_estimate(get_input):
                 "replaceable_with_actual_data": True,
             },
             "real_open_question": (
-                "What is DOK-ING's own actual Fe2O3/Fe3O4 circulation rate (kg/h), carrier "
+                "(1) What is DOK-ING's own actual Fe2O3/Fe3O4 circulation rate (kg/h), carrier "
                 "inventory (kg), and per-pass conversion degree at nominal load? None of the three "
-                "exists anywhere in this project today."
+                "exists anywhere in this project today. (2) SEPARATE, explicitly NOT decided in this "
+                "task: should this baseline ever feed into GA-001's own calculations (e.g. an "
+                "oxygen-carrier heat-duty or pressure-drop term), or does it remain a standalone, "
+                "reported baseline with no downstream consumer? Left open for a future task."
             ),
             # Retained, unrounded, for any real downstream use -- rounding above is a presentation
             # choice (Section 5), never applied to the underlying computation.
             "o2_demand_kg_h": o2_demand_kg_h,
             "oxygen_carrier_ro_mass_fraction": OXYGEN_CARRIER_RO_MASS_FRACTION,
-            "utilization_range": OXYGEN_CARRIER_UTILIZATION_RANGE,
+            "carrier_to_fuel_ratio_range": OXYGEN_CARRIER_TO_FUEL_RATIO_RANGE,
             "circulation_kg_h_range": (circulation_lo_kg_h, circulation_hi_kg_h),
+            "implied_utilization_range": (implied_util_at_hi_circ, implied_util_at_lo_circ),
         },
         "status": ps.STATUS_ESTIMATED,
         "model": "ga001_gasifier_model.oxygen_carrier_circulation_estimate",
@@ -1009,14 +1107,15 @@ def oxygen_carrier_circulation_estimate(get_input):
                    ("GA-001-INPUT", "feedstock_composition")],
         "validation_basis": ps.VALIDATION_LITERATURE,
         "confidence_note": (
-            f"ACTUAL/DOK-ING VALUE: None confirmed anywhere in this project. DIGITAL TWIN "
-            f"ENGINEERING BASELINE: approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} "
-            f"kg/h (Estimated/Literature-based; O2 demand={o2_demand_kg_h:.3f}kg/h x Ro="
-            f"{OXYGEN_CARRIER_RO_MASS_FRACTION*100:.2f}% x "
-            f"{OXYGEN_CARRIER_UTILIZATION_RANGE[0]*100:.0f}-{OXYGEN_CARRIER_UTILIZATION_RANGE[1]*100:.0f}% "
-            f"utilization). Does NOT feed back into ga001_model()'s own physics -- a full reduction/"
-            f"oxidation reaction-network model remains this model's own separate, larger, already-"
-            f"stated physics gap (module docstring)."
+            f"ACTUAL/DOK-ING VALUE: Missing/Unverified. DIGITAL TWIN ENGINEERING BASELINE: "
+            f"approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h (Estimated/"
+            f"Comparable-equipment+Literature-based; Graf et al. 2024's own real "
+            f"{ratio_lo}-{ratio_hi}x carrier-to-fuel ratio x {feed_rate:.2f}kg/h live feed rate). "
+            f"{consistency_note} Does NOT feed back into ga001_model()'s own physics -- a full "
+            f"reduction/oxidation reaction-network model remains this model's own separate, larger, "
+            f"already-stated physics gap (module docstring); whether this baseline should ever feed "
+            f"GA-001's own calculations is a separate, explicitly open follow-up question (see "
+            f"'real_open_question')."
         ),
     }
 
@@ -1339,7 +1438,9 @@ if __name__ == "__main__":
     oc = oxygen_carrier_circulation_estimate(lambda k: oc_mock_inputs[k])
     print(f"  ACTUAL/DOK-ING VALUE: {oc['value']['actual_dokking_value']}")
     print(f"  DIGITAL TWIN ENGINEERING BASELINE: {oc['value']['digital_twin_engineering_baseline']}")
-    assert "NONE CONFIRMED" in oc["value"]["actual_dokking_value"], (
+    print(f"  Consistency check: {oc['value']['consistency_check']['verdict']} -- "
+          f"{oc['value']['consistency_check']['note']}")
+    assert "MISSING" in oc["value"]["actual_dokking_value"] or "UNVERIFIED" in oc["value"]["actual_dokking_value"], (
         "REGRESSION: this parameter has no confirmed DOK-ING value anywhere in this project -- "
         "must not be misrepresented as confirmed."
     )
@@ -1347,9 +1448,15 @@ if __name__ == "__main__":
     assert 0.0 < lo < hi, f"REGRESSION: baseline range {(lo, hi)} is not a sane bounded range."
     assert oc["status"] == ps.STATUS_ESTIMATED, f"REGRESSION: status should be Estimated, got {oc['status']!r}."
     assert oc["validation_basis"] == ps.VALIDATION_LITERATURE
-    # Independent re-derivation, not just "a number came back": recompute the O2 demand via the
-    # SAME two real, already-existing functions this model's own physics uses, and the Fe2O3/Fe3O4
-    # Ro via direct stoichiometry, via a completely separate expression.
+
+    # Independent re-derivation, not just "a number came back": recompute BOTH the primary
+    # (carrier-to-fuel ratio x feed rate) baseline AND the O2-demand consistency check via a
+    # completely separate expression.
+    ratio_lo_chk, ratio_hi_chk = 18.4, 44.7
+    circ_lo_chk = ratio_lo_chk * 37.5
+    circ_hi_chk = ratio_hi_chk * 37.5
+    assert abs(circ_lo_chk - oc["value"]["circulation_kg_h_range"][0]) < 1e-6
+    assert abs(circ_hi_chk - oc["value"]["circulation_kg_h_range"][1]) < 1e-6
     x_chk, y_chk, _, nC_chk = elemental_atomic_ratios(
         FEEDSTOCK_C_FRACTION, FEEDSTOCK_H_FRACTION, FEEDSTOCK_O_FRACTION, FEEDSTOCK_N_FRACTION, ASH_FRACTION,
     )
@@ -1357,41 +1464,64 @@ if __name__ == "__main__":
     assert abs(o2_demand_chk - oc["value"]["o2_demand_kg_h"]) < 1e-9
     ro_chk = (0.5 * 32.00) / (3.0 * 159.69)
     assert abs(ro_chk - OXYGEN_CARRIER_RO_MASS_FRACTION) < 1e-9
-    lo_chk = o2_demand_chk / (ro_chk * 0.30)
-    hi_chk = o2_demand_chk / (ro_chk * 0.10)
-    assert abs(lo_chk - oc["value"]["circulation_kg_h_range"][0]) < 1e-6
-    assert abs(hi_chk - oc["value"]["circulation_kg_h_range"][1]) < 1e-6
-    print(f"  Independent re-derivation matches exactly: O2 demand={o2_demand_chk:.3f}kg/h, "
-          f"Ro={ro_chk*100:.2f}%, circulation range={lo_chk:.0f}-{hi_chk:.0f}kg/h.")
+    util_at_hi_circ_chk = o2_demand_chk / (ro_chk * circ_hi_chk)
+    util_at_lo_circ_chk = o2_demand_chk / (ro_chk * circ_lo_chk)
+    assert abs(util_at_hi_circ_chk - oc["value"]["implied_utilization_range"][0]) < 1e-9
+    assert abs(util_at_lo_circ_chk - oc["value"]["implied_utilization_range"][1]) < 1e-9
+    print(f"  Independent re-derivation matches exactly: circulation range={circ_lo_chk:.0f}-"
+          f"{circ_hi_chk:.0f}kg/h (from the {ratio_lo_chk}-{ratio_hi_chk}x ratio x 37.5kg/h feed), "
+          f"O2 demand={o2_demand_chk:.3f}kg/h, Ro={ro_chk*100:.2f}%, implied utilization="
+          f"{util_at_hi_circ_chk*100:.1f}-{util_at_lo_circ_chk*100:.1f}%.")
+
     for field in ("parameter_name", "baseline_value", "unit", "status", "evidence_level", "source",
                   "source_reference", "engineering_basis", "uncertainty_or_range", "confidence",
                   "assumptions", "date_established", "replaceable_with_actual_data"):
         assert field in oc["value"]["metadata"], f"REGRESSION: Section 6 metadata missing required field {field!r}."
-    assert oc["value"]["metadata"]["evidence_level"] == "Literature-based", (
-        f"REGRESSION: evidence_level should be Literature-based (no internal-model or comparable-"
-        f"equipment data exists for this parameter, only this project's own confirmed O2-demand "
-        f"quantity combined with real literature), got {oc['value']['metadata']['evidence_level']!r}."
+    assert oc["value"]["metadata"]["evidence_level"] == "Comparable-equipment / Literature-based", (
+        f"REGRESSION: evidence_level should be Comparable-equipment / Literature-based (a real "
+        f"peer-reviewed pilot-plant figure exists), got {oc['value']['metadata']['evidence_level']!r}."
     )
     assert oc["value"]["metadata"]["replaceable_with_actual_data"] is True
-    print("  PASSED -- Section 6 metadata complete, evidence_level=Literature-based (correctly NOT "
-          "claimed as Internal-model-derived or Confirmed), replaceable_with_actual_data=True, ACTUAL/"
-          "DOK-ING VALUE correctly states none exists, and the full computation independently "
-          "re-derives exactly via a separate expression -- not just 'a number came back'.")
+    assert oc["value"]["consistency_check"]["verdict"] in ("PASS", "PARTIAL", "FLAGGED"), (
+        "REGRESSION: consistency_check must report an honest verdict, not silently skip the check."
+    )
+    print("  PASSED -- Section 6 metadata complete, evidence_level=Comparable-equipment / Literature-"
+          "based (correctly NOT claimed as Confirmed), replaceable_with_actual_data=True, ACTUAL/"
+          "DOK-ING VALUE correctly states none exists, the consistency check reports an honest "
+          "verdict (not silently forced to PASS), and the full computation independently re-derives "
+          "exactly via a separate expression -- not just 'a number came back'.")
 
-    # Live-wired, not a one-off calculation: a real ER change should move the O2 demand, and
-    # therefore the circulation-rate baseline, exactly like every other GA-001-derived quantity.
+    # Live-wired, not a one-off calculation: the PRIMARY baseline (carrier-to-fuel ratio x feed
+    # rate) responds to feed rate; the CONSISTENCY CHECK (O2 demand, hence implied utilization)
+    # separately responds to ER -- both real, both checked, not conflated.
+    oc_mock_inputs_hi_feed = dict(oc_mock_inputs)
+    oc_mock_inputs_hi_feed[("GA-001-INPUT", "dry_feed_rate_kg_h")] = {"value": 45.0}
+    oc_hi_feed = oxygen_carrier_circulation_estimate(lambda k: oc_mock_inputs_hi_feed[k])
+    assert oc_hi_feed["value"]["digital_twin_engineering_baseline_range_kg_h"] != oc["value"]["digital_twin_engineering_baseline_range_kg_h"], (
+        "REGRESSION: a feed-rate change did not move the primary (comparable-equipment-ratio) baseline."
+    )
+    print(f"  feed=37.5kg/h -> baseline={oc['value']['digital_twin_engineering_baseline']}   "
+          f"feed=45.0kg/h -> baseline={oc_hi_feed['value']['digital_twin_engineering_baseline']}")
+
     oc_mock_inputs_hi_er = dict(oc_mock_inputs)
     oc_mock_inputs_hi_er[("GA-001-INPUT", "equivalence_ratio")] = {"value": 0.35}
     oc_hi_er = oxygen_carrier_circulation_estimate(lambda k: oc_mock_inputs_hi_er[k])
     assert oc_hi_er["value"]["o2_demand_kg_h"] > oc["value"]["o2_demand_kg_h"], (
         "REGRESSION: a higher ER (more O2) did not increase the computed O2 demand."
     )
-    assert oc_hi_er["value"]["digital_twin_engineering_baseline_range_kg_h"] != oc["value"]["digital_twin_engineering_baseline_range_kg_h"]
-    print(f"  ER=0.25 -> O2 demand={oc['value']['o2_demand_kg_h']:.3f}kg/h, circulation="
-          f"{oc['value']['digital_twin_engineering_baseline']}   ER=0.35 -> O2 demand="
-          f"{oc_hi_er['value']['o2_demand_kg_h']:.3f}kg/h, circulation="
-          f"{oc_hi_er['value']['digital_twin_engineering_baseline']}")
-    print("  PASSED -- the estimate is genuinely live-wired to GA-001's own real inputs (ER, feed "
-          "rate, composition), not a static one-off number.")
+    assert oc_hi_er["value"]["digital_twin_engineering_baseline_range_kg_h"] == oc["value"]["digital_twin_engineering_baseline_range_kg_h"], (
+        "REGRESSION: the primary baseline (feed-rate-scaled comparable-equipment ratio) should NOT "
+        "depend on ER -- only the consistency check's own implied-utilization figure should."
+    )
+    assert oc_hi_er["value"]["implied_utilization_range"] != oc["value"]["implied_utilization_range"], (
+        "REGRESSION: a higher ER did not move the consistency check's own implied utilization."
+    )
+    print(f"  ER=0.25 -> O2 demand={oc['value']['o2_demand_kg_h']:.3f}kg/h, implied utilization="
+          f"{oc['value']['implied_utilization_range'][0]*100:.1f}-{oc['value']['implied_utilization_range'][1]*100:.1f}%   "
+          f"ER=0.35 -> O2 demand={oc_hi_er['value']['o2_demand_kg_h']:.3f}kg/h, implied utilization="
+          f"{oc_hi_er['value']['implied_utilization_range'][0]*100:.1f}-{oc_hi_er['value']['implied_utilization_range'][1]*100:.1f}%")
+    print("  PASSED -- the primary baseline is genuinely live-wired to GA-001's own real feed rate "
+          "(not ER, correctly), and the separate consistency check is genuinely live-wired to ER "
+          "(not silently frozen) -- neither is a static one-off number.")
 
     print("\nAll ga001_gasifier_model.py self-tests PASSED.")
