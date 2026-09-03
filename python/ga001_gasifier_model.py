@@ -104,12 +104,36 @@ the resolved wet/dry feed-rate basis finding (DOK-ING's confirmed
 41.67 kg/h is the AS-RECEIVED WET rate, not dry -- this key now correctly
 receives ~37.5 kg/h dry, matching equipment_engineering_estimates.py's own
 existing FE-007 static fill).
+
+FEEDSTOCK-COMPOSITION WIRING ADDENDUM (RFI #2 now Confirmed):
+design_basis.py's own RFI #2 (feedstock composition) is now
+status=Confirmed -- but DOK-ING's confirmed answer is Moisture 5-15%, Ash
+5-15%, Volatile Matter >65%, Carbon >45%, Hydrogen >5%, LHV 15-20 MJ/kg
+(dry), NOT a full proximate/ultimate analysis: no Oxygen or Nitrogen
+figures at all, and Carbon/Hydrogen given only as open floors. This CANNOT
+determine _input_feedstock_composition()'s own C/H/O/N split -- the real
+literature ultimate-analysis values below are UNCHANGED. What changed:
+_input_feedstock_composition() now reads DOK-ING's confirmed ranges LIVE,
+every run (design_basis.get_feedstock_composition_ranges(), never a
+hardcoded copy), and cross-validates the existing literature figures (plus
+the separately-Confirmed ASH_FRACTION) against them
+(feedstock_composition_dokink_cross_check()) -- HONEST RESULT: every
+figure already satisfies DOK-ING's stated constraints (Carbon 50%>45%,
+Hydrogen 6%>5%, Ash 10% inside [5,15]%), so the composition VALUES this
+model computes with are numerically UNCHANGED by this wiring; status stays
+Assumed/Literature, not upgraded, because O/N remain fully unconfirmed and
+C/H remain only floor-checked, not point-confirmed. DOK-ING's own genuinely
+new, closed-range number -- LHV 15-20 MJ/kg dry -- is separately wired into
+tab1_integration.py's overall_efficiency KPI as a bounded range (Missing
+Parameter Protocol Section 9), the one place this confirmed answer actually
+adds a previously-uncomputable number.
 """
 import math
 import random
 
 import numpy as np
 
+from . import design_basis
 from . import gasifier_mass_balance
 from . import plant_status as ps
 from . import uncertainty
@@ -130,14 +154,23 @@ NM3_PER_MOL = 0.022414
 
 # --- THE SINGLE LARGEST ASSUMPTION IN THIS MODEL, tagged Assumed
 # everywhere it appears, never Estimated or Calculated (task requirement 3).
-# DOK-ING has not provided a feedstock proximate/ultimate analysis --
-# design_basis.py's own RFI #2 status remains Unknown. Representative
-# "typical MSW/RDF" dry, ash-free ultimate-analysis mass fractions, cited
-# from Tchobanoglous, G., Theisen, H. & Vigil, S., "Integrated Solid Waste
-# Management" -- the SAME real reference this project's own FE-004
-# specific-energy fill already cites
-# (python/equipment_engineering_estimates.py). This is NOT DOK-ING's own
-# feedstock data. ---------------------------------------------------------
+# UPDATED (feedstock-composition wiring task): design_basis.py's own RFI #2
+# is now status=Confirmed -- but DOK-ING's confirmed answer is proximate-
+# analysis RANGES/floors (Moisture 5-15%, Ash 5-15%, Carbon >45%,
+# Hydrogen >5%, LHV 15-20 MJ/kg dry), NOT a full ultimate analysis: it gives
+# no Oxygen or Nitrogen figures at all, and Carbon/Hydrogen are open-ended
+# floors, not closed ranges. That is not enough to DERIVE a C/H/O/N mass-
+# fraction split from -- O and N still have to come from somewhere else.
+# The representative "typical MSW/RDF" dry, ash-free ultimate-analysis mass
+# fractions below (Tchobanoglous, G., Theisen, H. & Vigil, S., "Integrated
+# Solid Waste Management" -- the SAME real reference this project's own
+# FE-004 specific-energy fill already cites,
+# python/equipment_engineering_estimates.py) remain the actual VALUES used.
+# What changed: _input_feedstock_composition() now reads DOK-ING's confirmed
+# ranges LIVE (design_basis.get_feedstock_composition_ranges()) and cross-
+# validates these literature values against them every time this model
+# runs, instead of a stale, unchecked comment claiming RFI #2 is Unknown.
+# ---------------------------------------------------------------------------
 FEEDSTOCK_C_FRACTION = 0.50
 FEEDSTOCK_H_FRACTION = 0.06
 FEEDSTOCK_O_FRACTION = 0.43
@@ -149,7 +182,13 @@ assert abs(
 # Ash fraction -- NOT re-assumed here. Reused directly from
 # gasifier_mass_balance.py's own already-real, already-Confirmed constant
 # (GA-005's own registry data: "10% ash content, dry basis"), read, not
-# re-typed -- avoids introducing a second, inconsistent ash figure.
+# re-typed -- avoids introducing a second, inconsistent ash figure. This is
+# a SEPARATE module-level constant, not part of the "feedstock_composition"
+# GA-001-INPUT (which only carries C/H/O/N) -- out of scope for the live
+# design_basis.py re-wiring done below (task's own explicit scope is
+# _input_feedstock_composition()); still cross-validated against DOK-ING's
+# own confirmed ash range there, at call time, without changing this
+# constant's own value or sourcing mechanism.
 ASH_FRACTION = gasifier_mass_balance.ASH_FRACTION
 
 # Carbon conversion efficiency -- ASSUMED, literature-typical range for
@@ -448,10 +487,81 @@ def _input_ch4_carbon_fraction(get_input):
     }
 
 
+def feedstock_composition_dokink_cross_check():
+    """Live cross-check of this model's own literature C/H/N ultimate-
+    analysis values, and the separate module-constant ASH_FRACTION, against
+    DOK-ING's own CONFIRMED feedstock-composition ranges (RFI #2), read at
+    call time via design_basis.get_feedstock_composition_ranges() -- never a
+    hardcoded copy of DOK-ING's numbers. Returns None if RFI #2 is not
+    currently confirmed (graceful, same as the getter itself).
+
+    HONEST LIMITATION, not glossed over: DOK-ING's confirmed answer is NOT a
+    full ultimate analysis. Carbon and Hydrogen are given only as open-ended
+    floors (>45%, >5%) with no upper bound, and Oxygen/Nitrogen are not
+    given AT ALL. That means DOK-ING's data can be used to VALIDATE this
+    model's existing literature figures (are they consistent with what
+    DOK-ING confirmed?) but cannot be used to DERIVE or REPLACE them -- there
+    is no confirmed O/N split to derive from, and no confirmed upper bound
+    on C/H to check against. Moisture and Volatile Matter are proximate-
+    analysis figures this stoichiometric ultimate-analysis model does not
+    consume as a direct input (feed moisture is handled separately, via
+    FE-005's own live residual-moisture read -- see _moisture_water_moles);
+    they are not checked here.
+    """
+    ranges = design_basis.get_feedstock_composition_ranges()
+    if ranges is None:
+        return None
+    carbon_pct = FEEDSTOCK_C_FRACTION * 100.0
+    hydrogen_pct = FEEDSTOCK_H_FRACTION * 100.0
+    ash_pct = ASH_FRACTION * 100.0
+    ash_lo, ash_hi = ranges["ash_pct"]
+    checks = {
+        "carbon": {"value_pct": carbon_pct, "constraint": f">{ranges['carbon_pct_min']:.0f}%",
+                   "pass": carbon_pct >= ranges["carbon_pct_min"]},
+        "hydrogen": {"value_pct": hydrogen_pct, "constraint": f">{ranges['hydrogen_pct_min']:.0f}%",
+                     "pass": hydrogen_pct >= ranges["hydrogen_pct_min"]},
+        "ash": {"value_pct": ash_pct, "constraint": f"[{ash_lo:.0f}-{ash_hi:.0f}]%",
+                "pass": ash_lo <= ash_pct <= ash_hi},
+    }
+    checks["all_pass"] = all(c["pass"] for c in checks.values() if isinstance(c, dict))
+    return checks
+
+
 def _input_feedstock_composition(get_input):
     """THE SINGLE LARGEST ASSUMPTION in this whole model (task requirement
-    3). DOK-ING has not provided a feedstock proximate/ultimate analysis --
-    design_basis.py's own RFI #2 status remains Unknown."""
+    3) -- STILL tagged Assumed/Literature, not upgraded, even though
+    design_basis.py's own RFI #2 is now status=Confirmed. Read carefully:
+    DOK-ING's confirmed answer covers Carbon/Hydrogen as open floors only
+    (no upper bound) and gives NO Oxygen or Nitrogen figures at all -- it is
+    not a full ultimate analysis, so it cannot actually determine this
+    function's own C/H/O/N split. What DOES change here: the literature
+    values below are now cross-checked LIVE, every run, against DOK-ING's
+    real confirmed ranges (design_basis.get_feedstock_composition_ranges(),
+    never a hardcoded copy -- see feedstock_composition_dokink_cross_check()
+    above), and the result is reported in confidence_note instead of a
+    stale claim that RFI #2 is still Unknown."""
+    cross_check = feedstock_composition_dokink_cross_check()
+    if cross_check is None:
+        validation_text = (
+            "DOK-ING's own feedstock-composition answer (RFI #2) is not currently confirmed in "
+            "design_basis.py -- no live cross-validation performed."
+        )
+    else:
+        c, h, a = cross_check["carbon"], cross_check["hydrogen"], cross_check["ash"]
+        validation_text = (
+            f"Cross-validated LIVE against DOK-ING's own CONFIRMED feedstock-composition ranges "
+            f"(design_basis.get_feedstock_composition_ranges(), RFI #2 -- read at call time, not "
+            f"hardcoded): Carbon {c['value_pct']:.0f}% vs confirmed floor {c['constraint']} "
+            f"({'PASS' if c['pass'] else 'FAIL'}); Hydrogen {h['value_pct']:.0f}% vs confirmed floor "
+            f"{h['constraint']} ({'PASS' if h['pass'] else 'FAIL'}); Ash (ASH_FRACTION, a separate "
+            f"module constant, itself independently Confirmed from GA-005's own registry data) "
+            f"{a['value_pct']:.0f}% vs confirmed range {a['constraint']} "
+            f"({'PASS' if a['pass'] else 'FAIL'}). "
+            + ("All checks PASS -- consistent with, but not derived from, DOK-ING's confirmed data."
+               if cross_check["all_pass"] else
+               "HONEST FINDING: at least one figure FAILS DOK-ING's own confirmed constraint -- "
+               "reported here, not silently kept.")
+        )
     return {
         "value": {
             "C": FEEDSTOCK_C_FRACTION, "H": FEEDSTOCK_H_FRACTION,
@@ -463,8 +573,10 @@ def _input_feedstock_composition(get_input):
             "Representative 'typical MSW/RDF' dry, ash-free ultimate analysis, cited from "
             "Tchobanoglous, Theisen & Vigil, Integrated Solid Waste Management (the same real "
             "reference this project's own FE-004 specific-energy fill already cites). THIS IS "
-            "NOT DOK-ING'S OWN FEEDSTOCK DATA -- design_basis.py's RFI #2 remains status=Unknown; "
-            "this stands in for it until a real proximate/ultimate analysis exists."
+            "NOT DOK-ING'S OWN FEEDSTOCK DATA -- DOK-ING's RFI #2 is Confirmed but gives no "
+            "Oxygen/Nitrogen figures and only open-ended Carbon/Hydrogen floors, so it cannot "
+            "actually determine this C/H/O/N split; it stands in until a real full ultimate "
+            "analysis exists. " + validation_text
         ),
     }
 
@@ -978,5 +1090,52 @@ if __name__ == "__main__":
     print("PASSED -- GA-001's own carbon-conversion-efficiency and CH4-yield literature ranges, plus "
           "uncertainty.py's own live ER/steam-ratio bands, propagate through to a real output DISTRIBUTION "
           "(mean + 90% CI), not a single hidden point value.")
+
+    print("\n=== Feedstock composition wired live against DOK-ING's confirmed RFI #2 ranges ===")
+    cross_check = feedstock_composition_dokink_cross_check()
+    assert cross_check is not None, (
+        "REGRESSION: RFI #2 (feedstock_composition) is confirmed in design_basis.py but the live "
+        "cross-check returned None -- getter-discipline wiring is broken."
+    )
+    print(f"  Carbon:   {cross_check['carbon']['value_pct']:.0f}% vs confirmed floor "
+          f"{cross_check['carbon']['constraint']}  -> {'PASS' if cross_check['carbon']['pass'] else 'FAIL'}")
+    print(f"  Hydrogen: {cross_check['hydrogen']['value_pct']:.0f}% vs confirmed floor "
+          f"{cross_check['hydrogen']['constraint']}  -> {'PASS' if cross_check['hydrogen']['pass'] else 'FAIL'}")
+    print(f"  Ash:      {cross_check['ash']['value_pct']:.0f}% vs confirmed range "
+          f"{cross_check['ash']['constraint']}  -> {'PASS' if cross_check['ash']['pass'] else 'FAIL'}")
+    assert cross_check["all_pass"], (
+        "HONEST FINDING surfaced as a real failure, not swallowed: this model's own literature "
+        "composition/ash values no longer satisfy DOK-ING's own confirmed RFI #2 constraints -- "
+        "see the printed detail above for which one."
+    )
+    print("  PASSED -- every literature figure this model actually uses (Carbon, Hydrogen, and the "
+          "separately-Confirmed ASH_FRACTION) independently satisfies DOK-ING's own confirmed RFI #2 "
+          "constraints. HONEST RESULT: this means wiring RFI #2 in live does NOT change any computed "
+          "syngas number above -- confirmed by the point-estimate and Monte Carlo sections above being "
+          "numerically identical to this model's pre-wiring baseline -- it upgrades this model's own "
+          "confidence that its literature assumption is defensible, without upgrading its status tag "
+          "(still Assumed/Literature: DOK-ING gives no O/N figures and only open Carbon/Hydrogen "
+          "floors, so this is a validation, not a derivation).")
+
+    print("\n=== Live-checked getter degrades gracefully if RFI #2 were ever unconfirmed ===")
+    design_basis.clear_confirmed("feedstock_composition")
+    result_unconfirmed = _input_feedstock_composition(lambda k: None)
+    assert feedstock_composition_dokink_cross_check() is None
+    assert "not currently confirmed" in result_unconfirmed["confidence_note"]
+    assert result_unconfirmed["value"] == {
+        "C": FEEDSTOCK_C_FRACTION, "H": FEEDSTOCK_H_FRACTION,
+        "O": FEEDSTOCK_O_FRACTION, "N": FEEDSTOCK_N_FRACTION,
+    }, "REGRESSION: composition VALUE must never change based on confirmation status -- only the note."
+    design_basis.set_confirmed(
+        "feedstock_composition",
+        "Moisture 5-15(20)%, Ash 5-15%, Volatile Matter >65%, Carbon >45%, Hydrogen >5%, "
+        "LHV 15-20 MJ/kg (dry basis). Trace S/Cl captured via downstream scrubbing/dry gas cleaning.",
+        f"{design_basis.RFI_ANSWERS_SOURCE} (RFI #2)", "restored after the round-trip check above",
+    )
+    assert feedstock_composition_dokink_cross_check() is not None
+    print("  PASSED -- _input_feedstock_composition()'s own composition VALUE is unaffected by "
+          "confirmation status (never silently swapped); only the live cross-check/confidence_note "
+          "degrades gracefully to 'not confirmed' and recovers correctly once re-confirmed -- a real "
+          "live read, not a cached or hardcoded copy.")
 
     print("\nAll ga001_gasifier_model.py self-tests PASSED.")

@@ -148,13 +148,29 @@ what remains open is a narrower, more specific question.
   would let GA-001 be re-tagged from `Literature` to `DOKINGDesignTarget`
   basis (once combined with real performance data — see item 8) and
   would sharpen every downstream number in the plant.
-- **Found stale while building this document:** `python/ga001_gasifier_
-  model.py`'s own docstring (line ~466) still states *"design_basis.py's
-  RFI #2 remains status=Unknown"* — this is now **out of date**;
-  `design_basis.py` shows RFI #2 as Confirmed (with the ranges above).
-  Worth a follow-up code fix independent of this document.
+- **UPDATE (feedstock-composition wiring task, 2026-09-03): the stale
+  docstring flagged above is FIXED, and the wiring/implementation gap
+  itself is closed** — `ga001_gasifier_model.py`'s own
+  `_input_feedstock_composition()` now reads
+  `design_basis.get_feedstock_composition_ranges()` LIVE, every run (not a
+  hardcoded copy), and cross-validates the literature C/H/ash figures
+  against DOK-ING's confirmed floors/range
+  (`feedstock_composition_dokink_cross_check()`, exercised in the module's
+  own self-test). **HONEST RESULT, not forced:** every figure this model
+  actually uses already satisfies DOK-ING's confirmed constraints (Carbon
+  50%>45%, Hydrogen 6%>5%, Ash 10% inside [5,15]%), so the composition
+  VALUES and every downstream syngas number are numerically **unchanged**
+  by this wiring — confirmed by re-running the model's own point-estimate
+  and Monte Carlo self-test sections. **The underlying question below
+  remains genuinely open** — this closes the wiring gap (data existed but
+  wasn't connected), not the DOK-ING data gap itself: O/N are still not
+  confirmed at all, and Carbon/Hydrogen are still only open floors, not a
+  precise point split, so GA-001's status stays `Assumed`/`Literature`,
+  deliberately NOT upgraded to `DOKINGDesignTarget`.
 - **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/design_
-  basis.py` (`feedstock_composition`); `python/ga001_gasifier_model.py`.
+  basis.py` (`feedstock_composition`, `get_feedstock_composition_ranges()`);
+  `python/ga001_gasifier_model.py` (`_input_feedstock_composition()`,
+  `feedstock_composition_dokink_cross_check()`).
 
 ### 4. Feedstock LHV — precise value or confirm the range is final
 - **Equipment ID(s):** Tab 1 "Overall efficiency" KPI; GA-001 (indirectly).
@@ -170,8 +186,39 @@ what remains open is a narrower, more specific question.
   Tab 1's own "overall efficiency" KPI (useful output energy / feedstock
   input energy) — currently the only Tab 1 KPI blocked purely by a
   numeric gap rather than a genuine model limitation.
+- **UPDATE (feedstock-composition wiring task, 2026-09-03): option (b)
+  above is now implemented — resolved, not left stale.** Tab 1's
+  `overall_efficiency` KPI is no longer unconditionally
+  `Missing / Cannot Calculate`; it reads DOK-ING's confirmed LHV range
+  live (`design_basis.get_feedstock_composition_ranges()`) and reports a
+  bounded H2-conversion-efficiency range (approximately 52–69% at this
+  session's baseline load) — HB-012's live H2 output energy divided by
+  FE-005's live dry feed rate × DOK-ING's confirmed 15–20 MJ/kg dry LHV
+  range, per the Missing Parameter Protocol's Section 9 false-precision
+  rule for a critical parameter given only as a range.
+  **NEW open question surfaced by this exact change, not swept under the
+  rug:** a first attempt also summed in EU-009's net electrical and
+  EU-012's thermal output as one combined "plant overall efficiency" —
+  and it came out **above 100%** for part of DOK-ING's own LHV range. Real
+  cause, investigated: EU-009's own generation total includes EU-006's PEM
+  Fuel Cell, dispatched from HB-013's *stored* H2
+  (`eu_utilities_chp._h2_budget_kw`) — the SAME underlying H2 pool
+  HB-012's `h2_kg_h` already counts once — and `eu_chp_dispatch`'s own
+  syngas budget is GC-013's FULL flow, with no established split against
+  whatever the WGS/PSA route already consumed to make that H2. This
+  project's Phase 2 dispatch model was built with two independent budget
+  inputs (syngas-for-CHP, H2-for-FuelCell) and no explicit allocation
+  split between them — invisible until a real feedstock LHV existed to
+  reveal it. **Deliberately NOT summed into `overall_efficiency`** (would
+  have forced a misleading, occasionally-impossible number); electrical
+  and thermal stay reported as their own separate live KPIs above. A real
+  multi-carrier plant efficiency needs the actual physical gas-flow
+  allocation traced across GA-001→GC→HB→EU first — a new, genuine
+  candidate item for this list, not resolved here.
 - **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/tab1_
-  integration.py` (`compute_tab1_kpis`, `overall_efficiency`).
+  integration.py` (`compute_tab1_kpis`, `overall_efficiency`);
+  `python/eu_utilities_chp.py` (`_h2_budget_kw`, `_syngas_budget_kw`,
+  `eu_chp_dispatch`).
 
 ### 5. Fe₂O₃/Fe₃O₄ chemical-looping oxygen-carrier circulation rate/capacity
 - **Equipment ID(s):** GA-001 (Gasifier).

@@ -38,6 +38,7 @@ HB-007's own permanently-Missing split fraction (Phase 1d) -- traced here
 via plant_status.py's own missing_roots(), not re-declared independently.
 """
 from . import ai_automation_layer as ai
+from . import design_basis
 from . import eu_utilities_chp as eu
 from . import fe_feed_handling as fe
 from . import ga001_gasifier_model as ga001
@@ -170,17 +171,95 @@ def compute_tab1_kpis(snapshot):
     kpis["total_thermal_production"] = _read(snapshot, ("EU-012", "DistrictHeatingHX"), "primary_duty_kw", "kW")
 
     # --- Overall efficiency / major losses --------------------------------
-    kpis["overall_efficiency"] = _kv(
-        ps.STATUS_MISSING, None,
-        "No feedstock LHV/calorific value has ever been confirmed by DOK-ING anywhere in this "
-        "project (design_basis.py's own RFI tracking states this explicitly, RFI Q2) -- an "
-        "energy-basis 'overall efficiency' (useful output energy / feedstock input energy) has no "
-        "denominator to compute from. Not approximated, not assumed. See 'h2_yield_per_feed_mass' "
-        "for a genuinely calculable, differently-scoped substitute (a mass ratio, not an energy "
-        "efficiency -- not conflated with it).",
-    )
+    # UPDATED (feedstock-composition wiring task): the earlier gap here ("no feedstock LHV ever
+    # confirmed") is CLOSED -- DOK-ING's RFI #2 now gives a Confirmed feedstock LHV RANGE (15-20
+    # MJ/kg, dry basis), read live via design_basis.get_feedstock_composition_ranges(), never a
+    # hardcoded copy. Because it is a RANGE, not a point value, this KPI reports a BOUNDED
+    # efficiency range (Missing Parameter Protocol Section 5/9's own false-precision rule for a
+    # critical parameter), not a single invented number.
     dry_feed = snapshot.get(("FE-005", "MoistureBalance"))
     h2_rate = snapshot.get(("HB-012", "Compressor"))
+    grid = snapshot.get(("EU-009", "GridBalance"))
+    thermal = snapshot.get(("EU-012", "DistrictHeatingHX"))
+    lhv_range = design_basis.get_feedstock_composition_ranges()
+
+    missing_parts = []
+    if lhv_range is None:
+        missing_parts.append("DOK-ING's confirmed feedstock LHV (RFI #2) is not currently confirmed in design_basis.py")
+    if not (dry_feed and dry_feed["status"] != ps.STATUS_MISSING and dry_feed["value"]["dry_solids_kg_h"] > 0):
+        missing_parts.append("FE-005 dry feed rate unavailable this cycle")
+    if not (h2_rate and h2_rate["status"] != ps.STATUS_MISSING):
+        missing_parts.append("HB-012 H2 production rate unavailable this cycle")
+    if not (grid and grid["status"] != ps.STATUS_MISSING):
+        missing_parts.append("EU-009 grid balance (net electrical) unavailable this cycle")
+    if not (thermal and thermal["status"] != ps.STATUS_MISSING):
+        missing_parts.append("EU-012 thermal production unavailable this cycle")
+
+    if missing_parts:
+        kpis["overall_efficiency"] = _kv(
+            ps.STATUS_MISSING, None,
+            "Cannot compute this cycle: " + "; ".join(missing_parts) + ". NOTE: this is a genuinely "
+            "different, live-data-availability reason than before -- the earlier gap ('no feedstock "
+            "LHV ever confirmed by DOK-ING') is now CLOSED (RFI #2 confirmed, 15-20 MJ/kg dry).",
+        )
+    else:
+        dry_kg_h = dry_feed["value"]["dry_solids_kg_h"]
+        lhv_lo, lhv_hi = lhv_range["lhv_mj_per_kg"]
+        h2_kg_h = h2_rate["value"]["h2_kg_h"]
+        # H2 chemical energy content: mass -> mol -> Nm3 -> MJ, using ONLY already-established real
+        # constants (hbchain.M_H2, ga001.NM3_PER_MOL, eu.H2_LHV_MJ_PER_NM3 -- the latter itself
+        # EU-006's own Confirmed volumetric H2 LHV) -- the SAME conversion eu_utilities_chp.py's own
+        # _h2_budget_kw() already performs on HB-013's stored inventory, reused here on a RATE.
+        h2_energy_kw = (h2_kg_h * 1000.0 / hbchain.M_H2) * ga001.NM3_PER_MOL * eu.H2_LHV_MJ_PER_NM3 / 3.6
+        feed_input_kw_at_lhv_hi = dry_kg_h * lhv_hi / 3.6   # MJ/h -> kW
+        feed_input_kw_at_lhv_lo = dry_kg_h * lhv_lo / 3.6
+        # HONEST INTERNAL-CONSISTENCY CHECK (Missing Parameter Protocol Section 3), NOT skipped: a
+        # first attempt at this KPI summed h2_energy_kw + EU-009's net electrical + EU-012's thermal
+        # as one combined "useful output" and divided by feed input energy -- and it came out ABOVE
+        # 100% for part of DOK-ING's own confirmed LHV range. Investigated, not silently rounded away:
+        # EU-009's own generation total includes EU-006's PEM Fuel Cell, dispatched from HB-013's
+        # STORED H2 (eu_utilities_chp._h2_budget_kw) -- the SAME underlying H2 pool HB-012's h2_kg_h
+        # already counts once here. On top of that, eu_chp_dispatch's own syngas budget
+        # (_syngas_budget_kw) is GC-013's FULL dry flow, not a flow already net of whatever the
+        # WGS/PSA route consumed to make that H2 -- this project's own Phase 2 dispatch model was
+        # built with two independent budget inputs (syngas-for-CHP, H2-for-FuelCell) and no explicit
+        # allocation split between them, because no feedstock LHV existed until this task to even
+        # reveal that gap. NOT resolved here (would require re-deriving the real physical gas split
+        # across GA-001->GC->HB-012/013->EU, out of this task's scope) -- reported honestly instead of
+        # forced. What IS reported below: HB-012's own H2 output energy against feed input energy, a
+        # single, non-overlapping carrier with no such double-count risk.
+        eff_lo_pct = 100.0 * h2_energy_kw / feed_input_kw_at_lhv_hi   # higher LHV => bigger denominator => lower bound
+        eff_hi_pct = 100.0 * h2_energy_kw / feed_input_kw_at_lhv_lo
+        kpis["overall_efficiency"] = _kv(
+            ps.STATUS_CALCULATED,
+            {
+                "h2_conversion_efficiency_range_pct": (eff_lo_pct, eff_hi_pct),
+                "h2_energy_kw": h2_energy_kw,
+                "feed_input_kw_range": (feed_input_kw_at_lhv_hi, feed_input_kw_at_lhv_lo),
+            },
+            reason=(
+                "PARTIAL, honest result, NOT a full plant energy-balance efficiency. What DOK-ING's "
+                "confirmed feedstock LHV (RFI #2, 15-20 MJ/kg dry, read live via "
+                "design_basis.get_feedstock_composition_ranges()) genuinely enables now: a bounded-"
+                "range (Section 9 -- LHV is a range, not a point) SINGLE-CARRIER check, HB-012's live "
+                "H2 output energy / FE-005's live dry feed rate x DOK-ING's confirmed LHV range "
+                "('h2_conversion_efficiency_range_pct' -- this alone is what's reported as "
+                "'overall_efficiency' below). A full MULTI-carrier figure (also summing EU-009's "
+                "electrical and EU-012's thermal output) was attempted and DELIBERATELY NOT included: "
+                "it risks double-counting shared H2/syngas resource pools between HB-012's own H2 "
+                "output and EU-009's own generation total (which includes EU-006's PEM Fuel Cell, "
+                "dispatched from that SAME H2), and EU-009/EU-012's CHP dispatch is computed against "
+                "GC-013's FULL syngas flow with no established split against the WGS/PSA H2 route -- "
+                "a real internal-consistency gap this project's independently-built Phase 2 dispatch "
+                "model has never been checked against a full energy balance before, because no "
+                "feedstock LHV existed to check against until this task. CONCRETE EVIDENCE, not a "
+                "hypothetical concern: naively summing produced an efficiency EXCEEDING 100% for part "
+                "of DOK-ING's own confirmed LHV range. Not resolved here -- resolving it needs the "
+                "real physical gas-flow allocation traced across GA-001->GC->HB->EU, out of this "
+                "task's scope; reported honestly as the real remaining gap instead of forced."
+            ), unit="%",
+        )
+
     if dry_feed and dry_feed["status"] != ps.STATUS_MISSING and h2_rate and h2_rate["status"] != ps.STATUS_MISSING \
             and dry_feed["value"]["dry_solids_kg_h"] > 0:
         yield_ratio = h2_rate["value"]["h2_kg_h"] / dry_feed["value"]["dry_solids_kg_h"]
@@ -334,6 +413,18 @@ def render_tab1_section(snapshot):
         v_display = round(v, 4) if isinstance(v, float) else v
         return f"{v_display} {kpi['unit'] or ''}".strip()
 
+    def _fmt_efficiency(kpi):
+        # overall_efficiency's own value is a small dict (a bounded RANGE, per Missing Parameter
+        # Protocol Section 9), not a bare number -- _fmt()'s own generic float/scalar formatting
+        # doesn't fit it; displayed here with the same 1-decimal-place rounding discipline
+        # (display only -- kpis["overall_efficiency"]["value"] itself stays full precision).
+        if kpi["status"] == ps.STATUS_MISSING:
+            return f":red[Missing / Cannot Calculate] -- {kpi['missing_reason']}"
+        lo, hi = kpi["value"]["h2_conversion_efficiency_range_pct"]
+        return (f"H2 conversion: approximately {lo:.1f}-{hi:.1f}% (bounded range -- DOK-ING's own "
+                f"confirmed feedstock LHV is itself a range, not a point value; PARTIAL -- electrical/"
+                f"thermal deliberately excluded, see this KPI's own reason text)")
+
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Overall plant status", kpis["overall_plant_status"]["value"])
@@ -348,9 +439,12 @@ def render_tab1_section(snapshot):
         st.metric("Electrical consumption", _fmt(kpis["total_electrical_consumption"]))
         st.metric("Thermal production", _fmt(kpis["total_thermal_production"]))
 
+    # Genuinely calculable now (DOK-ING's RFI #2 confirmed LHV range closed the earlier gap) --
+    # moved OUT of "Honestly Missing" below, since it is no longer honestly-missing-by-design.
+    st.write(f"**Overall efficiency**: {_fmt_efficiency(kpis['overall_efficiency'])}")
+
     st.subheader("Honestly Missing (never blended, never estimated as a stand-in)")
     st.write(f"**H2 purity**: {_fmt(kpis['h2_purity'])}")
-    st.write(f"**Overall efficiency**: {_fmt(kpis['overall_efficiency'])}")
     st.write(f"**LOHC H2 storage level (HB-015)**: {_fmt(kpis['lohc_h2_storage_level'])}")
 
     st.subheader("Active alarms")
@@ -394,13 +488,61 @@ if __name__ == "__main__":
           "no re-derivation.")
 
     print("\n=== Task requirement 5: honestly Missing KPIs, blocking item named, no blended stand-in ===")
-    for name in ("h2_purity", "overall_efficiency", "lohc_h2_storage_level"):
+    for name in ("h2_purity", "lohc_h2_storage_level"):
         assert kpis[name]["status"] == ps.STATUS_MISSING, f"REGRESSION: {name} should be Missing, got {kpis[name]}"
         assert kpis[name]["missing_reason"], f"REGRESSION: {name} Missing with no reason."
         print(f"  {name}: Missing -- PASSED (reason names the real blocker).")
     assert "HB-007" in kpis["lohc_h2_storage_level"]["missing_reason"] or "HB-014" in kpis["lohc_h2_storage_level"]["missing_reason"]
     print("  PASSED -- lohc_h2_storage_level's own reason traces to the real HB-007/HB-014 root, "
           "via plant_status.py's own missing_roots(), not re-declared independently.")
+
+    print("\n=== Feedstock-composition wiring task: overall_efficiency's gap is genuinely CLOSED ===")
+    assert kpis["overall_efficiency"]["status"] == ps.STATUS_CALCULATED, (
+        f"REGRESSION: overall_efficiency should now be Calculated (DOK-ING's RFI #2 LHV range is "
+        f"confirmed and every live upstream KPI is present in this baseline), got {kpis['overall_efficiency']}"
+    )
+    eff_lo, eff_hi = kpis["overall_efficiency"]["value"]["h2_conversion_efficiency_range_pct"]
+    print(f"  overall_efficiency (H2-conversion, partial): approximately {eff_lo:.1f}-{eff_hi:.1f}% "
+          f"(h2_energy_kw={kpis['overall_efficiency']['value']['h2_energy_kw']:.3f}, "
+          f"feed_input_kw_range={tuple(round(x, 3) for x in kpis['overall_efficiency']['value']['feed_input_kw_range'])})")
+    assert 0.0 < eff_lo < eff_hi < 100.0, f"REGRESSION: H2-conversion efficiency range {(eff_lo, eff_hi)} is not a sane bounded percentage."
+    # Independent re-derivation, not just "a number came back" -- recomputed here from the SAME raw
+    # snapshot fields the KPI itself reads, via a completely separate expression.
+    dry_kg_h_check = snap[("FE-005", "MoistureBalance")]["value"]["dry_solids_kg_h"]
+    h2_kg_h_check = snap[("HB-012", "Compressor")]["value"]["h2_kg_h"]
+    lhv_range_check = design_basis.get_feedstock_composition_ranges()
+    assert lhv_range_check is not None, "REGRESSION: RFI #2 unexpectedly not confirmed in design_basis.py."
+    h2_energy_kw_check = (h2_kg_h_check * 1000.0 / hbchain.M_H2) * ga001.NM3_PER_MOL * eu.H2_LHV_MJ_PER_NM3 / 3.6
+    lhv_lo_check, lhv_hi_check = lhv_range_check["lhv_mj_per_kg"]
+    eff_lo_check = 100.0 * h2_energy_kw_check / (dry_kg_h_check * lhv_hi_check / 3.6)
+    eff_hi_check = 100.0 * h2_energy_kw_check / (dry_kg_h_check * lhv_lo_check / 3.6)
+    assert abs(eff_lo_check - eff_lo) < 1e-9 and abs(eff_hi_check - eff_hi) < 1e-9, (
+        "REGRESSION: overall_efficiency's own range does not match an independent re-derivation "
+        "from the same raw Shared Plant State fields."
+    )
+    print("  PASSED -- overall_efficiency is now genuinely Calculated as a bounded, single-carrier "
+          "(H2-only) range (not Missing, not a forced point value), and independently reproduces "
+          "exactly from the same live snapshot fields via a separate calculation path. HONEST SCOPE "
+          "NOTE, explicit in the KPI's own reason text: electrical+thermal are deliberately excluded "
+          "(a real double-counting risk found and reported, not swept under the rug), and GA-001's "
+          "own tar/char energy content stays permanently Missing -- not a complete plant energy "
+          "balance.")
+
+    print("\n=== overall_efficiency degrades honestly if RFI #2 were ever unconfirmed ===")
+    design_basis.clear_confirmed("feedstock_composition")
+    kpis_unconfirmed = compute_tab1_kpis(snap)
+    assert kpis_unconfirmed["overall_efficiency"]["status"] == ps.STATUS_MISSING
+    assert "RFI #2" in kpis_unconfirmed["overall_efficiency"]["missing_reason"]
+    design_basis.set_confirmed(
+        "feedstock_composition",
+        "Moisture 5-15(20)%, Ash 5-15%, Volatile Matter >65%, Carbon >45%, Hydrogen >5%, "
+        "LHV 15-20 MJ/kg (dry basis). Trace S/Cl captured via downstream scrubbing/dry gas cleaning.",
+        f"{design_basis.RFI_ANSWERS_SOURCE} (RFI #2)", "restored after the round-trip check above",
+    )
+    assert compute_tab1_kpis(snap)["overall_efficiency"]["status"] == ps.STATUS_CALCULATED
+    print("  PASSED -- overall_efficiency correctly reverts to an honest Missing (naming RFI #2) if "
+          "the confirmation were ever withdrawn, and recovers correctly once re-confirmed -- a real "
+          "live read every cycle, not a cached or hardcoded copy.")
 
     print("\n=== Task requirement 2 (report): EU-008 dual-scenario + EU-012 bottleneck genuinely visible ===")
     alarms = kpis["active_alarms"]["value"]

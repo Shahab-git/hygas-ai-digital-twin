@@ -607,6 +607,43 @@ QUESTIONS = {
 }
 
 
+# Structured, numeric form of RFI #2's own confirmed prose answer (set_confirmed()'s
+# own "value" argument is free text, matching every other question's own storage --
+# see apply_dokink_rfi_response() below). This is NOT a separate, independent data
+# source: every number here is transcribed directly from that SAME confirmed prose
+# ("Moisture 5-15(20)%, Ash 5-15%, Volatile Matter >65%, Carbon >45%, Hydrogen >5%,
+# LHV 15-20 MJ/kg (dry basis)"), and this module's own self-test cross-checks the two
+# stay consistent. Exists so a live consumer (e.g. ga001_gasifier_model.py's own
+# feedstock-composition getter) can read real numeric bounds via a clean function call
+# instead of parsing prose -- "read live, don't hardcode a copy" for a value that is
+# only fully usable as a specific number, not just a sentence.
+FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES = {
+    "moisture_pct": (5.0, 15.0),         # DOK-ING's own "(20)" is a stated wider outlier
+                                           # case, not the primary range -- not used here
+    "ash_pct": (5.0, 15.0),
+    "volatile_matter_pct_min": 65.0,      # open-ended minimum, no upper bound given
+    "carbon_pct_min": 45.0,               # open-ended minimum, no upper bound given
+    "hydrogen_pct_min": 5.0,              # open-ended minimum, no upper bound given
+    "lhv_mj_per_kg": (15.0, 20.0),
+    "basis_note": (
+        "DOK-ING's own answer states LHV explicitly as dry basis; moisture/ash/VM are "
+        "conventional proximate-analysis percentages (typically as-received for moisture, "
+        "dry basis for ash/VM); carbon/hydrogen are given as bare percentage floors with "
+        "no basis stated and no oxygen/nitrogen figures at all -- NOT a complete "
+        "proximate/ultimate analysis, a real, stated limitation, not resolved here."
+    ),
+}
+
+
+def get_feedstock_composition_ranges():
+    """Returns FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES if RFI #2 is
+    currently confirmed (is_confirmed() live-checked, same pattern as
+    status_of()), else None -- the graceful, live-checked getter every
+    real consumer of this data should call, rather than reading the
+    module-level dict directly (which would skip the confirmation check)."""
+    return FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES if is_confirmed("feedstock_composition") else None
+
+
 def is_confirmed(key):
     return QUESTIONS[key]["confirmed_value"] is not None
 
@@ -1009,6 +1046,33 @@ if __name__ == "__main__":
     print("PASSED -- all 17 questions are genuinely Confirmed, each with a non-empty answer, a "
           "source citing data/dokink_rfi_answers.md, and a timestamp -- not just is_confirmed() "
           "returning True by accident.")
+
+    print("\n=== get_feedstock_composition_ranges(): structured numbers match the confirmed prose ===")
+    ranges = get_feedstock_composition_ranges()
+    assert ranges is not None, "REGRESSION: feedstock_composition is confirmed but the getter returned None."
+    prose = QUESTIONS["feedstock_composition"]["confirmed_value"]
+    for needle in ("5-15(20)%", "Ash 5-15%", "Volatile Matter >65%", "Carbon >45%", "Hydrogen >5%", "15-20 MJ/kg"):
+        assert needle in prose, f"REGRESSION: expected substring {needle!r} not found in the confirmed prose -- structured ranges may have drifted from it."
+    assert ranges["moisture_pct"] == (5.0, 15.0) and ranges["ash_pct"] == (5.0, 15.0)
+    assert ranges["carbon_pct_min"] == 45.0 and ranges["hydrogen_pct_min"] == 5.0
+    assert ranges["lhv_mj_per_kg"] == (15.0, 20.0)
+    print(f"  Structured ranges: {ranges}")
+    print("  PASSED -- every structured number is directly transcribed from, and verified consistent "
+          "with, the SAME confirmed prose answer -- not a separate, independently-drifting source.")
+
+    clear_confirmed("feedstock_composition")
+    assert get_feedstock_composition_ranges() is None, (
+        "REGRESSION: get_feedstock_composition_ranges() should return None once un-confirmed -- "
+        "it must be live-checked, not a static constant a caller could read even when unconfirmed."
+    )
+    set_confirmed(
+        "feedstock_composition",
+        QUESTIONS["feedstock_composition"]["confirmed_value"] or prose,
+        f"{RFI_ANSWERS_SOURCE} (RFI #2)", "restored after the round-trip check above",
+    )
+    assert get_feedstock_composition_ranges() is not None
+    print("  PASSED -- the getter is genuinely live-checked (None when unconfirmed, restored correctly "
+          "after re-confirming), not a static passthrough.")
 
     print("\n=== Spot-check specific confirmed values against the real answers ===")
     SPOT_CHECKS = [
