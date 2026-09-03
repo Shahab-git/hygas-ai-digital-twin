@@ -473,8 +473,67 @@ what remains open is a narrower, more specific question.
   even once HB-007's split fraction is confirmed, HB-014/016's own
   REACTION KINETICS outputs stay permanently Missing without this; only
   their mass-balance outputs would become calculable.
+- **UPDATE (Missing Parameter Resolution Protocol applied, 2026-09-03) —
+  the underlying question above remains genuinely open, DOK-ING/vendor has
+  not answered it.** Pre-checked (Levels 1–2), not assumed open: HB-014's
+  and HB-016's own registry entries confirm catalyst TYPE, operating T/P,
+  and capacity/efficiency (wt%) — but genuinely no rate constant or
+  activation energy anywhere in this project (re-checked directly:
+  `design_basis.py`, the RFI answers, `equipment_engineering_estimates.py`,
+  and this module's own existing constants). **Level 5 (peer-reviewed
+  literature) reached — SEPARATE baselines for each direction, not
+  conflated:**
+  - **HB-016 (dehydrogenation, Pt/Al₂O₃, 300°C): DIGITAL TWIN ENGINEERING
+    BASELINE ≈ 171–205 kJ/mol.** TWO independent sources, both matching
+    HB-016's own Confirmed catalyst AND its own Confirmed 300°C directly:
+    **Garidzirai, R., Modisha, P., & Bessarabov, D. (2024), *Catalysts*,
+    14(1), 32** (DOI 10.3390/catal14010032) — 205 kJ/mol, 1 wt% Pt/Al₂O₃,
+    first-order (k = 0.0222 min⁻¹), batch reactor at 300°C. **Park, S.,
+    Naseem, M., & Lee, S. (2021), *Materials*, 14(24), 7613** (DOI
+    10.3390/ma14247613) — 171 kJ/mol, Pt/Al₂O₃, continuous flow,
+    250–320°C. **Consistency check (Section 4): PASS, not forced** —
+    Garidzirai et al.'s own real rate constant, applied to HB-016's own
+    Confirmed round-trip efficiency (6.0/6.2 wt% ≈ 96.8%), implies a
+    reaction time of ≈2.58 h — 0.43× that SAME paper's own stated real 6 h
+    batch reaction time, the same order of magnitude, independently
+    re-derived in this module's own self-test.
+  - **HB-014 (hydrogenation, Pt/Pd/Al₂O₃, 170°C/40 bar): DIGITAL TWIN
+    ENGINEERING BASELINE ≈ 50–90 kJ/mol — deliberately LOWER confidence
+    than HB-016's.** Liu, L., Zhu, T., Xia, M.W., Zhu, Y.Z., Ke, H.Z.,
+    Yang, M., Cheng, H.S., & Dong, Y. (2023), *Inorganic Chemistry*,
+    62(42), 17390–17400 (DOI 10.1021/acs.inorgchem.3c02721) reports ~67.2
+    kJ/mol for its own best hydrogenation catalyst — **5 wt% Rh/Al₂O₃, NOT
+    HB-014's own Confirmed Pt/Pd/Al₂O₃**, a real, stated catalyst-metal
+    mismatch. Independently, **Park, S., Abdullah, M.M., Seong, G., & Lee,
+    S. (2023), *Chemical Engineering Journal*, 474, 145743** (DOI
+    10.1016/j.cej.2023.145743) kinetically characterizes this same
+    reaction at 130–170°C/40–80 bar — an exact match to HB-014's own
+    170°C/40 bar — but its own specific activation energy could not be
+    independently re-verified in this session (paywalled). No source
+    matches BOTH HB-014's own catalyst and conditions at once — range
+    widened accordingly, evidence_level stays `Literature-based`, not
+    upgraded further.
+  - `python/hb_remaining_chain.py`: `hb014_kinetics_baseline()` /
+    `hb016_kinetics_baseline()`, registered as
+    `("HB-014","KineticsBaselineEstimate")` /
+    `("HB-016","KineticsBaselineEstimate")` — ADDITIVE only.
+    `hb014_reaction_kinetics()`/`hb016_reaction_kinetics()`'s own
+    permanently-Missing status is UNCHANGED, and HB-007's own structural
+    block on `hb014_mass_balance()` (item 9, a separate Category C
+    business decision) is NOT bypassed — confirmed directly in this
+    module's own self-test (the existing call-count proof, unmodified,
+    plus a new check that both baselines run live alongside that still-
+    blocked chain, not instead of it). **ACTUAL/DOK-ING VALUE: still
+    Missing/Unverified for both directions** — the real question (DOK-ING
+    or the catalyst vendor's own confirmed kinetic data for this exact
+    plant's own catalyst batch) is unchanged and explicitly still open.
 - **Source:** `python/hb_remaining_chain.py` (`hb014_reaction_kinetics`,
-  `hb016_reaction_kinetics`).
+  `hb016_reaction_kinetics`, `hb014_kinetics_baseline`,
+  `hb016_kinetics_baseline`); Garidzirai et al. (2024), *Catalysts* 14(1),
+  32; Park, Naseem & Lee (2021), *Materials* 14(24), 7613 (primary
+  dehydrogenation sources); Liu et al. (2023), *Inorganic Chemistry*
+  62(42), 17390–17400; Park, Abdullah, Seong & Lee (2023), *Chemical
+  Engineering Journal* 474, 145743 (hydrogenation sources).
 
 ### 12. Remaining registry-level project-knowledge gaps (bucketed)
 33 category-level gaps (Inputs/Operating Conditions for DOK-ING's own

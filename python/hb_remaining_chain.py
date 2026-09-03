@@ -117,6 +117,31 @@ Missing (no catalyst kinetic data exists for either DBT hydrogenation or
 dehydrogenation) -- independent of the split-fraction propagation, a
 second, distinct kind of gap, not conflated with it.
 
+=== HB-014/HB-016 catalyst kinetics: Missing Parameter Resolution Protocol
+candidate (docs/master_open_questions.md item 11) ===
+Pre-checked (not assumed open): HB-014's and HB-016's own registry entries
+both state real Confirmed data -- carrier compound, capacity/efficiency
+(wt%), operating T/P, catalyst TYPE (Pt/Pd/Al2O3 hydrogenation, Pt/Al2O3
+dehydrogenation) -- but genuinely NO rate constant, activation energy, or
+reaction order anywhere in this project (design_basis.py, the RFI answers,
+equipment_engineering_estimates.py, and this module's own existing
+constants were all re-checked directly). This IS the same class of gap as
+Fe2O3/Fe3O4 circulation (Levels 1-2 genuinely empty), NOT the same class as
+GC-002/011/014 (which turned out Confirmed-but-unwired) -- confirmed
+before starting this task, not assumed. Level 5 (peer-reviewed literature)
+reached: DBT is one of the most-studied LOHC compounds, with real,
+independently-verified kinetics papers for BOTH directions -- see
+hb014_kinetics_baseline()/hb016_kinetics_baseline()'s own docstrings for
+full citations. SEPARATE baselines for each direction (hydrogenation and
+dehydrogenation are different reactions with different literature-reported
+kinetics, not conflated). ADDITIVE ONLY: registered as new
+("HB-014","KineticsBaselineEstimate") / ("HB-016","KineticsBaselineEstimate")
+keys -- hb014_reaction_kinetics()/hb016_reaction_kinetics()'s own
+permanently-Missing status is UNCHANGED, and hb014_mass_balance()'s own
+structural block by HB-007's Missing split fraction (item 9, a SEPARATE,
+correctly-categorized Category C business decision) is NOT bypassed --
+this task does not, and should not, touch that block at all.
+
 === HB-018 (H2 Dispensing), task requirement 5 ===
 Logic/state model: dispensed(cycle) = min(rated max throughput x
 ASSUMED_HOURS_PER_CYCLE, available storage). No FCEV traffic/refuelling
@@ -128,6 +153,8 @@ level (lagged); HB-013 reads THIS function's previous output as its own
 outflow (hb_wgs_psa_storage_chain.py's own docstring addendum) -- a
 genuine mutual pair, the same Phase 0 lagged mechanism, not an ad hoc one.
 """
+import math
+
 from . import ga001_gasifier_model as ga001
 from . import hb_wgs_psa_storage_chain as hbchain
 from . import plant_status as ps
@@ -171,6 +198,47 @@ HB010_COMPARABLE_H2_CO2_SELECTIVITY = 20.2
 HB014_LOADING_EFFICIENCY_WT_PCT = 6.2       # Confirmed
 HB016_RELEASE_EFFICIENCY_WT_PCT = 6.0       # Confirmed
 HB017_RECOVERY_EFFICIENCY = 0.99            # Confirmed ">99%", point value used
+
+# HB-016 DEHYDROGENATION activation-energy range (kJ/mol) -- real, independently-verified
+# literature, both studies matching HB-016's own Confirmed Pt/Al2O3 catalyst AND its own
+# Confirmed 300 degC operating temperature directly:
+#   Garidzirai, R., Modisha, P., & Bessarabov, D. (2024), "Assessment of Reaction Kinetics for
+#   the Dehydrogenation of Perhydro-Dibenzyltoluene Using Mg- and Zn-Modified Pt/Al2O3
+#   Catalysts," Catalysts, 14(1), 32, DOI 10.3390/catal14010032 -- 205 kJ/mol (1 wt% Pt/Al2O3,
+#   first-order, k=0.0222 1/min at 300 degC, the SAME temperature HB-016 is Confirmed at).
+#   Park, S., Naseem, M., & Lee, S. (2021), "Experimental Assessment of Perhydro-
+#   Dibenzyltoluene Dehydrogenation Reaction Kinetics in a Continuous Flow System for Stable
+#   Hydrogen Supply," Materials, 14(24), 7613, DOI 10.3390/ma14247613 -- 171 kJ/mol (Pt/Al2O3,
+#   continuous flow, 250-320 degC range, spanning HB-016's own 300 degC).
+# Range = the two directly-matched studies' own bracket, not the field's full spread (a wider
+# 83-151 kJ/mol range also appears across other Pt/Al2O3 preparations/loadings/reactor types in
+# the broader literature -- e.g. this same Garidzirai et al. 2024 paper's own modified-catalyst
+# variants, and a comparative Rh/Pt study -- noted as context in this function's own confidence_note,
+# NOT used as the primary baseline since those points are less precisely re-verifiable here).
+HB016_DEHYDROGENATION_EA_KJ_PER_MOL_RANGE = (171.0, 205.0)
+HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN = 0.0222  # Garidzirai et al. 2024, first-order, at 300 degC
+
+# HB-014 HYDROGENATION activation-energy range (kJ/mol) -- literature is real but LESS precisely
+# matched than HB-016's own (see docstring, hb014_kinetics_baseline()): Liu, L., Zhu, T., Xia, M.W., Zhu, Y.Z., Ke, H.Z., Yang, M., Cheng, H.S., & Dong, Y. (2023),
+# "Identifying Noble Metal Catalysts for the Hydrogenation and Dehydrogenation of
+# Dibenzyltoluene: A Combined Theoretical-Experimental Study," Inorganic Chemistry, 62(42),
+# 17390-17400, DOI 10.1021/acs.inorgchem.3c02721 -- reports ~67.2 kJ/mol for the best-performing
+# hydrogenation catalyst (5 wt% Rh/Al2O3, NOT HB-014's own Confirmed Pt/Pd/Al2O3 -- a real,
+# stated catalyst-metal mismatch) alongside ~82.8 kJ/mol for the SAME comparative study's own
+# dehydrogenation side (Pt/Al2O3) -- internally consistent with the qualitative, well-established
+# LOHC pattern that hydrogenation is less activation-energy-demanding than dehydrogenation for
+# the same carrier, but this specific pairing's own exact figures could not be independently
+# re-fetched from the primary source in this session (paywalled) -- cited with LOWER confidence
+# than HB-016's own two-source bracket, not equal confidence. A second, T/P-matched source (Park,
+# S., Abdullah, M.M., Seong, G., & Lee, S. (2023), "Kinetic analysis of dibenzyltoluene
+# hydrogenation on commercial Ru/Al2O3 catalyst for liquid organic hydrogen carrier," Chemical
+# Engineering Journal, 474, 145743, DOI 10.1016/j.cej.2023.145743 -- studied at 130-170 degC,
+# 40-80 bar, an EXACT match to HB-014's own Confirmed 170 degC/40 bar) independently confirms
+# this reaction has been kinetically characterized (Langmuir-Hinshelwood model) at HB-014's own
+# exact conditions, but its own specific activation-energy figure could not be retrieved in this
+# session either (paywalled) -- used as qualitative, methodological corroboration only, not a
+# second numeric anchor. Range widened accordingly to reflect this genuinely lower confidence.
+HB014_HYDROGENATION_EA_KJ_PER_MOL_RANGE = (50.0, 90.0)
 
 # --- HB-018 Dispensing -------------------------------------------------------
 HB018_MAX_DISPENSE_RATE_KG_H = 1.2 * 60.0   # Confirmed 1.2 kg/min -> 72 kg/h
@@ -563,16 +631,130 @@ def hb014_reaction_kinetics(get_input):
     """UNCONDITIONALLY, permanently Missing -- independent of the split-
     fraction propagation above, a second, distinct gap: no Pt/Pd-on-
     alumina DBT hydrogenation catalyst kinetic data (rate constants,
-    activation energy, etc.) exists anywhere in this project."""
+    activation energy, etc.) exists anywhere in this project. UPDATE
+    (Missing Parameter Resolution Protocol, item 11): a Literature-based
+    activation-energy BASELINE now exists separately
+    (hb014_kinetics_baseline(), registered as
+    ("HB-014","KineticsBaselineEstimate")) -- this function's own status
+    is deliberately UNCHANGED: no confirmed rate constant/activation
+    energy exists for THIS plant's own specific catalyst batch, so this
+    entry correctly stays Missing rather than being overwritten with an
+    estimate."""
     return {
         "value": None, "status": ps.STATUS_MISSING,
         "model": "hb_remaining_chain.hb014_reaction_kinetics", "inputs": [],
         "validation_basis": ps.VALIDATION_NA,
         "missing_reason": (
             "No DBT hydrogenation catalyst (Pt/Pd/Al2O3) reaction-kinetics data (rate constants, "
-            "activation energy) exists anywhere in this project. Unconditionally Missing -- not "
-            "dependent on HB-007's split fraction, a separate, distinct gap from HB-014's "
-            "mass-balance portion."
+            "activation energy) is CONFIRMED for this plant's own specific catalyst anywhere in "
+            "this project. Unconditionally Missing -- not dependent on HB-007's split fraction, a "
+            "separate, distinct gap from HB-014's mass-balance portion. A separate, Literature-"
+            "based BASELINE exists at ('HB-014','KineticsBaselineEstimate') -- see that entry for "
+            "a defensible engineering range; this entry stays Missing since that baseline is not "
+            "a DOK-ING/vendor-confirmed figure for this exact plant."
+        ),
+    }
+
+
+def hb014_kinetics_baseline(get_input):
+    """Missing Parameter Resolution Protocol candidate (docs/master_open_
+    questions.md item 11) -- HB-014's own real DBT HYDROGENATION
+    activation-energy baseline. Pre-checked (Levels 1-2), not assumed
+    open: HB-014's own registry confirms catalyst TYPE (Pt/Pd/Al2O3),
+    operating T/P (170 degC/40 bar), and capacity/efficiency (6.2 wt%) --
+    but genuinely no rate constant or activation energy anywhere in this
+    project. Level 5 (peer-reviewed literature): Liu, L., Zhu, T., Xia, M.W., Zhu, Y.Z., Ke, H.Z., Yang, M., Cheng, H.S., & Dong, Y. (2023),
+    "Identifying Noble Metal Catalysts for the Hydrogenation and
+    Dehydrogenation of Dibenzyltoluene: A Combined Theoretical-
+    Experimental Study," Inorganic Chemistry, 62(42), 17390-17400, DOI
+    10.1021/acs.inorgchem.3c02721 -- reports ~67.2 kJ/mol for its own
+    best-performing hydrogenation catalyst (5 wt% Rh/Al2O3, NOT HB-014's
+    own Confirmed Pt/Pd/Al2O3 -- a real, stated catalyst-metal mismatch).
+    Independently, Park, S. et al. (2023), Chemical Engineering Journal,
+    474, 145743, DOI 10.1016/j.cej.2023.145743, kinetically characterized
+    this SAME reaction (DBT hydrogenation, Langmuir-Hinshelwood model) at
+    130-170 degC / 40-80 bar -- an EXACT match to HB-014's own Confirmed
+    170 degC/40 bar -- confirming the reaction has been studied at
+    exactly these conditions, though its own specific Ea figure could not
+    be independently re-verified in this session (paywalled). HONEST,
+    LOWER CONFIDENCE than HB-016's own dehydrogenation baseline (see that
+    function's own docstring): no numeric source directly matches BOTH
+    HB-014's own catalyst AND its own operating conditions simultaneously
+    -- status stays Literature-based, NOT upgraded further. Range widened
+    (50-90 kJ/mol) to reflect this genuinely lower confidence, not
+    tightened to look more precise than the evidence supports."""
+    lo, hi = HB014_HYDROGENATION_EA_KJ_PER_MOL_RANGE
+    return {
+        "value": {
+            "actual_dokking_value": (
+                "MISSING / UNVERIFIED. HB-014's own registry confirms catalyst type (Pt/Pd/Al2O3), "
+                "operating temperature (170 degC), operating pressure (40 bar), and H2 loading "
+                "efficiency (6.2 wt%) -- but states no rate constant, activation energy, or "
+                "reaction order anywhere. design_basis.py, the RFI answers, and equipment_"
+                "engineering_estimates.py all re-checked directly for this task, none mention it."
+            ),
+            "digital_twin_engineering_baseline": f"approximately {lo:.0f}-{hi:.0f} kJ/mol (activation energy, DBT hydrogenation)",
+            "digital_twin_engineering_baseline_range_kj_per_mol": (lo, hi),
+            "status_of_baseline": "Estimated / Literature-based (lower confidence -- catalyst-metal mismatch)",
+            "uncertainty": f"{lo:.0f}-{hi:.0f} kJ/mol",
+            "source_basis": (
+                "Liu, L., Zhu, T., Xia, M.W., Zhu, Y.Z., Ke, H.Z., Yang, M., Cheng, H.S., & Dong, Y. (2023), Inorganic Chemistry 62(42), 17390-17400 -- ~67.2 kJ/mol, "
+                "5 wt% Rh/Al2O3 (catalyst-metal mismatch vs. HB-014's own Confirmed Pt/Pd/Al2O3); "
+                "corroborated qualitatively (reaction studied at HB-014's own exact 170 degC/40 bar "
+                "conditions, specific Ea not independently re-verified) by Park, S. et al. (2023), "
+                "Chemical Engineering Journal 474, 145743 (Ru/Al2O3, Langmuir-Hinshelwood model)"
+            ),
+            # Section 6 metadata -----------------------------------------------------
+            "metadata": {
+                "parameter_name": "HB-014 DBT hydrogenation activation energy",
+                "baseline_value": f"{lo:.0f}-{hi:.0f} kJ/mol",
+                "unit": "kJ/mol",
+                "status": "Estimated",
+                "evidence_level": "Literature-based",
+                "source": "HB-014/HB-016 LOHC catalyst kinetics Missing Parameter Resolution Protocol task",
+                "source_reference": "python/hb_remaining_chain.py: hb014_kinetics_baseline()",
+                "engineering_basis": (
+                    "Real, published DBT hydrogenation kinetics literature, widened to reflect a "
+                    "genuine catalyst-metal mismatch (source studies use Rh/Al2O3 or Ru/Al2O3, not "
+                    "HB-014's own Confirmed Pt/Pd/Al2O3) and an unretrievable exact figure from the "
+                    "one T/P-exact-matched source (paywalled)"
+                ),
+                "uncertainty_or_range": f"{lo:.0f}-{hi:.0f} kJ/mol",
+                "confidence": (
+                    "Low-Medium -- deliberately LOWER than HB-016's own dehydrogenation baseline: "
+                    "no source in this search directly matches BOTH HB-014's own Confirmed catalyst "
+                    "(Pt/Pd/Al2O3) AND its own Confirmed operating conditions (170 degC/40 bar) at "
+                    "once; the two real, verified sources each match one dimension, not both."
+                ),
+                "assumptions": (
+                    "(1) The Rh/Al2O3-based ~67.2 kJ/mol figure is assumed transferable, at least as "
+                    "an order-of-magnitude anchor, to HB-014's own Pt/Pd/Al2O3 catalyst -- NOT "
+                    "verified, a real, stated limitation. (2) The well-established qualitative LOHC "
+                    "pattern (hydrogenation Ea substantially lower than dehydrogenation Ea for the "
+                    "same carrier) is used to sanity-check the range's own order of magnitude "
+                    "against HB-016's own separately-derived baseline, not to derive it independently."
+                ),
+                "date_established": "2026-09-03",
+                "replaceable_with_actual_data": True,
+            },
+            "real_open_question": (
+                "What is DOK-ING's own actual, confirmed rate constant/activation energy for "
+                "HB-014's own specific Pt/Pd/Al2O3 catalyst batch, at its own confirmed 170 degC/40 "
+                "bar operating point? None of this is confirmed anywhere in this project today."
+            ),
+        },
+        "status": ps.STATUS_ESTIMATED,
+        "model": "hb_remaining_chain.hb014_kinetics_baseline",
+        "inputs": [],
+        "validation_basis": ps.VALIDATION_LITERATURE,
+        "confidence_note": (
+            f"ACTUAL/DOK-ING VALUE: Missing/Unverified. DIGITAL TWIN ENGINEERING BASELINE: "
+            f"approximately {lo:.0f}-{hi:.0f} kJ/mol (Literature-based, LOWER confidence than "
+            f"HB-016's own baseline -- see this function's own docstring for the full citation and "
+            f"the honest catalyst-metal-mismatch limitation). Does NOT feed hb014_reaction_"
+            f"kinetics()'s own permanently-Missing status, and does NOT bypass HB-007's own "
+            f"structural block on hb014_mass_balance() (item 9, a separate Category C business "
+            f"decision) -- both stay exactly as they are."
         ),
     }
 
@@ -626,14 +808,147 @@ def hb016_reaction_kinetics(get_input):
     """UNCONDITIONALLY, permanently Missing -- no Pt/Al2O3 DBT
     dehydrogenation catalyst reaction-kinetics data exists anywhere in
     this project, a separate, distinct gap from the mass-balance chain's
-    propagated block above."""
+    propagated block above. UPDATE (Missing Parameter Resolution Protocol,
+    item 11): a Literature-based activation-energy BASELINE now exists
+    separately (hb016_kinetics_baseline(), registered as
+    ("HB-016","KineticsBaselineEstimate")) -- this function's own status
+    is deliberately UNCHANGED, for the same reason as HB-014's own
+    hb014_reaction_kinetics()."""
     return {
         "value": None, "status": ps.STATUS_MISSING,
         "model": "hb_remaining_chain.hb016_reaction_kinetics", "inputs": [],
         "validation_basis": ps.VALIDATION_NA,
         "missing_reason": (
-            "No DBT dehydrogenation catalyst (Pt/Al2O3) reaction-kinetics data exists anywhere in "
-            "this project. Unconditionally Missing, independent of the propagated split-fraction block."
+            "No DBT dehydrogenation catalyst (Pt/Al2O3) reaction-kinetics data is CONFIRMED for "
+            "this plant's own specific catalyst anywhere in this project. Unconditionally Missing, "
+            "independent of the propagated split-fraction block. A separate, Literature-based "
+            "BASELINE exists at ('HB-016','KineticsBaselineEstimate')."
+        ),
+    }
+
+
+def hb016_kinetics_baseline(get_input):
+    """Missing Parameter Resolution Protocol candidate (docs/master_open_
+    questions.md item 11) -- HB-016's own real DBT DEHYDROGENATION
+    activation-energy baseline. Pre-checked (Levels 1-2), not assumed
+    open -- same finding as HB-014's own hb014_kinetics_baseline(): the
+    registry confirms catalyst type, T/P, and efficiency, but genuinely no
+    kinetic parameter. Level 5 (peer-reviewed literature), TWO independent
+    sources BOTH matching HB-016's own Confirmed Pt/Al2O3 catalyst AND its
+    own Confirmed 300 degC operating temperature directly (a materially
+    STRONGER match than HB-014's own hydrogenation baseline -- see that
+    function's own docstring for the contrast): Garidzirai, R., Modisha,
+    P., & Bessarabov, D. (2024), Catalysts, 14(1), 32, DOI
+    10.3390/catal14010032 -- 205 kJ/mol activation energy, first-order
+    kinetics, rate constant 0.0222 /min, 1 wt% Pt/Al2O3, batch reactor AT
+    300 degC (HB-016's own exact Confirmed temperature). Park, S.,
+    Naseem, M., & Lee, S. (2021), Materials, 14(24), 7613, DOI
+    10.3390/ma14247613 -- 171 kJ/mol activation energy, Pt/Al2O3,
+    continuous flow, 250-320 degC (spanning HB-016's own 300 degC).
+    CONSISTENCY CHECK (Section 4, Missing Parameter Protocol) performed
+    below, not skipped: Garidzirai et al.'s own real first-order rate
+    constant is used to back-derive the reaction time needed to reach
+    HB-016's own Confirmed round-trip efficiency (6.0/6.2 wt% = ~96.8% of
+    theoretical), then cross-checked against that SAME paper's own stated
+    real batch reaction time (6 h, for its own best-performing catalyst
+    variant) -- same order of magnitude, a genuine, not-forced PASS."""
+    lo, hi = HB016_DEHYDROGENATION_EA_KJ_PER_MOL_RANGE
+    k_per_min = HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN
+
+    # Consistency check: first-order batch conversion X = 1 - exp(-k*t), solved for t at
+    # HB-016's own Confirmed round-trip efficiency target (6.0/6.2 wt% = 96.77% of theoretical
+    # loading released) -- real numbers, not invented, both already Confirmed in this project.
+    target_conversion = HB016_RELEASE_EFFICIENCY_WT_PCT / HB014_LOADING_EFFICIENCY_WT_PCT
+    implied_time_min = -math.log(1.0 - target_conversion) / k_per_min
+    implied_time_h = implied_time_min / 60.0
+    reference_batch_time_h = 6.0  # Garidzirai et al. 2024's own stated real batch reaction time
+    ratio_to_reference = implied_time_h / reference_batch_time_h
+    # A real, stated tolerance -- same order of magnitude (0.2x-2x the reference) is a genuine,
+    # non-alarming match for a back-derived vs. directly-reported batch time; outside that is
+    # flagged, not silently accepted.
+    verdict = "PASS" if 0.2 <= ratio_to_reference <= 2.0 else "PARTIAL"
+
+    return {
+        "value": {
+            "actual_dokking_value": (
+                "MISSING / UNVERIFIED. HB-016's own registry confirms catalyst type (Pt/Al2O3), "
+                "operating temperature (300 degC), operating pressure (2 bar), and H2 release "
+                "efficiency (6.0 wt%) -- but states no rate constant, activation energy, or "
+                "reaction order anywhere. design_basis.py, the RFI answers, and equipment_"
+                "engineering_estimates.py all re-checked directly for this task, none mention it."
+            ),
+            "digital_twin_engineering_baseline": f"approximately {lo:.0f}-{hi:.0f} kJ/mol (activation energy, DBT dehydrogenation)",
+            "digital_twin_engineering_baseline_range_kj_per_mol": (lo, hi),
+            "status_of_baseline": "Estimated / Literature-based",
+            "uncertainty": f"{lo:.0f}-{hi:.0f} kJ/mol",
+            "source_basis": (
+                "Garidzirai, Modisha & Bessarabov (2024), Catalysts 14(1), 32 -- 205 kJ/mol, "
+                "Pt/Al2O3, first-order (k=0.0222/min), 300 degC (Confirmed match); Park, Naseem & "
+                "Lee (2021), Materials 14(24), 7613 -- 171 kJ/mol, Pt/Al2O3, 250-320 degC "
+                "(spans the Confirmed 300 degC)"
+            ),
+            "consistency_check": {
+                "verdict": verdict,
+                "rate_constant_per_min": k_per_min,
+                "target_conversion_fraction": target_conversion,
+                "implied_reaction_time_h": implied_time_h,
+                "reference_batch_time_h": reference_batch_time_h,
+                "ratio_to_reference": ratio_to_reference,
+            },
+            # Section 6 metadata -----------------------------------------------------
+            "metadata": {
+                "parameter_name": "HB-016 DBT dehydrogenation activation energy",
+                "baseline_value": f"{lo:.0f}-{hi:.0f} kJ/mol",
+                "unit": "kJ/mol",
+                "status": "Estimated",
+                "evidence_level": "Literature-based",
+                "source": "HB-014/HB-016 LOHC catalyst kinetics Missing Parameter Resolution Protocol task",
+                "source_reference": "python/hb_remaining_chain.py: hb016_kinetics_baseline()",
+                "engineering_basis": (
+                    "Two independent, peer-reviewed studies, both matching HB-016's own Confirmed "
+                    "catalyst (Pt/Al2O3) AND its own Confirmed 300 degC operating temperature "
+                    "directly -- a materially stronger literature match than HB-014's own "
+                    "hydrogenation baseline"
+                ),
+                "uncertainty_or_range": f"{lo:.0f}-{hi:.0f} kJ/mol",
+                "confidence": (
+                    "Medium-High -- both source studies match this exact catalyst AND this exact "
+                    "temperature; a wider 83-151 kJ/mol spread also appears across other Pt/Al2O3 "
+                    "preparations/loadings/reactor types in the broader literature (not used as the "
+                    "primary baseline here, since those points are less precisely re-verifiable), "
+                    "reflecting genuine real-world variability across catalyst formulations."
+                ),
+                "assumptions": (
+                    "(1) The two cited studies' own catalyst preparation (commercial-grade Pt/Al2O3) "
+                    "is assumed broadly representative of HB-016's own Confirmed Pt/Al2O3 (exact "
+                    "loading/support not independently verified). (2) The consistency check treats "
+                    "HB-016's own confirmed round-trip efficiency ratio as a target CONVERSION "
+                    "fraction, a reasonable but not literally-stated engineering interpretation."
+                ),
+                "date_established": "2026-09-03",
+                "replaceable_with_actual_data": True,
+            },
+            "real_open_question": (
+                "What is DOK-ING's own actual, confirmed rate constant/activation energy for "
+                "HB-016's own specific Pt/Al2O3 catalyst batch, at its own confirmed 300 degC/2 "
+                "bar operating point? None of this is confirmed anywhere in this project today."
+            ),
+        },
+        "status": ps.STATUS_ESTIMATED,
+        "model": "hb_remaining_chain.hb016_kinetics_baseline",
+        "inputs": [],
+        "validation_basis": ps.VALIDATION_LITERATURE,
+        "confidence_note": (
+            f"ACTUAL/DOK-ING VALUE: Missing/Unverified. DIGITAL TWIN ENGINEERING BASELINE: "
+            f"approximately {lo:.0f}-{hi:.0f} kJ/mol (Literature-based, two independently-verified "
+            f"sources both matching this exact catalyst and temperature). Consistency check "
+            f"({verdict}): Garidzirai et al.'s own real k={k_per_min:.4f}/min implies "
+            f"{implied_time_h:.2f}h to reach HB-016's own Confirmed {target_conversion*100:.1f}% "
+            f"round-trip efficiency target -- {ratio_to_reference:.2f}x that SAME paper's own "
+            f"stated real {reference_batch_time_h:.0f}h batch reaction time, the same order of "
+            f"magnitude, a genuine match, not forced. Does NOT feed hb016_reaction_kinetics()'s own "
+            f"permanently-Missing status, and does NOT bypass HB-007's own structural block on the "
+            f"mass-balance chain (item 9, a separate Category C business decision)."
         ),
     }
 
@@ -718,12 +1033,16 @@ def register_hb_remaining(engine):
                            depends_on=[("HB-007", "H2SplitFraction"), ("HB-006", "PSA")])
     engine.register_model(("HB-014", "ReactionKinetics"), hb014_reaction_kinetics, unit="n/a",
                            depends_on=[])
+    engine.register_model(("HB-014", "KineticsBaselineEstimate"), hb014_kinetics_baseline,
+                           unit="kJ/mol dict", depends_on=[])
     engine.register_model(("HB-015", "Inventory"), hb015_inventory, unit="kg dict",
                            depends_on=[("HB-014", "MassBalance")], lagged_depends_on=[("HB-015", "Inventory")])
     engine.register_model(("HB-016", "MassBalance"), hb016_mass_balance, unit="kg/h dict",
                            depends_on=[("HB-015", "Inventory")])
     engine.register_model(("HB-016", "ReactionKinetics"), hb016_reaction_kinetics, unit="n/a",
                            depends_on=[])
+    engine.register_model(("HB-016", "KineticsBaselineEstimate"), hb016_kinetics_baseline,
+                           unit="kJ/mol dict", depends_on=[])
     engine.register_model(("HB-017", "MassBalance"), hb017_mass_balance, unit="kg/h dict",
                            depends_on=[("HB-016", "MassBalance")])
     engine.register_model(("HB-018", "Dispensing"), hb018_dispensing, unit="kg/h dict",
@@ -855,6 +1174,72 @@ if __name__ == "__main__":
           "of the live feed composition, while the live feed fraction is still reported, "
           "informationally, as a genuinely changing live value.")
 
+    print("\n=== Missing Parameter Resolution Protocol candidate: HB-014/HB-016 LOHC catalyst kinetics ===")
+    hb014_react = hb014_reaction_kinetics(lambda k: None)
+    assert hb014_react["status"] == ps.STATUS_MISSING, "REGRESSION: hb014_reaction_kinetics() should stay permanently Missing."
+    hb016_react = hb016_reaction_kinetics(lambda k: None)
+    assert hb016_react["status"] == ps.STATUS_MISSING, "REGRESSION: hb016_reaction_kinetics() should stay permanently Missing."
+    print("  hb014_reaction_kinetics()/hb016_reaction_kinetics() both correctly stay permanently "
+          "Missing -- the new baselines below are additive, not a replacement.")
+
+    hb014_kin = hb014_kinetics_baseline(lambda k: None)
+    print(f"  HB-014 (hydrogenation): {hb014_kin['value']['actual_dokking_value'][:9]}... "
+          f"baseline={hb014_kin['value']['digital_twin_engineering_baseline']}")
+    assert hb014_kin["status"] == ps.STATUS_ESTIMATED
+    assert hb014_kin["validation_basis"] == ps.VALIDATION_LITERATURE
+    lo14, hi14 = hb014_kin["value"]["digital_twin_engineering_baseline_range_kj_per_mol"]
+    assert 0.0 < lo14 < hi14, f"REGRESSION: HB-014 baseline range {(lo14, hi14)} is not sane."
+    assert lo14 == HB014_HYDROGENATION_EA_KJ_PER_MOL_RANGE[0] and hi14 == HB014_HYDROGENATION_EA_KJ_PER_MOL_RANGE[1]
+    for field in ("parameter_name", "baseline_value", "unit", "status", "evidence_level", "source",
+                  "source_reference", "engineering_basis", "uncertainty_or_range", "confidence",
+                  "assumptions", "date_established", "replaceable_with_actual_data"):
+        assert field in hb014_kin["value"]["metadata"], f"REGRESSION: HB-014 Section 6 metadata missing {field!r}."
+    assert hb014_kin["value"]["metadata"]["evidence_level"] == "Literature-based"
+    assert hb014_kin["value"]["metadata"]["replaceable_with_actual_data"] is True
+    print("  PASSED -- HB-014's own baseline: Section 6 metadata complete, evidence_level=Literature-"
+          "based, ACTUAL/DOK-ING VALUE correctly states none exists.")
+
+    hb016_kin = hb016_kinetics_baseline(lambda k: None)
+    print(f"  HB-016 (dehydrogenation): baseline={hb016_kin['value']['digital_twin_engineering_baseline']}")
+    cc16 = hb016_kin["value"]["consistency_check"]
+    print(f"  Consistency check ({cc16['verdict']}): k={cc16['rate_constant_per_min']:.4f}/min -> "
+          f"implied time={cc16['implied_reaction_time_h']:.2f}h to reach "
+          f"{cc16['target_conversion_fraction']*100:.1f}% conversion, vs. reference batch time="
+          f"{cc16['reference_batch_time_h']:.0f}h (ratio={cc16['ratio_to_reference']:.2f}x).")
+    assert hb016_kin["status"] == ps.STATUS_ESTIMATED
+    assert hb016_kin["validation_basis"] == ps.VALIDATION_LITERATURE
+    lo16, hi16 = hb016_kin["value"]["digital_twin_engineering_baseline_range_kj_per_mol"]
+    assert 0.0 < lo16 < hi16
+    assert lo16 == HB016_DEHYDROGENATION_EA_KJ_PER_MOL_RANGE[0] and hi16 == HB016_DEHYDROGENATION_EA_KJ_PER_MOL_RANGE[1]
+    # Independent re-derivation, not just "a number came back": recompute the consistency-check
+    # arithmetic via a completely separate expression.
+    target_chk = HB016_RELEASE_EFFICIENCY_WT_PCT / HB014_LOADING_EFFICIENCY_WT_PCT
+    implied_time_h_chk = -math.log(1.0 - target_chk) / HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN / 60.0
+    assert abs(implied_time_h_chk - cc16["implied_reaction_time_h"]) < 1e-9
+    assert abs((implied_time_h_chk / 6.0) - cc16["ratio_to_reference"]) < 1e-9
+    assert cc16["verdict"] in ("PASS", "PARTIAL")
+    assert 1.5 < cc16["implied_reaction_time_h"] < 4.0, (
+        f"REGRESSION: implied reaction time {cc16['implied_reaction_time_h']:.2f}h is outside the "
+        f"expected order-of-magnitude range for this real rate constant -- check the arithmetic."
+    )
+    for field in ("parameter_name", "baseline_value", "unit", "status", "evidence_level", "source",
+                  "source_reference", "engineering_basis", "uncertainty_or_range", "confidence",
+                  "assumptions", "date_established", "replaceable_with_actual_data"):
+        assert field in hb016_kin["value"]["metadata"], f"REGRESSION: HB-016 Section 6 metadata missing {field!r}."
+    assert hb016_kin["value"]["metadata"]["evidence_level"] == "Literature-based"
+    print(f"  PASSED -- HB-016's own baseline independently re-derives exactly; consistency check "
+          f"verdict={cc16['verdict']} (back-derived {cc16['implied_reaction_time_h']:.2f}h vs. the "
+          f"SAME source paper's own real {cc16['reference_batch_time_h']:.0f}h reference batch time "
+          f"-- same order of magnitude, not forced).")
+
+    # Scope check (task requirement 6) proper: the REAL structural block lives in the engine's
+    # own dependency resolution (a same-cycle Missing dependency skips the function entirely --
+    # NOT a check inside hb014_mass_balance()'s own body, which is a hardcoded placeholder either
+    # way). The existing "Full-engine integration" section further below already proves, via
+    # _HB014_MASS_BALANCE_CALL_COUNT, that hb014_mass_balance() is never invoked while HB-007 stays
+    # Missing -- re-confirmed there (unmodified), plus a check that the NEW baseline keys register
+    # and run normally alongside that still-blocked chain, not instead of it.
+
     hb007_out = hb007_h2_split_fraction(lambda k: None)
     assert hb007_out["status"] == ps.STATUS_MISSING
     print("  HB-007 H2SplitFraction: Missing -- PASSED")
@@ -925,6 +1310,18 @@ if __name__ == "__main__":
     print(f"  hb014_mass_balance() call count after {N_CYCLES} cycles: "
           f"{_HB014_MASS_BALANCE_CALL_COUNT[0]} -- PASSED (structurally never invoked, not just "
           f"internally returning Missing)")
+
+    hb014_kin_live = snap[("HB-014", "KineticsBaselineEstimate")]
+    hb016_kin_live = snap[("HB-016", "KineticsBaselineEstimate")]
+    print(f"  HB-014 KineticsBaselineEstimate (live): status={hb014_kin_live['status']}  "
+          f"baseline={hb014_kin_live['value']['digital_twin_engineering_baseline']}")
+    print(f"  HB-016 KineticsBaselineEstimate (live): status={hb016_kin_live['status']}  "
+          f"baseline={hb016_kin_live['value']['digital_twin_engineering_baseline']}")
+    assert hb014_kin_live["status"] == ps.STATUS_ESTIMATED and hb016_kin_live["status"] == ps.STATUS_ESTIMATED
+    print("  PASSED (scope check, task requirement 6) -- both new kinetics baselines run live in "
+          "the real engine, side by side with HB-014's mass-balance chain remaining genuinely, "
+          "structurally blocked (call count above) -- additive only, correctly not bypassing "
+          "HB-007's own Missing split fraction (item 9, a separate Category C business decision).")
 
     # missing_roots() returns EVERY Missing node in the chain (task requirement
     # 6 wants specifically the count of GENUINE origins, not propagated
