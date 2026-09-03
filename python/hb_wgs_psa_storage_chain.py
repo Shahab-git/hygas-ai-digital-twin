@@ -62,6 +62,23 @@ the PSA's own inlet, modeled here as a knockout step analogous to GC-004's
 own quench condensation (module docstring: excess/unreacted WGS steam is
 removed before the PSA feed, the same real-world function a
 knockout drum/cooler between WGS and PSA performs).
+
+H2/SYNGAS DOUBLE-COUNTING FIX (post-Phase-6 correction, see eu_utilities_chp.py's own module
+docstring addendum for the full root-cause investigation): hb013_storage_level()'s own inventory
+mass balance previously tracked TWO real inflows (HB-012 compressor, HB-011 electrolyser) and only
+ONE real outflow (HB-018 dispensing) -- but EU-006's own PEM Fuel Cell (eu_utilities_chp.py) ALSO
+draws real H2 out of this SAME storage vessel every cycle (its own dispatch budget,
+eu_utilities_chp._h2_budget_kw(), is computed directly from this function's own level_kg). That
+consumption was computed (eu006_fuel_cell's own real h2_consumed_nm3_h) but never fed back here as
+an outflow -- the tracked inventory stayed artificially high, silently overstating how much H2
+remained "in storage" (and so how much was later available to export via HB-018, or to report as
+genuinely on-hand). FIXED below with a THIRD real outflow term, EU-006's own H2 consumption, read
+LAGGED (the same genuine mutual-pair mechanism already used for HB-011/HB-018 above -- EU-CHP
+Dispatch's own SAME-cycle read of THIS function's level_kg, via _h2_budget_kw(), makes a same-cycle
+read back the other way circular; lagging it is not a workaround, it is the established, tested
+Phase 0 mechanism for exactly this class of pair), gracefully defaulting to zero when EU-006 isn't
+registered or hasn't produced a value yet -- unchanged behavior for this module's own standalone
+self-test, which registers neither EU-006 nor (as before) HB-011/HB-018.
 """
 import math
 
@@ -483,7 +500,13 @@ def hb013_storage_level(get_input):
       - an outflow to HB-018 (Dispensing), reading its PREVIOUS cycle's
         dispensed amount (necessarily lagged: HB-018 itself reads HB-013's
         level to decide how much it CAN dispense this cycle -- a genuine
-        mutual pair, same Phase 0 mechanism, not an ad hoc one)."""
+        mutual pair, same Phase 0 mechanism, not an ad hoc one).
+
+    H2/SYNGAS DOUBLE-COUNTING FIX (see module docstring addendum): a THIRD outflow, EU-006's own
+    real PEM Fuel Cell H2 consumption, also lagged for the same genuine-mutual-pair reason as
+    HB-018's own outflow above -- eu_utilities_chp.eu_chp_dispatch()'s own SAME-cycle read of
+    THIS function's level_kg (via _h2_budget_kw()) would otherwise make a same-cycle read back the
+    other way circular."""
     compressor = get_input(("HB-012", "Compressor"))["value"]
     prev = get_input(("HB-013", "Storage"))  # lagged, self
     prev_level = 0.0 if prev["status"] == ps.STATUS_MISSING else prev["value"]["level_kg"]
@@ -493,9 +516,15 @@ def hb013_storage_level(get_input):
         0.0 if electrolyser["status"] == ps.STATUS_MISSING else electrolyser["value"]["h2_kg_h"]
     )
     dispensing = get_input(("HB-018", "Dispensing"))  # lagged
-    outflow_kg_h = (
+    dispensed_kg_h = (
         0.0 if dispensing["status"] == ps.STATUS_MISSING else dispensing["value"]["dispensed_kg_h"]
     )
+    fuel_cell = get_input(("EU-006", "FuelCell"))  # lagged -- FIX, H2/syngas double-counting task
+    fuel_cell_kg_h = (
+        0.0 if fuel_cell["status"] == ps.STATUS_MISSING
+        else fuel_cell["value"]["h2_consumed_nm3_h"] / gc.ga001.NM3_PER_MOL * M_H2 / 1000.0
+    )
+    outflow_kg_h = dispensed_kg_h + fuel_cell_kg_h
 
     inflow_kg_h = compressor["h2_kg_h"] + electrolyser_inflow_kg_h
     net_kg = (inflow_kg_h - outflow_kg_h) * ASSUMED_HOURS_PER_CYCLE
@@ -511,9 +540,12 @@ def hb013_storage_level(get_input):
         declared_inputs.append(("HB-011", "Electrolyser"))
     if dispensing["status"] != ps.STATUS_MISSING:
         declared_inputs.append(("HB-018", "Dispensing"))
+    if fuel_cell["status"] != ps.STATUS_MISSING:
+        declared_inputs.append(("EU-006", "FuelCell"))
 
     return {
         "value": {"level_kg": new_level, "inflow_kg_h": inflow_kg_h, "outflow_kg_h": outflow_kg_h,
+                   "dispensed_kg_h": dispensed_kg_h, "fuel_cell_kg_h": fuel_cell_kg_h,
                    "fraction_full": new_level / H2_STORAGE_CAPACITY_KG},
         "status": ps.STATUS_CALCULATED,
         "model": "hb_wgs_psa_storage_chain.hb013_storage_level",
@@ -521,12 +553,14 @@ def hb013_storage_level(get_input):
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"level = prev_level({prev_level:.4f} kg) + [inflow(PSA route {compressor['h2_kg_h']:.4f} "
-            f"+ electrolyser route {electrolyser_inflow_kg_h:.4f}) - outflow({outflow_kg_h:.4f})] kg/h "
-            f"x ASSUMED {ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
-            f"(HB-013's own Confirmed capacity). Electrolyser inflow and dispensing outflow both read "
-            f"the PREVIOUS cycle's value (lagged), zero when absent -- see this function's own "
-            f"docstring. The hours-per-cycle mapping is a stated, explicit modeling choice -- this "
-            f"project's update cycle has no defined wall-clock duration yet."
+            f"+ electrolyser route {electrolyser_inflow_kg_h:.4f}) - outflow(dispensing "
+            f"{dispensed_kg_h:.4f} + PEM Fuel Cell {fuel_cell_kg_h:.4f})] kg/h x ASSUMED "
+            f"{ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
+            f"(HB-013's own Confirmed capacity). Electrolyser inflow, dispensing outflow, AND "
+            f"Fuel Cell outflow (FIX, H2/syngas double-counting task -- see module docstring "
+            f"addendum) all read the PREVIOUS cycle's value (lagged), zero when absent -- see this "
+            f"function's own docstring. The hours-per-cycle mapping is a stated, explicit modeling "
+            f"choice -- this project's update cycle has no defined wall-clock duration yet."
         ),
     }
 
@@ -541,7 +575,11 @@ def register_hb_chain(engine):
     (register_ga001) and the GC chain (register_gc_chain) registered.
     Built and registered in the correct dependency order (HB-005 before
     HB-003, per the roadmap's own explicit sequencing note). Nothing
-    downstream of HB-013 (EU/utilities) is touched."""
+    downstream of HB-013 (EU/utilities) is called or computed here -- HB-013's own registration
+    below DOES carry one LAGGED reference back to EU-006 (H2/syngas double-counting fix, see module
+    docstring addendum), the same class of genuine mutual pair already established for HB-011/
+    HB-018, gracefully absent (0.0) in this module's own standalone self-test, which registers none
+    of the three."""
     engine.register_model(("HB-001", "HTS"), hb001_hts_conversion, unit="fraction dict",
                            depends_on=[("GC-013", "Gas")])
     engine.register_model(("HB-005", "Steam"), hb005_steam_generation, unit="kg/h + degC dict",
@@ -561,7 +599,8 @@ def register_hb_chain(engine):
     engine.register_model(
         ("HB-013", "Storage"), hb013_storage_level, unit="kg dict",
         depends_on=[("HB-012", "Compressor")],
-        lagged_depends_on=[("HB-013", "Storage"), ("HB-011", "Electrolyser"), ("HB-018", "Dispensing")],
+        lagged_depends_on=[("HB-013", "Storage"), ("HB-011", "Electrolyser"), ("HB-018", "Dispensing"),
+                            ("EU-006", "FuelCell")],
     )
 
 
@@ -729,5 +768,58 @@ if __name__ == "__main__":
     print(f"  {len(chain_keys)} nodes reached, including GA-001's own feedstock-composition root, "
           f"GC-013's own gas output, and every intermediate HB stage.")
     print("PASSED -- the full gasifier-to-storage chain is traceable end to end.")
+
+    print("\n=== H2/syngas double-counting FIX: HB-013's new EU-006 Fuel Cell outflow, direct/mocked ===")
+    FC_H2_CONSUMED_NM3_H = 3.0  # arbitrary but real-shaped test value
+
+    def _mock_with_fuel_cell(k):
+        if k == ("HB-012", "Compressor"):
+            return {"value": {"power_kW": 1.0, "h2_kg_h": 2.0}}
+        if k == ("HB-013", "Storage"):
+            return {"status": ps.STATUS_CALCULATED, "value": {"level_kg": 10.0}}
+        if k == ("HB-011", "Electrolyser"):
+            return {"status": ps.STATUS_MISSING}
+        if k == ("HB-018", "Dispensing"):
+            return {"status": ps.STATUS_MISSING}
+        if k == ("EU-006", "FuelCell"):
+            return {"status": ps.STATUS_CALCULATED, "value": {"h2_consumed_nm3_h": FC_H2_CONSUMED_NM3_H}}
+        raise KeyError(k)
+
+    fc_result = hb013_storage_level(_mock_with_fuel_cell)
+    expected_fc_kg_h = FC_H2_CONSUMED_NM3_H / gc.ga001.NM3_PER_MOL * M_H2 / 1000.0
+    assert abs(fc_result["value"]["fuel_cell_kg_h"] - expected_fc_kg_h) < 1e-9, (
+        f"REGRESSION: Fuel Cell Nm3/h->kg/h conversion is wrong: got "
+        f"{fc_result['value']['fuel_cell_kg_h']}, expected {expected_fc_kg_h}."
+    )
+    expected_outflow = 0.0 + expected_fc_kg_h  # dispensing Missing -> 0, + fuel cell outflow
+    assert abs(fc_result["value"]["outflow_kg_h"] - expected_outflow) < 1e-9
+    expected_net_kg = (2.0 - expected_outflow) * ASSUMED_HOURS_PER_CYCLE
+    expected_level = min(max(10.0 + expected_net_kg, 0.0), H2_STORAGE_CAPACITY_KG)
+    assert abs(fc_result["value"]["level_kg"] - expected_level) < 1e-9, (
+        "REGRESSION: HB-013's own mass balance (prev_level + (inflow-outflow)*hours, clamped) does "
+        "not correctly fold in the new Fuel Cell outflow term."
+    )
+    assert ("EU-006", "FuelCell") in fc_result["inputs"], (
+        "REGRESSION: EU-006 FuelCell should appear in the declared provenance inputs once it "
+        "genuinely contributed a nonzero outflow."
+    )
+    print(f"  Mocked: HB-012 inflow=2.0kg/h, EU-006 FuelCell consumed={FC_H2_CONSUMED_NM3_H} Nm3/h "
+          f"-> {expected_fc_kg_h:.4f}kg/h, prev_level=10.0kg -> new level={fc_result['value']['level_kg']:.4f}kg")
+    print("  PASSED -- EU-006's own real H2 consumption is correctly unit-converted (Nm3/h -> kg/h via "
+          "M_H2/NM3_PER_MOL, the SAME conversion hb012_compressor() already uses) and subtracted as a "
+          "real THIRD outflow term, exactly reproducing an independent hand-derivation of the mass "
+          "balance -- not just 'the number changed'.")
+
+    # Graceful default unaffected -- re-run this module's OWN existing self-test scenario (no EU-006
+    # registered at all, matching the untouched behavior every check above this one already relies on).
+    no_fc_result = hb013_storage_level(lambda k: (
+        {"value": {"power_kW": 1.0, "h2_kg_h": 2.0}} if k == ("HB-012", "Compressor")
+        else {"status": ps.STATUS_MISSING}
+    ))
+    assert no_fc_result["value"]["fuel_cell_kg_h"] == 0.0
+    assert ("EU-006", "FuelCell") not in no_fc_result["inputs"]
+    print("  PASSED -- with EU-006 absent/Missing (this module's own standalone scenario), the new "
+          "outflow term gracefully defaults to exactly 0.0 and is correctly omitted from the declared "
+          "provenance inputs -- byte-identical to this module's pre-fix behavior.")
 
     print("\nAll hb_wgs_psa_storage_chain.py self-tests PASSED.")

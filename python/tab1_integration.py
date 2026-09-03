@@ -216,18 +216,19 @@ def compute_tab1_kpis(snapshot):
         # HONEST INTERNAL-CONSISTENCY CHECK (Missing Parameter Protocol Section 3), NOT skipped: a
         # first attempt at this KPI summed h2_energy_kw + EU-009's net electrical + EU-012's thermal
         # as one combined "useful output" and divided by feed input energy -- and it came out ABOVE
-        # 100% for part of DOK-ING's own confirmed LHV range. Investigated, not silently rounded away:
-        # EU-009's own generation total includes EU-006's PEM Fuel Cell, dispatched from HB-013's
-        # STORED H2 (eu_utilities_chp._h2_budget_kw) -- the SAME underlying H2 pool HB-012's h2_kg_h
-        # already counts once here. On top of that, eu_chp_dispatch's own syngas budget
-        # (_syngas_budget_kw) is GC-013's FULL dry flow, not a flow already net of whatever the
-        # WGS/PSA route consumed to make that H2 -- this project's own Phase 2 dispatch model was
-        # built with two independent budget inputs (syngas-for-CHP, H2-for-FuelCell) and no explicit
-        # allocation split between them, because no feedstock LHV existed until this task to even
-        # reveal that gap. NOT resolved here (would require re-deriving the real physical gas split
-        # across GA-001->GC->HB-012/013->EU, out of this task's scope) -- reported honestly instead of
-        # forced. What IS reported below: HB-012's own H2 output energy against feed input energy, a
-        # single, non-overlapping carrier with no such double-count risk.
+        # 100% for part of DOK-ING's own confirmed LHV range. ROOT CAUSE FOUND AND FIXED (H2/syngas
+        # double-counting task, eu_utilities_chp.py's own module docstring addendum has the full
+        # investigation): eu_chp_dispatch's own syngas budget was GC-013's FULL flow, not net of
+        # WGS/PSA's own claim on that SAME stream, and EU-006's own real Fuel Cell H2 consumption
+        # was never subtracted from HB-013's storage -- both now corrected at the source
+        # (WGS_PSA_SYNGAS_CLAIM_FRACTION and hb013_storage_level()'s own new outflow term). STILL
+        # NOT combined here, even post-fix: HB-012's own h2_kg_h is a PRODUCTION RATE (this cycle's
+        # own output), while EU-009's electrical (via the Fuel Cell) is driven by HB-013's
+        # accumulated STOCK, which may include H2 produced in earlier cycles, not only this one --
+        # summing a same-cycle flow with a stock-driven draw would still conflate two different
+        # timings, a genuinely separate, smaller concern than the double-count bug itself. What IS
+        # reported below: HB-012's own H2 output energy against feed input energy, a single,
+        # same-cycle, non-overlapping carrier with neither risk.
         eff_lo_pct = 100.0 * h2_energy_kw / feed_input_kw_at_lhv_hi   # higher LHV => bigger denominator => lower bound
         eff_hi_pct = 100.0 * h2_energy_kw / feed_input_kw_at_lhv_lo
         kpis["overall_efficiency"] = _kv(
@@ -245,18 +246,18 @@ def compute_tab1_kpis(snapshot):
                 "H2 output energy / FE-005's live dry feed rate x DOK-ING's confirmed LHV range "
                 "('h2_conversion_efficiency_range_pct' -- this alone is what's reported as "
                 "'overall_efficiency' below). A full MULTI-carrier figure (also summing EU-009's "
-                "electrical and EU-012's thermal output) was attempted and DELIBERATELY NOT included: "
-                "it risks double-counting shared H2/syngas resource pools between HB-012's own H2 "
-                "output and EU-009's own generation total (which includes EU-006's PEM Fuel Cell, "
-                "dispatched from that SAME H2), and EU-009/EU-012's CHP dispatch is computed against "
-                "GC-013's FULL syngas flow with no established split against the WGS/PSA H2 route -- "
-                "a real internal-consistency gap this project's independently-built Phase 2 dispatch "
-                "model has never been checked against a full energy balance before, because no "
-                "feedstock LHV existed to check against until this task. CONCRETE EVIDENCE, not a "
-                "hypothetical concern: naively summing produced an efficiency EXCEEDING 100% for part "
-                "of DOK-ING's own confirmed LHV range. Not resolved here -- resolving it needs the "
-                "real physical gas-flow allocation traced across GA-001->GC->HB->EU, out of this "
-                "task's scope; reported honestly as the real remaining gap instead of forced."
+                "electrical and EU-012's thermal output) was attempted and is STILL DELIBERATELY NOT "
+                "included, even after the H2/syngas double-counting ROOT CAUSE this attempt surfaced "
+                "was found and fixed at its source (eu_utilities_chp.py's own module docstring "
+                "addendum, WGS_PSA_SYNGAS_CLAIM_FRACTION and hb_wgs_psa_storage_chain.py's own new "
+                "Fuel Cell outflow term -- CHP dispatch no longer double-claims the same syngas WGS/"
+                "PSA already claims, and HB-013's storage now correctly nets out the Fuel Cell's own "
+                "consumption). What remains, a smaller and different concern than the original bug: "
+                "HB-012's h2_kg_h is a same-cycle PRODUCTION RATE, while EU-009's electrical (via the "
+                "Fuel Cell) is driven off HB-013's accumulated STOCK, which may include H2 produced in "
+                "earlier cycles -- summing a flow with a stock-driven draw would still conflate two "
+                "different timings. Reported honestly as a real, smaller remaining scope limitation, "
+                "not forced into one number."
             ), unit="%",
         )
 

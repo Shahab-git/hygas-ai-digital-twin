@@ -120,6 +120,33 @@ output anywhere in this project (dispatch_ga.py's own THERMAL_KW["PEM Fuel
 Cell"]=0); the 9kWth figure can only be EU-011's own stated recovered duty.
 This wiring uses EU-011, matching the number, not the mislabeled name.
 EU-013 is a simple metering pass-through of EU-012's own real duty.
+
+=== H2/SYNGAS DOUBLE-COUNTING FIX (post-Phase-6 correction) ===
+Found while wiring GA-001's confirmed feedstock composition: a first attempt at a Tab 1 "overall
+efficiency" KPI (H2 + net electrical + thermal output, divided by feedstock energy input) came out
+ABOVE 100% for part of DOK-ING's own confirmed feedstock-LHV range. ROOT CAUSE, traced directly
+(not assumed): _syngas_budget_kw() (old) returned GC-013's FULL, undiminished syngas flow as
+available to CHP dispatch (SOFC/Gas Engine/Microturbine) -- but hb_wgs_psa_storage_chain.py's own
+WGS reactor (hb001_hts_conversion) ALSO claims that SAME entire stream as its own feed, with no
+partial-flow split anywhere in either chain. Both consumers were being handed 100% of one physical
+resource, simultaneously, every cycle. A SECOND, related bug: EU-006's PEM Fuel Cell consumption
+(eu006_fuel_cell's own real h2_consumed_nm3_h) was computed but never subtracted back from HB-013's
+own storage level -- the stored inventory stayed artificially high after the Fuel Cell "spent" some
+of it. FIX: WGS_PSA_SYNGAS_CLAIM_FRACTION (below) encodes WGS/PSA's real, justified FIRST claim on
+the syngas stream (100%, per design_basis.py's own confirmed RFI #10 answer, "H2 is primary; CHP
+using excess heat/syngas is optional, not fixed" -- and independently confirmed by this project's
+own already-tested 100% tail-gas recycle wiring, EU-007 Flare's own zero-combustible-input self-test
+assertion); _syngas_budget_kw() now returns the real EXCESS after that claim. hb013_storage_level()
+(hb_wgs_psa_storage_chain.py) gained a new, lagged outflow term for EU-006's own real H2
+consumption, the same mutual-pair mechanism already used for HB-018's own dispensing outflow.
+HONEST, SUBSTANTIAL CONSEQUENCE, not hidden: under this project's own current 100%-recycle wiring,
+CHP's real "excess" syngas is genuinely ZERO -- SOFC/Gas Engine/Microturbine's own live dispatch,
+and EU-012's own district-heating output, are correctly ~0kW under normal operation, for ANY GA-001
+ER value. This is not a bug introduced by the fix; it is the CORRECT reflection of DOK-ING's own
+stated design priority once the resource-accounting bug that was masking it is corrected. Only
+EU-006's PEM Fuel Cell (which draws H2, a genuinely separate, already-allocated pool) still
+produces real electrical output under normal operation. See this module's own self-test for the
+full conservation-relationship, mass-balance, and dispatch-regime validation.
 """
 import math
 
@@ -184,6 +211,23 @@ EU011_EXHAUST_INLET_C = 280.0
 EU011_EXHAUST_OUTLET_C = 120.0
 EU011_CP_EXHAUST_KJ_PER_NM3K = 9.0 * 3600.0 / (EU005_EXHAUST_FLOW_NM3_H_RATED * (EU011_EXHAUST_INLET_C - EU011_EXHAUST_OUTLET_C))
 
+# --- Syngas allocation: WGS/PSA's own real, first claim -----------------------------------
+# FIX (H2/syngas double-counting task): design_basis.py's own confirmed RFI #10 answer
+# (hydrogen_coproducts) states explicitly: "H2 is primary; CHP using excess heat/syngas is
+# optional, not fixed." This project's OWN existing wiring already treats GC-013's ENTIRE dry
+# gas stream as the WGS/PSA feed, not a partial fraction -- hb001_hts_conversion() (WGS reactor)
+# reads GC-013's full composition directly, with no partial-flow parameter anywhere in that
+# chain -- and whatever PSA doesn't recover as H2 product (the tail gas, HB-009) has its own
+# combustible content recycled 100% back to GA-001 (ga001_gasifier_model.py's own recycle fold),
+# a fact this module's OWN self-test already independently verifies (EU-007 Flare's own
+# combustible_in_nm3h == 0.0 assertion, unchanged by this fix). So WGS/PSA's real claim on
+# GC-013's syngas is 100%, not an arbitrary pick -- both DOK-ING's own stated priority AND this
+# project's own already-verified recycle wiring agree, independently. Expressed as an explicit,
+# NAMED constant (not a bare 0 buried in a subtraction) so this is a documented modeling
+# decision, not an algebraic accident -- a future CONFIRMED partial split (if DOK-ING ever states
+# one) is then a one-constant change, not an algorithm rewrite.
+WGS_PSA_SYNGAS_CLAIM_FRACTION = 1.0
+
 
 # ============================================================================
 # EU-CHP -- shared dispatch adapter (thin wrapper, dispatch_ga.py/chp.py UNTOUCHED)
@@ -208,11 +252,35 @@ def _syngas_lhv_mj_per_nm3(gc013_value):
     )
 
 
-def _syngas_budget_kw(get_input):
+def _total_syngas_energy_kw(get_input):
+    """GC-013's own real dry flow x a LIVE composition-weighted LHV -- the TOTAL syngas energy
+    available this cycle, BEFORE any allocation between consumers. Split out from the old,
+    single _syngas_budget_kw() (FIX, H2/syngas double-counting task) so the allocation step below
+    is a real, visible, separately-testable step, not silently folded into the same function."""
     gc013 = get_input(("GC-013", "Gas"))["value"]
     flow_nm3_h = gc013["dry_flow_nm3_h"]
     lhv = _syngas_lhv_mj_per_nm3(gc013)
     return flow_nm3_h * lhv / 3.6  # MJ/h -> kW
+
+
+def _wgs_psa_syngas_claim_kw(get_input):
+    """WGS/PSA's own real, justified first claim on the total syngas stream -- see
+    WGS_PSA_SYNGAS_CLAIM_FRACTION's own module-level docstring above for the justification
+    (DOK-ING's own confirmed RFI #10 priority + this project's own already-verified 100%
+    tail-gas recycle wiring)."""
+    return _total_syngas_energy_kw(get_input) * WGS_PSA_SYNGAS_CLAIM_FRACTION
+
+
+def _syngas_budget_kw(get_input):
+    """CHP's OWN real, non-double-counted fuel budget: what remains of the total syngas stream
+    AFTER the WGS/PSA route's own first claim (FIX, H2/syngas double-counting task -- previously
+    this function returned GC-013's FULL, unreduced flow, treating it as simultaneously and fully
+    available to CHP dispatch AND to the WGS/PSA route below, which itself also claims the full
+    stream -- the root cause of a combined output/input efficiency figure exceeding 100% found
+    while wiring GA-001's feedstock composition). A real conservation relationship, not a clamp:
+    total_syngas_kw = wgs_psa_claim_kw + syngas_budget_kw (excess), always, by construction --
+    see this module's own self-test for the mass/energy-balance check."""
+    return _total_syngas_energy_kw(get_input) - _wgs_psa_syngas_claim_kw(get_input)
 
 
 def _h2_budget_kw(get_input):
@@ -230,10 +298,20 @@ def eu_chp_dispatch(get_input):
     """Real syngas/H2 budgets in, dispatch_ga.run_dispatch_ga() (UNTOUCHED)
     and chp.chp_efficiency() (UNTOUCHED) out. seed=42 fixed -- same
     deterministic default dispatch_ga.py's own __main__ already uses, kept
-    here so this module's own self-test can reproduce it exactly."""
+    here so this module's own self-test can reproduce it exactly.
+
+    FIX (H2/syngas double-counting task): the fuel budget CHP actually dispatches against
+    (syngas_budget_kw) is now the real EXCESS remaining after WGS/PSA's own first claim, not
+    GC-013's raw, undiminished flow -- see _syngas_budget_kw()'s own docstring. The full
+    allocation (total_syngas_kw, wgs_psa_claim_kw, syngas_budget_kw) is recorded in this
+    function's own returned value, not just the post-allocation number, so the conservation
+    relationship (total = claim + excess) stays visible/traceable to every downstream reader,
+    not silently baked in."""
     gc013 = get_input(("GC-013", "Gas"))["value"]
     live_lhv = _syngas_lhv_mj_per_nm3(gc013)
-    syngas_budget_kw = _syngas_budget_kw(get_input)
+    total_syngas_kw = _total_syngas_energy_kw(get_input)
+    wgs_psa_claim_kw = total_syngas_kw * WGS_PSA_SYNGAS_CLAIM_FRACTION
+    syngas_budget_kw = total_syngas_kw - wgs_psa_claim_kw
     h2_budget_kw = _h2_budget_kw(get_input)
     dispatch = dispatch_ga.run_dispatch_ga(syngas_budget_kw=syngas_budget_kw, h2_budget_kw=h2_budget_kw, seed=42)
 
@@ -250,19 +328,28 @@ def eu_chp_dispatch(get_input):
         }
 
     return {
-        "value": {"syngas_budget_kw": syngas_budget_kw, "h2_budget_kw": h2_budget_kw, "units": units},
+        "value": {
+            "total_syngas_kw": total_syngas_kw, "wgs_psa_claim_kw": wgs_psa_claim_kw,
+            "syngas_budget_kw": syngas_budget_kw, "h2_budget_kw": h2_budget_kw, "units": units,
+        },
         "status": ps.STATUS_CALCULATED,
         "model": "eu_utilities_chp.eu_chp_dispatch",
         "inputs": [("GC-013", "Gas"), ("HB-013", "Storage")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"syngas_budget={syngas_budget_kw:.3f}kW (GC-013's own real dry flow x a LIVE "
+            f"total_syngas={total_syngas_kw:.3f}kW (GC-013's own real dry flow x a LIVE "
             f"composition-weighted LHV={live_lhv:.3f} MJ/Nm3 -- vs EU-003's/EU-005's own static "
             f"Confirmed {SYNGAS_LHV_MJ_PER_NM3} MJ/Nm3 design-point figure, a real, unforced "
-            f"cross-check, not tuned to match, see module docstring), h2_budget={h2_budget_kw:.3f}kW "
+            f"cross-check, not tuned to match, see module docstring). ALLOCATED: wgs_psa_claim="
+            f"{wgs_psa_claim_kw:.3f}kW ({WGS_PSA_SYNGAS_CLAIM_FRACTION*100:.0f}% -- DOK-ING's own "
+            f"confirmed RFI #10 priority, 'H2 is primary; CHP ... optional, not fixed', see "
+            f"WGS_PSA_SYNGAS_CLAIM_FRACTION's own docstring), leaving CHP's own real, non-double-"
+            f"counted syngas_budget={syngas_budget_kw:.3f}kW. h2_budget={h2_budget_kw:.3f}kW "
             f"(HB-013's own real storage level x H2's own Confirmed {H2_LHV_MJ_PER_NM3} MJ/Nm3 "
-            f"LHV). dispatch_ga.run_dispatch_ga() and chp.chp_efficiency() both UNCHANGED -- "
-            f"real budgets replace their own module-level slider defaults."
+            f"LHV -- this storage level itself now correctly nets out EU-006's own H2 consumption, "
+            f"see hb_wgs_psa_storage_chain.hb013_storage_level()'s own docstring). "
+            f"dispatch_ga.run_dispatch_ga() and chp.chp_efficiency() both UNCHANGED -- real "
+            f"budgets replace their own module-level slider defaults."
         ),
     }
 
@@ -836,8 +923,6 @@ if __name__ == "__main__":
         assert abs(eta - chp.RATED_EFFICIENCY[name]) < 1e-12, f"REGRESSION: chp_efficiency(1.0,{name!r}) != rated"
     print("  chp.chp_efficiency(1.0, name) == RATED_EFFICIENCY[name] for all 4 units -- PASSED")
 
-    direct_dispatch = dispatch_ga.run_dispatch_ga(syngas_budget_kw=60, h2_budget_kw=15, seed=42)
-
     def _mock_synthetic(k):
         if k == ("GC-013", "Gas"):
             # Pure-H2 synthetic composition (LHV = SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"]
@@ -857,19 +942,97 @@ if __name__ == "__main__":
             return {"status": ps.STATUS_CALCULATED, "value": {"level_kg": kg}}
         raise KeyError(k)
 
+    print("\n=== H2/syngas double-counting FIX: allocation, conservation, dispatch-regime checks ===")
     adapter_out = eu_chp_dispatch(_mock_synthetic)
-    assert abs(adapter_out["value"]["syngas_budget_kw"] - 60.0) < 1e-9
-    assert abs(adapter_out["value"]["h2_budget_kw"] - 15.0) < 1e-6
-    adapter_dispatch = {name: adapter_out["value"]["units"][name]["load_factor"] for name in dispatch_ga.UNIT_NAMES}
+    v = adapter_out["value"]
+    print(f"  total_syngas_kw={v['total_syngas_kw']:.3f}  wgs_psa_claim_kw={v['wgs_psa_claim_kw']:.3f}  "
+          f"syngas_budget_kw(excess)={v['syngas_budget_kw']:.3f}  h2_budget_kw={v['h2_budget_kw']:.3f}")
+    assert abs(v["total_syngas_kw"] - 60.0) < 1e-9, "REGRESSION: total syngas energy no longer matches the synthetic 60kW input."
+    assert abs(v["wgs_psa_claim_kw"] - 60.0 * WGS_PSA_SYNGAS_CLAIM_FRACTION) < 1e-9
+    assert abs((v["wgs_psa_claim_kw"] + v["syngas_budget_kw"]) - v["total_syngas_kw"]) < 1e-9, (
+        "REGRESSION: conservation relationship (total = claim + excess) does not hold exactly."
+    )
+    assert abs(v["h2_budget_kw"] - 15.0) < 1e-6
+    print("  PASSED -- total_syngas_kw = wgs_psa_claim_kw + syngas_budget_kw EXACTLY (a real "
+          "conservation relationship, not a clamp), and h2_budget_kw is unaffected by the syngas "
+          "allocation (a genuinely separate resource pool).")
+
+    # Adapter reproduces run_dispatch_ga()'s own dispatch at the SAME budgets it actually computed
+    # (excess syngas=0 under the real 100% WGS/PSA claim, h2_budget=15) -- proves the adapter passes
+    # values through correctly, not that CHP gets a nonzero budget (it correctly doesn't, here).
+    direct_dispatch_at_excess = dispatch_ga.run_dispatch_ga(syngas_budget_kw=v["syngas_budget_kw"], h2_budget_kw=15, seed=42)
+    adapter_dispatch = {name: v["units"][name]["load_factor"] for name in dispatch_ga.UNIT_NAMES}
     for name in dispatch_ga.UNIT_NAMES:
-        assert adapter_dispatch[name] == direct_dispatch[name], (
+        assert adapter_dispatch[name] == direct_dispatch_at_excess[name], (
             f"REGRESSION: adapter dispatch for {name} ({adapter_dispatch[name]}) != direct call "
-            f"({direct_dispatch[name]}) at matching synthetic budgets (60/15 kW, seed=42)."
+            f"({direct_dispatch_at_excess[name]}) at matching (allocated) budgets."
         )
-    print(f"  Direct run_dispatch_ga(60,15,seed=42): {direct_dispatch}")
-    print(f"  Adapter (synthetic GC-013/HB-013 inputs -> 60/15kW budgets): {adapter_dispatch}")
-    print("  PASSED -- adapter reproduces run_dispatch_ga()'s exact dispatch at matching synthetic "
-          "budgets, proving it passes values through correctly rather than corrupting them.")
+    print(f"  Direct run_dispatch_ga(excess={v['syngas_budget_kw']:.3f},15,seed=42): {direct_dispatch_at_excess}")
+    print(f"  Adapter (synthetic GC-013/HB-013 -> 60kW total, 100% WGS/PSA claim): {adapter_dispatch}")
+    print("  PASSED -- adapter reproduces run_dispatch_ga()'s exact dispatch at its own actually-"
+          "allocated budgets, proving it passes values through correctly rather than corrupting them.")
+
+    print("\n--- CHP-only regime (direct dispatch_ga call, proving the untouched mechanism itself "
+          "still correctly supports a positive syngas budget when one is genuinely allocated) ---")
+    chp_only = dispatch_ga.run_dispatch_ga(syngas_budget_kw=60.0, h2_budget_kw=0.0, seed=42)
+    print(f"  syngas=60kW, h2=0kW: {chp_only}")
+    assert chp_only["PEM Fuel Cell"] < 0.01, "REGRESSION: PEM Fuel Cell dispatched load with a zero H2 budget."
+    assert any(chp_only[n] > 0.01 for n in ("SOFC", "Gas Engine", "Microturbine")), (
+        "REGRESSION: no syngas-fired unit dispatched any load despite a genuine 60kW syngas budget."
+    )
+    print("  PASSED -- with a genuine nonzero syngas budget and zero H2 budget, syngas units dispatch "
+          "real load and the Fuel Cell correctly stays at ~0.")
+
+    print("\n--- FC-only regime (this project's own actual live baseline, per the fix below) ---")
+    fc_only = dispatch_ga.run_dispatch_ga(syngas_budget_kw=0.0, h2_budget_kw=15.0, seed=42)
+    print(f"  syngas=0kW, h2=15kW: {fc_only}")
+    for n in ("SOFC", "Gas Engine", "Microturbine"):
+        assert fc_only[n] < 0.01, f"REGRESSION: {n} dispatched load with a zero syngas budget."
+    assert fc_only["PEM Fuel Cell"] > 0.49, "REGRESSION: PEM Fuel Cell did not dispatch meaningful load against a real H2 budget."
+    print("  PASSED -- with zero syngas and a genuine H2 budget, ONLY the Fuel Cell dispatches load.")
+
+    print("\n--- Simultaneous FC+CHP regime (hypothetical: WGS/PSA claim < 100%, tested via a "
+          "temporary override, restored after -- proves the allocation formula itself, not just "
+          "dispatch_ga, correctly supports a genuine partial split) ---")
+    _orig_fraction = WGS_PSA_SYNGAS_CLAIM_FRACTION
+    try:
+        WGS_PSA_SYNGAS_CLAIM_FRACTION = 0.5  # TEST ONLY -- not DOK-ING-confirmed, restored below
+        partial_out = eu_chp_dispatch(_mock_synthetic)
+        pv = partial_out["value"]
+        assert abs(pv["wgs_psa_claim_kw"] - 30.0) < 1e-9 and abs(pv["syngas_budget_kw"] - 30.0) < 1e-9
+        assert abs((pv["wgs_psa_claim_kw"] + pv["syngas_budget_kw"]) - pv["total_syngas_kw"]) < 1e-9
+        both_active = pv["units"]["PEM Fuel Cell"]["load_factor"] > 0.01 and any(
+            pv["units"][n]["load_factor"] > 0.01 for n in ("SOFC", "Gas Engine", "Microturbine")
+        )
+        print(f"  At a 50% (test-only) WGS/PSA claim: wgs_psa_claim={pv['wgs_psa_claim_kw']:.1f}kW, "
+              f"CHP excess={pv['syngas_budget_kw']:.1f}kW, h2_budget={pv['h2_budget_kw']:.1f}kW, "
+              f"PEM FC load={pv['units']['PEM Fuel Cell']['load_factor']*100:.1f}%, "
+              f"syngas units active={both_active}")
+        assert both_active, "REGRESSION: at a genuine partial WGS/PSA claim, FC and at least one syngas unit should both dispatch load simultaneously."
+    finally:
+        WGS_PSA_SYNGAS_CLAIM_FRACTION = _orig_fraction
+    assert WGS_PSA_SYNGAS_CLAIM_FRACTION == 1.0, "REGRESSION: test override was not restored."
+    print("  PASSED -- the allocation formula correctly supports FC and CHP running simultaneously "
+          "the moment a genuine partial claim exists; under this project's OWN real, DOK-ING-"
+          "justified 100% claim (restored above), CHP's own excess is correctly 0, matching the "
+          "FC-only regime above -- this is the live baseline, not a separate bug.")
+
+    print("\n--- Zero-load / startup regime (no GC-013 flow, no HB-013 storage) ---")
+    def _mock_zero(k):
+        if k == ("GC-013", "Gas"):
+            return {"value": {"dry_flow_nm3_h": 0.0, "H2_mol_pct_dry": 0.0, "CO_mol_pct_dry": 0.0, "CH4_mol_pct_dry": 0.0}}
+        if k == ("HB-013", "Storage"):
+            return {"status": ps.STATUS_MISSING}
+        raise KeyError(k)
+    zero_out = eu_chp_dispatch(_mock_zero)
+    zv = zero_out["value"]
+    assert zv["total_syngas_kw"] == 0.0 and zv["wgs_psa_claim_kw"] == 0.0 and zv["syngas_budget_kw"] == 0.0
+    assert zv["h2_budget_kw"] == 0.0, "REGRESSION: h2_budget_kw should gracefully be 0.0 when HB-013 Storage is Missing."
+    for name in dispatch_ga.UNIT_NAMES:
+        assert zv["units"][name]["load_factor"] < 0.01, f"REGRESSION: {name} dispatched load with zero fuel of every kind."
+        assert zv["units"][name]["electrical_kw"] >= 0.0 and zv["units"][name]["thermal_kw"] >= 0.0
+    print("  PASSED -- zero syngas flow and Missing H2 storage (e.g. a cold-start cycle) produce an "
+          "honest all-zero dispatch, no crash, no negative or fabricated fuel/output.")
 
     print("\n=== Full-engine integration: GA-001 -> GC -> HB chain -> HB-remaining -> EU utilities ===")
 
@@ -996,49 +1159,57 @@ if __name__ == "__main__":
     dispatch_35 = snap_35[("EU-CHP", "Dispatch")]["value"]
     print(f"  EU-009 net electrical balance: ER=0.25 -> {net_25:.3f}kW   ER=0.35 -> {net_35:.3f}kW")
     print(f"  EU-012 district heating output: ER=0.25 -> {dh_25:.3f}kW   ER=0.35 -> {dh_35:.3f}kW")
-    print(f"  Live syngas budget: ER=0.25 -> {dispatch_25['syngas_budget_kw']:.2f}kW   "
-          f"ER=0.35 -> {dispatch_35['syngas_budget_kw']:.2f}kW")
+    print(f"  total_syngas_kw: ER=0.25 -> {dispatch_25['total_syngas_kw']:.2f}kW   "
+          f"ER=0.35 -> {dispatch_35['total_syngas_kw']:.2f}kW")
+    print(f"  wgs_psa_claim_kw / syngas_budget_kw(excess): ER=0.25 -> {dispatch_25['wgs_psa_claim_kw']:.2f}/"
+          f"{dispatch_25['syngas_budget_kw']:.2f}kW   ER=0.35 -> {dispatch_35['wgs_psa_claim_kw']:.2f}/"
+          f"{dispatch_35['syngas_budget_kw']:.2f}kW")
     assert abs(net_25 - net_35) > 1e-6, "REGRESSION: ER change did not reach EU-009's net electrical balance."
     print("  PASSED (EU-009) -- a change at GA-001 visibly, measurably reaches EU-009's net "
-          "electrical balance.")
+          "electrical balance (via the PEM Fuel Cell's own H2 budget, the only live electrical "
+          "producer under this project's own real 100% WGS/PSA claim -- see below).")
 
-    # HONEST FINDING, not hidden: at BOTH ER=0.25 and ER=0.35 the live syngas budget (printed
-    # above, ~198/~163kW WITH Phase 1d's own recycle loop active and boosting throughput further)
-    # stays comfortably above the ~118.4kW needed to saturate SOFC+GasEngine+Microturbine at
-    # load=1.0 simultaneously -- so within this project's own standard 0.25/0.35 perturbation pair,
-    # Gas Engine and Microturbine (the two syngas units feeding EU-012) are BOTH already maxed out
-    # on both sides, and EU-012 is genuinely, correctly invariant here -- a real structural fact
-    # about this plant's own sizing (a small demonstrator CHP fleet vs an abundant, recycle-boosted
-    # gasifier output), not a wiring gap. Proven instead with a LARGER, still-valid ER value (0.55,
-    # empirically found to drop the live budget to ~97kW, genuinely below that threshold) that
-    # forces real load-shedding -- demonstrating the wiring IS live and responsive once the fuel
-    # constraint actually binds.
-    if abs(dh_25 - dh_35) <= 1e-6:
-        print(f"  EU-012 unchanged between ER=0.25/0.35 ({dh_25:.3f}kW both) -- HONEST FINDING: "
-              f"live syngas budget stays above the ~118.4kW full-saturation threshold at both points "
-              f"(Gas Engine + Microturbine + SOFC all already at load=1.0 on both sides), a real "
-              f"structural fact about this plant's own CHP-vs-gasifier sizing, not a wiring gap -- "
-              f"see this test's own comment.")
-        ER_FALLBACK = 0.55
-        snap_fb = _run_full_chain(ER_FALLBACK, N_ER_CYCLES)
-        dh_fb = snap_fb[("EU-012", "DistrictHeatingHX")]["value"]["primary_duty_kw"]
-        budget_fb = snap_fb[("EU-CHP", "Dispatch")]["value"]["syngas_budget_kw"]
-        print(f"  EU-012 at a larger, still-valid perturbation ER={ER_FALLBACK} (live "
-              f"budget={budget_fb:.2f}kW, genuinely below the {85.714+32.727:.1f}kW saturation "
-              f"threshold): {dh_fb:.3f}kW")
-        assert abs(dh_25 - dh_fb) > 1e-6, (
-            f"REGRESSION: even a genuinely budget-constraining ER={ER_FALLBACK} did not reach "
-            f"EU-012's district heating output -- the wiring itself, not just the 0.25/0.35 window, "
-            f"may be broken."
+    # PROVES the wiring is still live end-to-end: total_syngas_kw (the PRE-allocation quantity)
+    # genuinely responds to GA-001's own ER, at both perturbation points -- the allocation step
+    # itself (not a broken upstream chain) is what then correctly, deliberately sends CHP's own
+    # excess to 0 either way.
+    assert abs(dispatch_25["total_syngas_kw"] - dispatch_35["total_syngas_kw"]) > 1e-6, (
+        "REGRESSION: total_syngas_kw (pre-allocation) did not respond to an ER change -- the "
+        "GA-001->GC-013 chain itself, not just the allocation step, may be broken."
+    )
+    print("  PASSED -- total_syngas_kw (the real, pre-allocation quantity) genuinely changes with "
+          "ER, proving GA-001->GC-013 propagation is still fully live.")
+
+    # HONEST FINDING (H2/syngas double-counting FIX), not hidden or forced: under this project's
+    # own real, DOK-ING-justified 100% WGS/PSA claim (WGS_PSA_SYNGAS_CLAIM_FRACTION), CHP's own
+    # excess syngas budget is EXACTLY 0 for EVERY GA-001 ER value -- not just within the 0.25/0.35
+    # window (unlike the PRE-FIX behavior, where CHP was incorrectly handed the full, undiminished
+    # syngas stream and appeared to respond to ER). This is the CORRECT reflection of DOK-ING's own
+    # confirmed answer ("H2 is primary; CHP ... optional, not fixed") once the resource-accounting
+    # bug that was masking it is corrected -- verified directly below, at BOTH perturbation points
+    # plus a third, larger one, not assumed.
+    for label, dispatch, dh in (("ER=0.25", dispatch_25, dh_25), ("ER=0.35", dispatch_35, dh_35)):
+        assert abs(dispatch["wgs_psa_claim_kw"] - dispatch["total_syngas_kw"]) < 1e-6, (
+            f"REGRESSION at {label}: wgs_psa_claim_kw should exactly equal total_syngas_kw under "
+            f"the real 100% claim."
         )
-        print(f"  PASSED (EU-012, via ER={ER_FALLBACK}) -- once the syngas budget genuinely "
-              f"constrains dispatch, a change at GA-001 visibly, measurably reaches EU-012's "
-              f"district heating output too: real end-to-end propagation from gasifier to utility "
-              f"KPIs, confirmed.")
-    else:
-        assert abs(dh_25 - dh_35) > 1e-6
-        print("  PASSED (EU-012) -- a change at GA-001 visibly, measurably reaches EU-012's district "
-              "heating output.")
+        assert dispatch["syngas_budget_kw"] < 1e-6, f"REGRESSION at {label}: CHP's own excess syngas budget should be ~0."
+        assert dh < 1e-6, f"REGRESSION at {label}: EU-012's district heating output should be ~0kW (no genuine excess syngas)."
+    ER_EXTRA = 0.55
+    snap_extra = _run_full_chain(ER_EXTRA, N_ER_CYCLES)
+    dispatch_extra = snap_extra[("EU-CHP", "Dispatch")]["value"]
+    dh_extra = snap_extra[("EU-012", "DistrictHeatingHX")]["value"]["primary_duty_kw"]
+    print(f"  EU-012 at a third, larger ER={ER_EXTRA}: total_syngas={dispatch_extra['total_syngas_kw']:.2f}kW, "
+          f"excess={dispatch_extra['syngas_budget_kw']:.2f}kW, district heating={dh_extra:.3f}kW")
+    assert dispatch_extra["syngas_budget_kw"] < 1e-6 and dh_extra < 1e-6, (
+        "REGRESSION: a third ER value produced a nonzero CHP excess/district-heating output despite "
+        "the real 100% WGS/PSA claim -- the allocation fix may not be applied consistently."
+    )
+    print("  PASSED (EU-012) -- district heating output is genuinely, verifiably ~0kW at every "
+          "tested ER, an honest structural consequence of DOK-ING's own confirmed H2-primary "
+          "priority (RFI #10) once correctly wired, NOT a residual bug -- see the 'Simultaneous "
+          "FC+CHP' test above for proof the allocation mechanism itself still correctly responds "
+          "the moment a genuine nonzero claim fraction is confirmed.")
 
     print(f"\n=== ER=0.25 baseline report (task's own final report requirement, {N_ER_CYCLES} cycles) ===")
     print(f"  EU-009 net electrical balance: {net_25:.3f} kW "
