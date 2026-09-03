@@ -522,14 +522,96 @@ vendor unit is picked.
 
 ## Section 3 — Process/design engineer
 
-**77 category-level gaps** (27.1% of the 284 routed) are a function of
-process DESIGN CHOICES this project's own physics can determine, not a
-vendor's product spec and not something DOK-ING would already know
-off-hand for generic balance-of-plant equipment (feed handling, gas
-cleaning, electrical/utilities, and the auxiliary H₂ pathways). **Not
-re-itemized here** — see `python.equipment_request_routing.
-generate_routed_request_markdown()`'s own "Design/process engineer"
-section for the full, itemized list.
+**UPDATE (bucket reconciliation, 2026-09-03): the 77-item bucket below was
+generated from the STATIC equipment registry, independent of the live
+Python model, and had never been checked against it — done for this task,
+item by item, not sampled.** Correct function name: `python.
+equipment_request_routing.generate_routed_request_document()` (the
+`generate_routed_request_markdown()` name previously cited here does not
+exist in the module — a stale reference, fixed here).
+
+**Result of the full 77-item reconciliation:**
+- **21 of 77 lines are STALE — the live model already computes a real
+  value.** Verified directly in code: `fe002_mass_balance`/`fe003_weighing`/
+  `fe004_shredder_power`/`fe006_moisture_reading` (all 4 FE lines);
+  `gc001_temperature`/`gc003_temperature`/`gc004_quench_gas`/
+  `gc005_blowdown`/`gc008_h2s`/`gc012_h2s_cos_polish`/`gc013_gas_final`
+  (7 GC lines); `hb011_electrolyser`/`hb018_dispensing` (2 HB lines);
+  `eu004_gas_engine_thermal`/`eu006_fuel_cell`/`eu007_flare`/
+  `eu008_cooling_supply`/`eu010_ups_battery` (7 EU lines) — plus EU-001
+  (1 line), which is not a live gap at all: its own module docstring
+  already states it is a controlled setpoint deliberately, correctly not
+  modeled separately, not an oversight.
+- **5 lines (4 equipment IDs) are genuinely open AND newly A-eligible** —
+  no live implementation exists, and each is a real, standard chemical/
+  process-engineering calculation the evidence hierarchy can address (see
+  the prioritized list below): **GC-002** (Primary Cyclone ΔP), **GC-011**
+  (Bag Filter ΔP), **GC-014** (Gas Blower discharge pressure, 2 lines),
+  **GC-015** (Condensate Tank operating conditions).
+- **1 line is genuinely open, A-eligible IN CATEGORY, but already
+  investigated and correctly left unresolved — not a fresh opportunity:**
+  **GC-006** (Tar Removal Unit inlet loading). `gc006_tar_inlet_missing()`
+  already states why: raw MSW-gasification tar loadings are commonly cited
+  across a 1–100+ g/Nm³ literature range — too wide to state with real
+  confidence for this specific plant (the same finding
+  `equipment_engineering_estimates.py` already reached independently).
+  Re-litigating this is not recommended without new information.
+- **4 lines (HB-014/015/016/017) are genuinely open but are NOT independent
+  gaps** — each is a live-registered function already correctly blocked by
+  item 9's own structural propagation (HB-007's Missing split fraction).
+  Resolving item 9 (Category C, a business/commercial decision — see
+  Section 1) resolves these automatically; they are not separate A-work.
+- **46 lines (12 AI/IT-infrastructure equipment IDs) are Category B, not
+  A**, regardless of staleness: `ai_automation_layer.py` already models a
+  connectivity/identity/orchestration-state ASPECT of every one of AI-004
+  through AI-015 (confirmed in code), but the SPECIFIC fields this bucket
+  asks for (network-protocol choice, redundancy scheme, SLA/throughput
+  targets) are systems-architecture decisions specific to this project's
+  own control-system implementation — not derivable from process-
+  engineering or materials-science literature the way GC-002/011/014/015
+  are.
+- **21 + 5 + 1 + 4 + 46 = 77.** Every line accounted for.
+
+**Also resolved — the audit's own flagged incompleteness (the "18
+unaccounted items"):** `route_requests()` itself correctly assigns an
+owner to all 291 generated gaps (verified directly: 164 Vendor + 78
+Design + 38 DOK-ING + 11 Uncertain = 291) — the 284-vs-291 discrepancy is
+**not** "7 items never run through the routing classifier" as this
+document previously speculated. It is a real, verified **rendering bug**
+in `generate_routed_request_document()` itself: 7 specific
+`(item_id, category)` pairs are computed with a real owner but silently
+dropped from the rendered text (**FE-001** Inputs, **GA-001** Inputs +
+Performance Indicators, **GA-005** Inputs, **GA-009** Inputs, **HB-013**
+Inputs, **EU-009** Inputs). Checked individually: FE-001, GA-001, HB-013,
+and EU-009 are all already live-modeled (confirmed in code) — stale, no
+action needed. GA-005 and GA-009 are genuinely open, correctly B (DOK-ING's
+own proprietary ash/carbon-black handling equipment, no live model exists
+for either) — already covered in spirit by item 12's own bucket, just
+invisible in the rendered document due to this bug. **Not a code change
+made here** (out of this task's scope) — flagged as a real, small,
+low-priority bug in `equipment_request_routing.py`'s own rendering logic.
+The separate **11-item "Uncertain/needs discussion" bucket** (all
+`Measurements` fields for the same AI-004..015 items above) is genuinely
+ambiguous between Vendor and Design/process-engineer routing, per its own
+stated reasoning — same B classification as the 46 AI lines above, now
+referenced here for completeness.
+
+### Prioritized new A-candidates from this reconciliation (ordered by real impact)
+
+1. **GC-014 — Gas Blower discharge pressure.** Directly determines whether
+   GC-013's own fan/blower can deliver gas at HB-008's own Confirmed 8
+   bar(a) PSA feed pressure — a real, calculable systems value (cumulative
+   train pressure drop + the confirmed downstream requirement), with
+   direct consequence for the whole WGS/PSA route's own feasibility.
+2. **GC-002 — Primary Cyclone ΔP.** A standard, well-established cyclone
+   pressure-drop correlation (particle-laden gas, known flow/geometry) —
+   feeds directly into the SAME gas-train pressure budget GC-014 needs.
+3. **GC-011 — Bag Filter ΔP.** Same class of standard, well-established
+   fabric-filter pressure-drop correlation, same gas-train pressure
+   budget.
+4. **GC-015 — Condensate Tank operating conditions.** Lowest impact of the
+   four — likely a trivial ambient/atmospheric-conditions determination
+   for a gravity-drained collection tank, not a load-bearing calculation.
 
 Specific, already-identified items worth an engineer's direct judgment
 (distinct from the bucketed 77, called out individually because they
@@ -613,7 +695,7 @@ CLAUDE.md's own numbered list** — flagged here so they aren't lost:
 |---|---|
 | **1 — DOK-ING** | **11 individually detailed, high-value items** + 1 bucketed reference (33 registry-level gaps, itemized elsewhere) |
 | **2 — Equipment vendors** | **163 gaps** (bucketed/referenced; not re-itemized) |
-| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, itemized elsewhere) |
+| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **RECONCILED against the live model 2026-09-03: 21 stale, 5 new A-candidates, 1 already-investigated-and-declined, 4 duplicate-of-item-9, 46 Category B — see the update above**) |
 | **4 — Registry data-quality maintainer** | **32 items** already in `CLAUDE.md` (bucketed/referenced) + **5 newly found, not yet cross-posted** (listed in full above) |
 
 **Grand total of distinct open items tracked across the project:** 291
@@ -626,7 +708,18 @@ registry category gaps) + 4 design-engineer-specific findings (Section 3)
 build-derived findings + 37 mislabels**, none double-counted between
 sections.
 
+**UPDATE (2026-09-03):** the "284 routed" figure cited throughout Sections
+1–3 (33+163+77+11) undercounts the true routed total by 7 — verified
+directly: `route_requests()` actually assigns a real owner to all 291
+generated gaps (164 Vendor + 78 Design + 38 DOK-ING + 11 Uncertain = 291).
+The gap is a rendering bug in `generate_routed_request_document()`, not a
+"never classified" set — see the Section 3 update above for the 7 exact
+items and their disposition (5 already stale, 2 genuinely open and
+correctly B).
+
 *Generated 2026-09-02, from the project's actual current state — every
 number above was produced by running or reading the live code and
 documents listed as each item's own source, not recalled from earlier
-conversation.*
+conversation. Section 3's own bucket reconciled against the live model
+2026-09-03 (see above); no other section's figures were re-verified in
+that pass.*
