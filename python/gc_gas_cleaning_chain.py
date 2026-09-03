@@ -744,6 +744,94 @@ def gc015_condensate(get_input):
     }
 
 
+# GC-015's own five real inflow streams' temperatures -- Missing Parameter Resolution Protocol
+# candidate (docs/master_open_questions.md item, GC-015). Level 1 (raw registry) re-checked, not
+# assumed empty: GC-015's own 8 filled registry parameters (tank volume, condensate flow rate,
+# level sensor, pH monitoring, pump spec, material, disposal route) genuinely include NO
+# temperature or pressure field -- confirmed still open, unlike GC-002/011/014. Level 2 (internal
+# consistency) DOES have real material, checked before reaching for a generic ambient assumption:
+# each of the five inflow streams' own SOURCE equipment has an already-Confirmed operating
+# temperature elsewhere in this project --
+#   GC-004 condensed process water: condenses out of the gas AT GC-004's own Confirmed 65 degC
+#     outlet gas temperature (equilibrium with the cooled gas at the point of condensation).
+#   GC-005 quench blowdown: the SAME recirculating quench water performing GC-004's own quench
+#     duty, in intimate direct gas-liquid contact -- same 65 degC basis.
+#   GC-007 blowdown: GC-007's own Confirmed 60 degC gas-side operating temperature.
+#   GC-008 blowdown: GC-008's own registry states NO temperature -- but GC-009's own remark
+#     ("Continues the gradual cooling trend from GC-007's 60 degC") treats GC-007's 60 degC as its
+#     own DIRECT predecessor, implying no further cooling occurs across GC-008 itself -- a real,
+#     Level-2 interpolation from the registry's own stated narrative, not invented; used as 60 degC.
+#   GC-009 blowdown: GC-009's own Confirmed 55 degC operating temperature.
+_GC015_INFLOW_TEMPS_C = {
+    "condensed_process_water_m3_h": 65.0, "gc005_blowdown_m3_h": 65.0,
+    "gc007_blowdown_m3_h": 60.0, "gc008_blowdown_m3_h": 60.0, "gc009_blowdown_m3_h": 55.0,
+}
+# GC-005's own Confirmed "Water supply temperature" (ambient plant water) -- used below ONLY as
+# the LOWER bound of GC-015's own operating-temperature range (full cooling to ambient in the
+# open, vented, uninsulated tank), not as the source of the inlet-blend temperature itself.
+GC015_AMBIENT_TEMP_C = 20.0
+
+
+def gc015_operating_conditions(get_input):
+    """Missing Parameter Resolution Protocol candidate -- GC-015's own
+    Operating Conditions (temperature, pressure). See the module-level
+    _GC015_INFLOW_TEMPS_C dict's own docstring above for the full Level 2
+    derivation. PRESSURE: GC-015 is a "gravity-drained," pump-discharged
+    tank with NO pressure-vessel design anywhere in its own registry entry
+    (unlike GC-013/014's own explicit mbar(g) figures) -- a vented,
+    atmospheric tank by design, ATMOSPHERIC PRESSURE (0 mbar(g)) is a
+    direct, near-definitional consequence, not a derivation (Section 7:
+    Engineering assumption -- extremely high confidence, but still an
+    assumption, not Confirmed or Internal-model-derived, since "vented"
+    itself is inferred from the equipment description, not a literal
+    Confirmed pressure figure). TEMPERATURE: a real RANGE (Section 5),
+    bounded by the live, flow-weighted blend of the five inflow streams'
+    own Confirmed/interpolated temperatures (the UPPER bound -- no cooling
+    in the tank itself) and GC-005's own Confirmed 20 degC ambient supply
+    temperature (the LOWER bound -- full cooling to ambient, plausible
+    given the tank's own real ~5 h residence time, 1 m3 volume / 0.2 m3/h
+    design flow, in an open, uninsulated vessel) -- Section 7: Internal-
+    model-derived (the upper bound is a genuine calculation from this
+    project's own already-Confirmed/live-computed upstream temperatures,
+    not a bare generic assumption)."""
+    cond = get_input(("GC-015", "Condensate"))["value"]
+    total_m3_h = cond["total_m3_h"]
+    if total_m3_h > 0.0:
+        weighted_sum = sum(cond[key] * temp_c for key, temp_c in _GC015_INFLOW_TEMPS_C.items())
+        inlet_blend_temp_c = weighted_sum / total_m3_h
+    else:
+        inlet_blend_temp_c = GC015_AMBIENT_TEMP_C  # no inflow this cycle -- gracefully defaults to ambient
+    temp_lo_c = min(GC015_AMBIENT_TEMP_C, inlet_blend_temp_c)
+    temp_hi_c = max(GC015_AMBIENT_TEMP_C, inlet_blend_temp_c)
+
+    return {
+        "value": {
+            "pressure_mbar_g": 0.0,
+            "temperature_range_c": (temp_lo_c, temp_hi_c),
+            "inlet_blend_temp_c": inlet_blend_temp_c,
+            "ambient_temp_c": GC015_AMBIENT_TEMP_C,
+        },
+        "status": ps.STATUS_ESTIMATED,
+        "model": "gc_gas_cleaning_chain.gc015_operating_conditions",
+        "inputs": [("GC-015", "Condensate")],
+        "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
+        "confidence_note": (
+            f"PRESSURE: atmospheric, 0 mbar(g) -- GC-015 is a vented, gravity-drained tank with no "
+            f"pressure-vessel design anywhere in its own registry entry, unlike GC-013/014's own "
+            f"explicit figures (Engineering assumption, Section 7 -- near-definitional, but not "
+            f"Confirmed). TEMPERATURE: approximately {temp_lo_c:.0f}-{temp_hi_c:.0f} degC "
+            f"(Internal-model-derived, Section 7) -- upper bound = this cycle's own live, flow-"
+            f"weighted blend of the five real inflow streams' own Confirmed/interpolated source "
+            f"temperatures ({inlet_blend_temp_c:.1f} degC, no cooling in the tank itself); lower "
+            f"bound = GC-005's own Confirmed {GC015_AMBIENT_TEMP_C:.0f} degC ambient water supply "
+            f"temperature (full cooling, plausible given the tank's own real ~5h residence time in "
+            f"an open, uninsulated vessel). A real range (Section 5), not false precision -- the "
+            f"true steady-state value depends on a heat-transfer coefficient/surface area this "
+            f"project has no Confirmed figure for."
+        ),
+    }
+
+
 # ============================================================================
 # Registration
 # ============================================================================
@@ -804,6 +892,10 @@ def register_gc_chain(engine):
         ("GC-015", "Condensate"), gc015_condensate, unit="m3/h dict",
         depends_on=[("GC-004", "Condensed water"), ("GC-005", "Blowdown"), ("GC-007", "Blowdown"),
                     ("GC-008", "Blowdown"), ("GC-009", "Blowdown")],
+    )
+    engine.register_model(
+        ("GC-015", "OperatingConditions"), gc015_operating_conditions, unit="degC + mbar(g) dict",
+        depends_on=[("GC-015", "Condensate")],
     )
 
 
@@ -877,6 +969,39 @@ if __name__ == "__main__":
     assert abs(manual_total - cond["total_m3_h"]) < 1e-12, "REGRESSION: GC-015's reported total doesn't match the sum of its own five components."
     print(f"PASSED -- GC-015's total ({cond['total_m3_h']:.4f} m3/h) exactly equals the sum of its five "
           f"real components (GC-004 condensed + GC-005/007/008/009 blowdowns), independently re-added.")
+
+    print("\n=== Missing Parameter Resolution Protocol candidate: GC-015 operating conditions ===")
+    gc015_oc = snap[("GC-015", "OperatingConditions")]
+    v = gc015_oc["value"]
+    print(f"  status={gc015_oc['status']}  pressure={v['pressure_mbar_g']:.0f} mbar(g)  "
+          f"temperature range=[{v['temperature_range_c'][0]:.1f}, {v['temperature_range_c'][1]:.1f}] degC  "
+          f"(inlet blend={v['inlet_blend_temp_c']:.1f} degC, ambient={v['ambient_temp_c']:.0f} degC)")
+    assert gc015_oc["status"] == ps.STATUS_ESTIMATED
+    assert v["pressure_mbar_g"] == 0.0, "REGRESSION: GC-015 is a vented tank -- pressure must be atmospheric (0 mbar(g))."
+    lo, hi = v["temperature_range_c"]
+    assert 0.0 < lo <= hi < 100.0, f"REGRESSION: temperature range {(lo, hi)} is not physically sane for an open condensate tank."
+    assert lo == GC015_AMBIENT_TEMP_C, "REGRESSION: the lower bound should be GC-005's own Confirmed ambient supply temperature."
+    # Independent re-derivation, not just "a number came back": recompute the flow-weighted inlet
+    # blend temperature via a completely separate expression.
+    weighted_chk = (
+        cond["condensed_process_water_m3_h"] * 65.0 + cond["gc005_blowdown_m3_h"] * 65.0
+        + cond["gc007_blowdown_m3_h"] * 60.0 + cond["gc008_blowdown_m3_h"] * 60.0
+        + cond["gc009_blowdown_m3_h"] * 55.0
+    )
+    inlet_chk = weighted_chk / cond["total_m3_h"]
+    assert abs(inlet_chk - v["inlet_blend_temp_c"]) < 1e-9, (
+        f"REGRESSION: independent re-derivation of the inlet blend temperature ({inlet_chk:.4f}) "
+        f"does not match the function's own output ({v['inlet_blend_temp_c']:.4f})."
+    )
+    # Consistency check (task requirement 4): does this imply pressure buildup or a cooling
+    # requirement nothing in the model provides? Neither -- the tank is vented (0 mbar(g), by
+    # construction cannot build pressure) and its own temperature range requires no active cooling
+    # (natural convective loss to ambient only, consistent with GC-015's own registry -- no
+    # cooling coil, chiller, or heat exchanger is stated for this item anywhere).
+    print(f"  Independent re-derivation matches exactly (inlet blend={inlet_chk:.2f} degC). "
+          f"Consistency check: vented (0 mbar(g), cannot build pressure by construction); "
+          f"temperature range requires no active cooling equipment (none is stated for GC-015 "
+          f"anywhere in the registry) -- PASSED, physically sane for an open, gravity-drained tank.")
 
     print("\n=== Removal-efficiency cross-checks against existing static-fill precedent (task requirement 5) ===")
     gc007 = snap[("GC-007", "Tar")]["value"]

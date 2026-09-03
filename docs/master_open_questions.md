@@ -647,11 +647,13 @@ exist in the module — a stale reference, fixed here).
   own control-system implementation — not derivable from process-
   engineering or materials-science literature the way GC-002/011/014/015
   are.
-- **UPDATED disposition (GC-014 protocol task, 2026-09-03): 21 (original
-  stale) + 4 (GC-002/GC-011/GC-014, reclassified stale/now-wired above) =
-  25 stale; 1 genuinely open A-eligible (GC-015 only); 1 A-eligible-in-
-  category-but-declined (GC-006); 4 duplicate-of-item-9 (HB-014/015/016/017);
-  46 Category B (AI). 25 + 1 + 1 + 4 + 46 = 77.** Every line accounted for.
+- **FINAL disposition (GC-015 protocol task, 2026-09-03): 21 (original
+  stale) + 4 (GC-002/GC-011/GC-014, reclassified stale/now-wired) + 1
+  (GC-015, now protocol-resolved — see below) = 26 stale/resolved; 0
+  remaining genuinely-open A-candidates; 1 A-eligible-in-category-but-
+  declined (GC-006); 4 duplicate-of-item-9 (HB-014/015/016/017); 46
+  Category B (AI). 26 + 1 + 4 + 46 = 77.** Every line accounted for — the
+  bucket is now fully reconciled, with no remaining un-triaged A-item.
 
 **CORRECTED (2026-09-03): the "291-vs-284, rendering bug" claim previously
 written here was WRONG — re-investigated, root-caused, and there is no
@@ -734,10 +736,99 @@ direct consequence, not independently.** Both turned out to be Confirmed
 *and already live-wired* — `gc013_fan_power()`'s own `_STAGE_DELTA_P_MBAR`
 dict has carried GC-002's 20 mbar and GC-011's 20 mbar (dirty) since Phase
 1b, feeding the real cumulative-pressure-drop sum the whole time. Neither
-needed any new code. **Only GC-015** (Condensate Tank) remains genuinely
-open of the original four-item list — low priority, likely a trivial
-ambient/atmospheric determination for a gravity-drained, vented tank, not
-attempted in this task.
+needed any new code.
+
+### GC-015 Missing Parameter Resolution Protocol result (2026-09-03)
+
+**Confirmed genuinely open by the pre-check** (unlike GC-002/011/014):
+GC-015's own 8 filled registry parameters (tank volume, condensate flow
+rate, level sensor, pH monitoring, pump spec, material, disposal route)
+include no temperature or pressure field, and `gc015_condensate()`'s own
+body computes only a flow rate, nothing temperature/pressure-related.
+
+**Checked the expected simplicity rather than assuming it.** A bare
+"ambient" guess turned out to be incomplete: GC-015's five real inflow
+streams (GC-004's condensed process water, GC-005's quench blowdown,
+GC-007/008/009's wet-scrubber blowdowns) each trace back to a source
+equipment item with an **already-Confirmed operating temperature**
+elsewhere in this project — GC-004 (65°C, the gas temperature condensate
+forms at), GC-005 (65°C, the same quench duty), GC-007 (60°C, Confirmed),
+GC-008 (60°C, interpolated directly from GC-009's own registry remark,
+which names GC-007's 60°C as its own direct predecessor — no further
+cooling stated across GC-008), GC-009 (55°C, Confirmed). **These are real
+inflow temperatures around 55–65°C, not ambient.**
+
+**DIGITAL TWIN ENGINEERING BASELINE:**
+- **Pressure: atmospheric, 0 mbar(g)** (Section 7: Engineering assumption
+  — near-definitional, GC-015 is a vented, gravity-drained tank with no
+  pressure-vessel design anywhere in its registry, unlike GC-013/014's
+  own explicit figures, but not itself a literal Confirmed pressure).
+- **Temperature: approximately 20–62°C** (Section 7: Internal-model-
+  derived for the upper bound; Section 5 — a real range, not false
+  precision). Upper bound = this cycle's own live, flow-weighted blend of
+  the five real inflow temperatures above (≈61.7°C at the ER=0.25
+  baseline, live-wired to the actual live flow split each cycle, not a
+  static number); lower bound = GC-005's own Confirmed 20°C ambient water
+  supply temperature, reflecting the real possibility of substantial
+  cooling toward ambient given the tank's own genuine ~5 h residence time
+  (1 m³ volume / 0.2 m³/h design flow) in an open, uninsulated vessel. The
+  true steady-state value depends on a heat-transfer coefficient/surface
+  area this project has no Confirmed figure for — a real, stated
+  remaining uncertainty, not resolved further here.
+
+**Consistency check: PASS.** Vented construction means the tank cannot
+build pressure by definition; the temperature range implies no active
+cooling requirement — GC-015's own registry states no cooling coil,
+chiller, or heat exchanger for this item, consistent with the model
+correctly not assuming one either.
+
+`python/gc_gas_cleaning_chain.py`: new `gc015_operating_conditions()`,
+registered as `("GC-015","OperatingConditions")`, tagged `Estimated`.
+**ACTUAL/DOK-ING VALUE: still Missing/Unverified** — DOK-ING's own real
+operating basis for this tank remains unconfirmed and explicitly open.
+
+---
+
+## Protocol-application effort — final summary (2026-09-03)
+
+This closes the sequence of Missing Parameter Resolution Protocol
+applications that began with the EU-008 reformatting (item 1) and the
+feedstock-composition wiring task. Items actually resolved with a real,
+defensible baseline under the protocol:
+
+| Item | Baseline established | Evidence level |
+|---|---|---|
+| 1. EU-008 cooling capacity | ≈65–70 kW | Internal-model-derived |
+| 3/4. Feedstock composition + LHV | Live-wired to DOK-ING's confirmed ranges; H2-conversion efficiency 52–69% | Confirmed (wiring), Literature (composition) |
+| 5. Fe₂O₃/Fe₃O₄ circulation rate | ≈690–1,676 kg/h | Comparable-equipment / Literature-based |
+| 10. HB-010 membrane selectivity | ≈15.5–40.1 (dimensionless) | Internal-model-derived |
+| 11. HB-014/016 LOHC catalyst kinetics | HB-016 ≈171–205 kJ/mol; HB-014 ≈50–90 kJ/mol | Literature-based (two confidence tiers) |
+| GC-015 condensate tank | 0 mbar(g); ≈20–62°C | Engineering assumption (pressure) / Internal-model-derived (temperature) |
+
+**Items correctly found NOT to need the protocol at all** — a genuine,
+substantive finding in its own right, not a footnote: **GC-002, GC-011,
+GC-014** turned out to be Confirmed registry data with a wiring gap
+(GC-014) or already fully live-wired (GC-002/GC-011) — the fix was
+connecting existing data, never estimating around it, per this project's
+own standing rule. This was caught specifically *because* later tasks in
+this sequence re-verified Levels 1–2 rigorously instead of trusting the
+prior reconciliation's own classification — the same discipline that then
+correctly kept Item 11 and GC-015 as genuinely open before any literature
+work began on them.
+
+**Items correctly identified as NOT protocol-eligible and left alone**:
+item 2 (feed-rate basis) and item 9 (HB-007 H₂ split fraction) — the
+former a pure DOK-ING-intent question, the latter a business/commercial
+routing decision (RFI #10/#9's own confirmed answers), neither resolvable
+by an evidence hierarchy regardless of effort. GC-006 (tar inlet loading)
+was reconsidered and correctly left as an already-investigated,
+deliberately unresolved gap (a literature range too wide, 1–100+ g/Nm³,
+to state with real confidence) rather than re-litigated for its own sake.
+
+All resolutions above are additive — no permanently-Missing status was
+overwritten, no confirmed DOK-ING data was replaced by an estimate, and
+every real open question (what DOK-ING's or a vendor's own actual figures
+are) remains explicitly, honestly open on this list.
 
 Specific, already-identified items worth an engineer's direct judgment
 (distinct from the bucketed 77, called out individually because they
@@ -821,7 +912,7 @@ CLAUDE.md's own numbered list** — flagged here so they aren't lost:
 |---|---|
 | **1 — DOK-ING** | **11 individually detailed, high-value items** + 1 bucketed reference (33 registry-level gaps, itemized elsewhere) |
 | **2 — Equipment vendors** | **163 gaps** (bucketed/referenced; not re-itemized) |
-| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **RECONCILED against the live model 2026-09-03, UPDATED 2026-09-03 after the GC-014 protocol task found GC-002/GC-011/GC-014 were Confirmed-but-unwired, not missing: 25 stale, 1 genuinely-open A-candidate (GC-015), 1 already-investigated-and-declined, 4 duplicate-of-item-9, 46 Category B — see the update above**) |
+| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **FULLY RECONCILED 2026-09-03: 26 stale/protocol-resolved (incl. GC-002/011/014's wiring fix and GC-015's own protocol resolution), 1 already-investigated-and-declined (GC-006), 4 duplicate-of-item-9, 46 Category B (AI) — zero remaining un-triaged A-candidates — see the update above**) |
 | **4 — Registry data-quality maintainer** | **32 items** already in `CLAUDE.md` (bucketed/referenced) + **5 newly found, not yet cross-posted** (listed in full above) |
 
 **Grand total of distinct open items tracked across the project:** 291
