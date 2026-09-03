@@ -572,25 +572,37 @@ exist in the module — a stale reference, fixed here).
   are.
 - **21 + 5 + 1 + 4 + 46 = 77.** Every line accounted for.
 
-**Also resolved — the audit's own flagged incompleteness (the "18
-unaccounted items"):** `route_requests()` itself correctly assigns an
-owner to all 291 generated gaps (verified directly: 164 Vendor + 78
-Design + 38 DOK-ING + 11 Uncertain = 291) — the 284-vs-291 discrepancy is
-**not** "7 items never run through the routing classifier" as this
-document previously speculated. It is a real, verified **rendering bug**
-in `generate_routed_request_document()` itself: 7 specific
-`(item_id, category)` pairs are computed with a real owner but silently
-dropped from the rendered text (**FE-001** Inputs, **GA-001** Inputs +
-Performance Indicators, **GA-005** Inputs, **GA-009** Inputs, **HB-013**
-Inputs, **EU-009** Inputs). Checked individually: FE-001, GA-001, HB-013,
-and EU-009 are all already live-modeled (confirmed in code) — stale, no
-action needed. GA-005 and GA-009 are genuinely open, correctly B (DOK-ING's
+**CORRECTED (2026-09-03): the "291-vs-284, rendering bug" claim previously
+written here was WRONG — re-investigated, root-caused, and there is no
+bug.** The 291 vs. 284 gap has a real, verified, entirely different
+explanation: `equipment_data_requests.build_gap_requests(datasheets=None)`
+defaults to the RAW registry (no RFI answers applied) when called with no
+argument, but `generate_routed_request_document()`'s own real default path
+calls `build_gap_requests(equipment_rfi_fills.apply_rfi_fills(...))` —
+i.e., it correctly applies DOK-ING's real RFI answers FIRST. Verified
+directly: calling `build_gap_requests()` with no argument gives 291;
+calling it the way the document generator actually does gives 284; the
+exact 7-item difference is `equipment_rfi_fills.py`'s own real fills for
+**FE-001** (Inputs), **GA-001** (Inputs + Performance Indicators),
+**GA-005** (Inputs), **GA-009** (Inputs), **HB-013** (Inputs), and
+**EU-009** (Inputs) — DOK-ING's real RFI answers already state the feed
+rate, feedstock form/turndown, ash content, storage inflow rate, and grid
+connection status for exactly these six items, so they are correctly no
+longer "missing" once those answers are applied. **The document generator
+was correct the whole time.** The error was in this project's own prior
+reconciliation task: it called `build_gap_requests()` with no argument to
+build a "raw" comparison baseline, which silently skipped the RFI-fill
+step the real document always applies — comparing that stale,
+pre-RFI-answer 291-count against the correct 284-count made it look like
+items were being dropped, when they were correctly excluded all along. No
+code change was needed or made; `python/equipment_request_routing.py` and
+`python/equipment_data_requests.py` are untouched. FE-001, GA-001, HB-013,
+and EU-009 remain independently confirmed already live-modeled (stale, no
+action needed) via direct code inspection, unrelated to this correction.
+GA-005 and GA-009 remain genuinely open and correctly Category B (DOK-ING's
 own proprietary ash/carbon-black handling equipment, no live model exists
-for either) — already covered in spirit by item 12's own bucket, just
-invisible in the rendered document due to this bug. **Not a code change
-made here** (out of this task's scope) — flagged as a real, small,
-low-priority bug in `equipment_request_routing.py`'s own rendering logic.
-The separate **11-item "Uncertain/needs discussion" bucket** (all
+for either) — already covered in spirit by item 12's own bucket. The
+separate **11-item "Uncertain/needs discussion" bucket** (all
 `Measurements` fields for the same AI-004..015 items above) is genuinely
 ambiguous between Vendor and Design/process-engineer routing, per its own
 stated reasoning — same B classification as the 46 AI lines above, now
@@ -708,18 +720,34 @@ registry category gaps) + 4 design-engineer-specific findings (Section 3)
 build-derived findings + 37 mislabels**, none double-counted between
 sections.
 
-**UPDATE (2026-09-03):** the "284 routed" figure cited throughout Sections
-1–3 (33+163+77+11) undercounts the true routed total by 7 — verified
-directly: `route_requests()` actually assigns a real owner to all 291
-generated gaps (164 Vendor + 78 Design + 38 DOK-ING + 11 Uncertain = 291).
-The gap is a rendering bug in `generate_routed_request_document()`, not a
-"never classified" set — see the Section 3 update above for the 7 exact
-items and their disposition (5 already stale, 2 genuinely open and
-correctly B).
+**CORRECTED (2026-09-03):** the previous entry here claimed the 291-vs-284
+gap was a rendering bug — **that was wrong, re-investigated, and there is
+no bug** (see the Section 3 update above for the full root-cause finding).
+The real explanation, more significant than a bug: **the "291" figure this
+document's own grand total uses throughout is itself the RAW,
+pre-RFI-answer registry gap count** —
+`equipment_data_requests.generate_request_list_markdown()` (the source of
+the 291 figure) defaults to `equipment_datasheet.build_all_datasheets()`
+with no RFI fills applied, exactly like the earlier flawed reconciliation
+comparison did. **The 284 figure (33+163+77+11) is the CURRENT, ACCURATE
+count** — the number of registry-level gaps still genuinely missing after
+DOK-ING's real RFI answers (`python/equipment_rfi_fills.py`) are applied,
+which is what `generate_routed_request_document()` correctly does by
+default. Seven items (FE-001, GA-001 ×2, GA-005, GA-009, HB-013, EU-009)
+are counted in the stale 291 but correctly absent from the accurate 284,
+because DOK-ING's own real RFI answers already state their feed rate,
+feedstock form/turndown, ash content, storage inflow, or grid-connection
+status. **The 291 figure throughout the rest of this document (Sections
+1–4, the grand total above) should be read as "gaps ever identified in the
+raw registry," not "gaps DOK-ING has never addressed" — 284 is the more
+current number for that latter, more useful question.** No code change was
+needed; `python/equipment_request_routing.py` and
+`python/equipment_data_requests.py` are both correct and unmodified.
 
 *Generated 2026-09-02, from the project's actual current state — every
 number above was produced by running or reading the live code and
 documents listed as each item's own source, not recalled from earlier
 conversation. Section 3's own bucket reconciled against the live model
-2026-09-03 (see above); no other section's figures were re-verified in
-that pass.*
+2026-09-03 (see above); the 291-vs-284 explanation corrected 2026-09-03
+(see immediately above); no other section's figures were re-verified in
+either pass.*
