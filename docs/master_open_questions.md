@@ -409,7 +409,55 @@ what remains open is a narrower, more specific question.
   is the one piece needed to make HB-010's own second output (beyond
   its already-live feed pass-through) genuinely calculated instead of
   permanently Missing.
-- **Source:** `python/hb_remaining_chain.py` (`hb010_separation`).
+- **UPDATE (Missing Parameter Resolution Protocol applied, 2026-09-03) —
+  the underlying question above remains genuinely open, DOK-ING has not
+  answered it.** Levels 1–2 re-checked, not assumed empty: `design_basis.py`
+  and `data/dokink_rfi_answers.md` searched for "selectivity" — genuinely
+  nothing Confirmed. **Level 2 (Internal-model-derived) is NOT empty,
+  unlike the chemical-looping item** — HB-010's own registry already
+  confirms a design-point recovery (85%) and permeate purity (95–98%) AT a
+  Confirmed 55% feed H₂ content (matching HB-006's own Confirmed feed H₂
+  content exactly). Standard solution-diffusion membrane transport theory
+  (the "low back-permeation" approximation, y_p/(1−y_p) = α·x_f/(1−x_f);
+  Baker, R.W., *Membrane Technology and Applications*, Wiley) back-derives
+  what EFFECTIVE H₂/(everything else) selectivity those confirmed numbers
+  themselves imply, evaluated **at that same Confirmed 55% design-point
+  feed basis** (a real error — re-deriving it at HB-010's own live,
+  fluctuating feed composition instead — was caught and fixed by this
+  module's own self-test before being shipped; selectivity is
+  approximately a material property, recovery/purity are outputs that
+  genuinely vary with feed composition). **DIGITAL TWIN ENGINEERING
+  BASELINE ≈ 15.5–40.1** (dimensionless). **Consistency check performed
+  (Section 4): PASS, not forced** — a real comparable polyimide
+  hollow-fiber membrane module (~39 GPU H₂ permeance, closely matching
+  HB-010's own Confirmed 50 GPU) reports a measured H₂/CO₂ selectivity of
+  **20.2**, which falls cleanly inside the internally-derived range — a
+  genuine convergence between two independent methods ("Recent advances in
+  H₂ purification and CO₂ capture: Evolving from flat sheet to hollow fiber
+  membranes," ScienceDirect, Oct. 2024, PII S2772656824001465 — full
+  author/journal/volume details could not be retrieved, paywalled; cited
+  by title/identifier/date only, not a fabricated author list). Justified
+  as representative of H₂/CO₂ specifically, not just a generic lump:
+  `psa.py`'s own already-documented default composition (CO₂ ≈ 78% of the
+  45% non-H₂ fraction) confirms CO₂ is the overwhelmingly dominant
+  non-H₂ species in this exact feed stream. **HONEST SCOPE LIMIT:** this
+  gives one lumped, effective selectivity, not separate H₂/CO₂, H₂/CH₄,
+  H₂/CO figures individually — the original question named all three;
+  only an aggregate is resolved here. `python/hb_remaining_chain.py`:
+  `hb010_selectivity_estimate()`, registered as
+  `("HB-010","SelectivityEstimate")`, tagged `Estimated`/`Internal-model-
+  derived` — ADDITIVE; `hb010_separation()`'s own permanently-Missing
+  status is deliberately UNCHANGED. **ACTUAL/DOK-ING VALUE: still
+  Missing/Unverified** — the real question (DOK-ING's own actual, species-
+  specific selectivity) is unchanged and explicitly still open, alongside
+  a SEPARATE, deliberately undecided follow-up question: whether/how this
+  baseline should ever feed `hb010_separation()`'s own recovery/purity
+  calculation at all.
+- **Source:** `python/hb_remaining_chain.py` (`hb010_separation`,
+  `hb010_selectivity_estimate`); `data/equipment_registry.json` HB-010;
+  "Recent advances in H₂ purification and CO₂ capture: Evolving from flat
+  sheet to hollow fiber membranes," ScienceDirect, Oct. 2024, PII
+  S2772656824001465 (primary numeric comparable-equipment source).
 
 ### 11. HB-014/HB-016 LOHC catalyst reaction kinetics
 - **Equipment ID(s):** HB-014 (LOHC Hydrogenation, Pt/Pd/Al₂O₃ catalyst),
