@@ -215,10 +215,32 @@ what remains open is a narrower, more specific question.
   multi-carrier plant efficiency needs the actual physical gas-flow
   allocation traced across GA-001→GC→HB→EU first — a new, genuine
   candidate item for this list, not resolved here.
-- **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/tab1_
-  integration.py` (`compute_tab1_kpis`, `overall_efficiency`);
-  `python/eu_utilities_chp.py` (`_h2_budget_kw`, `_syngas_budget_kw`,
-  `eu_chp_dispatch`).
+- **UPDATE (H2/syngas double-counting fix, 2026-09-03): the double-counting
+  root cause above is FIXED.** `eu_utilities_chp.py` now allocates GC-013's
+  syngas explicitly: `WGS_PSA_SYNGAS_CLAIM_FRACTION` (=100%, justified by
+  DOK-ING's own confirmed RFI #10 answer, "H2 is primary; CHP using excess
+  heat/syngas is optional, not fixed", *and* independently by this
+  project's own already-tested 100% tail-gas recycle wiring) gives WGS/PSA
+  its real first claim; `_syngas_budget_kw()` now returns the genuine
+  EXCESS (a real conservation relationship, `total = claim + excess`, not
+  a clamp). `hb_wgs_psa_storage_chain.py`'s `hb013_storage_level()` also
+  gained a real, lagged outflow term for EU-006's own H2 consumption,
+  previously computed but never subtracted from storage. **Honest,
+  substantial consequence:** under this project's real 100% claim,
+  SOFC/Gas Engine/Microturbine dispatch ~0 load and EU-012's district
+  heating is genuinely ~0kW at every tested ER — not a residual bug, the
+  correct reflection of DOK-ING's own stated priority once the masking bug
+  is corrected. `overall_efficiency`'s own H2-only value is unchanged
+  (52–69%, unaffected since it never used electrical/thermal). A full
+  multi-carrier efficiency remains not implemented — a smaller, different
+  timing concern (production-rate vs. accumulated-stock) than the
+  double-count bug, documented in `tab1_integration.py`'s own KPI text.
+- **Source:** `data/dokink_rfi_answers.md` (RFI #2, RFI #10);
+  `python/tab1_integration.py` (`compute_tab1_kpis`, `overall_efficiency`);
+  `python/eu_utilities_chp.py` (`WGS_PSA_SYNGAS_CLAIM_FRACTION`,
+  `_total_syngas_energy_kw`, `_wgs_psa_syngas_claim_kw`, `_syngas_budget_kw`,
+  `eu_chp_dispatch`); `python/hb_wgs_psa_storage_chain.py`
+  (`hb013_storage_level`).
 
 ### 5. Fe₂O₃/Fe₃O₄ chemical-looping oxygen-carrier circulation rate/capacity
 - **Equipment ID(s):** GA-001 (Gasifier).
@@ -243,8 +265,36 @@ what remains open is a narrower, more specific question.
   partial-oxidation+WGS approximation, not a true chemical-looping-
   gasification result. This is the single largest physics gap in the
   entire Digital Twin.
+- **UPDATE (Missing Parameter Resolution Protocol applied, 2026-09-03): a
+  literature-based ENGINEERING BASELINE now exists — the underlying
+  question above remains genuinely open, DOK-ING has not answered it.**
+  Evidence hierarchy walked top-down, not assumed empty: Level 1
+  (Confirmed) — none; Level 2 (Internal-model-derived) — no direct figure,
+  but this project's own already-confirmed O₂ partial-oxidation demand
+  (ER × stoichiometric O₂, the SAME quantity `ga001_model()` itself
+  computes) gives a real starting point; Level 3 (Comparable-equipment) —
+  none in this registry; Level 4/5 (Literature-based) — iron-based
+  chemical-looping oxygen carriers are a real, established research area
+  (Lyngfelt, Leckner & Mattisson 2001, *Chem. Eng. Sci.* 56(10); Adánez et
+  al. 2012, *Prog. Energy Combust. Sci.* 38(2)) — a representative 10–30%
+  per-pass carrier-utilization range from that general literature,
+  combined with Fe₂O₃/Fe₃O₄'s own real, computed theoretical oxygen
+  transport capacity (Ro = 3.34%, direct stoichiometry of 3Fe₂O₃ → 2Fe₃O₄
+  + ½O₂ — the SAME redox couple the registry confirms). Result:
+  **DIGITAL TWIN ENGINEERING BASELINE ≈ 1,161–3,482 kg/h at the ER=0.25/
+  37.5 kg/h dry-feed baseline** (`python/ga001_gasifier_model.py`:
+  `oxygen_carrier_circulation_estimate()`, registered as
+  `("GA-001","OxygenCarrierCirculationEstimate")`, live-wired to ER/feed-
+  rate/composition, tagged `Estimated`/`Literature-based` — does NOT feed
+  back into `ga001_model()`'s own physics; a full reduction/oxidation
+  reaction-network model remains the separate, larger physics gap named
+  above, not attempted here). **ACTUAL/DOK-ING VALUE: still none
+  confirmed** — the real open question (DOK-ING's own actual circulation
+  rate, carrier inventory, and per-pass conversion degree) is unchanged
+  and explicitly still open.
 - **Source:** `python/ga001_gasifier_model.py` module docstring (the
-  "MAJOR FINDING" paragraph); `data/equipment_registry.json` GA-001.
+  "MAJOR FINDING" paragraph) and `oxygen_carrier_circulation_estimate()`;
+  `data/equipment_registry.json` GA-001.
 
 ### 6. GA-001/GA-003 primary air-flow reconciliation
 - **Equipment ID(s):** GA-001, GA-003 (Air/Steam Injection, Flow).
