@@ -542,12 +542,30 @@ exist in the module — a stale reference, fixed here).
   (1 line), which is not a live gap at all: its own module docstring
   already states it is a controlled setpoint deliberately, correctly not
   modeled separately, not an oversight.
-- **5 lines (4 equipment IDs) are genuinely open AND newly A-eligible** —
-  no live implementation exists, and each is a real, standard chemical/
-  process-engineering calculation the evidence hierarchy can address (see
-  the prioritized list below): **GC-002** (Primary Cyclone ΔP), **GC-011**
-  (Bag Filter ΔP), **GC-014** (Gas Blower discharge pressure, 2 lines),
-  **GC-015** (Condensate Tank operating conditions).
+- **CORRECTED (GC-014 protocol task, 2026-09-03): 4 of these 5 lines were
+  MISCLASSIFIED — they are NOT missing parameters at all.** The reconciliation
+  above checked whether a LIVE PYTHON FUNCTION computed these values, but
+  did not separately check whether the REGISTRY ITSELF already had a
+  Confirmed value for them — exactly the check this project's own standing
+  rule requires before ever applying the evidence hierarchy ("if confirmed
+  data exists but isn't connected, this is a wiring gap, not a missing-
+  parameter situation"). Re-checked directly: **GC-002** ("Design pressure
+  drop = 20 mbar", registry) and **GC-011** ("Design pressure drop (dirty)
+  = 20 mbar", registry) are BOTH already Confirmed AND already live-wired
+  — `gc013_fan_power()`'s own `_STAGE_DELTA_P_MBAR` dict has carried both
+  figures since Phase 1b, feeding the real cumulative pressure-drop sum
+  the whole time; genuinely stale, not just Confirmed-but-unwired. **GC-014**
+  ("Design discharge pressure = 50 mbar(g)", "Design suction pressure =
+  -20 mbar(g)", registry) was Confirmed but genuinely unwired — fixed this
+  task: `gc_gas_cleaning_chain.gc014_blower_pressure()`, registered as
+  `("GC-014","Pressure")`, reads both Confirmed figures directly (Section
+  7: tagged `Assumed`/`VALIDATION_NA`, the same "Confirmed design constant
+  as live placeholder" convention already used for GC-001/GC-003's own
+  temperatures — never estimated). **Only GC-015** (Condensate Tank
+  operating conditions) remains genuinely open — the registry's own 8
+  filled GC-015 parameters (volume, flow rate, level sensor, pH
+  monitoring, pump spec, material, disposal route) do not include a
+  temperature or pressure figure at all, unlike GC-002/011/014.
 - **1 line is genuinely open, A-eligible IN CATEGORY, but already
   investigated and correctly left unresolved — not a fresh opportunity:**
   **GC-006** (Tar Removal Unit inlet loading). `gc006_tar_inlet_missing()`
@@ -570,7 +588,11 @@ exist in the module — a stale reference, fixed here).
   own control-system implementation — not derivable from process-
   engineering or materials-science literature the way GC-002/011/014/015
   are.
-- **21 + 5 + 1 + 4 + 46 = 77.** Every line accounted for.
+- **UPDATED disposition (GC-014 protocol task, 2026-09-03): 21 (original
+  stale) + 4 (GC-002/GC-011/GC-014, reclassified stale/now-wired above) =
+  25 stale; 1 genuinely open A-eligible (GC-015 only); 1 A-eligible-in-
+  category-but-declined (GC-006); 4 duplicate-of-item-9 (HB-014/015/016/017);
+  46 Category B (AI). 25 + 1 + 1 + 4 + 46 = 77.** Every line accounted for.
 
 **CORRECTED (2026-09-03): the "291-vs-284, rendering bug" claim previously
 written here was WRONG — re-investigated, root-caused, and there is no
@@ -608,22 +630,55 @@ ambiguous between Vendor and Design/process-engineer routing, per its own
 stated reasoning — same B classification as the 46 AI lines above, now
 referenced here for completeness.
 
-### Prioritized new A-candidates from this reconciliation (ordered by real impact)
+### GC-014 Missing Parameter Resolution Protocol result — RESOLVED, and it wasn't a missing parameter (2026-09-03)
 
-1. **GC-014 — Gas Blower discharge pressure.** Directly determines whether
-   GC-013's own fan/blower can deliver gas at HB-008's own Confirmed 8
-   bar(a) PSA feed pressure — a real, calculable systems value (cumulative
-   train pressure drop + the confirmed downstream requirement), with
-   direct consequence for the whole WGS/PSA route's own feasibility.
-2. **GC-002 — Primary Cyclone ΔP.** A standard, well-established cyclone
-   pressure-drop correlation (particle-laden gas, known flow/geometry) —
-   feeds directly into the SAME gas-train pressure budget GC-014 needs.
-3. **GC-011 — Bag Filter ΔP.** Same class of standard, well-established
-   fabric-filter pressure-drop correlation, same gas-train pressure
-   budget.
-4. **GC-015 — Condensate Tank operating conditions.** Lowest impact of the
-   four — likely a trivial ambient/atmospheric-conditions determination
-   for a gravity-drained collection tank, not a load-bearing calculation.
+**Levels 1–2 re-checked directly, per the protocol's own requirement — and
+Level 1 SUCCEEDS.** `data/equipment_registry.json`'s own GC-014 entry
+already states: **"Design discharge pressure" = 50 mbar(g)** ("Enough
+positive pressure to push gas into the WGS section (HB-001 onward) against
+its own pressure drops") and **"Design suction pressure" = -20 mbar(g)**
+("by the fan inlet, the gasifier's own 100 mbar(g) [GA-002] has mostly
+been consumed overcoming the cumulative ΔP across the gas cleaning
+train"). **This is Confirmed data, not a missing parameter — the correct
+resolution is wiring it in, never estimating around it**, per this
+project's own standing rule.
+
+**The task's own original premise (GC-014 must satisfy HB-008's 8 bar(a)
+PSA feed pressure) was independently checked and found incorrect.**
+HB-008's own registry remark states explicitly: *"Feed compressor pressure
+ratio ~7.6:1 — From ~1.05 bar(a) (WGS train outlet, ~50 mbar(g)) to ~8
+bar(a) (PSA adsorption pressure + atmospheric)... Folded into HB-012 as a
+multi-stage compressor (low pressure to PSA pressure, then PSA pressure to
+storage pressure) rather than a separate equipment tag."* GC-014's own
+Confirmed 50 mbar(g) discharge is *already* the WGS-train-outlet basis
+that quote is built on — the ~7.6:1 compression to reach 8 bar(a) is
+HB-012's own job, not GC-014's.
+
+**Fix:** `python/gc_gas_cleaning_chain.py`'s new `gc014_blower_pressure()`,
+registered as `("GC-014","Pressure")`, reads both Confirmed figures
+directly — Section 7 status `Assumed`/`VALIDATION_NA` (the same "Confirmed
+design constant as live placeholder" convention already used for
+GC-001/GC-003's own temperatures). **Consistency check (Section 4),
+reported honestly, not forced:** GA-002's own Confirmed 100 mbar(g)
+typical pressure minus GC-013's own computed cumulative confirmed-stage
+train ΔP (140.0 mbar — the sum of GC-002/003/006/007/011/012's own
+Confirmed drops) implies a -40 mbar(g) suction pressure, a real 20 mbar
+gap against GC-014's own separately Confirmed -20 mbar(g). **Verdict:
+PARTIAL, not forced to match** — the same class of already-known minor
+inconsistency GC-013's own self-test independently flagged (its own 140.0
+mbar computed sum vs. the registry's separate "~115+ mbar" remark for the
+same train) — not a new contradiction, and neither Confirmed figure is
+altered to force agreement.
+
+**Byproduct: this same investigation resolved GC-002 and GC-011 too, as a
+direct consequence, not independently.** Both turned out to be Confirmed
+*and already live-wired* — `gc013_fan_power()`'s own `_STAGE_DELTA_P_MBAR`
+dict has carried GC-002's 20 mbar and GC-011's 20 mbar (dirty) since Phase
+1b, feeding the real cumulative-pressure-drop sum the whole time. Neither
+needed any new code. **Only GC-015** (Condensate Tank) remains genuinely
+open of the original four-item list — low priority, likely a trivial
+ambient/atmospheric determination for a gravity-drained, vented tank, not
+attempted in this task.
 
 Specific, already-identified items worth an engineer's direct judgment
 (distinct from the bucketed 77, called out individually because they
@@ -707,7 +762,7 @@ CLAUDE.md's own numbered list** — flagged here so they aren't lost:
 |---|---|
 | **1 — DOK-ING** | **11 individually detailed, high-value items** + 1 bucketed reference (33 registry-level gaps, itemized elsewhere) |
 | **2 — Equipment vendors** | **163 gaps** (bucketed/referenced; not re-itemized) |
-| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **RECONCILED against the live model 2026-09-03: 21 stale, 5 new A-candidates, 1 already-investigated-and-declined, 4 duplicate-of-item-9, 46 Category B — see the update above**) |
+| **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **RECONCILED against the live model 2026-09-03, UPDATED 2026-09-03 after the GC-014 protocol task found GC-002/GC-011/GC-014 were Confirmed-but-unwired, not missing: 25 stale, 1 genuinely-open A-candidate (GC-015), 1 already-investigated-and-declined, 4 duplicate-of-item-9, 46 Category B — see the update above**) |
 | **4 — Registry data-quality maintainer** | **32 items** already in `CLAUDE.md` (bucketed/referenced) + **5 newly found, not yet cross-posted** (listed in full above) |
 
 **Grand total of distinct open items tracked across the project:** 291
