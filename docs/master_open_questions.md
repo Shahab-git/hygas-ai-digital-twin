@@ -29,6 +29,19 @@ Tab 1 KPI blocker — all four are the *same underlying unknown* and are
 consolidated into ONE entry (Section 1, item 3) with every downstream
 implication listed together, not four separate near-identical asks.
 
+**Missing Parameter Resolution Protocol.** This project now maintains a
+`docs/missing_parameter_protocol.md` — a methodology for establishing a
+defensible engineering baseline for a missing parameter (an evidence
+hierarchy from Confirmed data down through Internal-model-derived,
+Comparable-equipment, Literature-based, Engineering-estimate, and
+Engineering-assumption) without treating "Missing" and "no DOK-ING
+answer yet" as blocking. It does **not** replace this register's own
+Section 1 questions — those stay genuinely open, and answering them still
+matters — but items resolved under that protocol (currently: EU-008, see
+Section 1 item 1 below) now carry a full `ACTUAL/DOK-ING VALUE` vs.
+`DIGITAL TWIN ENGINEERING BASELINE` structure rather than a single
+number, and are flagged as such.
+
 ---
 
 ## Section 1 — DOK-ING (technical/design team)
@@ -37,37 +50,55 @@ Ordered by real consequence, biggest first, per the explicit request. Every
 entry states the exact parameter/unit, the exact equipment ID(s) affected,
 a specific answerable question, and what it unlocks or corrects.
 
-### 1. EU-008 real installed cooling-tower capacity — the single biggest finding
+### 1. EU-008 second cooling path — the single biggest finding
+**Reformatted under the Missing Parameter Resolution Protocol**
+(`docs/missing_parameter_protocol.md`, Sections 4/5/6/8) — the scoping
+question below is **already investigated and answered**, not open;
+what remains open is a narrower, more specific question.
+
 - **Equipment ID(s):** EU-008 (Cooling Tower); consumers GC-004/GC-005
-  (Quench), HB-003 (WGS interstage HX), HB-012 (H₂ Compressor).
-- **Parameter:** Actual installed/specified cooling capacity, in **kW**
-  (thermal duty), and/or actual cooling water flow rate in **m³/h** at the
-  Confirmed 20→30°C temperature rise.
-- **The question:** *EU-008's own registry entry states a Confirmed 20 kW
-  cooling duty. This project's own live model — summing GC-004's real
-  quench sensible-heat duty, HB-003's real cold-side duty, and HB-012's
-  real compressor power, all three independently already-validated
-  figures — computes a real peak demand of ~58 kW at the ER=0.25 baseline
-  (up to ~66.7 kW across the ER=0.25–0.55 operating envelope), roughly
-  2.9–3.3× the Confirmed rating. Is the 20 kW figure the actual installed/
-  specified capacity, or a placeholder/typo? If it is real, was EU-008
-  sized against a narrower duty than these three consumers (e.g., only
-  EU-004's gas-engine jacket cooling, which the registry's own remark
-  suggests), and is a fourth, separate cooling path serving GC-004/HB-003/
-  HB-012 that this model doesn't know about?*
-- **Why it matters:** This determines whether the plant's real cooling
-  tower needs replacing/upsizing (a real capital-cost and schedule impact)
-  or whether this project's own ~58 kW demand estimate is itself wrong
-  (a modeling correction). The Digital Twin already surfaces this live —
-  as a `FAULT` state in the PLC state machine (AI-004), as a dual-scenario
-  comparison (`fault_status_as_specified: FAULT` vs. `fault_status_if_
-  resized: RUNNING` at an Estimated 66.7 kW), and as a named bottleneck on
-  Tab 1 — so an answer here directly changes what the plant's own status
-  display shows every cycle.
+  (Quench), HB-003 (WGS interstage HX), HB-012 (H₂ Compressor); EU-004
+  (Gas Engine jacket cooling).
+- **ACTUAL/DOK-ING VALUE:** Confirmed — 20 kW, scoped to EU-004 jacket
+  cooling only. EU-008's own registry remark states this directly: *"Some
+  margin above EU-004's established 12 kWth jacket cooling load."* This
+  was found and reported during the original Phase 2 build.
+- **DIGITAL TWIN ENGINEERING BASELINE:** approximately **65–70 kW**
+  (Section 5 — a rounded engineering range, not a false-precision point
+  value; the underlying unrounded computation, ~58–67 kW peak × 15%
+  margin depending on the operating-envelope sample, is unchanged from
+  the original resizing-estimate task).
+  - **Status of baseline:** `Internal-model-derived` (Section 7).
+  - **Engineering basis:** sum of three independently-validated real
+    duties — GC-004 quench sensible-heat duty + HB-003 cold-side duty +
+    HB-012 compressor power — running peak across ER=0.25–0.55, × a 15%
+    design margin (standard 10–20% HVAC/process-cooling convention).
+  - **Confidence:** Medium — each summed duty is independently real, but
+    their *simultaneous aggregation onto EU-008* is this project's own
+    modeling choice, not a DOK-ING-specified configuration.
+  - **Assumptions:** the three-consumer aggregation itself; the 15%
+    margin point-value within the standard 10–20% range.
+  - **Replaceable with actual data:** yes.
+- **The real question (not "is 20 kW wrong"):** *Does the real plant
+  have a separate cooling path for EU-004 alone (matching the original
+  20 kW scope), with GC-004/005/HB-003/HB-012 served by different or
+  additional cooling capacity — or does everything genuinely run through
+  one 20 kW unit today?* Honestly unknown from anything in this project.
+- **Why it matters:** Resolves whether a second, currently-unmodeled
+  cooling path needs to be added to the Digital Twin's own topology (if
+  one exists in the real plant), or whether the real plant genuinely
+  needs the larger capacity this model's own three-consumer aggregation
+  implies. Already surfaces live either way — `fault_status_as_specified`
+  (Confirmed-basis, `FAULT`) and `fault_status_if_resized` (Internal-
+  model-derived baseline, `RUNNING`) both display on Tab 1, distinctly
+  tagged (`Calculated` vs. `Estimated`) so neither can be mistaken for
+  the plant's confirmed state.
 - **Source:** `python/eu_utilities_chp.py` (`eu008_cooling_supply`,
-  `eu008_recommended_capacity_estimate`); `python/ai_automation_layer.py`
+  `eu008_recommended_capacity_estimate`, `EU008_REGISTRY_REMARK`,
+  `EU008_REAL_OPEN_QUESTION`); `python/ai_automation_layer.py`
   (`get_ai004_eu009_state`, `get_ai004_eu009_state_if_resized`);
-  `docs/digital_twin_engineering_plan.md` Section 10, item 11.
+  `docs/missing_parameter_protocol.md`; `docs/digital_twin_engineering_
+  plan.md` Section 10, item 11.
 
 ### 2. Feed-rate basis: is 41.67 kg/h (1,000 kg/day) wet (as-received) or dry?
 - **Equipment ID(s):** FE-003 (Weighing Conveyor), FE-005 (Feed Dryer),

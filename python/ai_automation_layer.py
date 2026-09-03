@@ -300,9 +300,14 @@ def get_ai004_eu009_state_if_resized(get_input):
     """"Dual-Scenario Fault Check for EU-008" -- fault_status_if_resized.
     THE SAME fault logic as get_ai004_eu009_state() above (task
     requirement 1: "the same fault logic") -- ONLY the capacity basis
-    differs: EU-008's own Estimated RecommendedCapacityEstimate (the
-    "Cooling Tower Resizing Estimate" task's own 66.742 kW figure at this
-    baseline) instead of its real Confirmed 20 kW rating.
+    differs: EU-008's own Estimated RecommendedCapacityEstimate (an
+    Internal-model-derived engineering baseline of approximately 65-70 kW,
+    per the Missing Parameter Resolution Protocol -- see
+    docs/missing_parameter_protocol.md and eu008_recommended_capacity_
+    estimate()'s own docstring) instead of its real Confirmed 20 kW
+    rating, itself now understood to be scoped to EU-004 jacket cooling
+    only, not necessarily in conflict with this broader baseline -- see
+    the real open question EU-008's own estimate entry names.
 
     get_ai004_eu009_state() itself is completely UNCHANGED (task
     requirement 1) -- that remains fault_status_as_specified, the real,
@@ -321,10 +326,19 @@ def get_ai004_eu009_state_if_resized(get_input):
         overloaded_if_resized = False
         capacity_note = "n/a (RecommendedCapacityEstimate not yet available)"
     else:
+        # Fault THRESHOLD math is UNCHANGED -- still the real, unrounded point value
+        # (Missing Parameter Resolution Protocol Section 5 governs REPORTING precision,
+        # not the underlying computation; a rounded range has no single number a >150%
+        # check could use). Only the DISPLAYED capacity_note below uses the rounded range.
         recommended_kw = estimate["value"]["recommended_capacity_kw"]
         demand_kw = estimate["value"]["current_demand_kw"]
         overloaded_if_resized = recommended_kw > 0.0 and (demand_kw / recommended_kw) > 1.5
-        capacity_note = f"demand={demand_kw:.3f}kW / recommended={recommended_kw:.3f}kW = {demand_kw / recommended_kw * 100:.1f}%"
+        baseline_range = estimate["value"]["digital_twin_engineering_baseline_range_kw"]
+        capacity_note = (
+            f"demand={demand_kw:.3f}kW / baseline={baseline_range[0]:.0f}-{baseline_range[1]:.0f}kW "
+            f"(Internal-model-derived, see EU-008's own RecommendedCapacityEstimate) = "
+            f"{demand_kw / recommended_kw * 100:.0f}% of the unrounded point value"
+        )
     fault = eu009["status"] == ps.STATUS_MISSING or overloaded_if_resized
     state = _plc_state(get_input, ("AI-004", "EU-009-State-IfResized"), False, fault)
     return _plc_result(
@@ -332,9 +346,11 @@ def get_ai004_eu009_state_if_resized(get_input):
         [("EU-009", "GridBalance"), ("EU-008", "RecommendedCapacityEstimate"), ("AI-004", "EU-009-State-IfResized")],
         f"HYPOTHETICAL/ESTIMATED SCENARIO, never the plant's actual current state. Same fault rule as "
         f"fault_status_as_specified (('AI-004','EU-009-State'), unchanged), evaluated against EU-008's "
-        f"own Estimated RecommendedCapacityEstimate instead of its real Confirmed 20kW rating: "
-        f"{capacity_note}. FAULT=EU-009 GridBalance Missing OR demand/recommended-capacity >150%; else "
-        f"STARTING(cycle 1)/RUNNING.",
+        f"own Internal-model-derived engineering baseline (Missing Parameter Resolution Protocol, "
+        f"docs/missing_parameter_protocol.md) instead of its real Confirmed-but-narrower-scoped 20kW "
+        f"rating (see EU-008's own RecommendedCapacityEstimate for why 20kW and this baseline aren't "
+        f"necessarily in conflict -- different scopes, not a resolved discrepancy): {capacity_note}. "
+        f"FAULT=EU-009 GridBalance Missing OR demand/baseline >150%; else STARTING(cycle 1)/RUNNING.",
         status=ps.STATUS_ESTIMATED,
     )
 
@@ -770,7 +786,7 @@ if __name__ == "__main__":
     print(f"  fault_status_as_specified: value={as_specified['value']}  status={as_specified['status']} "
           f"(real Confirmed {eu.EU008_RATED_CAPACITY_KW:.0f}kW basis)")
     print(f"  fault_status_if_resized:   value={if_resized['value']}  status={if_resized['status']} "
-          f"(Estimated {estimate['recommended_capacity_kw']:.3f}kW basis)")
+          f"({estimate['status_of_baseline']} {estimate['digital_twin_engineering_baseline']} basis)")
 
     # Requirement 1: fault_status_as_specified is UNCHANGED from Phase 4 -- still FAULT, still Calculated.
     assert as_specified["value"] == "FAULT", (
@@ -791,8 +807,9 @@ if __name__ == "__main__":
         f"REGRESSION: fault_status_if_resized's own status should be Estimated, never Calculated or "
         f"Measured (task requirement 2) -- got {if_resized['status']}."
     )
-    print("  PASSED -- fault_status_if_resized genuinely healthy (RUNNING) once evaluated against the "
-          "resized 66.7kW Estimated capacity, tagged Estimated (never Calculated/Measured).")
+    print(f"  PASSED -- fault_status_if_resized genuinely healthy (RUNNING) once evaluated against the "
+          f"resized {estimate['digital_twin_engineering_baseline']} Internal-model-derived baseline, "
+          f"tagged Estimated (never Calculated/Measured).")
 
     # Requirement 3: neither value can be mistaken for the other, mechanically -- not just by name.
     assert as_specified["status"] != if_resized["status"], (
@@ -808,9 +825,11 @@ if __name__ == "__main__":
           f"{if_resized['value']}) -- mechanically, not just nominally, distinguishable in the Shared "
           f"Plant State's own fields.")
 
-    print(f"\n  Tab 1 summary at this baseline: as currently specified: {as_specified['value']} -- cooling "
-          f"tower undersized (20kW rated vs ~{estimate['peak_demand_kw']:.1f}kW demand); if resized to "
-          f"the recommended {estimate['recommended_capacity_kw']:.1f}kW: {if_resized['value']}.")
+    peak_lo, peak_hi = estimate["peak_demand_range_kw"]
+    print(f"\n  Tab 1 summary at this baseline: as currently specified (Confirmed 20kW, scoped to "
+          f"EU-004 jacket cooling only): {as_specified['value']} -- real peak demand approximately "
+          f"{peak_lo:.0f}-{peak_hi:.0f}kW; if resized to the {estimate['digital_twin_engineering_baseline']} "
+          f"Internal-model-derived baseline: {if_resized['value']}.")
 
     state1, handle1, engine1 = _build_engine()
     engine1.run_cycle(now="2026-09-09T01:00:00Z")

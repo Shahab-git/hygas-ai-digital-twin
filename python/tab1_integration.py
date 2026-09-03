@@ -228,24 +228,42 @@ def compute_tab1_kpis(snapshot):
             alarms.append(f"{item}: state unavailable (upstream Missing)")
     as_specified = snapshot.get(("AI-004", "EU-009-State"))
     if_resized = snapshot.get(("AI-004", "EU-009-State-IfResized"))
+    estimate_entry = snapshot.get(("EU-008", "RecommendedCapacityEstimate"))
     if as_specified and if_resized:
+        # Missing Parameter Resolution Protocol, Section 8 framing -- reformatted, not
+        # rediscovered: the ACTUAL/DOK-ING VALUE and DIGITAL TWIN ENGINEERING BASELINE
+        # describe different scopes (EU-004 alone vs. the three-consumer aggregate),
+        # not a resolved "one is wrong" conflict. See docs/missing_parameter_protocol.md.
+        baseline_text = (
+            estimate_entry["value"]["digital_twin_engineering_baseline"]
+            if estimate_entry and estimate_entry["status"] != ps.STATUS_MISSING
+            else "n/a"
+        )
         alarms.append(
-            f"EU-008 cooling capacity: as currently specified = {as_specified['value']} "
-            f"(status={as_specified['status']}); if resized to the recommended capacity = "
-            f"{if_resized['value']} (status={if_resized['status']})"
+            f"EU-008 cooling capacity -- ACTUAL/DOK-ING VALUE: Confirmed 20kW, scoped to EU-004 "
+            f"jacket cooling only (status={as_specified['status']}, fault_status_as_specified="
+            f"{as_specified['value']}); DIGITAL TWIN ENGINEERING BASELINE: {baseline_text}, "
+            f"Internal-model-derived (status={if_resized['status']}, fault_status_if_resized="
+            f"{if_resized['value']}). See ('EU-008','RecommendedCapacityEstimate') for the real "
+            f"open question this surfaces (a second cooling path for the other three consumers?)."
         )
     kpis["active_alarms"] = _kv(ps.STATUS_CALCULATED, alarms)
 
     # --- Critical constraints / bottlenecks --------------------------------
     bottlenecks = []
-    if eu008 and eu008["status"] != ps.STATUS_MISSING:
+    if eu008 and eu008["status"] != ps.STATUS_MISSING and estimate_entry and estimate_entry["status"] != ps.STATUS_MISSING:
         util = eu008["value"]["utilization"]
+        peak_lo, peak_hi = estimate_entry["value"]["peak_demand_range_kw"]
         if util > 1.0:
             bottlenecks.append(
-                f"EU-008 (Cooling Tower): real demand {eu008['value']['demand_kw']:.1f}kW is "
-                f"{util*100:.0f}% of its Confirmed 20kW rating -- undersized (Cooling Tower "
-                f"Resizing Estimate task). See ('EU-008','RecommendedCapacityEstimate') for the "
-                f"Estimated resizing recommendation."
+                f"EU-008 (Cooling Tower): real demand approximately {peak_lo:.0f}-{peak_hi:.0f}kW "
+                f"exceeds its Confirmed 20kW rating -- but that 20kW figure is itself scoped to "
+                f"EU-004 jacket cooling only (per EU-008's own registry remark), not necessarily "
+                f"the three-consumer load (GC-004/005+HB-003+HB-012) this model aggregates onto it. "
+                f"Real open question, not yet resolved: does the real plant have a separate cooling "
+                f"path for those three consumers? See ('EU-008','RecommendedCapacityEstimate') for "
+                f"the full Internal-model-derived baseline and metadata "
+                f"(docs/missing_parameter_protocol.md)."
             )
     dispatch = snapshot.get(("EU-CHP", "Dispatch"))
     if dispatch and dispatch["status"] != ps.STATUS_MISSING:

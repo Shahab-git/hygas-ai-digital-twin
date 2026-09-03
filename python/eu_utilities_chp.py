@@ -121,6 +121,8 @@ Cell"]=0); the 9kWth figure can only be EU-011's own stated recovered duty.
 This wiring uses EU-011, matching the number, not the mislabeled name.
 EU-013 is a simple metering pass-through of EU-012's own real duty.
 """
+import math
+
 from . import chp
 from . import dispatch_ga
 from . import ga001_gasifier_model as ga001
@@ -494,62 +496,142 @@ def eu008_consumer_adequacy(get_input):
     }
 
 
+EU008_REGISTRY_REMARK = "Some margin above EU-004's established 12 kWth jacket cooling load"
+EU008_REAL_OPEN_QUESTION = (
+    "Does the real plant have a separate cooling path for EU-004 alone (matching the "
+    "original 20kW scope), with GC-004/005/HB-003/HB-012 served by different or "
+    "additional cooling capacity -- or does everything genuinely run through one 20kW "
+    "unit today? Honestly unknown from anything in this project -- not 'is 20kW wrong', "
+    "but 'does a second cooling path exist that this model doesn't know about'."
+)
+
+
+def _engineering_range(value_kw, bracket_kw=5.0):
+    """Missing Parameter Resolution Protocol, Section 5 (avoid false
+    precision): brackets a computed point value into the nearest
+    bracket_kw-wide engineering range (e.g. 66.74 -> (65.0, 70.0) at
+    bracket_kw=5.0) -- never presents an Internal-model-derived figure
+    with more precision than the underlying evidence supports. The
+    UNROUNDED point value stays available separately wherever an actual
+    threshold comparison (e.g. a fault check) needs one -- rounding is a
+    presentation choice, not a computation change (protocol Section 5
+    governs reporting, not the underlying math)."""
+    low = math.floor(value_kw / bracket_kw) * bracket_kw
+    return low, low + bracket_kw
+
+
 def eu008_recommended_capacity_estimate(get_input):
     """Cooling Tower Resizing Estimate -- a SEPARATE, ADDITIVE entry.
     Does NOT overwrite, alter, or remove EU-008's own existing Confirmed
     20kW rating (EU008_RATED_CAPACITY_KW, used elsewhere in this module
     unchanged) -- both this estimate and that Confirmed figure stand
-    simultaneously visible and traceable (task requirement 1/4).
+    simultaneously visible and traceable.
 
-    Tracks the RUNNING PEAK of EU-008's own real computed demand (lagged
-    self, same mechanism as HB-013's own inventory / EU-008's own damped
-    supply temperature) across however many cycles/operating points this
-    engine has run -- so a self-test (or any caller) that sweeps a
-    representative range of real operating conditions (e.g. ER=0.25
-    through 0.55, already exercised elsewhere in this project) naturally
-    captures the model's own true peak across that range, not a single
-    point (task requirement 2).
+    REFORMATTED under the Missing Parameter Resolution Protocol
+    (docs/missing_parameter_protocol.md), Sections 4/5/6/8 -- NOT
+    re-investigated, NOT recalculated. The underlying computation is
+    UNCHANGED from the original "Cooling Tower Resizing Estimate" task:
+    tracks the RUNNING PEAK of EU-008's own real computed demand (lagged
+    self, same mechanism as HB-013's own inventory) across however many
+    cycles/operating points this engine has run, then applies the SAME
+    15% margin (EU008_SIZING_MARGIN_FRACTION, unchanged) used since that
+    task. Only the PRESENTATION changed: the point value is now bracketed
+    into a rounded engineering range (Section 5), and the entry carries
+    the protocol's own Section 6 metadata block and Section 8 ACTUAL-vs-
+    BASELINE structure.
 
-    recommended_capacity_kw = peak_demand_kw x (1 + EU008_SIZING_MARGIN_
-    FRACTION). The margin itself -- 10-20% over calculated peak duty -- is
-    the standard, commonly-cited HVAC/process-cooling design-margin
-    convention; 15% (this module's own EU008_SIZING_MARGIN_FRACTION) is a
-    representative mid-range point within that convention, not
-    independently invented.
-
-    STATUS_ESTIMATED, never Measured or DOKINGDesignTarget (task
-    requirement 3) -- this is a real engineering judgment (a margin
-    applied to a live computed peak), not a strict calculation from
-    already-Confirmed inputs, and certainly not a vendor/DOK-ING-
-    confirmed capacity."""
+    Section 4's own conflict-resolution investigation for EU-008 was
+    ALREADY DONE, not re-run here: EU-008's own registry remark
+    (EU008_REGISTRY_REMARK, read directly from data/equipment_registry.json,
+    not paraphrased) states its Confirmed 20kW figure was sized against
+    EU-004's jacket cooling load specifically -- a narrower, single-
+    consumer duty, not the three-consumer aggregate (GC-004/005 + HB-003
+    + HB-012) this model computes. This was found and reported during the
+    original Phase 2 build, well before this protocol existed. The 20kW
+    figure and this model's own ~55-70kW range therefore describe
+    DIFFERENT SCOPES, not necessarily a genuine conflict -- see
+    EU008_REAL_OPEN_QUESTION for what's actually still unknown (whether a
+    second, separate cooling path serves the other three consumers in the
+    real plant, or everything runs through this one unit)."""
     current = get_input(("EU-008", "CoolingSupply"))["value"]
     current_demand_kw = current["demand_kw"]
 
     prev = get_input(("EU-008", "RecommendedCapacityEstimate"))  # lagged, self
     prev_peak_kw = 0.0 if prev["status"] == ps.STATUS_MISSING else prev["value"]["peak_demand_kw"]
     peak_demand_kw = max(prev_peak_kw, current_demand_kw)
-    recommended_capacity_kw = peak_demand_kw * (1.0 + EU008_SIZING_MARGIN_FRACTION)
+    recommended_capacity_kw = peak_demand_kw * (1.0 + EU008_SIZING_MARGIN_FRACTION)  # UNCHANGED math
+
+    peak_range = _engineering_range(peak_demand_kw)
+    baseline_range = _engineering_range(recommended_capacity_kw)
 
     return {
         "value": {
+            # Section 8 structure --------------------------------------------------
+            "actual_dokking_value": (
+                f"Confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own "
+                f"registry remark: \"{EU008_REGISTRY_REMARK}\")"
+            ),
+            "actual_dokking_value_kw": EU008_RATED_CAPACITY_KW,
+            "digital_twin_engineering_baseline": f"approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
+            "digital_twin_engineering_baseline_range_kw": baseline_range,
+            "status_of_baseline": "Internal-model-derived",
+            "uncertainty": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
+            "source_basis": (
+                "Sum of three independently-validated real duties (GC-004 quench sensible heat, "
+                "HB-003 cold-side duty, HB-012 compressor power), running peak across ER=0.25-0.55, "
+                "x a 15% design margin (standard 10-20% HVAC/process-cooling convention)"
+            ),
+            # Section 6 metadata -----------------------------------------------------
+            "metadata": {
+                "parameter_name": "EU-008 required cooling-tower capacity",
+                "baseline_value": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
+                "unit": "kW",
+                "status": "Internal-model-derived",
+                "evidence_level": "Internal-model-derived",
+                "source": "Phase 2 build + Cooling Tower Resizing Estimate task",
+                "source_reference": "python/eu_utilities_chp.py: eu008_cooling_supply(), eu008_recommended_capacity_estimate()",
+                "engineering_basis": (
+                    "Sum of GC-004 quench sensible-heat duty + HB-003 cold-side duty + HB-012 "
+                    "compressor power (each independently already-validated), running peak x 15% margin"
+                ),
+                "uncertainty_or_range": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
+                "confidence": (
+                    "Medium -- each summed duty is independently real/validated, but their "
+                    "SIMULTANEOUS aggregation onto one cooling source is this project's own "
+                    "modeling choice, not a DOK-ING-confirmed plant configuration"
+                ),
+                "assumptions": (
+                    "(1) The three-consumer aggregation itself (GC-004/005 + HB-003 + HB-012 onto "
+                    "ONE cooling source) is this project's own modeling choice, not DOK-ING-"
+                    "specified -- see EU008_REAL_OPEN_QUESTION. (2) 15% sizing margin, a "
+                    "representative point within the standard 10-20% convention."
+                ),
+                "date_established": "2026-09-02",
+                "replaceable_with_actual_data": True,
+            },
+            "real_open_question": EU008_REAL_OPEN_QUESTION,
+            # Retained for internal/downstream use -- UNROUNDED, for any actual threshold
+            # comparison (e.g. AI-004's fault logic); rounding is a presentation choice
+            # (protocol Section 5), never applied to the underlying computation itself.
             "peak_demand_kw": peak_demand_kw, "current_demand_kw": current_demand_kw,
             "margin_fraction": EU008_SIZING_MARGIN_FRACTION,
             "recommended_capacity_kw": recommended_capacity_kw,
             "existing_confirmed_capacity_kw": EU008_RATED_CAPACITY_KW,
+            "peak_demand_range_kw": peak_range,
         },
         "status": ps.STATUS_ESTIMATED,
         "model": "eu_utilities_chp.eu008_recommended_capacity_estimate",
         "inputs": [("EU-008", "CoolingSupply"), ("EU-008", "RecommendedCapacityEstimate")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Resizing estimate based on this model's own computed peak cooling demand "
-            f"({peak_demand_kw:.3f} kW, the running maximum observed across however many cycles/"
-            f"operating points this engine has run) plus a standard "
-            f"{EU008_SIZING_MARGIN_FRACTION*100:.0f}% safety margin (10-20% over calculated peak "
-            f"duty is standard HVAC/process cooling design practice); not a vendor-confirmed or "
-            f"DOK-ING-specified capacity. Recommended = {recommended_capacity_kw:.3f} kW, vs "
-            f"EU-008's own existing Confirmed {EU008_RATED_CAPACITY_KW:.0f} kW registry rating "
-            f"(unchanged, unmodified -- this entry is additive, not a replacement)."
+            f"ACTUAL/DOK-ING VALUE: Confirmed -- 20 kW, scoped to EU-004 jacket cooling only "
+            f"(registry remark: \"{EU008_REGISTRY_REMARK}\"). DIGITAL TWIN ENGINEERING BASELINE: "
+            f"approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW (Internal-model-"
+            f"derived; peak demand {peak_range[0]:.0f}-{peak_range[1]:.0f} kW x 15% margin). "
+            f"NOT a re-investigation -- the scoping finding above was already established during "
+            f"the original Phase 2 build; the real remaining open question is whether the real "
+            f"plant has a second cooling path for GC-004/005/HB-003/HB-012, separate from EU-004's "
+            f"own 20kW unit (see this entry's own 'real_open_question' field)."
         ),
     }
 
@@ -1096,5 +1178,53 @@ if __name__ == "__main__":
     print(f"  Recommended capacity: {estimate['recommended_capacity_kw']:.3f} kW")
     print(f"  Existing Confirmed registry rating: {estimate['existing_confirmed_capacity_kw']:.0f} kW "
           f"(intact, unmodified, in both the Shared Plant State and data/equipment_registry.json)")
+
+    print("\n=== Missing Parameter Resolution Protocol -- Section 8 reformatting ===")
+    print(f"  ACTUAL/DOK-ING VALUE: {estimate['actual_dokking_value']}")
+    print(f"  DIGITAL TWIN ENGINEERING BASELINE: {estimate['digital_twin_engineering_baseline']}")
+    print(f"  STATUS OF BASELINE: {estimate['status_of_baseline']}")
+    print(f"  UNCERTAINTY: {estimate['uncertainty']}")
+    print(f"  SOURCE/BASIS: {estimate['source_basis']}")
+    print(f"  REAL OPEN QUESTION: {estimate['real_open_question'][:90]}...")
+
+    # Section 4: not re-investigated -- the scoping finding is quoted from the registry directly.
+    assert EU008_REGISTRY_REMARK in estimate["actual_dokking_value"]
+    assert "EU-004" in estimate["actual_dokking_value"], (
+        "REGRESSION: the ACTUAL/DOK-ING VALUE no longer names EU-004 as the original scope."
+    )
+    print("  PASSED -- ACTUAL/DOK-ING VALUE correctly quotes EU-008's own registry remark "
+          "verbatim, naming EU-004 as the original narrower scope (Section 4 -- not re-derived, "
+          "already established during the Phase 2 build).")
+
+    # Section 5: false precision avoided -- the headline figure is a rounded range, not the
+    # raw 66.742 kW point value, even though that unrounded value stays available internally.
+    assert "66.742" not in estimate["digital_twin_engineering_baseline"]
+    lo, hi = estimate["digital_twin_engineering_baseline_range_kw"]
+    assert lo <= estimate["recommended_capacity_kw"] <= hi, (
+        f"REGRESSION: the rounded range ({lo}-{hi}) doesn't actually bracket the real computed "
+        f"point value ({estimate['recommended_capacity_kw']})."
+    )
+    assert hi - lo == 5.0
+    print(f"  PASSED -- DIGITAL TWIN ENGINEERING BASELINE reports a rounded {lo:.0f}-{hi:.0f} kW "
+          f"range (Section 5), which genuinely brackets the unrounded point value "
+          f"({estimate['recommended_capacity_kw']:.3f} kW, still available internally for any "
+          f"real threshold comparison -- rounding is presentation-only, per this task's own "
+          f"requirement that the underlying computation not change).")
+
+    # Section 6: full metadata block present.
+    meta = estimate["metadata"]
+    for field in ("parameter_name", "baseline_value", "unit", "status", "evidence_level", "source",
+                  "source_reference", "engineering_basis", "uncertainty_or_range", "confidence",
+                  "assumptions", "date_established", "replaceable_with_actual_data"):
+        assert field in meta, f"REGRESSION: Section 6 metadata missing required field {field!r}."
+    assert meta["evidence_level"] == "Internal-model-derived", (
+        f"REGRESSION: evidence_level should be Internal-model-derived (Section 7 -- this project's "
+        f"own already-validated GC-004/HB-003/HB-012 models, not a vendor/literature estimate), "
+        f"got {meta['evidence_level']!r}."
+    )
+    assert meta["replaceable_with_actual_data"] is True
+    print(f"  PASSED -- Section 6 metadata block complete, evidence_level=Internal-model-derived "
+          f"(Section 7's own hierarchy -- derived from this project's own already-validated models, "
+          f"the correct category, re-justified not defaulted), replaceable_with_actual_data=True.")
 
     print("\nAll eu_utilities_chp.py self-tests PASSED.")
