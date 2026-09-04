@@ -1962,17 +1962,186 @@ def _render_fe_live_results(snap):
     st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
 
-with tab3:
-    st.header("Feed Handling — FE-001 through FE-008")
+# =============================================================================
+# Tab 3 Section 2 -- Live KPIs. Five of the numbers already shown in full
+# detail in Section 4 (_render_fe_live_results, above), condensed into
+# prominent metric cards -- no new values, no recomputation.
+# =============================================================================
+def _render_fe_live_kpis(snap):
+    fe001 = snap[("FE-001", "Inventory")]["value"]
+    fe003 = snap[("FE-003", "Weighing")]["value"]
+    fe004 = snap[("FE-004", "ShredderPower")]["value"]
+    fe005 = snap[("FE-005", "MoistureBalance")]["value"]
+    fe006 = snap[("FE-006", "MoistureReading")]["value"]
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Feed rate (as-received)", f"{fe003['confirmed_wet_feed_kg_h']:.2f} kg/h")
+    c2.metric("Dry solids → GA-001", f"{fe005['dry_solids_kg_h']:.2f} kg/h")
+    c3.metric("Dried output moisture", f"{fe006['moisture_fraction']*100:.2f}%")
+    c4.metric("FE-004 specific energy", f"{fe004['specific_energy_kwh_per_t']:.1f} kWh/t")
+    c5.metric("Hopper level", f"{fe001['fraction_full']*100:.1f}%")
+    st.caption(
+        "The 5 headline numbers from Section 4's own detailed breakdown below — same live values, "
+        "condensed, nothing new computed here."
+    )
+
+
+# =============================================================================
+# Tab 3 Section 3 -- Process Flow & Equipment Status. A compact TABLE
+# version of the schematic's own live status (screen-reader/accessibility
+# parity, per the task's own explicit framing) -- complementary to
+# Section 1's diagram, not a second diagram. Reuses the SAME
+# _FE_SCHEMATIC_ITEMS/_FE_CATEGORY_COLORS metadata the schematic itself
+# uses, so the two can never silently drift apart.
+# =============================================================================
+def _render_fe_status_table(snap):
+    rows = []
+    for eq_id, name, cat, key in _FE_SCHEMATIC_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        rows.append({
+            "ID": eq_id, "Name": name.replace("\n", " "),
+            "Category": _FE_CATEGORY_COLORS[cat]["label"],
+            "Live status": "No data" if is_missing else "Running",
+            "Registered key": f"{key[0]}/{key[1]}",
+        })
+    # The two byproduct/branch streams (Section 1's dashed lines) are real,
+    # separately-tracked live entries in their own right -- listed here too
+    # for completeness, not shown as boxes in the schematic, so this is
+    # genuinely additive information, not a repeat of the eight equipment rows.
+    reject_entry = snap.get(("FE-002", "TrampMetalReject"))
+    reject_missing = reject_entry is None or reject_entry.get("status") == ps.STATUS_MISSING
+    rows.append({
+        "ID": "— (byproduct stream)", "Name": "Metal reject, off FE-002",
+        "Category": "Byproduct stream", "Live status": "No data" if reject_missing else "Running",
+        "Registered key": "FE-002/TrampMetalReject",
+    })
+    moist_entry = snap.get(("FE-005", "MoistureBalance"))
+    moist_missing = moist_entry is None or moist_entry.get("status") == ps.STATUS_MISSING
+    rows.append({
+        "ID": "— (byproduct stream)", "Name": "Moisture vapor, off FE-005",
+        "Category": "Byproduct stream", "Live status": "No data" if moist_missing else "Running",
+        "Registered key": "FE-005/MoistureBalance",
+    })
+    # st.table (a real, static HTML <table>), not st.dataframe (a canvas-based
+    # grid) -- genuinely MORE screen-reader accessible for this small, fixed
+    # table, which is the whole point of this section (task's own explicit
+    # accessibility/screen-reader parity framing).
+    st.table(pd.DataFrame(rows).set_index("ID"))
+
+
+# =============================================================================
+# Tab 3 Section 5 -- Mass & Energy Balance. Every figure below is read
+# directly from an already-published FE-00x entry -- no new physics, no
+# independent recalculation. Reports the real closure result honestly,
+# whichever way it comes out (see the function body for the actual check).
+# =============================================================================
+def _render_fe_mass_energy_balance(snap):
+    fe001 = snap[("FE-001", "Inventory")]["value"]
+    fe002 = snap[("FE-002", "MassBalance")]["value"]
+    fe002_reject = snap[("FE-002", "TrampMetalReject")]
+    fe003 = snap[("FE-003", "Weighing")]["value"]
+    fe005 = snap[("FE-005", "MoistureBalance")]["value"]
+    fe008 = snap[("FE-008", "Airlock")]["value"]
+
+    mass_in_kg_h = fe001["delivery_rate_kg_h"]
+    fe002_out_kg_h = fe002["outlet_kg_h"]
+    fe003_confirmed_kg_h = fe003["confirmed_wet_feed_kg_h"]
+    # FE-003's own confirmed [29,50] kg/h range can clip the raw delivery --
+    # any gap this introduces is a REAL, separately-tracked term (FE-003's
+    # own docstring: "this simplified chain does not model where the
+    # resulting surplus/deficit mass goes"), not folded silently into
+    # anything else.
+    clip_loss_kg_h = fe002_out_kg_h - fe003_confirmed_kg_h
+    mass_to_ga001_kg_h = fe008["feed_rate_kg_h"]
+    water_evaporated_kg_h = fe005["water_evaporated_kg_h"]
+    accounted_kg_h = mass_to_ga001_kg_h + water_evaporated_kg_h + clip_loss_kg_h
+    gap_kg_h = mass_in_kg_h - accounted_kg_h
+
+    st.markdown("**Mass balance chain (FE-001 → FE-008), all live values:**")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Mass in (FE-001 delivery, wet)", f"{mass_in_kg_h:.3f} kg/h")
+    c2.metric("To GA-001 (dried, wet basis)", f"{mass_to_ga001_kg_h:.3f} kg/h")
+    c3.metric("Moisture vented (FE-005)", f"{water_evaporated_kg_h:.3f} kg/h")
+    c4.metric("Clip loss (FE-003 range)", f"{clip_loss_kg_h:.3f} kg/h")
+
+    if abs(gap_kg_h) < 1e-6:
+        st.success(
+            f"**Balance CLOSES**, to floating-point precision: {mass_in_kg_h:.3f} kg/h in = "
+            f"{mass_to_ga001_kg_h:.3f} kg/h to GA-001 + {water_evaporated_kg_h:.3f} kg/h vented"
+            + (f" + {clip_loss_kg_h:.3f} kg/h clip loss" if abs(clip_loss_kg_h) > 1e-9 else "")
+            + f" (residual = {gap_kg_h:.2e} kg/h)."
+        )
+    else:
+        st.warning(
+            f"**Balance does NOT close numerically**: {mass_in_kg_h:.3f} kg/h in vs "
+            f"{accounted_kg_h:.3f} kg/h accounted for — a residual gap of {gap_kg_h:.4f} kg/h "
+            f"this cycle. Reported honestly, not forced to zero."
+        )
+
+    st.warning(
+        "**Honest caveat, stated explicitly, not swept under the rug:** the closure above is real, "
+        "but it is NOT proof that zero mass is lost anywhere in the real equipment. FE-002's own "
+        f"tramp-metal reject rate is genuinely **{fe002_reject['status']}** — "
+        f"{fe002_reject['missing_reason']} — and this figure is NOT subtracted as a mass term "
+        "anywhere in the balance above: `fe_feed_handling.py`'s own module docstring states FE-002 "
+        "is treated as a pure pass-through here (\"a polishing duty ... negligible mass removed, "
+        "not modeled as a separate mass-balance term\"). The clean closure above confirms this "
+        "chain's own documented simplifications are internally consistent with each other — it does "
+        "NOT confirm the real plant loses no mass at FE-002. Once a real tramp-metal reject rate is "
+        "ever confirmed, this balance would need to subtract it, and would then show a small, real, "
+        "non-zero gap here instead of the exact closure above.",
+        icon="⚠️",
+    )
+
+
+# =============================================================================
+# Tab 3 Section 6 -- Simulation Status. Consolidates the "not yet
+# continuous" scoping note into ONE place (per the task's own explicit
+# instruction) rather than repeating it at the top of the tab AND here.
+# =============================================================================
+def _render_fe_simulation_status(snap):
+    entry = snap[("FE-001", "Inventory")]
+    c1, c2 = st.columns(2)
+    c1.metric("Cycle number (this run)", entry["cycle"])
+    c2.metric("Cycle timestamp", entry["timestamp"])
     st.info(
         "**Honest scoping note.** The continuous simulation runtime (the approved design in "
-        "`docs/continuous_runtime_design.md`) is **not yet implemented**. Section 2 below runs "
+        "`docs/continuous_runtime_design.md`) is **not yet implemented**. Every section above runs "
         "the real Digital Twin engine (FE→GA→GC→HB→EU→SA→AI, the SAME run Tab 1's own Integrated "
         "Plant Status section uses) on page-load/interaction — the same `st.cache_data` pattern "
         "already used everywhere else in this app — **not** genuinely continuous background "
-        "updates. Every value shown is real and traces to a live model run just now; it just "
-        "isn't updating itself in the background yet.",
+        "updates. Every value shown is real and traces to a live model run just now; it just isn't "
+        "updating itself in the background yet. The **cycle number** above is this run's own "
+        "internal count (this process re-registers and re-runs the whole FE→...→AI chain fresh on "
+        "every cache refresh — see `docs/continuous_runtime_design.md`'s own §3 for why a real "
+        "persisted process's cycle count would mean something different), **not** a count of real "
+        "elapsed operating hours.",
         icon="ℹ️",
+    )
+
+
+# =============================================================================
+# Tab 3 Section 7 -- Data Source & Freshness.
+# =============================================================================
+def _render_fe_data_source_freshness(snap):
+    entry = snap[("FE-001", "Inventory")]
+    st.markdown(f"**Computed:** {entry['timestamp']} (this cycle's own real, traceable timestamp).")
+    st.markdown(
+        "**Source, by section:** Sections 1–6 above all read live output from `fe_feed_handling.py`'s "
+        "own registered FE-001..008 models, via the Digital Twin engine (`simulation_engine.py` + "
+        "`shared_plant_state.py`) — a real simulation result, not a static figure. Section 8 below "
+        "instead reads `equipment_registry.load_registry()` directly — real registry/vendor/"
+        "DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation output. The "
+        "two are never blended: every value on this tab is clearly one or the other, labeled at the "
+        "point it's shown."
+    )
+
+
+with tab3:
+    st.header("Feed Handling — FE-001 through FE-008")
+    st.caption(
+        "⏱️ Snapshot-based, not yet continuous — see **Section 6 — Simulation Status** below for "
+        "the full honest scoping note (consolidated there, not repeated at every section)."
     )
 
     # -------------------------------------------------------------------
@@ -1996,9 +2165,38 @@ with tab3:
     st.divider()
 
     # -------------------------------------------------------------------
-    # Section 2 -- Live Simulation & Engineering Results
+    # Section 2 -- Live KPIs
     # -------------------------------------------------------------------
-    st.subheader("Section 2 — Live Simulation & Engineering Results")
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _fe_snap_for_kpis = _tab1_integration_snapshot()
+        _render_fe_live_kpis(_fe_snap_for_kpis)
+    except Exception as _fe_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_fe_kpis_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 3 -- Process Flow & Equipment Status
+    # -------------------------------------------------------------------
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live status shown visually in Section 1's schematic, as a table — for "
+        "accessibility/screen-reader parity, not a second diagram. Plus the two byproduct streams' "
+        "own live status, not shown as boxes above."
+    )
+    try:
+        _fe_snap_for_status_table = _tab1_integration_snapshot()
+        _render_fe_status_table(_fe_snap_for_status_table)
+    except Exception as _fe_status_table_exc:
+        st.error(f"Equipment status table failed to render: {_fe_status_table_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 4 -- Live Simulation & Engineering Results
+    # -------------------------------------------------------------------
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
     try:
         _fe_snap_for_results = _tab1_integration_snapshot()
         _render_fe_live_results(_fe_snap_for_results)
@@ -2008,9 +2206,45 @@ with tab3:
     st.divider()
 
     # -------------------------------------------------------------------
-    # Section 3 -- Existing Data (unchanged content, repositioned only)
+    # Section 5 -- Mass & Energy Balance
     # -------------------------------------------------------------------
-    st.subheader("Section 3 — Existing Data (Equipment Datasheets)")
+    st.subheader("Section 5 — Mass & Energy Balance")
+    try:
+        _fe_snap_for_balance = _tab1_integration_snapshot()
+        _render_fe_mass_energy_balance(_fe_snap_for_balance)
+    except Exception as _fe_balance_exc:
+        st.error(f"Mass & energy balance failed to render: {_fe_balance_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 6 -- Simulation Status
+    # -------------------------------------------------------------------
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _fe_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_fe_simulation_status(_fe_snap_for_sim_status)
+    except Exception as _fe_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_fe_sim_status_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 7 -- Data Source & Freshness
+    # -------------------------------------------------------------------
+    st.subheader("Section 7 — Data Source & Freshness")
+    try:
+        _fe_snap_for_freshness = _tab1_integration_snapshot()
+        _render_fe_data_source_freshness(_fe_snap_for_freshness)
+    except Exception as _fe_freshness_exc:
+        st.error(f"Data source & freshness failed to render: {_fe_freshness_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 8 -- Existing Data (unchanged content, repositioned only)
+    # -------------------------------------------------------------------
+    st.subheader("Section 8 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: FE-001 through FE-008 only, one of nine per-section tabs that "
         "together now cover the whole registry** (see the Gasification, Gas Cleaning, Sensors & "
