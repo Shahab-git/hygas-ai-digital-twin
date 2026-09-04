@@ -8,7 +8,7 @@ cross-checked against the MATLAB/Simulink blocks during development.
 import json
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import altair as alt
@@ -29,16 +29,68 @@ from python import (
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 
 # =============================================================================
-# _tab1_integration_snapshot() -- moved to module level (was previously
-# defined inside `with tab1:`) so the new Plant Operations Header below can
-# share the EXACT SAME cached snapshot Tab 1 and Tab 3 already use -- one
-# real engine run per cache window, never a second one just for the header.
-# Behavior is byte-for-byte unchanged from before this move.
+# _tab1_integration_snapshot() -- continuous runtime design, section 4
+# (docs/continuous_runtime_design.md, approved and now implemented). Reads
+# the latest published state from Supabase's plant_state_current table --
+# the continuous runtime's own driver script (scripts/run_continuous_
+# cycle.py, run hourly by .github/workflows/continuous_cycle.yml) is what
+# actually RUNS the engine now; the dashboard is a pure observer, exactly
+# per the design's own §4. render_tab1_section()/every Tab 3 caller needs
+# ZERO changes -- both already only ever consume a plain snapshot dict,
+# never caring whether it was just computed or just read back.
+#
+# Graceful fallback, per §4: if the store is empty or unreachable (a real,
+# expected condition before the runtime has ever ticked, or if Supabase is
+# briefly down), degrades to today's own in-process bootstrap
+# (tab1_integration.build_live_snapshot()) rather than showing nothing --
+# the SAME function this dashboard relied on exclusively before this task.
+# TTL loosened from 60s to 300s (design's own §4 recommendation) -- a
+# store-read is far cheaper than an engine run, but the underlying data
+# still only changes once an hour, so 5 minutes stays generous without
+# hammering Supabase on every viewer interaction.
 # =============================================================================
-@st.cache_data(ttl=60, show_spinner="Running the Digital Twin engine (FE -> GA -> GC -> HB -> EU -> SA -> AI)...")
-def _tab1_integration_snapshot(n_cycles=5):
-    _snap, _state, _engine = tab1_integration.build_live_snapshot(n_cycles=n_cycles)
-    return _snap
+@st.cache_data(ttl=300, show_spinner="Reading the latest published plant state...")
+def _tab1_integration_snapshot():
+    try:
+        rows = vendor_log._get_client().table("plant_state_current").select("*").execute().data
+    except Exception:
+        rows = None
+    if not rows:
+        snap, _state, _engine = tab1_integration.build_live_snapshot()
+        return snap
+    return {(r["equipment_id"], r["category"]): r["entry"] for r in rows}
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _plant_state_source_info():
+    """Companion to _tab1_integration_snapshot() -- NOT part of the
+    design's own minimal snapshot-function code, but needed to honestly
+    answer "where did this data come from, and how fresh is it" for the
+    freshness indicator (§4) and the Plant Operations Header's own Task B
+    fields (real values only, never a placeholder -- see the header
+    section below). A second small Supabase read (same query shape,
+    separately cached) rather than overloading the snapshot function's
+    own return contract, which the design deliberately kept as "just a
+    snapshot dict" so render_tab1_section() needs no changes."""
+    try:
+        rows = vendor_log._get_client().table("plant_state_current").select("*").execute().data
+    except Exception as exc:
+        return {"reachable": False, "rows_found": 0, "error": str(exc)}
+    if not rows:
+        return {"reachable": True, "rows_found": 0, "error": None}
+    cycles = {r["cycle"] for r in rows}
+    published_ats = {r["published_at"] for r in rows}
+    return {
+        "reachable": True, "rows_found": len(rows),
+        "cycle": max(cycles) if cycles else None,
+        # published_at is the SAME real timestamp on every row of one
+        # publish (one upsert batch, one `now_iso` -- scripts/run_
+        # continuous_cycle.py's own persist_snapshot()) -- max() is a
+        # defensive tie-breaker if that were ever violated, not evidence
+        # multiple values are expected.
+        "published_at": max(published_ats) if published_ats else None,
+        "error": None,
+    }
 
 
 # =============================================================================
@@ -114,6 +166,30 @@ _PLANT_STATUS_STYLE = {
     "MISSING":  {"bg": "#F3F4F6", "fg": "#6B7280", "dot": "#9CA3AF"},
 }
 
+# --- Simulation Runtime status (Task B, now wired to real data) -----------
+# Explicit, honest logic (task's own requirement), not a vibe:
+#   OFFLINE          -- the dashboard cannot reach plant_state_current at
+#                        all (a real connectivity/credentials problem).
+#   NOT YET STARTED  -- reachable, but genuinely zero rows -- the
+#                        continuous runtime has never published a cycle.
+#   RUNNING          -- reachable, has rows, and the real published_at
+#                        timestamp is within _STALE_AFTER_HOURS of now.
+#   STALE            -- reachable, has rows, but published_at is OLDER
+#                        than _STALE_AFTER_HOURS -- the hourly cron should
+#                        have ticked again by now and, as far as this
+#                        dashboard can tell, hasn't.
+_STALE_AFTER_HOURS = 2.0  # 2x the real cron interval (design's own hourly
+                           # cadence) -- a deliberate margin for GitHub
+                           # Actions' own documented scheduling jitter, so
+                           # one slightly-late run isn't misreported as
+                           # STALE.
+_SIM_STATUS_STYLE = {
+    "RUNNING":          {"bg": "#DCFCE7", "fg": "#15803D", "dot": "#16A34A"},
+    "STALE":            {"bg": "#FEF3C7", "fg": "#B45309", "dot": "#D97706"},
+    "NOT YET STARTED":  {"bg": "#F3F4F6", "fg": "#6B7280", "dot": "#9CA3AF"},
+    "OFFLINE":          {"bg": "#FEE2E2", "fg": "#B91C1C", "dot": "#DC2626"},
+}
+
 
 def _render_plant_operations_header():
     # --- 1. Zagreb clock/date -- real current time, real IANA timezone
@@ -178,6 +254,41 @@ def _render_plant_operations_header():
             f'<div class="poh-sub" style="color:#B91C1C;">Unavailable: {exc}</div></div>'
         )
 
+    # --- 4. Simulation Runtime -- Task B, now wired to real data from
+    # plant_state_current (the continuous runtime design, implemented).
+    # Every field below is real or explicitly, honestly labeled as what it
+    # is -- see _SIM_STATUS_STYLE's own comment for the exact status logic.
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = (now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1))
+    if not src_info["reachable"]:
+        sim_status = "OFFLINE"
+        cycle_str = "—"
+        update_str = f"Cannot reach plant_state_current: {src_info['error']}"
+    elif src_info["rows_found"] == 0:
+        sim_status = "NOT YET STARTED"
+        cycle_str = "—"
+        update_str = "No cycle published yet"
+    else:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        sim_status = "RUNNING" if age_hours <= _STALE_AFTER_HOURS else "STALE"
+        cycle_str = str(src_info["cycle"])
+        update_str = f"{src_info['published_at']} ({age_hours:.1f}h ago)"
+    rstyle = _SIM_STATUS_STYLE[sim_status]
+    runtime_html = (
+        f'<div class="poh-block"><div class="poh-label">SIMULATION RUNTIME</div>'
+        f'<div class="poh-value"><span class="poh-status-pill" '
+        f'style="background:{rstyle["bg"]};color:{rstyle["fg"]};">'
+        f'<span class="poh-status-dot" style="background:{rstyle["dot"]};"></span>{sim_status}</span></div>'
+        f'<div class="poh-sub">Cycle {cycle_str} · updated {update_str} · next ~'
+        f'{next_tick_utc.strftime("%H:%M")} UTC</div>'
+        f'<div class="poh-sub">Data source: <b>Simulated</b> (no physical sensor exists yet) · '
+        f'{"✅ connected" if src_info["reachable"] else "❌ unreachable"}</div></div>'
+    )
+
     st.markdown(
         """
         <style>
@@ -207,7 +318,7 @@ def _render_plant_operations_header():
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<div class="poh-bar">{clock_html}{weather_html}{status_html}</div>',
+        f'<div class="poh-bar">{clock_html}{weather_html}{status_html}{runtime_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -1702,15 +1813,36 @@ with tab1:
     # flagging, equipment datasheets, novelty audit, etc.) is untouched.
     # tab1_integration.render_tab1_section() is a pure function of a
     # SharedPlantState snapshot — no independent calculation happens here or
-    # inside it (roadmap Part 13: render_tab1(shared_state) -> UI). The
-    # snapshot itself is cached (not a resource, a plain nested dict) so
-    # normal slider interactions on the sections above don't re-run the
-    # whole FE->GA->GC->HB->EU->SA->AI engine on every rerun.
-    # _tab1_integration_snapshot() itself is now defined at module level
-    # (above st.set_page_config) so the Plant Operations Header can share
-    # the exact same cache entry -- one engine run per cache window, not
-    # a second one just for the header.
+    # inside it (roadmap Part 13: render_tab1(shared_state) -> UI); it does
+    # not care whether that snapshot was just computed or just read back
+    # from Supabase (continuous runtime design, §4 — now implemented,
+    # see _tab1_integration_snapshot() at module level above).
     # ---------------------------------------------------------------------
+    _poh_status_col, _poh_refresh_col = st.columns([5, 1])
+    with _poh_status_col:
+        _src_info = _plant_state_source_info()
+        if _src_info["reachable"] and _src_info["rows_found"] > 0:
+            st.caption(
+                f"📡 Plant state as of **{_src_info['published_at']}** (cycle {_src_info['cycle']}), "
+                f"published by the continuous runtime — not this page load. Next tick ≈ the top of "
+                f"the next hour (`cron: 0 * * * *`)."
+            )
+        elif _src_info["reachable"]:
+            st.caption(
+                "📡 The continuous runtime hasn't published a cycle yet — showing an in-process "
+                "bootstrap snapshot (today's own prior behavior) until it does."
+            )
+        else:
+            st.caption(
+                f"📡 `plant_state_current` unreachable this page load ({_src_info['error']}) — "
+                f"showing an in-process bootstrap snapshot instead."
+            )
+    with _poh_refresh_col:
+        if st.button("🔄 Refresh now"):
+            _tab1_integration_snapshot.clear()
+            _plant_state_source_info.clear()
+            st.rerun()
+
     try:
         _integrated_snapshot = _tab1_integration_snapshot()
         tab1_integration.render_tab1_section(_integrated_snapshot)
