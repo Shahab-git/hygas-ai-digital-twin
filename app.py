@@ -49,6 +49,29 @@ st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
 # still only changes once an hour, so 5 minutes stays generous without
 # hammering Supabase on every viewer interaction.
 # =============================================================================
+def _restore_input_tuples(entry):
+    """A real gap found and fixed during live verification (not part of
+    the original design's own minimal code, which didn't anticipate this):
+    JSONB has no tuple type, so a (equipment_id, category) key inside an
+    entry's own source.inputs list round-trips through Supabase as a
+    2-element LIST, not a tuple. An in-process snapshot (build_live_
+    snapshot()) always had real tuples there. This is invisible almost
+    everywhere (list/tuple unpack identically), but
+    plant_status.resolve_provenance_chain() puts each input key into a
+    `set()` for cycle-safe traversal -- a list is unhashable, so any KPI
+    that walks a provenance chain (e.g. compute_tab1_kpis()'s own LOHC
+    missing_roots() check) crashes on a store-read snapshot with
+    "unhashable type: 'list'" the moment it's ever exercised. The outer
+    snapshot dict's own keys were already correctly rebuilt as tuples
+    (below); this restores the ONE other place tuples matter for
+    hashability -- confirmed, by direct grep, to be the only such
+    consumer anywhere in this project."""
+    inputs = entry.get("source", {}).get("inputs")
+    if inputs:
+        entry["source"]["inputs"] = [tuple(i) if isinstance(i, list) else i for i in inputs]
+    return entry
+
+
 @st.cache_data(ttl=300, show_spinner="Reading the latest published plant state...")
 def _tab1_integration_snapshot():
     try:
@@ -58,7 +81,7 @@ def _tab1_integration_snapshot():
     if not rows:
         snap, _state, _engine = tab1_integration.build_live_snapshot()
         return snap
-    return {(r["equipment_id"], r["category"]): r["entry"] for r in rows}
+    return {(r["equipment_id"], r["category"]): _restore_input_tuples(r["entry"]) for r in rows}
 
 
 @st.cache_data(ttl=300, show_spinner=False)
