@@ -16,7 +16,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration,
+    equipment_engineering_estimates, tab1_integration, plant_status as ps,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -1701,8 +1701,316 @@ def _render_equipment_items(ids, per_item_stats):
                 st.dataframe(_cat_df, use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Tab 3 Section 1 -- Interactive Plant Schematic (Feed Handling, FE-001..008).
+# Pure rendering: every box's "running"/"no data" badge and the moisture-
+# vapor branch's own rate are read directly from a live snapshot's real
+# registered FE-001..008 entries (see fe_feed_handling.py) -- nothing here
+# recomputes anything; ps.STATUS_MISSING is the ONLY signal ever used to
+# decide "no data", so a genuinely Missing value is never given a
+# fabricated operating state.
+# =============================================================================
+_FE_SCHEMATIC_ITEMS = [
+    # (equipment_id, display name (line-wrapped), category key, live engine key)
+    ("FE-001", "MSW Receiving\nHopper", "mech", ("FE-001", "Inventory")),
+    ("FE-002", "Magnetic & Eddy\nCurrent Separator", "mech", ("FE-002", "MassBalance")),
+    ("FE-003", "Weighing\nConveyor", "meas", ("FE-003", "Weighing")),
+    ("FE-004", "Shredder /\nSize Reducer", "mech", ("FE-004", "ShredderPower")),
+    ("FE-005", "Feed Dryer\n(Rotary/Belt)", "mech", ("FE-005", "MoistureBalance")),
+    ("FE-006", "Moisture\nAnalyser", "instr", ("FE-006", "MoistureReading")),
+    ("FE-007", "Feed Screw /\nRam Feeder", "mech", ("FE-007", "RamFeeder")),
+    ("FE-008", "Air-lock /\nRotary Valve", "safety", ("FE-008", "Airlock")),
+]
+
+# Matches the reference image's own convention: mechanical/conditioning
+# equipment = orange, measurement = blue, instrument/analyser = green,
+# pressure-boundary/safety-critical = red. FE-008 (the air-lock sealing
+# against the pressurized gasifier) is the one FE item that is genuinely
+# pressure-boundary/safety-critical; FE-003 weighs (measurement); FE-006
+# is the moisture instrument/analyser; every other FE item is mechanical
+# conditioning equipment.
+_FE_CATEGORY_COLORS = {
+    "mech":   {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "Mechanical / Conditioning"},
+    "meas":   {"fill": "#BFDBFE", "stroke": "#1D4ED8", "label": "Measurement"},
+    "instr":  {"fill": "#BBF7D0", "stroke": "#15803D", "label": "Instrument / Analyser"},
+    "safety": {"fill": "#FECACA", "stroke": "#B91C1C", "label": "Pressure-boundary / Safety-critical"},
+}
+
+
+def _fe_schematic_svg(snap):
+    box_w, box_h, gap, x0, y0 = 150, 92, 34, 110, 90
+    n = len(_FE_SCHEMATIC_ITEMS)
+    total_w = x0 + n * box_w + (n - 1) * gap + 230
+    total_h = 480
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs>'
+        '<marker id="fe_arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" '
+        'orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#374151"/></marker>'
+        '<marker id="fe_arrow_d" markerWidth="10" markerHeight="10" refX="8" refY="3" '
+        'orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#6B7280"/></marker>'
+        '</defs>',
+        f'<text x="{x0-14}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" '
+        f'text-anchor="end" fill="#374151">MSW IN</text>',
+        f'<line x1="{x0-90}" y1="{y0+box_h/2}" x2="{x0-6}" y2="{y0+box_h/2}" '
+        f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>',
+    ]
+
+    boxes = []
+    for i, (eq_id, name, cat, key) in enumerate(_FE_SCHEMATIC_ITEMS):
+        boxes.append((x0 + i * (box_w + gap), y0, eq_id, name, cat, key))
+
+    for i, (x, y, eq_id, name, cat, key) in enumerate(boxes):
+        colors = _FE_CATEGORY_COLORS[cat]
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        badge_color = "#9CA3AF" if is_missing else "#16A34A"
+        badge_text = "no data" if is_missing else "running"
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{box_w}" height="{box_h}" rx="8" '
+            f'fill="{colors["fill"]}" stroke="{colors["stroke"]}" stroke-width="2.5"/>'
+        )
+        parts.append(
+            f'<text x="{x+box_w/2}" y="{y+22}" text-anchor="middle" font-size="13" '
+            f'font-weight="bold" fill="#111827">{eq_id}</text>'
+        )
+        for li, line in enumerate(name.split("\n")):
+            parts.append(
+                f'<text x="{x+box_w/2}" y="{y+40+li*15}" text-anchor="middle" font-size="11" '
+                f'fill="#111827">{line}</text>'
+            )
+        parts.append(f'<circle cx="{x+14}" cy="{y+box_h-14}" r="5" fill="{badge_color}"/>')
+        parts.append(
+            f'<text x="{x+24}" y="{y+box_h-10}" font-size="10" fill="#374151">{badge_text}</text>'
+        )
+        if i < len(boxes) - 1:
+            xn = boxes[i + 1][0]
+            parts.append(
+                f'<line x1="{x+box_w}" y1="{y+box_h/2}" x2="{xn-6}" y2="{y+box_h/2}" '
+                f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>'
+            )
+
+    last_x = boxes[-1][0] + box_w
+    parts.append(
+        f'<line x1="{last_x}" y1="{y0+box_h/2}" x2="{last_x+64}" y2="{y0+box_h/2}" '
+        f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>'
+    )
+    parts.append(
+        f'<text x="{last_x+70}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" '
+        f'fill="#374151">TO GASIFIER</text>'
+    )
+    parts.append(f'<text x="{last_x+70}" y="{y0+box_h/2+10}" font-size="12" fill="#374151">(GA-001)</text>')
+
+    # --- Byproduct/reject streams: dashed, visually distinct from the main
+    # process flow, per the reference image's own convention. ---
+    fe002_x, fe002_y = boxes[1][0], boxes[1][1]
+    reject_entry = snap.get(("FE-002", "TrampMetalReject"))
+    reject_missing = reject_entry is None or reject_entry.get("status") == ps.STATUS_MISSING
+    parts.append(
+        f'<line x1="{fe002_x+box_w/2}" y1="{fe002_y+box_h}" x2="{fe002_x+box_w/2}" y2="{fe002_y+box_h+55}" '
+        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5" marker-end="url(#fe_arrow_d)"/>'
+    )
+    parts.append(
+        f'<text x="{fe002_x+box_w/2}" y="{fe002_y+box_h+72}" text-anchor="middle" font-size="11" '
+        f'fill="#4B5563">Metal reject</text>'
+    )
+    reject_color = "#B91C1C" if reject_missing else "#4B5563"
+    reject_label = "rate: no data (genuinely Missing)" if reject_missing else "rate: live"
+    parts.append(
+        f'<text x="{fe002_x+box_w/2}" y="{fe002_y+box_h+87}" text-anchor="middle" font-size="10" '
+        f'font-style="italic" fill="{reject_color}">{reject_label}</text>'
+    )
+
+    fe005_x, fe005_y = boxes[4][0], boxes[4][1]
+    moist_entry = snap.get(("FE-005", "MoistureBalance"))
+    if moist_entry is not None and moist_entry.get("status") != ps.STATUS_MISSING:
+        vapor_label = f"{moist_entry['value']['water_evaporated_kg_h']:.2f} kg/h (live)"
+    else:
+        vapor_label = "no data"
+    parts.append(
+        f'<line x1="{fe005_x+box_w/2}" y1="{fe005_y+box_h}" x2="{fe005_x+box_w/2}" y2="{fe005_y+box_h+55}" '
+        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5" marker-end="url(#fe_arrow_d)"/>'
+    )
+    parts.append(
+        f'<text x="{fe005_x+box_w/2}" y="{fe005_y+box_h+72}" text-anchor="middle" font-size="11" '
+        f'fill="#4B5563">Moisture vapor</text>'
+    )
+    parts.append(
+        f'<text x="{fe005_x+box_w/2}" y="{fe005_y+box_h+87}" text-anchor="middle" font-size="10" '
+        f'font-style="italic" fill="#4B5563">{vapor_label}</text>'
+    )
+
+    # --- Legend ---
+    legend_y = 330
+    line_h = 20
+    parts.append(f'<text x="{x0}" y="{legend_y}" font-size="12" font-weight="bold" fill="#111827">Legend:</text>')
+    for idx, colors in enumerate(_FE_CATEGORY_COLORS.values()):
+        ly = legend_y + 22 + idx * line_h
+        parts.append(
+            f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+            f'stroke="{colors["stroke"]}" stroke-width="2"/>'
+        )
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    status_y0 = legend_y + 22 + len(_FE_CATEGORY_COLORS) * line_h + 10
+    parts.append(f'<circle cx="{x0+9}" cy="{status_y0-4}" r="5" fill="#16A34A"/>')
+    parts.append(
+        f'<text x="{x0+26}" y="{status_y0}" font-size="11" fill="#111827">'
+        f'Live status: running (a real registered model output this cycle, not Missing)</text>'
+    )
+    parts.append(f'<circle cx="{x0+9}" cy="{status_y0+line_h-4}" r="5" fill="#9CA3AF"/>')
+    parts.append(
+        f'<text x="{x0+26}" y="{status_y0+line_h}" font-size="11" fill="#111827">'
+        f'Live status: no data (genuinely Missing in the live model -- never fabricated)</text>'
+    )
+    parts.append(
+        f'<line x1="{x0}" y1="{status_y0+2*line_h-4}" x2="{x0+30}" y2="{status_y0+2*line_h-4}" '
+        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5"/>'
+    )
+    parts.append(
+        f'<text x="{x0+36}" y="{status_y0+2*line_h}" font-size="11" fill="#111827">'
+        f'Reject / byproduct stream (dashed, distinct from the main process flow)</text>'
+    )
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# =============================================================================
+# Tab 3 Section 2 -- Live Simulation & Engineering Results (Feed Handling).
+# Every number below is read directly from an already-published
+# fe_feed_handling.py model entry in `snap` -- the SAME snapshot Tab 1's own
+# Integrated Plant Status section reads (via the shared, cached
+# _tab1_integration_snapshot()) -- nothing is recomputed here.
+# =============================================================================
+def _render_fe_live_results(snap):
+    _ts = snap[("FE-001", "Inventory")]["timestamp"]
+    st.caption(
+        f"Simulation snapshot as of {_ts} (this cycle's own real, traceable timestamp -- see the "
+        f"honest scoping note above for what 'snapshot' means today)."
+    )
+
+    e = snap[("FE-001", "Inventory")]
+    st.markdown("**FE-001 — MSW Receiving Hopper**")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Inventory level", f"{e['value']['level_t']:.3f} t")
+    c2.metric("Fraction full", f"{e['value']['fraction_full']*100:.1f}%")
+    c3.metric("Delivery rate", f"{e['value']['delivery_rate_kg_h']:.2f} kg/h")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    st.divider()
+
+    e_mb = snap[("FE-002", "MassBalance")]
+    e_tm = snap[("FE-002", "TrampMetalReject")]
+    st.markdown("**FE-002 — Magnetic & Eddy Current Separator**")
+    c1, c2 = st.columns(2)
+    c1.metric("Mass pass-through", f"{e_mb['value']['outlet_kg_h']:.2f} kg/h")
+    c1.caption(f"Status: {e_mb['status']} · {e_mb['confidence_note']}")
+    if e_tm["status"] == ps.STATUS_MISSING:
+        c2.metric("Tramp-metal reject rate", "Missing / Cannot Calculate")
+        c2.caption(f"Status: {e_tm['status']} · {e_tm['missing_reason']}")
+    else:
+        c2.metric("Tramp-metal reject rate", f"{e_tm['value']}")
+        c2.caption(f"Status: {e_tm['status']}")
+    st.divider()
+
+    e = snap[("FE-003", "Weighing")]
+    st.markdown("**FE-003 — Weighing Conveyor**")
+    c1, c2 = st.columns(2)
+    c1.metric("Weighed flow rate (as-received, wet)", f"{e['value']['confirmed_wet_feed_kg_h']:.2f} kg/h")
+    c2.metric("Clipped to confirmed [29,50] kg/h range?", "Yes" if e["value"]["clipped"] else "No")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    st.divider()
+
+    e = snap[("FE-004", "ShredderPower")]
+    st.markdown("**FE-004 — Shredder / Size Reducer**")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Throughput", f"{e['value']['outlet_kg_h']/1000.0:.4f} t/h")
+    c2.metric("Power draw", f"{e['value']['power_kw']:.3f} kW")
+    c3.metric("Specific energy", f"{e['value']['specific_energy_kwh_per_t']:.1f} kWh/t")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    st.divider()
+
+    e = snap[("FE-005", "MoistureBalance")]
+    st.markdown("**FE-005 — Feed Dryer (Rotary/Belt)**")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Dry solids out", f"{e['value']['dry_solids_kg_h']:.3f} kg/h")
+    c2.metric("Wet mass out", f"{e['value']['outlet_wet_kg_h']:.3f} kg/h")
+    c3.metric("Outlet moisture", f"{e['value']['outlet_moisture_fraction']*100:.2f}%")
+    c4.metric("Water evaporated", f"{e['value']['water_evaporated_kg_h']:.3f} kg/h")
+    st.caption(
+        f"Status: {e['status']} · **This dry-solids figure is the live input to GA-001's own "
+        f"dry_feed_rate_kg_h** (see ga001_gasifier_model.py's own module docstring). {e['confidence_note']}"
+    )
+    st.divider()
+
+    e = snap[("FE-006", "MoistureReading")]
+    st.markdown("**FE-006 — Moisture Analyser**")
+    st.metric("Moisture reading (virtual-sensor pass-through)", f"{e['value']['moisture_fraction']*100:.2f}%")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    st.divider()
+
+    e = snap[("FE-007", "RamFeeder")]
+    st.markdown("**FE-007 — Feed Screw / Ram Feeder**")
+    st.metric("Pass-through feed rate", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    st.divider()
+
+    e = snap[("FE-008", "Airlock")]
+    st.markdown("**FE-008 — Air-lock / Rotary Valve**")
+    st.metric("Pass-through feed rate → GA-001", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
+    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+
+
 with tab3:
-    st.header("Equipment Datasheets — Feed Handling (FE-001 through FE-008)")
+    st.header("Feed Handling — FE-001 through FE-008")
+    st.info(
+        "**Honest scoping note.** The continuous simulation runtime (the approved design in "
+        "`docs/continuous_runtime_design.md`) is **not yet implemented**. Section 2 below runs "
+        "the real Digital Twin engine (FE→GA→GC→HB→EU→SA→AI, the SAME run Tab 1's own Integrated "
+        "Plant Status section uses) on page-load/interaction — the same `st.cache_data` pattern "
+        "already used everywhere else in this app — **not** genuinely continuous background "
+        "updates. Every value shown is real and traces to a live model run just now; it just "
+        "isn't updating itself in the background yet.",
+        icon="ℹ️",
+    )
+
+    # -------------------------------------------------------------------
+    # Section 1 -- Interactive Plant Schematic
+    # -------------------------------------------------------------------
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "MSW IN → #01 Hopper → #02 Magnetic & Eddy Current Separator (metal reject branches off) "
+        "→ #03 Weighing Conveyor → #04 Shredder → #05 Feed Dryer (moisture vapor branches off) → "
+        "#06 Moisture Analyser → #07 Ram Feeder → #08 Air-lock/Rotary Valve → TO GASIFIER (GA-001). "
+        "Box color = equipment category (see legend). The green/gray dot on each box and both "
+        "branch streams' own labels are read from this cycle's real, live model status below — "
+        "never invented."
+    )
+    try:
+        _fe_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_fe_schematic_svg(_fe_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _fe_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_fe_schematic_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 2 -- Live Simulation & Engineering Results
+    # -------------------------------------------------------------------
+    st.subheader("Section 2 — Live Simulation & Engineering Results")
+    try:
+        _fe_snap_for_results = _tab1_integration_snapshot()
+        _render_fe_live_results(_fe_snap_for_results)
+    except Exception as _fe_results_exc:
+        st.error(f"Live simulation results failed to render: {_fe_results_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 3 -- Existing Data (unchanged content, repositioned only)
+    # -------------------------------------------------------------------
+    st.subheader("Section 3 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: FE-001 through FE-008 only, one of nine per-section tabs that "
         "together now cover the whole registry** (see the Gasification, Gas Cleaning, Sensors & "
