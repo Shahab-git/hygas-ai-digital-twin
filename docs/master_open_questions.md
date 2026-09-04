@@ -579,9 +579,12 @@ documents:
 - `python.equipment_data_requests.generate_request_list_markdown()` — all
   291 real "Missing Data — Required" category slots, by equipment section
   (FE 22, GA 33, GC 38, SA 46, HB 52, EU 33, AI 67).
-- `python.equipment_request_routing.generate_routed_request_markdown()` —
+- `python.equipment_request_routing.generate_routed_request_document()` —
   the 163 items specifically routed to "Vendor (equipment not yet
-  selected)," with the routing rationale stated per item.
+  selected)," with the routing rationale stated per item. (Corrected
+  2026-09-04: `generate_routed_request_markdown()`, the name previously
+  cited here, does not exist in the module — the same stale name already
+  caught and fixed in Section 3's own reference, missed here until now.)
 
 Representative categories, for context (not exhaustive): SA-001–012's own
 Measurements (accuracy, response time, calibration interval) for every
@@ -927,15 +930,17 @@ CLAUDE.md's own numbered list** — flagged here so they aren't lost:
 | **3 — Process/design engineer** | **4 individually detailed items** + 1 bucketed reference (77 registry-level gaps, **FULLY RECONCILED 2026-09-03: 26 stale/protocol-resolved (incl. GC-002/011/014's wiring fix and GC-015's own protocol resolution), 1 already-investigated-and-declined (GC-006), 4 duplicate-of-item-9, 46 Category B (AI) — zero remaining un-triaged A-candidates — see the update above**) |
 | **4 — Registry data-quality maintainer** | **32 items** already in `CLAUDE.md` (bucketed/referenced) + **5 newly found, not yet cross-posted** (listed in full above) |
 
-**Grand total of distinct open items tracked across the project:** 291
-registry-level category gaps (Sections 1's bucket + all of Section 2 +
-Section 3's bucket) + 11 high-value DOK-ING-specific findings from the
-digital twin build (Section 1, individually detailed; these are largely
-NOT part of the 291, since they're numeric/model-structural findings, not
-registry category gaps) + 4 design-engineer-specific findings (Section 3)
-+ 37 registry mislabels (Section 4) = **291 registry-category gaps + 15
-build-derived findings + 37 mislabels**, none double-counted between
-sections.
+**Grand total of distinct open items tracked across the project:** 284
+registry-level category gaps (Section 1's bucket [33, post-RFI] + Section
+2 [163] + Section 3's bucket [77] + Section 1's own 11 individually-
+detailed, high-value findings — the same 33+163+77+11=284 breakdown
+established in the CORRECTED note immediately below) + 4 design-engineer-
+specific findings (Section 3, individually detailed) + 37 registry
+mislabels (Section 4) = **284 registry-category gaps + 4 build-derived
+findings + 37 mislabels**, none double-counted between sections. (291 is
+the RAW, pre-RFI-answer count — kept as historical context in the
+CORRECTED note below; it is no longer this document's own headline
+figure, updated 2026-09-04.)
 
 **CORRECTED (2026-09-03):** the previous entry here claimed the 291-vs-284
 gap was a rendering bug — **that was wrong, re-investigated, and there is
@@ -954,11 +959,13 @@ default. Seven items (FE-001, GA-001 ×2, GA-005, GA-009, HB-013, EU-009)
 are counted in the stale 291 but correctly absent from the accurate 284,
 because DOK-ING's own real RFI answers already state their feed rate,
 feedstock form/turndown, ash content, storage inflow, or grid-connection
-status. **The 291 figure throughout the rest of this document (Sections
-1–4, the grand total above) should be read as "gaps ever identified in the
-raw registry," not "gaps DOK-ING has never addressed" — 284 is the more
-current number for that latter, more useful question.** No code change was
-needed; `python/equipment_request_routing.py` and
+status. **UPDATE (2026-09-04): the grand total above now states 284
+directly, not 291** — 291 remains correct only as "gaps ever identified in
+the raw registry" (a historical figure, e.g. the top-of-document
+description of the older backing lists' own full itemized size), never as
+"gaps DOK-ING has never addressed"; 284 is the current, accurate number
+for that latter, more useful question, and is now this document's own
+headline figure. No code change was needed; `python/equipment_request_routing.py` and
 `python/equipment_data_requests.py` are both correct and unmodified.
 
 *Generated 2026-09-02, from the project's actual current state — every
@@ -966,5 +973,6 @@ number above was produced by running or reading the live code and
 documents listed as each item's own source, not recalled from earlier
 conversation. Section 3's own bucket reconciled against the live model
 2026-09-03 (see above); the 291-vs-284 explanation corrected 2026-09-03
-(see immediately above); no other section's figures were re-verified in
-either pass.*
+(see immediately above), and the grand total's own headline figure updated
+from 291 to 284 to match it on 2026-09-04; no other section's figures were
+re-verified in either pass.*
