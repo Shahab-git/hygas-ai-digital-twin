@@ -5,6 +5,12 @@ Deploy at share.streamlit.io by pointing it at this repo. Uses the
 verified Python physics modules in /python — the same models that were
 cross-checked against the MATLAB/Simulink blocks during development.
 """
+import json
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
 import altair as alt
 import numpy as np
 import pandas as pd
@@ -21,6 +27,192 @@ from python import (
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
+
+# =============================================================================
+# _tab1_integration_snapshot() -- moved to module level (was previously
+# defined inside `with tab1:`) so the new Plant Operations Header below can
+# share the EXACT SAME cached snapshot Tab 1 and Tab 3 already use -- one
+# real engine run per cache window, never a second one just for the header.
+# Behavior is byte-for-byte unchanged from before this move.
+# =============================================================================
+@st.cache_data(ttl=60, show_spinner="Running the Digital Twin engine (FE -> GA -> GC -> HB -> EU -> SA -> AI)...")
+def _tab1_integration_snapshot(n_cycles=5):
+    _snap, _state, _engine = tab1_integration.build_live_snapshot(n_cycles=n_cycles)
+    return _snap
+
+
+# =============================================================================
+# Plant Operations Header -- persistent bar above all tabs. Deliberately
+# scoped to ONLY what's genuinely real and available today (task's own
+# explicit instruction): a real clock/date, real Zagreb weather (Open-Meteo,
+# no key needed), and the real overall plant status already computed by
+# tab1_integration.compute_tab1_kpis() (the SAME value Tab 1's own
+# "Integrated Plant Status" section already shows -- not re-derived here).
+# Deliberately EXCLUDED, because none of these can be honestly populated
+# without the continuous runtime (docs/continuous_runtime_design.md, not
+# implemented): simulation RUNNING/PAUSED/OFFLINE/ERROR status, cycle
+# number, last-update time, data freshness/age, next-update ETA, data
+# source (Virtual/Simulated/Real/Hybrid), runtime connection status. Left
+# out entirely, not stubbed, not placeholder-filled.
+# =============================================================================
+_ZAGREB_TZ = ZoneInfo("Europe/Zagreb")
+
+# WMO weather-code -> (icon, short label), the standard set Open-Meteo's own
+# `weather_code` field uses (https://open-meteo.com/en/docs -- WMO Weather
+# interpretation codes). Only the codes actually reachable for a real
+# surface-weather `current` query are mapped; anything else falls back to a
+# generic icon rather than a fabricated-sounding label.
+_WMO_WEATHER_ICONS = {
+    0: ("☀️", "Clear sky"), 1: ("🌤️", "Mainly clear"), 2: ("⛅", "Partly cloudy"),
+    3: ("☁️", "Overcast"), 45: ("🌫️", "Fog"), 48: ("🌫️", "Depositing rime fog"),
+    51: ("🌦️", "Light drizzle"), 53: ("🌦️", "Drizzle"), 55: ("🌦️", "Dense drizzle"),
+    56: ("🌦️", "Freezing drizzle"), 57: ("🌦️", "Freezing drizzle"),
+    61: ("🌧️", "Slight rain"), 63: ("🌧️", "Rain"), 65: ("🌧️", "Heavy rain"),
+    66: ("🌧️", "Freezing rain"), 67: ("🌧️", "Freezing rain"),
+    71: ("🌨️", "Slight snow"), 73: ("🌨️", "Snow"), 75: ("🌨️", "Heavy snow"),
+    77: ("🌨️", "Snow grains"),
+    80: ("🌦️", "Rain showers"), 81: ("🌦️", "Rain showers"), 82: ("⛈️", "Violent rain showers"),
+    85: ("🌨️", "Snow showers"), 86: ("🌨️", "Snow showers"),
+    95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm, hail"), 99: ("⛈️", "Thunderstorm, hail"),
+}
+
+
+@st.cache_data(ttl=1200, show_spinner=False)
+def _fetch_zagreb_weather():
+    """Real Open-Meteo current-conditions fetch for Zagreb (45.815N,
+    15.9819E) -- no API key needed, standard library `urllib` only (no new
+    dependency). Cached 20 minutes (task's own 15-30 min guidance): weather
+    doesn't need per-second freshness, and this respects Open-Meteo's free
+    tier responsibly rather than hitting it on every rerun. Returns a dict
+    with an "error" key on any failure -- the header then omits the weather
+    section entirely rather than showing a stale-without-saying-so or
+    fabricated value."""
+    url = (
+        "https://api.open-meteo.com/v1/forecast?latitude=45.815&longitude=15.9819"
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        current = data["current"]
+        return {
+            "temperature_c": current["temperature_2m"],
+            "humidity_pct": current["relative_humidity_2m"],
+            "wind_kmh": current["wind_speed_10m"],
+            "weather_code": current["weather_code"],
+            "observation_time_utc": current["time"],
+            "fetched_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+    except (urllib.error.URLError, TimeoutError, KeyError, ValueError, json.JSONDecodeError) as exc:
+        return {"error": str(exc)}
+
+
+_PLANT_STATUS_STYLE = {
+    "RUNNING":  {"bg": "#DCFCE7", "fg": "#15803D", "dot": "#16A34A"},
+    "STARTING": {"bg": "#FEF3C7", "fg": "#B45309", "dot": "#D97706"},
+    "FAULT":    {"bg": "#FEE2E2", "fg": "#B91C1C", "dot": "#DC2626"},
+    "MISSING":  {"bg": "#F3F4F6", "fg": "#6B7280", "dot": "#9CA3AF"},
+}
+
+
+def _render_plant_operations_header():
+    # --- 1. Zagreb clock/date -- real current time, real IANA timezone
+    # (Europe/Zagreb, correctly DST-aware via zoneinfo -- no hardcoded
+    # UTC+1/+2 guess). NOTE, stated honestly, not implied otherwise: this
+    # updates on page interaction/rerun -- Streamlit's own real execution
+    # model (the whole script re-runs top-to-bottom on every widget
+    # interaction or cache expiry) -- NOT a true independent per-second
+    # client-side tick. A viewer who never interacts and whose cache never
+    # expires will keep seeing the time as of the last actual rerun.
+    now_zagreb = datetime.now(_ZAGREB_TZ)
+    clock_html = (
+        f'<div class="poh-block"><div class="poh-label">ZAGREB</div>'
+        f'<div class="poh-value">{now_zagreb.strftime("%H:%M:%S")}</div>'
+        f'<div class="poh-sub">{now_zagreb.strftime("%a, %d %b %Y")} · {now_zagreb.tzname()}</div></div>'
+    )
+
+    # --- 2. Zagreb weather -- real Open-Meteo fetch, cached 20 min.
+    weather = _fetch_zagreb_weather()
+    if "error" in weather:
+        weather_html = (
+            '<div class="poh-block"><div class="poh-label">WEATHER</div>'
+            '<div class="poh-sub" style="color:#B91C1C;">Unavailable this cycle '
+            '(Open-Meteo fetch failed) — not shown rather than guessed.</div></div>'
+        )
+    else:
+        icon, cond = _WMO_WEATHER_ICONS.get(weather["weather_code"], ("🌡️", "—"))
+        fetched_local = (
+            datetime.fromisoformat(weather["fetched_at_utc"]).astimezone(_ZAGREB_TZ).strftime("%H:%M")
+        )
+        weather_html = (
+            f'<div class="poh-block"><div class="poh-label">WEATHER — ZAGREB</div>'
+            f'<div class="poh-value">{icon} {weather["temperature_c"]:.0f}°C</div>'
+            f'<div class="poh-sub">{cond} · 💧{weather["humidity_pct"]:.0f}% · 💨{weather["wind_kmh"]:.0f} km/h '
+            f'&nbsp;·&nbsp; fetched {fetched_local} (refreshes ~20 min)</div></div>'
+        )
+
+    # --- 3. Overall plant operating status -- the SAME real, live value
+    # tab1_integration.compute_tab1_kpis() already computes for Tab 1's own
+    # "Integrated Plant Status" section (AI-004's Tier-1 equipment states,
+    # GA-001/GC-013/HB-006/HB-013/EU-009) -- read here, not re-derived.
+    try:
+        snap = _tab1_integration_snapshot()
+        kpis = tab1_integration.compute_tab1_kpis(snap)
+        status_value = kpis["overall_plant_status"]["value"]
+        alarms = kpis["active_alarms"]["value"]
+        style = _PLANT_STATUS_STYLE.get(status_value, _PLANT_STATUS_STYLE["MISSING"])
+        first_alarm = alarms[0] if alarms else None
+        status_html = (
+            f'<div class="poh-block"><div class="poh-label">PLANT STATUS</div>'
+            f'<div class="poh-value"><span class="poh-status-pill" '
+            f'style="background:{style["bg"]};color:{style["fg"]};">'
+            f'<span class="poh-status-dot" style="background:{style["dot"]};"></span>{status_value}</span></div>'
+            + (f'<div class="poh-sub" title="{first_alarm}">{first_alarm[:52]}'
+               f'{"…" if len(first_alarm) > 52 else ""}</div>' if first_alarm else
+               '<div class="poh-sub">No active alarms this cycle</div>')
+            + '</div>'
+        )
+    except Exception as exc:
+        status_html = (
+            '<div class="poh-block"><div class="poh-label">PLANT STATUS</div>'
+            f'<div class="poh-sub" style="color:#B91C1C;">Unavailable: {exc}</div></div>'
+        )
+
+    st.markdown(
+        """
+        <style>
+        .poh-bar {
+            display:flex; align-items:center; gap:0; background:#0F172A;
+            border-radius:8px; padding:10px 22px; margin-bottom:10px;
+            border:1px solid #1E293B; flex-wrap:wrap;
+        }
+        .poh-block { flex:1 1 200px; padding:0 20px; border-left:1px solid #334155; }
+        .poh-block:first-child { border-left:none; padding-left:0; }
+        .poh-label {
+            font-size:0.62rem; font-weight:700; letter-spacing:0.06em; color:#94A3B8;
+            font-family:sans-serif;
+        }
+        .poh-value {
+            font-size:1.15rem; font-weight:700; color:#F1F5F9; font-family:monospace;
+            margin-top:1px;
+        }
+        .poh-sub { font-size:0.68rem; color:#CBD5E1; margin-top:2px; font-family:sans-serif; }
+        .poh-status-pill {
+            display:inline-flex; align-items:center; gap:6px; padding:2px 12px;
+            border-radius:12px; font-size:0.95rem; font-weight:700; font-family:sans-serif;
+        }
+        .poh-status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<div class="poh-bar">{clock_html}{weather_html}{status_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+_render_plant_operations_header()
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
     ["Digital Twin", "Design Basis", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
@@ -1514,12 +1706,11 @@ with tab1:
     # snapshot itself is cached (not a resource, a plain nested dict) so
     # normal slider interactions on the sections above don't re-run the
     # whole FE->GA->GC->HB->EU->SA->AI engine on every rerun.
+    # _tab1_integration_snapshot() itself is now defined at module level
+    # (above st.set_page_config) so the Plant Operations Header can share
+    # the exact same cache entry -- one engine run per cache window, not
+    # a second one just for the header.
     # ---------------------------------------------------------------------
-    @st.cache_data(ttl=60, show_spinner="Running the Digital Twin engine (FE -> GA -> GC -> HB -> EU -> SA -> AI)...")
-    def _tab1_integration_snapshot(n_cycles=5):
-        _snap, _state, _engine = tab1_integration.build_live_snapshot(n_cycles=n_cycles)
-        return _snap
-
     try:
         _integrated_snapshot = _tab1_integration_snapshot()
         tab1_integration.render_tab1_section(_integrated_snapshot)
