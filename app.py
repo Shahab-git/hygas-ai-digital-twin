@@ -2278,26 +2278,189 @@ def _fe_edge_flow_values(snap):
     ]
 
 
+# A distinct SILHOUETTE per equipment item -- task requirement 1. Every
+# shape still fills the SAME (x, y, box_w, box_h) layout slot every arrow/
+# badge/text position already assumes; only what's DRAWN inside that slot
+# changes. Colors/fills are passed in from the SAME _FE_CATEGORY_COLORS
+# this file already uses -- shapes change, category meaning does not.
+_FE_ITEM_SHAPE = {
+    "FE-001": "hopper", "FE-002": "separator", "FE-003": "conveyor",
+    "FE-004": "shredder", "FE-005": "dryer", "FE-006": "instrument",
+    "FE-007": "ram", "FE-008": "valve",
+}
+
+
+def _fe_equipment_shape_svg(kind, x, y, w, h, fill_url, stroke):
+    """One equipment silhouette's own SVG fragment -- fill_url is a
+    `url(#grad-...)` gradient reference (task requirement 3: soft depth
+    instead of a flat fill), stroke is the SAME category stroke color
+    already used everywhere else. Reserves the bottom ~30px of the (x, y,
+    w, h) slot for the existing status badge (unchanged position/size),
+    so every shape's own drawn extent stops around y+h-30."""
+    common = f'fill="{fill_url}" stroke="{stroke}" stroke-width="2.5" filter="url(#fe-shadow)"'
+    bottom = y + h - 30  # every shape stops here, clear of the badge below it
+    parts = []
+    if kind == "hopper":
+        top_w, bot_w = w * 0.92, w * 0.32
+        top_y = y + 6
+        xl_t, xr_t = x + (w - top_w) / 2, x + (w + top_w) / 2
+        xl_b, xr_b = x + (w - bot_w) / 2, x + (w + bot_w) / 2
+        neck_y = bottom - 10
+        pts = f"{xl_t:.1f},{top_y:.1f} {xr_t:.1f},{top_y:.1f} {xr_b:.1f},{neck_y:.1f} {xl_b:.1f},{neck_y:.1f}"
+        parts.append(f'<polygon points="{pts}" {common}/>')
+        spout_w = bot_w * 0.5
+        parts.append(
+            f'<rect x="{x+(w-spout_w)/2:.1f}" y="{neck_y:.1f}" width="{spout_w:.1f}" '
+            f'height="{bottom-neck_y:.1f}" fill="{fill_url}" stroke="{stroke}" stroke-width="2"/>'
+        )
+    elif kind == "separator":
+        parts.append(f'<rect x="{x+8:.1f}" y="{y+8:.1f}" width="{w-16:.1f}" height="{bottom-y-8:.1f}" rx="5" {common}/>')
+        mx1, my1 = x + w * 0.28, y + 16
+        mx2, my2 = x + w * 0.72, bottom - 8
+        parts.append(
+            f'<line x1="{mx1:.1f}" y1="{my1:.1f}" x2="{mx2:.1f}" y2="{my2:.1f}" stroke="{stroke}" '
+            f'stroke-width="1.6" stroke-dasharray="3,3" opacity="0.75"/>'
+        )
+    elif kind == "conveyor":
+        band_h = (bottom - y) * 0.5
+        by = y + (bottom - y - band_h) / 2
+        parts.append(
+            f'<rect x="{x+4:.1f}" y="{by:.1f}" width="{w-8:.1f}" height="{band_h:.1f}" '
+            f'rx="{band_h/2:.1f}" {common}/>'
+        )
+        for i in range(1, 7):
+            tx = x + 10 + (w - 20) * i / 7
+            parts.append(
+                f'<line x1="{tx:.1f}" y1="{by+3:.1f}" x2="{tx-7:.1f}" y2="{by+band_h-3:.1f}" '
+                f'stroke="{stroke}" stroke-width="1.6" opacity="0.55"/>'
+            )
+    elif kind == "shredder":
+        top_y, teeth = y + 12, 5
+        pts = [f"{x+8:.1f},{bottom:.1f}"]
+        for i in range(teeth + 1):
+            tx = x + 8 + (w - 16) * i / teeth
+            ty = top_y if i % 2 == 0 else top_y + 13
+            pts.append(f"{tx:.1f},{ty:.1f}")
+        pts.append(f"{x+w-8:.1f},{bottom:.1f}")
+        parts.append(f'<polygon points="{" ".join(pts)}" {common}/>')
+    elif kind == "dryer":
+        cx, cy = x + w / 2, y + (bottom - y) / 2
+        rx, ry = w / 2 - 10, (bottom - y) / 2 - 2
+        rot = f"rotate(-7 {cx:.1f} {cy:.1f})"
+        parts.append(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" transform="{rot}" {common}/>')
+        for frac in (0.35, 0.65):
+            ly = cy - ry + 2 * ry * frac
+            parts.append(
+                f'<line x1="{cx-rx*0.85:.1f}" y1="{ly:.1f}" x2="{cx+rx*0.85:.1f}" y2="{ly:.1f}" '
+                f'stroke="{stroke}" stroke-width="1.3" opacity="0.5" transform="{rot}"/>'
+            )
+    elif kind == "instrument":
+        parts.append(f'<rect x="{x+18:.1f}" y="{y+8:.1f}" width="{w-36:.1f}" height="{bottom-y-8:.1f}" rx="9" {common}/>')
+        cx, cy = x + w / 2, y + 8 + (bottom - y - 8) / 2
+        r = min(w - 36, bottom - y - 8) / 2 * 0.55
+        parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="none" stroke="{stroke}" stroke-width="1.6" opacity="0.75"/>')
+        parts.append(
+            f'<line x1="{cx:.1f}" y1="{cy:.1f}" x2="{cx+r*0.7:.1f}" y2="{cy-r*0.55:.1f}" '
+            f'stroke="{stroke}" stroke-width="1.6" opacity="0.85"/>'
+        )
+    elif kind == "ram":
+        band_h = (bottom - y) * 0.42
+        by = y + (bottom - y - band_h) / 2
+        parts.append(f'<rect x="{x+6:.1f}" y="{by:.1f}" width="{w-34:.1f}" height="{band_h:.1f}" {common}/>')
+        tri = f"{x+w-34:.1f},{by-7:.1f} {x+w-8:.1f},{by+band_h/2:.1f} {x+w-34:.1f},{by+band_h+7:.1f}"
+        parts.append(f'<polygon points="{tri}" fill="{fill_url}" stroke="{stroke}" stroke-width="2"/>')
+    elif kind == "valve":
+        cx, cy = x + w / 2, y + (bottom - y) / 2
+        r = min(w, bottom - y) / 2 - 8
+        parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" {common}/>')
+        for dx_r, dy_r in ((1.0, 0.0), (0.5, 0.87), (-0.5, 0.87)):
+            parts.append(
+                f'<line x1="{cx-r*0.75*dx_r:.1f}" y1="{cy-r*0.75*dy_r:.1f}" '
+                f'x2="{cx+r*0.75*dx_r:.1f}" y2="{cy+r*0.75*dy_r:.1f}" '
+                f'stroke="{stroke}" stroke-width="1.6" opacity="0.75"/>'
+            )
+    else:
+        parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bottom-y:.1f}" rx="8" {common}/>')
+    return "".join(parts)
+
+
+def _fe_bin_icon_svg(cx, top_y):
+    """A small open-top bin/container -- task requirement 2's terminal
+    icon for the metal-reject branch, so it reads as a real process
+    endpoint, not an open-ended arrow."""
+    w_top, w_bot, h = 22, 15, 15
+    xl_t, xr_t = cx - w_top / 2, cx + w_top / 2
+    xl_b, xr_b = cx - w_bot / 2, cx + w_bot / 2
+    y_bot = top_y + h
+    pts = f"{xl_t:.1f},{top_y:.1f} {xr_t:.1f},{top_y:.1f} {xr_b:.1f},{y_bot:.1f} {xl_b:.1f},{y_bot:.1f}"
+    return (
+        f'<polygon points="{pts}" fill="#E5E7EB" stroke="#6B7280" stroke-width="1.6"/>'
+        f'<line x1="{xl_t-2:.1f}" y1="{top_y:.1f}" x2="{xr_t+2:.1f}" y2="{top_y:.1f}" '
+        f'stroke="#6B7280" stroke-width="2"/>'
+    )
+
+
+def _fe_vent_icon_svg(cx, top_y):
+    """A small stack + wavy vapor lines -- task requirement 2's terminal
+    icon for the moisture-vapor branch."""
+    stack_w, stack_h = 10, 14
+    parts = [
+        f'<rect x="{cx-stack_w/2:.1f}" y="{top_y+7:.1f}" width="{stack_w}" height="{stack_h}" '
+        f'fill="#E5E7EB" stroke="#6B7280" stroke-width="1.6"/>'
+    ]
+    for i, dy in enumerate((0, -7)):
+        yy = top_y + dy
+        parts.append(
+            f'<path d="M {cx-6:.1f} {yy:.1f} Q {cx:.1f} {yy-6:.1f} {cx+6:.1f} {yy:.1f}" '
+            f'fill="none" stroke="#9CA3AF" stroke-width="1.5" opacity="{0.85-i*0.25}"/>'
+        )
+    return "".join(parts)
+
+
+def _fe_flow_stroke_width(value, max_flow):
+    """Task requirement 5: maps an EXISTING real kg/h value (already
+    computed and already shown as the arrow's own text label) to a line
+    thickness -- purely a presentation scale, nothing new computed. Scaled
+    relative to the largest real flow actually present THIS cycle
+    (max_flow), never an invented absolute scale. A Missing value (None)
+    draws thin, not zero -- the arrow itself still shows the flow exists
+    structurally, only its real rate is unknown."""
+    if value is None or max_flow <= 0:
+        return 1.4
+    return round(1.4 + (value / max_flow) * 4.2, 2)
+
+
 def _fe_schematic_svg(snap):
     box_w, box_h, gap, x0, y0 = 150, 92, 34, 110, 90
     n = len(_FE_SCHEMATIC_ITEMS)
     total_w = x0 + n * box_w + (n - 1) * gap + 230
-    total_h = 510
+    total_h = 300
     edge_values = _fe_edge_flow_values(snap)
+    max_flow = max([v for v in edge_values if v is not None], default=1.0)
     parts = [
         f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
         f'style="width:100%;height:auto;font-family:sans-serif;">',
         f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
         '<defs>'
         '<marker id="fe_arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" '
-        'orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#374151"/></marker>'
+        'orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L0,6 L9,3 z" fill="#374151"/></marker>'
         '<marker id="fe_arrow_d" markerWidth="10" markerHeight="10" refX="8" refY="3" '
-        'orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#6B7280"/></marker>'
-        '</defs>',
+        'orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L0,6 L9,3 z" fill="#6B7280"/></marker>'
+        '<filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/>'
+            f'</linearGradient>'
+            for key, c in _FE_CATEGORY_COLORS.items()
+        )
+        + '</defs>',
         f'<text x="{x0-14}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" '
         f'text-anchor="end" fill="#374151">MSW IN</text>',
         f'<line x1="{x0-90}" y1="{y0+box_h/2}" x2="{x0-6}" y2="{y0+box_h/2}" '
-        f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>',
+        f'stroke="#374151" stroke-width="2.5" marker-end="url(#fe_arrow)"/>',
     ]
 
     boxes = []
@@ -2310,9 +2473,9 @@ def _fe_schematic_svg(snap):
         is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
         badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
         badge_text = "No data" if is_missing else "Running"
+        shape_kind = _FE_ITEM_SHAPE[eq_id]
         parts.append(
-            f'<rect x="{x}" y="{y}" width="{box_w}" height="{box_h}" rx="8" '
-            f'fill="{colors["fill"]}" stroke="{colors["stroke"]}" stroke-width="2.5"/>'
+            _fe_equipment_shape_svg(shape_kind, x, y, box_w, box_h, f'url(#grad-{cat})', colors["stroke"])
         )
         parts.append(
             f'<text x="{x+box_w/2}" y="{y+22}" text-anchor="middle" font-size="13" '
@@ -2325,7 +2488,7 @@ def _fe_schematic_svg(snap):
             )
         # Status badge -- a real pill, same green/gray pair as the shared
         # data-type legend's own "missing" tag, for one consistent visual
-        # language (task requirement 4/7).
+        # language -- position/size UNCHANGED from before this upgrade.
         badge_w = 62
         parts.append(
             f'<rect x="{x+box_w/2-badge_w/2}" y="{y+box_h-24}" width="{badge_w}" height="16" rx="8" '
@@ -2337,11 +2500,12 @@ def _fe_schematic_svg(snap):
         )
         if i < len(boxes) - 1:
             xn = boxes[i + 1][0]
+            ev = edge_values[i]
+            sw = _fe_flow_stroke_width(ev, max_flow)
             parts.append(
                 f'<line x1="{x+box_w}" y1="{y+box_h/2}" x2="{xn-6}" y2="{y+box_h/2}" '
-                f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>'
+                f'stroke="#374151" stroke-width="{sw}" marker-end="url(#fe_arrow)"/>'
             )
-            ev = edge_values[i]
             ev_label = f"{ev:.2f} kg/h" if ev is not None else "no data"
             parts.append(
                 f'<rect x="{x+box_w+2}" y="{y+box_h/2-19}" width="{gap-4}" height="13" fill="#FFFFFF"/>'
@@ -2352,11 +2516,12 @@ def _fe_schematic_svg(snap):
             )
 
     last_x = boxes[-1][0] + box_w
+    lead_out_ev = edge_values[7]
+    lead_out_sw = _fe_flow_stroke_width(lead_out_ev, max_flow)
     parts.append(
         f'<line x1="{last_x}" y1="{y0+box_h/2}" x2="{last_x+64}" y2="{y0+box_h/2}" '
-        f'stroke="#374151" stroke-width="2" marker-end="url(#fe_arrow)"/>'
+        f'stroke="#374151" stroke-width="{lead_out_sw}" marker-end="url(#fe_arrow)"/>'
     )
-    lead_out_ev = edge_values[7]
     lead_out_label = f"{lead_out_ev:.2f} kg/h" if lead_out_ev is not None else "no data"
     parts.append(
         f'<text x="{last_x+32}" y="{y0+box_h/2-9}" text-anchor="middle" font-size="9" '
@@ -2369,22 +2534,25 @@ def _fe_schematic_svg(snap):
     parts.append(f'<text x="{last_x+70}" y="{y0+box_h/2+10}" font-size="12" fill="#374151">(GA-001)</text>')
 
     # --- Byproduct/reject streams: dashed, visually distinct from the main
-    # process flow, per the reference image's own convention. ---
+    # process flow, each ending in a real terminal icon (task requirement
+    # 2) instead of an open-ended arrow. ---
     fe002_x, fe002_y = boxes[1][0], boxes[1][1]
+    branch_end_y = fe002_y + box_h + 40
     reject_entry = snap.get(("FE-002", "TrampMetalReject"))
     reject_missing = reject_entry is None or reject_entry.get("status") == ps.STATUS_MISSING
     parts.append(
-        f'<line x1="{fe002_x+box_w/2}" y1="{fe002_y+box_h}" x2="{fe002_x+box_w/2}" y2="{fe002_y+box_h+55}" '
-        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5" marker-end="url(#fe_arrow_d)"/>'
+        f'<line x1="{fe002_x+box_w/2}" y1="{fe002_y+box_h}" x2="{fe002_x+box_w/2}" y2="{branch_end_y}" '
+        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5"/>'
     )
+    parts.append(_fe_bin_icon_svg(fe002_x + box_w / 2, branch_end_y))
     parts.append(
-        f'<text x="{fe002_x+box_w/2}" y="{fe002_y+box_h+72}" text-anchor="middle" font-size="11" '
+        f'<text x="{fe002_x+box_w/2}" y="{branch_end_y+32}" text-anchor="middle" font-size="11" '
         f'fill="#4B5563">Metal reject</text>'
     )
     reject_color = "#B91C1C" if reject_missing else "#4B5563"
     reject_label = "rate: no data (genuinely Missing)" if reject_missing else "rate: live"
     parts.append(
-        f'<text x="{fe002_x+box_w/2}" y="{fe002_y+box_h+87}" text-anchor="middle" font-size="10" '
+        f'<text x="{fe002_x+box_w/2}" y="{branch_end_y+47}" text-anchor="middle" font-size="10" '
         f'font-style="italic" fill="{reject_color}">{reject_label}</text>'
     )
 
@@ -2395,30 +2563,45 @@ def _fe_schematic_svg(snap):
     else:
         vapor_label = "no data"
     parts.append(
-        f'<line x1="{fe005_x+box_w/2}" y1="{fe005_y+box_h}" x2="{fe005_x+box_w/2}" y2="{fe005_y+box_h+55}" '
-        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5" marker-end="url(#fe_arrow_d)"/>'
+        f'<line x1="{fe005_x+box_w/2}" y1="{fe005_y+box_h}" x2="{fe005_x+box_w/2}" y2="{branch_end_y}" '
+        f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,5"/>'
     )
+    parts.append(_fe_vent_icon_svg(fe005_x + box_w / 2, branch_end_y))
     parts.append(
-        f'<text x="{fe005_x+box_w/2}" y="{fe005_y+box_h+72}" text-anchor="middle" font-size="11" '
+        f'<text x="{fe005_x+box_w/2}" y="{branch_end_y+32}" text-anchor="middle" font-size="11" '
         f'fill="#4B5563">Moisture vapor</text>'
     )
     parts.append(
-        f'<text x="{fe005_x+box_w/2}" y="{fe005_y+box_h+87}" text-anchor="middle" font-size="10" '
+        f'<text x="{fe005_x+box_w/2}" y="{branch_end_y+47}" text-anchor="middle" font-size="10" '
         f'font-style="italic" fill="#4B5563">{vapor_label}</text>'
     )
 
-    # --- Legend ---
-    legend_y = 330
-    line_h = 20
-    parts.append(f'<text x="{x0}" y="{legend_y}" font-size="12" font-weight="bold" fill="#111827">Legend:</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _fe_schematic_legend_svg():
+    """The schematic's own legend/notes, split OUT of the main diagram
+    (task requirement 4) into its own small, static SVG -- rendered inside
+    a collapsed st.expander by the caller, so the main schematic itself
+    gets the full vertical space by default. Content is identical to what
+    was always inline here, just relocated."""
+    x0, line_h = 10, 20
+    total_w, total_h = 620, 190
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
     for idx, colors in enumerate(_FE_CATEGORY_COLORS.values()):
-        ly = legend_y + 22 + idx * line_h
+        ly = 16 + 22 + idx * line_h
         parts.append(
             f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
             f'stroke="{colors["stroke"]}" stroke-width="2"/>'
         )
         parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
-    status_y0 = legend_y + 22 + len(_FE_CATEGORY_COLORS) * line_h + 10
+    status_y0 = 16 + 22 + len(_FE_CATEGORY_COLORS) * line_h + 10
     parts.append(f'<rect x="{x0}" y="{status_y0-15}" width="46" height="14" rx="7" fill="#DCFCE7"/>')
     parts.append(
         f'<text x="{x0+23}" y="{status_y0-5}" text-anchor="middle" font-size="8.5" font-weight="600" '
@@ -2443,7 +2626,7 @@ def _fe_schematic_svg(snap):
     )
     parts.append(
         f'<text x="{x0+36}" y="{status_y0+2*line_h}" font-size="11" fill="#111827">'
-        f'Reject / byproduct stream (dashed, distinct from the main process flow)</text>'
+        f'Reject / byproduct stream (dashed, ending in a real terminal icon -- bin/vent)</text>'
     )
     parts.append(
         f'<text x="{x0}" y="{status_y0+3*line_h}" font-size="11" font-weight="600" fill="#1D4ED8">'
@@ -2451,9 +2634,8 @@ def _fe_schematic_svg(snap):
     )
     parts.append(
         f'<text x="{x0+56}" y="{status_y0+3*line_h}" font-size="11" fill="#111827">'
-        f'Live mass flow rate between stages (blue labels on each arrow)</text>'
+        f'Live mass flow rate between stages -- also scales each arrow\'s own line weight</text>'
     )
-
     parts.append("</svg>")
     return "".join(parts)
 
@@ -3022,15 +3204,18 @@ with tab3:
         "MSW IN → #01 Hopper → #02 Magnetic & Eddy Current Separator (metal reject branches off) "
         "→ #03 Weighing Conveyor → #04 Shredder → #05 Feed Dryer (moisture vapor branches off) → "
         "#06 Moisture Analyser → #07 Ram Feeder → #08 Air-lock/Rotary Valve → TO GASIFIER (GA-001). "
-        "Box color = equipment category (see legend). The green/gray dot on each box and both "
-        "branch streams' own labels are read from this cycle's real, live model status below — "
-        "never invented."
+        "Shape + box color = equipment type/category (see Legend & notes below). The Running/No "
+        "data badge on each box, both branch streams' own labels, and each arrow's own thickness "
+        "are all read from this cycle's real, live model status — never invented."
     )
     try:
         _fe_snap_for_schematic = _tab1_integration_snapshot()
         st.markdown(_fe_schematic_svg(_fe_snap_for_schematic), unsafe_allow_html=True)
     except Exception as _fe_schematic_exc:
         st.error(f"Plant schematic failed to render: {_fe_schematic_exc}")
+
+    with st.expander("Legend & notes"):
+        st.markdown(_fe_schematic_legend_svg(), unsafe_allow_html=True)
 
     st.divider()
 
