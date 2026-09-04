@@ -166,7 +166,10 @@ what remains open is a narrower, more specific question.
   wasn't connected), not the DOK-ING data gap itself: O/N are still not
   confirmed at all, and Carbon/Hydrogen are still only open floors, not a
   precise point split, so GA-001's status stays `Assumed`/`Literature`,
-  deliberately NOT upgraded to `DOKINGDesignTarget`.
+  deliberately NOT upgraded to `DOKINGDesignTarget`. (A later repo-wide
+  sweep for any other stale "RFI #2 ... Unknown" text found exactly one
+  remaining hit, in `docs/digital_twin_engineering_plan.md`'s own Section
+  8.3 table — corrected the same way. No other stale reference remained.)
 - **Source:** `data/dokink_rfi_answers.md` (RFI #2); `python/design_
   basis.py` (`feedstock_composition`, `get_feedstock_composition_ranges()`);
   `python/ga001_gasifier_model.py` (`_input_feedstock_composition()`,
@@ -182,10 +185,19 @@ what remains open is a narrower, more specific question.
   range above. Is a precise point value available, or should the 15–20
   MJ/kg range itself be adopted as the calculation basis (reporting an
   efficiency RANGE rather than a point value)?*
-- **Why it matters:** This is the single missing piece needed to compute
-  Tab 1's own "overall efficiency" KPI (useful output energy / feedstock
-  input energy) — currently the only Tab 1 KPI blocked purely by a
-  numeric gap rather than a genuine model limitation.
+- **Why it matters:** This determines how tight Tab 1's own "overall
+  efficiency" KPI can be. It is no longer blocked — `overall_efficiency`
+  is genuinely `Calculated`, live, as an H₂-only conversion-efficiency
+  range (≈52.0–69.4% at this session's baseline load), computed directly
+  from HB-012's live H₂ output energy divided by FE-005's live dry feed
+  rate × DOK-ING's confirmed 15–20 MJ/kg dry LHV range (see the UPDATE
+  below for the full derivation). What remains open is narrower than
+  before: (1) whether DOK-ING can supply a precise point LHV to collapse
+  this range to a single number, and (2) separately, whether the KPI
+  itself should be extended from H₂-only to a full-plant figure
+  (electrical + thermal, not just H₂) — genuinely calculable now that the
+  H₂/syngas double-counting bug documented below is fixed, but not yet
+  implemented.
 - **UPDATE (feedstock-composition wiring task, 2026-09-03): option (b)
   above is now implemented — resolved, not left stale.** Tab 1's
   `overall_efficiency` KPI is no longer unconditionally
