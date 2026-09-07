@@ -3381,18 +3381,43 @@ def _fe_mass_balance_waterfall_svg(mass_in, mass_to_ga001, water_evaporated, cli
 
 
 # =============================================================================
-# Tab 3 Section 5 -- Mass & Energy Balance. Every figure below is read
-# directly from an already-published FE-00x entry -- no new physics, no
-# independent recalculation. Reports the real closure result honestly,
-# whichever way it comes out (see the function body for the actual check).
-# The waterfall visual (_fe_mass_balance_waterfall_svg) draws the SAME
-# numbers computed below, nothing of its own.
+# Tab 3 Section 5 -- Mass Balance & Energy Notes. The mass balance below is
+# read directly from an already-published FE-00x entry -- no new physics,
+# no independent recalculation -- and reports the real closure result
+# honestly, whichever way it comes out (see the function body for the
+# actual check). The waterfall visual (_fe_mass_balance_waterfall_svg)
+# draws the SAME numbers computed below, nothing of its own.
+#
+# AUDIT FINDING (this task): fe_feed_handling.py has NO function anywhere
+# that computes a real energy value beyond FE-004's already-shown power_kw
+# -- confirmed by direct search, not assumed. There is no evaporation/heat-
+# duty figure for FE-005 anywhere in this project; equipment_engineering_
+# estimates.py's own FE-005 Performance Indicators entry states this
+# explicitly ("Explicitly NOT calculated from FE-005's own specific duty --
+# no stated evaporation/heat-duty figure exists in this item's own data to
+# calculate from"). So this section is NOT a real "Mass & Energy Balance"
+# (renamed accordingly) -- there is no confirmed thermal-input/heat-source
+# figure for the dryer to close a balance against. What IS honestly real:
+# FE-004's own live electrical power draw (already computed elsewhere,
+# just surfaced here too), and a real, clearly-labeled THEORETICAL MINIMUM
+# thermal duty for FE-005 -- the real, live water_evaporated_kg_h figure
+# multiplied by the standard latent heat of vaporization of water (a real,
+# citable physical constant, not equipment-specific data DOK-ING would need
+# to confirm). Both are shown as "Energy Notes", explicitly NOT a balance.
 # =============================================================================
+_FE005_LATENT_HEAT_KJ_PER_KG = 2257.0  # standard latent heat of vaporization
+# of water at 100 degC / 1 atm (NIST / standard steam-table reference value)
+# -- a physical constant of water itself, unrelated to any DOK-ING-specific
+# equipment data, so it needs no vendor confirmation the way an equipment
+# performance figure would.
+
+
 def _render_fe_mass_energy_balance(snap):
     fe001 = snap[("FE-001", "Inventory")]["value"]
     fe002 = snap[("FE-002", "MassBalance")]["value"]
     fe002_reject = snap[("FE-002", "TrampMetalReject")]
     fe003 = snap[("FE-003", "Weighing")]["value"]
+    fe004 = snap[("FE-004", "ShredderPower")]["value"]
     fe005 = snap[("FE-005", "MoistureBalance")]["value"]
     fe008 = snap[("FE-008", "Airlock")]["value"]
 
@@ -3423,6 +3448,20 @@ def _render_fe_mass_energy_balance(snap):
     c3.metric("Moisture vented (FE-005)", f"{water_evaporated_kg_h:.3f} kg/h")
     c4.metric("Clip loss (FE-003 range)", f"{clip_loss_kg_h:.3f} kg/h")
 
+    # -- Requirement 4: "changed since last checked" on the mass balance's
+    # OWN real numbers -- the SAME _fe_status_changed_flag() Sections 2-4
+    # already use, applied here to the delivery rate, the vented amount,
+    # and the residual gap. --
+    changed_in, note_in = _fe_status_changed_flag("tab3_s5_changed__mass_in", mass_in_kg_h)
+    changed_vented, note_vented = _fe_status_changed_flag("tab3_s5_changed__vented", water_evaporated_kg_h)
+    changed_residual, note_residual = _fe_status_changed_flag("tab3_s5_changed__residual", gap_kg_h)
+    st.markdown(
+        "Changed since last checked — Delivery rate: " + _fe_changed_pill_html(changed_in, note_in) +
+        " &nbsp; Vented amount: " + _fe_changed_pill_html(changed_vented, note_vented) +
+        " &nbsp; Residual: " + _fe_changed_pill_html(changed_residual, note_residual),
+        unsafe_allow_html=True,
+    )
+
     if abs(gap_kg_h) < 1e-6:
         st.success(
             f"**Balance CLOSES**, to floating-point precision: {mass_in_kg_h:.3f} kg/h in = "
@@ -3450,6 +3489,42 @@ def _render_fe_mass_energy_balance(snap):
         "ever confirmed, this balance would need to subtract it, and would then show a small, real, "
         "non-zero gap here instead of the exact closure above.",
         icon="⚠️",
+    )
+
+    st.divider()
+    st.markdown("**Energy Notes** — explicitly NOT a full energy balance (see why, below).")
+
+    live_power_kw = fe004["power_kw"]
+    theoretical_evap_kw = water_evaporated_kg_h * _FE005_LATENT_HEAT_KJ_PER_KG / 3600.0
+    e1, e2 = st.columns(2)
+    e1.metric("FE-004 electrical power draw (live)", f"{live_power_kw:.3f} kW")
+    e1.caption("Real, live -- the same power_kw already shown in Sections 2 and 4, surfaced here too.")
+    e2.metric("FE-005 theoretical minimum evaporation duty", f"{theoretical_evap_kw:.3f} kW")
+    e2.caption(
+        f"{water_evaporated_kg_h:.3f} kg/h × {_FE005_LATENT_HEAT_KJ_PER_KG:.0f} kJ/kg (standard latent "
+        f"heat of vaporization of water at 100°C/1 atm, NIST/steam-table reference) ÷ 3600 s/h. A real "
+        f"calculation on a real, live mass figure -- but a THEORETICAL MINIMUM, not the dryer's actual "
+        f"required thermal input (see caveat below)."
+    )
+
+    st.info(
+        "**Why no full energy balance is shown, stated explicitly:** `fe_feed_handling.py` has no "
+        "function anywhere that computes a real energy value beyond FE-004's own power_kw (checked "
+        "directly, not assumed) -- there is no evaporation/heat-duty figure for FE-005 anywhere in "
+        "this project. `equipment_engineering_estimates.py`'s own FE-005 Performance Indicators entry "
+        "says so explicitly: only a generic 50-75% thermal-efficiency **range** exists for this "
+        "equipment class, \"Explicitly NOT calculated from FE-005's own specific duty -- no stated "
+        "evaporation/heat-duty figure exists in this item's own data to calculate from.\" FE-004's "
+        "electrical draw and FE-005's theoretical thermal duty above are two different energy types "
+        "on two unconnected equipment items -- this model has no real link between them (FE-004's "
+        "motor power does not supply FE-005's dryer heat), and no confirmed heat-source or required-"
+        "input-power figure exists for the dryer to close a balance against. The 'theoretical minimum' "
+        "duty above is real math on a real live value, but it is NOT the dryer's actual required "
+        "input -- the real figure would be higher, due to real, unmodeled sensible heating (of the "
+        "feed solids, residual moisture, and vapor) and real dryer thermal losses/inefficiency, for "
+        "which no confirmed data exists in this project. Once a real thermal-input or dryer-efficiency "
+        "figure is ever confirmed for FE-005, a genuine closing energy balance could be built here.",
+        icon="ℹ️",
     )
 
 
@@ -3639,14 +3714,16 @@ with tab3:
     st.divider()
 
     # -------------------------------------------------------------------
-    # Section 5 -- Mass & Energy Balance
+    # Section 5 -- Mass Balance & Energy Notes (renamed -- audited this
+    # task: no real, closable energy balance exists, see the function's
+    # own module comment and the on-page "Energy Notes" caveat for why).
     # -------------------------------------------------------------------
-    st.subheader("Section 5 — Mass & Energy Balance")
+    st.subheader("Section 5 — Mass Balance & Energy Notes")
     try:
         _fe_snap_for_balance = _tab1_integration_snapshot()
         _render_fe_mass_energy_balance(_fe_snap_for_balance)
     except Exception as _fe_balance_exc:
-        st.error(f"Mass & energy balance failed to render: {_fe_balance_exc}")
+        st.error(f"Mass balance / energy notes failed to render: {_fe_balance_exc}")
 
     st.divider()
 
