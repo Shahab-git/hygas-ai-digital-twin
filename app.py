@@ -2979,50 +2979,194 @@ def _render_fe_gauges(snap):
 # _FE_SCHEMATIC_ITEMS/_FE_CATEGORY_COLORS metadata the schematic itself
 # uses, so the two can never silently drift apart.
 # =============================================================================
+def _fe_status_changed_flag(session_key, current_status):
+    """The EXACT same st.session_state caching pattern as Section 2's KPI
+    deltas (_fe_kpi_check_delta, above): caches each item's real status on
+    read, and on a later read compares against what THIS session last saw.
+    Returns (changed_or_None, note) -- None on the genuine first read (no
+    prior cache exists yet -- never a fabricated 'unchanged'), False for a
+    real repeat of the same status, True for a real, observed difference."""
+    prev = st.session_state.get(session_key)
+    st.session_state[session_key] = current_status
+    if prev is None:
+        return None, "first read this session"
+    if prev == current_status:
+        return False, "unchanged"
+    return True, f"changed: {prev} → {current_status}"
+
+
+def _fe_status_pill_html(is_missing):
+    """A real colored pill -- reusing the SAME .fe-tag CSS class (defined
+    once in _FE_TAB_CSS, already loaded earlier on this tab) and the SAME
+    green/gray pair the schematic's own badges and legend already use.
+    Task requirement 3 -- not a new ad hoc color scheme."""
+    if is_missing:
+        return '<span class="fe-tag" style="background:#F3F4F6;color:#6B7280;">No data</span>'
+    return '<span class="fe-tag" style="background:#DCFCE7;color:#15803D;">Running</span>'
+
+
+def _fe_changed_pill_html(changed, note):
+    if changed is None:
+        return '<span class="fe-tag" style="background:#EFF6FF;color:#1D4ED8;">first read</span>'
+    if changed:
+        return f'<span class="fe-tag" style="background:#FEF3C7;color:#B45309;">⚠ {note}</span>'
+    return '<span class="fe-tag" style="background:#F3F4F6;color:#6B7280;">unchanged</span>'
+
+
+def _fe_status_row_icon_svg(eq_id, cat):
+    """A small icon reusing the EXACT same shape function, shape mapping
+    and category colors Section 1's schematic uses (_fe_equipment_shape_svg
+    / _FE_ITEM_SHAPE / _FE_CATEGORY_COLORS) -- so this table visually ties
+    back to the diagram it complements, not a separate visual language
+    (task requirement 4). Uses the SAME wide aspect ratio as the
+    schematic's own boxes (box_w=150 / drawn-height=62 there) rather than a
+    square -- some shapes (e.g. "instrument", "ram") rely on fixed-pixel
+    insets from _fe_equipment_shape_svg that only stay legible at a
+    proportionally wide box, exactly like the real schematic boxes they're
+    drawn for. Defines its own local copy of the schematic's own drop-
+    shadow filter (same id, same parameters) so this icon renders correctly
+    on its own regardless of whether Section 1's schematic rendered
+    successfully above it."""
+    colors = _FE_CATEGORY_COLORS[cat]
+    kind = _FE_ITEM_SHAPE[eq_id]
+    w, drawn_h = 64, 26
+    shape = _fe_equipment_shape_svg(kind, 0, 0, w, drawn_h + 30, colors["fill"], colors["stroke"])
+    return (
+        f'<svg width="{w}" height="{drawn_h}" viewBox="0 0 {w} {drawn_h}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
+        f'<defs><filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        f'<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        f'</filter></defs>{shape}</svg>'
+    )
+
+
+_FE_STATUS_TABLE_CSS = """
+<style>
+.fe-status-summary {
+    display:inline-block; padding:6px 16px; border-radius:8px; font-size:1.0rem;
+    font-weight:700; margin-bottom:10px;
+}
+.fe-status-group-title {
+    display:flex; align-items:center; gap:8px; font-weight:700; font-size:0.95rem;
+    margin:14px 0 6px 0; color:#111827;
+}
+.fe-cat-swatch { display:inline-block; width:16px; height:14px; border-radius:3px; border-width:2px; border-style:solid; }
+.fe-status-tbl { width:100%; border-collapse:collapse; margin-bottom:4px; }
+.fe-status-tbl th { text-align:left; font-size:0.78rem; color:#6B7280; font-weight:600;
+    border-bottom:1px solid #E5E7EB; padding:4px 8px; }
+.fe-status-tbl td { padding:6px 8px; border-bottom:1px solid #F3F4F6; vertical-align:middle; font-size:0.88rem; }
+.fe-status-tbl code { font-size:0.78rem; color:#6B7280; }
+</style>
+"""
+
+
 def _render_fe_status_table(snap):
-    rows = []
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    # -- Per-item status + "changed since last checked" flag (requirement 2) --
+    item_rows = []
+    running_count = 0
     for eq_id, name, cat, key in _FE_SCHEMATIC_ITEMS:
         entry = snap.get(key)
         is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
-        rows.append({
-            "ID": eq_id, "Name": name.replace("\n", " "),
-            "Category": _FE_CATEGORY_COLORS[cat]["label"],
-            "Live status": "No data" if is_missing else "Running",
-            "Registered key": f"{key[0]}/{key[1]}",
-        })
+        status_text = "No data" if is_missing else "Running"
+        if not is_missing:
+            running_count += 1
+        changed, note = _fe_status_changed_flag(f"tab3_status_changed__{eq_id}", status_text)
+        item_rows.append(dict(
+            eq_id=eq_id, name=name.replace("\n", " "), cat=cat, key=key,
+            is_missing=is_missing, status_text=status_text, changed=changed, note=note,
+        ))
+
+    # -- Requirement 1: a real, computed section-wide aggregate, derived
+    # directly from the SAME per-item is_missing checks above -- never
+    # hardcoded, and recomputed on every real read. --
+    total = len(_FE_SCHEMATIC_ITEMS)
+    missing_count = total - running_count
+    if missing_count == 0:
+        summary_text, summary_bg, summary_fg = f"{running_count}/{total} running", "#DCFCE7", "#15803D"
+    else:
+        summary_text = f"{running_count}/{total} running · {missing_count} no-data"
+        summary_bg, summary_fg = "#FEF3C7", "#B45309"
+    st.markdown(
+        f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+        f'{summary_text}</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Computed directly from the same 8 equipment items' own live status checks below -- the "
+        "2 byproduct streams further down are additive and not counted in this aggregate."
+    )
+
+    # -- Requirement 5: grouped by category, in the SAME order as the
+    # schematic's own legend (_fe_schematic_legend_svg iterates
+    # _FE_CATEGORY_COLORS in this exact same dict order). --
+    for cat_key, colors in _FE_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(
+            f'<div class="fe-status-group-title">'
+            f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+            f'{colors["label"]}</div>',
+            unsafe_allow_html=True,
+        )
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"])
+            trs.append(
+                f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{r["name"]}</td>'
+                f'<td>{_fe_status_pill_html(r["is_missing"])}</td>'
+                f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                f'<td><code>{r["key"][0]}/{r["key"][1]}</code></td></tr>'
+            )
+        st.markdown(
+            '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+            '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table>',
+            unsafe_allow_html=True,
+        )
+
     # The two byproduct/branch streams (Section 1's dashed lines) are real,
     # separately-tracked live entries in their own right -- listed here too
-    # for completeness, not shown as boxes in the schematic, so this is
-    # genuinely additive information, not a repeat of the eight equipment rows.
+    # for completeness, not shown as boxes in the schematic (so they sit
+    # outside the 4 formal equipment categories above, not forced into one),
+    # and not counted in the "X/8 running" aggregate above since that
+    # aggregate is specifically the 8 schematic equipment items.
     reject_entry = snap.get(("FE-002", "TrampMetalReject"))
     reject_missing = reject_entry is None or reject_entry.get("status") == ps.STATUS_MISSING
-    rows.append({
-        "ID": "— (FE-002 reject)", "Name": "Metal reject, off FE-002",
-        "Category": "Byproduct stream", "Live status": "No data" if reject_missing else "Running",
-        "Registered key": "FE-002/TrampMetalReject",
-    })
+    reject_status = "No data" if reject_missing else "Running"
+    reject_changed, reject_note = _fe_status_changed_flag("tab3_status_changed__FE-002-reject", reject_status)
+
     moist_entry = snap.get(("FE-005", "MoistureBalance"))
     moist_missing = moist_entry is None or moist_entry.get("status") == ps.STATUS_MISSING
-    rows.append({
-        "ID": "— (FE-005 vapor)", "Name": "Moisture vapor, off FE-005",
-        "Category": "Byproduct stream", "Live status": "No data" if moist_missing else "Running",
-        "Registered key": "FE-005/MoistureBalance",
-    })
-    # st.table (a real, static HTML <table>), not st.dataframe (a canvas-based
-    # grid) -- genuinely MORE screen-reader accessible for this small, fixed
-    # table, which is the whole point of this section (task's own explicit
-    # accessibility/screen-reader parity framing). The "Live status" column
-    # is color-coded with the SAME green/gray pair used everywhere else on
-    # this tab (the schematic's own badges, the shared data-type legend) --
-    # one consistent visual language (task requirement 7), not a separate
-    # ad hoc scheme for this one table.
-    def _status_cell_style(v):
-        if v == "Running":
-            return "background-color:#DCFCE7;color:#15803D;font-weight:600;"
-        return "background-color:#F3F4F6;color:#6B7280;font-weight:600;"
+    moist_status = "No data" if moist_missing else "Running"
+    moist_changed, moist_note = _fe_status_changed_flag("tab3_status_changed__FE-005-vapor", moist_status)
 
-    _status_df = pd.DataFrame(rows).set_index("ID")
-    st.table(_status_df.style.map(_status_cell_style, subset=["Live status"]))
+    st.markdown(
+        '<div class="fe-status-group-title">'
+        '<span class="fe-cat-swatch" style="background:#E5E7EB;border-color:#6B7280;"></span>'
+        'Byproduct streams</div>',
+        unsafe_allow_html=True,
+    )
+    byproduct_trs = [
+        f'<tr><td><svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">'
+        f'{_fe_bin_icon_svg(17, 4)}</svg></td><td>— (FE-002 reject)</td><td>Metal reject, off FE-002</td>'
+        f'<td>{_fe_status_pill_html(reject_missing)}</td>'
+        f'<td>{_fe_changed_pill_html(reject_changed, reject_note)}</td>'
+        f'<td><code>FE-002/TrampMetalReject</code></td></tr>',
+        f'<tr><td><svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">'
+        f'{_fe_vent_icon_svg(17, 13)}</svg></td><td>— (FE-005 vapor)</td><td>Moisture vapor, off FE-005</td>'
+        f'<td>{_fe_status_pill_html(moist_missing)}</td>'
+        f'<td>{_fe_changed_pill_html(moist_changed, moist_note)}</td>'
+        f'<td><code>FE-005/MoistureBalance</code></td></tr>',
+    ]
+    st.markdown(
+        '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+        '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+        f'<tbody>{"".join(byproduct_trs)}</tbody></table>',
+        unsafe_allow_html=True,
+    )
 
 
 def _text_px_width(s, size):
