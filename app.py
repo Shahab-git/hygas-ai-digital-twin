@@ -2729,13 +2729,87 @@ def _render_fe_live_results(snap):
 # Tab 3 Section 2 -- Live KPIs. Five of the numbers already shown in full
 # detail in Section 4 (_render_fe_live_results, above), condensed into
 # prominent metric cards -- no new values, no recomputation.
+#
+# Two capabilities added here are genuinely new, and only honest because
+# plant_state_current now advances via the real, live GitHub Actions hourly
+# cycle (docs/continuous_runtime_design.md):
+#   - "Since you last checked" deltas: each card's raw value AND its own
+#     entry's real published_at are cached in st.session_state on every
+#     read. A later read (a real browser reload/rerun -- never a fabricated
+#     timer) compares against that cache. If published_at hasn't moved, the
+#     underlying data hasn't either, and we say so plainly instead of
+#     implying movement; only when published_at genuinely differs do we show
+#     a real delta, computed from two real persisted cycles. Before the
+#     continuous runtime existed, every "read" was really the SAME in-process
+#     engine run re-rendering -- a delta between two of those would have been
+#     meaningless noise, not a real comparison.
+#   - Per-card freshness tied to each entry's own real timestamp/cycle,
+#     rather than a generic "live" badge -- meaningful now that different
+#     reads can genuinely land on different real cycles.
+# Deliberately NOT added: sparklines/trend lines. Section 3 below already
+# has the honestly-scoped 5-cycle warm-up trend charts; per-key history
+# doesn't otherwise exist (digital_twin_cycle_log tracks only 4 headline
+# numbers, none FE-specific, and isn't even created in Supabase yet) --
+# a sparkline here would mean duplicating Section 3 or fabricating history.
 # =============================================================================
+def _fe_kpi_check_delta(session_key, raw_value, published_at, cycle):
+    """Real session-to-session comparison, never a fabricated animation.
+    Returns (delta_or_None, note_str). `delta` is only ever non-None when
+    `published_at` genuinely differs from the prior cached read -- i.e. a
+    real new cycle was published by the continuous runtime between the two
+    reads."""
+    prev = st.session_state.get(session_key)
+    st.session_state[session_key] = {"value": raw_value, "published_at": published_at, "cycle": cycle}
+    if prev is None:
+        return None, "first read this session"
+    if prev["published_at"] == published_at:
+        return None, f"no new cycle yet (still cycle {cycle}) — checked again, nothing has moved"
+    return raw_value - prev["value"], f"cycle {prev['cycle']} → {cycle}"
+
+
+def _fe_kpi_freshness_caption(entry):
+    """Per-card freshness tied to THIS entry's own real published timestamp
+    -- not a generic badge. Same age-computation pattern as the Plant
+    Operations Header's own Simulation Runtime block."""
+    try:
+        published_dt = datetime.fromisoformat(entry["timestamp"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_min = (datetime.now(timezone.utc) - published_dt).total_seconds() / 60.0
+        age_str = f"{age_min:.0f} min ago" if age_min < 120 else f"{age_min/60.0:.1f}h ago"
+        return f"Cycle {entry['cycle']} · published {entry['timestamp']} · {age_str}"
+    except Exception:
+        return f"Cycle {entry.get('cycle', '—')}"
+
+
+def _fe_inline_bar_svg(frac, color, target_frac=None, width=176, height=10):
+    """A compact horizontal fill-bar for a real value against a real,
+    already-Confirmed bound -- `frac` and `target_frac` are ONLY ever a
+    real live value divided by a real Confirmed figure (never an invented
+    scale), same discipline as _svg_gauge above."""
+    frac_c = max(0.0, min(1.0, frac))
+    fill_w = frac_c * width
+    parts = [f'<svg width="{width}" height="{height + 6}" viewBox="0 0 {width} {height + 6}" '
+             f'xmlns="http://www.w3.org/2000/svg">']
+    parts.append(f'<rect x="0" y="2" width="{width}" height="{height}" rx="{height/2:.1f}" fill="#E5E7EB"/>')
+    parts.append(f'<rect x="0" y="2" width="{fill_w:.1f}" height="{height}" rx="{height/2:.1f}" fill="{color}"/>')
+    if target_frac is not None:
+        tx = max(0.0, min(1.0, target_frac)) * width
+        parts.append(f'<line x1="{tx:.1f}" y1="0" x2="{tx:.1f}" y2="{height + 4}" stroke="#111827" stroke-width="2"/>')
+    parts.append('</svg>')
+    return "".join(parts)
+
+
 def _render_fe_live_kpis(snap):
-    fe001 = snap[("FE-001", "Inventory")]["value"]
-    fe003 = snap[("FE-003", "Weighing")]["value"]
-    fe004 = snap[("FE-004", "ShredderPower")]["value"]
-    fe005 = snap[("FE-005", "MoistureBalance")]["value"]
-    fe006 = snap[("FE-006", "MoistureReading")]["value"]
+    fe001_entry = snap[("FE-001", "Inventory")]
+    fe003_entry = snap[("FE-003", "Weighing")]
+    fe004_entry = snap[("FE-004", "ShredderPower")]
+    fe005_entry = snap[("FE-005", "MoistureBalance")]
+    fe006_entry = snap[("FE-006", "MoistureReading")]
+    fe001, fe003, fe004, fe005, fe006 = (
+        fe001_entry["value"], fe003_entry["value"], fe004_entry["value"],
+        fe005_entry["value"], fe006_entry["value"],
+    )
 
     # FE-004's OWN Confirmed nameplate figures (fe_feed_handling.FE004_MOTOR_KW
     # / FE004_THROUGHPUT_T_H), read directly, not re-typed as a bare "150" --
@@ -2744,34 +2818,95 @@ def _render_fe_live_kpis(snap):
     live_kwh_per_t = fe004["specific_energy_kwh_per_t"]
     matches_nameplate = abs(live_kwh_per_t - nameplate_kwh_per_t) < 1e-9
 
+    # Same real Confirmed inlet/target moisture fractions Section 1's own
+    # gauge uses (fe.FE005_INLET_MOISTURE_FRACTION / FE005_OUTLET_MOISTURE_
+    # FRACTION) -- no new numbers. FE-006's own moisture_fraction reads
+    # straight through from FE-005's outlet_moisture_fraction (confirmed in
+    # fe_feed_handling.py's fe006_moisture_reading()), so the two are always
+    # exactly the same real number -- the bar below is genuinely the same
+    # value the card's headline % already shows.
+    inlet_frac = fe.FE005_INLET_MOISTURE_FRACTION
+    target_moist_frac = fe.FE005_OUTLET_MOISTURE_FRACTION
+    moist_bar_frac = (fe005["outlet_moisture_fraction"] / inlet_frac) if inlet_frac > 0 else 0.0
+    moist_target_pos = (target_moist_frac / inlet_frac) if inlet_frac > 0 else 0.0
+
+    # kpi dict fields: label, icon, raw value (for delta math), display
+    # text, session key, source entry (for freshness), optional caption,
+    # optional inline comparison bar (svg html or None), delta formatter.
     kpis = [
-        ("Feed rate (as-received)", f"{fe003['confirmed_wet_feed_kg_h']:.2f} kg/h", None),
-        ("Dry solids → GA-001", f"{fe005['dry_solids_kg_h']:.2f} kg/h", None),
-        ("Dried output moisture", f"{fe006['moisture_fraction']*100:.2f}%", None),
-        (
-            "FE-004 specific energy", f"{live_kwh_per_t:.1f} kWh/t",
-            (
+        dict(
+            label="Feed rate (as-received)", icon="⚖️",
+            raw=fe003["confirmed_wet_feed_kg_h"], text=f"{fe003['confirmed_wet_feed_kg_h']:.2f} kg/h",
+            skey="tab3_kpi_delta__feed_rate", entry=fe003_entry, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.2f} kg/h",
+        ),
+        dict(
+            label="Dry solids → GA-001", icon="📦",
+            raw=fe005["dry_solids_kg_h"], text=f"{fe005['dry_solids_kg_h']:.2f} kg/h",
+            skey="tab3_kpi_delta__dry_solids", entry=fe005_entry, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.2f} kg/h",
+        ),
+        dict(
+            label="Dried output moisture", icon="💧",
+            raw=fe006["moisture_fraction"], text=f"{fe006['moisture_fraction']*100:.2f}%",
+            skey="tab3_kpi_delta__moisture", entry=fe006_entry,
+            compare=(
+                f"Bar: 0–{inlet_frac*100:.0f}% (Confirmed inlet) with a marker at the Confirmed "
+                f"target <{target_moist_frac*100:.0f}% -- same values as Section 1's gauge."
+            ),
+            bar=_fe_inline_bar_svg(moist_bar_frac, "#15803D", target_frac=moist_target_pos),
+            delta_fmt=lambda d: f"{d*100:+.2f} pp",
+        ),
+        dict(
+            label="FE-004 specific energy", icon="⚡",
+            raw=live_kwh_per_t, text=f"{live_kwh_per_t:.1f} kWh/t",
+            skey="tab3_kpi_delta__specific_energy", entry=fe004_entry,
+            compare=(
                 f"{'✓ matches' if matches_nameplate else '△ differs from'} Confirmed nameplate "
                 f"({fe.FE004_MOTOR_KW:.0f} kW / {fe.FE004_THROUGHPUT_T_H:.1f} t/h = "
                 f"{nameplate_kwh_per_t:.1f} kWh/t)"
             ),
+            bar=_fe_inline_bar_svg(
+                (live_kwh_per_t / nameplate_kwh_per_t) if nameplate_kwh_per_t > 0 else 0.0,
+                "#1D4ED8", target_frac=1.0,
+            ),
+            delta_fmt=lambda d: f"{d:+.1f} kWh/t",
         ),
-        ("Hopper level", f"{fe001['fraction_full']*100:.1f}%", None),
+        dict(
+            label="Hopper level", icon="🪣",
+            raw=fe001["fraction_full"], text=f"{fe001['fraction_full']*100:.1f}%",
+            skey="tab3_kpi_delta__hopper_level", entry=fe001_entry,
+            compare=f"vs Confirmed live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t -- same fraction as Section 1's gauge.",
+            bar=_fe_inline_bar_svg(fe001["fraction_full"], "#C2680B"),
+            delta_fmt=lambda d: f"{d*100:+.1f} pp",
+        ),
     ]
+
     cols = st.columns(5)
-    for col, (label, value, compare) in zip(cols, kpis):
+    for col, kpi in zip(cols, kpis):
         with col.container(border=True):
             st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
             # `help` guarantees the full real value stays reachable (a
             # hover tooltip) even if this card's own on-screen text is
             # ever visually truncated at a narrow width -- no value is
             # ever actually lost, just possibly ellipsized on-screen.
-            st.metric(label, value, help=f"{label}: {value}")
-            if compare:
-                st.caption(compare)
+            st.metric(
+                f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
+                delta_color="normal" if delta is not None else "off",
+                help=f"{kpi['label']}: {kpi['text']} ({note})",
+            )
+            if kpi["bar"]:
+                st.markdown(kpi["bar"], unsafe_allow_html=True)
+            if kpi["compare"]:
+                st.caption(kpi["compare"])
+            st.caption(f"🕒 {_fe_kpi_freshness_caption(kpi['entry'])}")
     st.caption(
         "The 5 headline numbers from Section 4's own detailed breakdown below — same live values, "
-        "condensed, nothing new computed here."
+        "condensed, nothing new computed here. Deltas compare this real read against the last real "
+        "read cached in this browser session -- only ever populated from two genuinely different "
+        "published cycles, never simulated."
     )
 
 
