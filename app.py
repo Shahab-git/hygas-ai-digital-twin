@@ -2647,6 +2647,47 @@ def _fe_schematic_legend_svg():
 # Integrated Plant Status section reads (via the shared, cached
 # _tab1_integration_snapshot()) -- nothing is recomputed here.
 # =============================================================================
+def _fe_result_card_header(eq_id, cat, title, downstream_tag=None, changed=None, note=""):
+    """Shared header row for every Section 4 card -- task requirements 2,
+    4, 5: the SAME wide equipment icon Section 3 uses (_fe_status_row_icon_svg,
+    itself reusing Section 1's own _fe_equipment_shape_svg/_FE_ITEM_SHAPE/
+    _FE_CATEGORY_COLORS), an explicit downstream-consumer tag ONLY when the
+    caller passes one (never inferred here -- the caller decides based on
+    what the item's own real text already states), and the changed-since-
+    last-checked pill from the SAME _fe_changed_pill_html() Sections 2/3
+    already use."""
+    icon = _fe_status_row_icon_svg(eq_id, cat)
+    tag_html = (
+        f'<span class="fe-tag" style="background:#EDE9FE;color:#6D28D9;">→ feeds {downstream_tag}</span>'
+        if downstream_tag else ""
+    )
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">'
+        f'{icon}<span style="font-weight:700;font-size:1.02rem;">{title}</span>'
+        f'{tag_html}{_fe_changed_pill_html(changed, note)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _fe_s4_changed(session_key, value):
+    """Section 4's own call into the SAME _fe_status_changed_flag()
+    Section 3 uses (task requirement 5 -- reuse, not reimplement), fed each
+    item's real full value dict instead of a status string (dict equality
+    already makes the underlying function's own prev == current comparison
+    work correctly, no change needed there). The one difference: that
+    function's own 'changed: X -> Y' note is fine for Section 3's short
+    status strings, but would dump an entire raw value dict into the
+    header pill here -- so this wrapper keeps the real changed/unchanged/
+    first-read VERDICT unchanged and only swaps in a short, generic note
+    for display, never fabricating what actually changed."""
+    changed, _raw_note = _fe_status_changed_flag(session_key, value)
+    if changed is None:
+        return changed, "first read this session"
+    if changed:
+        return changed, "value changed since last checked"
+    return changed, "unchanged"
+
+
 def _render_fe_live_results(snap):
     _ts = snap[("FE-001", "Inventory")]["timestamp"]
     st.caption(
@@ -2654,75 +2695,131 @@ def _render_fe_live_results(snap):
         f"honest scoping note above for what 'snapshot' means today)."
     )
 
+    # -- FE-001 -----------------------------------------------------------
     e = snap[("FE-001", "Inventory")]
-    st.markdown("**FE-001 — MSW Receiving Hopper**")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Inventory level", f"{e['value']['level_t']:.3f} t")
-    c2.metric("Fraction full", f"{e['value']['fraction_full']*100:.1f}%")
-    c3.metric("Delivery rate", f"{e['value']['delivery_rate_kg_h']:.2f} kg/h")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-001", e["value"])
+        _fe_result_card_header("FE-001", "mech", "FE-001 — MSW Receiving Hopper", changed=changed, note=note)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Inventory level", f"{e['value']['level_t']:.3f} t")
+        c2.metric("Fraction full", f"{e['value']['fraction_full']*100:.1f}%")
+        c3.metric("Delivery rate", f"{e['value']['delivery_rate_kg_h']:.2f} kg/h")
+        st.markdown(
+            _fe_inline_bar_svg(e["value"]["fraction_full"], "#C2680B") +
+            f'&nbsp; vs Confirmed live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t',
+            unsafe_allow_html=True,
+        )
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
+    # -- FE-002 (dual status) ----------------------------------------------
     e_mb = snap[("FE-002", "MassBalance")]
     e_tm = snap[("FE-002", "TrampMetalReject")]
-    st.markdown("**FE-002 — Magnetic & Eddy Current Separator**")
-    c1, c2 = st.columns(2)
-    c1.metric("Mass pass-through", f"{e_mb['value']['outlet_kg_h']:.2f} kg/h")
-    c1.caption(f"Status: {e_mb['status']} · {e_mb['confidence_note']}")
-    if e_tm["status"] == ps.STATUS_MISSING:
-        c2.metric("Tramp-metal reject rate", "Missing / Cannot Calculate")
-        c2.caption(f"Status: {e_tm['status']} · {e_tm['missing_reason']}")
-    else:
-        c2.metric("Tramp-metal reject rate", f"{e_tm['value']}")
-        c2.caption(f"Status: {e_tm['status']}")
-    st.divider()
+    with st.container(border=True):
+        changed_mb, note_mb = _fe_s4_changed("tab3_s4_changed__FE-002-mass", e_mb["value"])
+        _fe_result_card_header("FE-002", "mech", "FE-002 — Magnetic & Eddy Current Separator",
+                                changed=changed_mb, note=note_mb)
+        c1, c2 = st.columns(2)
+        c1.metric("Mass pass-through", f"{e_mb['value']['outlet_kg_h']:.2f} kg/h")
+        with c1.expander("Full status & traceability"):
+            st.caption(f"Status: {e_mb['status']} · {e_mb['confidence_note']}")
+        if e_tm["status"] == ps.STATUS_MISSING:
+            c2.metric("Tramp-metal reject rate", "Missing / Cannot Calculate")
+            with c2.expander("Full status & traceability"):
+                st.caption(f"Status: {e_tm['status']} · {e_tm['missing_reason']}")
+        else:
+            c2.metric("Tramp-metal reject rate", f"{e_tm['value']}")
+            with c2.expander("Full status & traceability"):
+                st.caption(f"Status: {e_tm['status']}")
 
+    # -- FE-003 -------------------------------------------------------------
     e = snap[("FE-003", "Weighing")]
-    st.markdown("**FE-003 — Weighing Conveyor**")
-    c1, c2 = st.columns(2)
-    c1.metric("Weighed flow rate (as-received, wet)", f"{e['value']['confirmed_wet_feed_kg_h']:.2f} kg/h")
-    c2.metric("Clipped to confirmed [29,50] kg/h range?", "Yes" if e["value"]["clipped"] else "No")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-003", e["value"])
+        _fe_result_card_header("FE-003", "meas", "FE-003 — Weighing Conveyor", changed=changed, note=note)
+        c1, c2 = st.columns(2)
+        c1.metric("Weighed flow rate (as-received, wet)", f"{e['value']['confirmed_wet_feed_kg_h']:.2f} kg/h")
+        c2.metric("Clipped to confirmed [29,50] kg/h range?", "Yes" if e["value"]["clipped"] else "No")
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
+    # -- FE-004 -------------------------------------------------------------
     e = snap[("FE-004", "ShredderPower")]
-    st.markdown("**FE-004 — Shredder / Size Reducer**")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Throughput", f"{e['value']['outlet_kg_h']/1000.0:.4f} t/h")
-    c2.metric("Power draw", f"{e['value']['power_kw']:.3f} kW")
-    c3.metric("Specific energy", f"{e['value']['specific_energy_kwh_per_t']:.1f} kWh/t")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-004", e["value"])
+        _fe_result_card_header("FE-004", "mech", "FE-004 — Shredder / Size Reducer", changed=changed, note=note)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Throughput", f"{e['value']['outlet_kg_h']/1000.0:.4f} t/h")
+        c2.metric("Power draw", f"{e['value']['power_kw']:.3f} kW")
+        c3.metric("Specific energy", f"{e['value']['specific_energy_kwh_per_t']:.1f} kWh/t")
+        _fe004_nameplate_kwh_per_t = fe.FE004_MOTOR_KW / fe.FE004_THROUGHPUT_T_H
+        _fe004_bar_frac = (
+            e["value"]["specific_energy_kwh_per_t"] / _fe004_nameplate_kwh_per_t
+            if _fe004_nameplate_kwh_per_t > 0 else 0.0
+        )
+        st.markdown(
+            _fe_inline_bar_svg(_fe004_bar_frac, "#1D4ED8", target_frac=1.0) +
+            f'&nbsp; vs Confirmed nameplate {_fe004_nameplate_kwh_per_t:.1f} kWh/t',
+            unsafe_allow_html=True,
+        )
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
+    # -- FE-005 -- the real connection point to GA-001 -----------------------
     e = snap[("FE-005", "MoistureBalance")]
-    st.markdown("**FE-005 — Feed Dryer (Rotary/Belt)**")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Dry solids out", f"{e['value']['dry_solids_kg_h']:.3f} kg/h")
-    c2.metric("Wet mass out", f"{e['value']['outlet_wet_kg_h']:.3f} kg/h")
-    c3.metric("Outlet moisture", f"{e['value']['outlet_moisture_fraction']*100:.2f}%")
-    c4.metric("Water evaporated", f"{e['value']['water_evaporated_kg_h']:.3f} kg/h")
-    st.caption(
-        f"Status: {e['status']} · **This dry-solids figure is the live input to GA-001's own "
-        f"dry_feed_rate_kg_h** (see ga001_gasifier_model.py's own module docstring). {e['confidence_note']}"
-    )
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-005", e["value"])
+        _fe_result_card_header("FE-005", "mech", "FE-005 — Feed Dryer (Rotary/Belt)",
+                                downstream_tag="GA-001", changed=changed, note=note)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Dry solids out", f"{e['value']['dry_solids_kg_h']:.3f} kg/h")
+        c2.metric("Wet mass out", f"{e['value']['outlet_wet_kg_h']:.3f} kg/h")
+        c3.metric("Outlet moisture", f"{e['value']['outlet_moisture_fraction']*100:.2f}%")
+        c4.metric("Water evaporated", f"{e['value']['water_evaporated_kg_h']:.3f} kg/h")
+        _fe005_inlet_frac = fe.FE005_INLET_MOISTURE_FRACTION
+        _fe005_target_frac = fe.FE005_OUTLET_MOISTURE_FRACTION
+        _fe005_bar_frac = (
+            e["value"]["outlet_moisture_fraction"] / _fe005_inlet_frac if _fe005_inlet_frac > 0 else 0.0
+        )
+        _fe005_target_pos = _fe005_target_frac / _fe005_inlet_frac if _fe005_inlet_frac > 0 else 0.0
+        st.markdown(
+            _fe_inline_bar_svg(_fe005_bar_frac, "#15803D", target_frac=_fe005_target_pos) +
+            f'&nbsp; moisture vs Confirmed target &lt;{_fe005_target_frac*100:.0f}%',
+            unsafe_allow_html=True,
+        )
+        with st.expander("Full status & traceability"):
+            st.caption(
+                f"Status: {e['status']} · **This dry-solids figure is the live input to GA-001's own "
+                f"dry_feed_rate_kg_h** (see ga001_gasifier_model.py's own module docstring). {e['confidence_note']}"
+            )
 
+    # -- FE-006 ---------------------------------------------------------------
     e = snap[("FE-006", "MoistureReading")]
-    st.markdown("**FE-006 — Moisture Analyser**")
-    st.metric("Moisture reading (virtual-sensor pass-through)", f"{e['value']['moisture_fraction']*100:.2f}%")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-006", e["value"])
+        _fe_result_card_header("FE-006", "instr", "FE-006 — Moisture Analyser", changed=changed, note=note)
+        st.metric("Moisture reading (virtual-sensor pass-through)", f"{e['value']['moisture_fraction']*100:.2f}%")
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
+    # -- FE-007 -----------------------------------------------------------------
     e = snap[("FE-007", "RamFeeder")]
-    st.markdown("**FE-007 — Feed Screw / Ram Feeder**")
-    st.metric("Pass-through feed rate", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
-    st.divider()
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-007", e["value"])
+        _fe_result_card_header("FE-007", "mech", "FE-007 — Feed Screw / Ram Feeder", changed=changed, note=note)
+        st.metric("Pass-through feed rate", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
+    # -- FE-008 -- the other real connection point to GA-001 --------------------
     e = snap[("FE-008", "Airlock")]
-    st.markdown("**FE-008 — Air-lock / Rotary Valve**")
-    st.metric("Pass-through feed rate → GA-001", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
-    st.caption(f"Status: {e['status']} · {e['confidence_note']}")
+    with st.container(border=True):
+        changed, note = _fe_s4_changed("tab3_s4_changed__FE-008", e["value"])
+        _fe_result_card_header("FE-008", "safety", "FE-008 — Air-lock / Rotary Valve",
+                                downstream_tag="GA-001", changed=changed, note=note)
+        st.metric("Pass-through feed rate → GA-001", f"{e['value']['feed_rate_kg_h']:.3f} kg/h")
+        with st.expander("Full status & traceability"):
+            st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
 
 # =============================================================================
