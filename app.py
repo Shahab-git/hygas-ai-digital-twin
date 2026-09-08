@@ -6171,7 +6171,6 @@ def _render_gc_tab():
 
 with tab5:
     _render_gc_tab()
-    _render_gc_tab()
 
 with tab6:
     st.header("Equipment Datasheets — Sensors & Analysers (SA-001 through SA-012)")
