@@ -2053,7 +2053,7 @@ def _render_equipment_items(ids, per_item_stats):
 # real data types this project ever shows (task requirement 7), defined
 # once so any future tab can reuse it verbatim rather than re-inventing
 # its own scheme. Deliberately matches the coloring already implied by
-# Section 8's own st.error (red=Missing) / st.warning (amber=Estimate)
+# Section 7's own st.error (red=Missing) / st.warning (amber=Estimate)
 # convention -- not a clashing new palette.
 # =============================================================================
 _FE_DATA_TYPE_TAGS = {
@@ -3711,17 +3711,18 @@ def _render_fe_simulation_status(snap):
         icon="ℹ️",
     )
 
-
-# =============================================================================
-# Tab 3 Section 7 -- Data Source & Freshness.
-# =============================================================================
-def _render_fe_data_source_freshness(snap):
-    entry = snap[("FE-001", "Inventory")]
-    st.markdown(f"**Computed:** {entry['timestamp']} (this cycle's own real, traceable timestamp).")
+    # Merged in from the former, now-removed Section 7 -- "Data Source &
+    # Freshness" -- its timestamp content was redundant with this section's
+    # own real published_at/computed-at/freshness fields above; this
+    # provenance statement was its one non-redundant piece, preserved here
+    # near-verbatim (only the "Section 8" cross-reference updated to
+    # "Section 7", since that section was renumbered when this one was
+    # removed) as a natural extension of "how do I know I can trust what "
+    # "I'm looking at".
     st.markdown(
         "**Source, by section:** Sections 1–6 above all read live output from `fe_feed_handling.py`'s "
         "own registered FE-001..008 models, via the Digital Twin engine (`simulation_engine.py` + "
-        "`shared_plant_state.py`) — a real simulation result, not a static figure. Section 8 below "
+        "`shared_plant_state.py`) — a real simulation result, not a static figure. Section 7 below "
         "instead reads `equipment_registry.load_registry()` directly — real registry/vendor/"
         "DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation output. The "
         "two are never blended: every value on this tab is clearly one or the other, labeled at the "
@@ -3832,21 +3833,14 @@ with tab3:
     st.divider()
 
     # -------------------------------------------------------------------
-    # Section 7 -- Data Source & Freshness
+    # Section 7 -- Existing Data (unchanged content, repositioned only).
+    # Renumbered from Section 8 -- the former Section 7 ("Data Source &
+    # Freshness") was removed: its timestamp content was redundant with
+    # Section 6's own real published_at/freshness/next-update fields, and
+    # its one non-redundant piece (the source-provenance statement) was
+    # merged into Section 6 above.
     # -------------------------------------------------------------------
-    st.subheader("Section 7 — Data Source & Freshness")
-    try:
-        _fe_snap_for_freshness = _tab1_integration_snapshot()
-        _render_fe_data_source_freshness(_fe_snap_for_freshness)
-    except Exception as _fe_freshness_exc:
-        st.error(f"Data source & freshness failed to render: {_fe_freshness_exc}")
-
-    st.divider()
-
-    # -------------------------------------------------------------------
-    # Section 8 -- Existing Data (unchanged content, repositioned only)
-    # -------------------------------------------------------------------
-    st.subheader("Section 8 — Existing Data (Equipment Datasheets)")
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: FE-001 through FE-008 only, one of nine per-section tabs that "
         "together now cover the whole registry** (see the Gasification, Gas Cleaning, Sensors & "
