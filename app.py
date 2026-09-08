@@ -2435,6 +2435,65 @@ def _fe_equipment_shape_svg(kind, x, y, w, h, fill_url, stroke):
             parts.append(f'<line x1="{gx:.1f}" y1="{gy0:.1f}" x2="{gx:.1f}" y2="{gy1:.1f}" stroke="{stroke}" stroke-width="1.2" opacity="0.45"/>')
         for gy in (gy0 + (gy1 - gy0) / 2,):
             parts.append(f'<line x1="{gx0:.1f}" y1="{gy:.1f}" x2="{gx1:.1f}" y2="{gy:.1f}" stroke="{stroke}" stroke-width="1.2" opacity="0.45"/>')
+    elif kind == "cyclone":
+        # A real cyclone silhouette: a cylindrical top narrowing to a
+        # conical bottom (the actual real shape of a cyclone separator) --
+        # GC-001/GC-003.
+        body_w = w * 0.55
+        xl, xr = x + (w - body_w) / 2, x + (w + body_w) / 2
+        top_y = y + 6
+        avail_h = bottom - top_y
+        cone_y = bottom - avail_h * 0.35  # proportional -- stays valid at any box size, incl. small icons
+        parts.append(f'<rect x="{xl:.1f}" y="{top_y:.1f}" width="{body_w:.1f}" height="{max(cone_y-top_y, 1.0):.1f}" {common}/>')
+        cone_pts = f"{xl:.1f},{cone_y:.1f} {xr:.1f},{cone_y:.1f} {x+w/2:.1f},{bottom-1:.1f}"
+        parts.append(f'<polygon points="{cone_pts}" fill="{fill_url}" stroke="{stroke}" stroke-width="2"/>')
+        # A tangential inlet duct stub, the real feature that gives a
+        # cyclone its swirl.
+        parts.append(
+            f'<rect x="{xl-10:.1f}" y="{top_y+4:.1f}" width="12" height="8" fill="{fill_url}" '
+            f'stroke="{stroke}" stroke-width="1.6"/>'
+        )
+    elif kind == "scrubber":
+        # A packed column: a tall vessel with internal packing (a
+        # deterministic small dot-grid, not a flat fill), the real
+        # silhouette of a wet scrubber or a dry packed-bed adsorber --
+        # GC-006/007/008/009.
+        body_w = w * 0.4
+        xl, xr = x + (w - body_w) / 2, x + (w + body_w) / 2
+        parts.append(f'<rect x="{xl:.1f}" y="{y+6:.1f}" width="{body_w:.1f}" height="{bottom-y-6:.1f}" rx="4" {common}/>')
+        pack_top, pack_bot = y + 14, bottom - 8
+        for row in range(5):
+            py = pack_top + (pack_bot - pack_top) * row / 4
+            for col in range(3):
+                px = xl + 5 + (body_w - 10) * col / 2 + (3 if row % 2 else 0)
+                parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="1.6" fill="{stroke}" opacity="0.5"/>')
+    elif kind == "bagfilter":
+        # A bag-filter housing: a rectangular housing with several vertical
+        # bag silhouettes visible inside -- GC-010.
+        parts.append(f'<rect x="{x+6:.1f}" y="{y+6:.1f}" width="{w-12:.1f}" height="{bottom-y-6:.1f}" rx="4" {common}/>')
+        bag_h = (bottom - y - 6) * 0.6
+        for i in range(4):
+            bx = x + 14 + i * (w - 28) / 3
+            parts.append(
+                f'<rect x="{bx-4:.1f}" y="{y+12:.1f}" width="8" height="{bag_h:.1f}" rx="4" '
+                f'fill="{fill_url}" stroke="{stroke}" stroke-width="1.3" opacity="0.85"/>'
+            )
+    elif kind == "blower":
+        # A fan/blower symbol: a circular housing with three curved
+        # blades -- GC-013.
+        cx, cy = x + w / 2, y + (bottom - y) / 2
+        r = min(w, bottom - y) / 2 - 6
+        parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" {common}/>')
+        import math as _math
+        for i in range(3):
+            ang = i * 2 * _math.pi / 3
+            bx = cx + r * 0.7 * _math.cos(ang)
+            by = cy + r * 0.7 * _math.sin(ang)
+            parts.append(
+                f'<path d="M {cx:.1f} {cy:.1f} Q {bx:.1f} {by-6:.1f} {bx:.1f} {by:.1f}" '
+                f'fill="none" stroke="{stroke}" stroke-width="2.2" opacity="0.8"/>'
+            )
+        parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="4" fill="{stroke}"/>')
     else:
         parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bottom-y:.1f}" rx="8" {common}/>')
     return "".join(parts)
@@ -4945,8 +5004,1121 @@ def _render_ga_tab():
 with tab4:
     _render_ga_tab()
 
-with tab5:
-    st.header("Equipment Datasheets — Gas Cleaning (GC-001 through GC-015)")
+
+# =============================================================================
+# Gas Cleaning tab (GC-001 through GC-015) -- built to the SAME 7-section
+# structure Tabs 3/4 reached, reusing every genuinely generic helper
+# directly (_fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_pill_html, _fe_inline_bar_svg, _fe_tag_html/_FE_DATA_TYPE_TAGS,
+# _FE_TAB_CSS's own .fe-tag class, _fe_equipment_shape_svg (extended with
+# new GC-specific shape kinds -- cyclone/scrubber/bagfilter/blower -- plus
+# REUSING GA's own "reactor"/"silo" kinds for the quench tower/activated-
+# carbon vessel and FE's own "bin" kind for the condensate tank, since
+# those items are genuinely the same real silhouette, not duplicated),
+# _fe_status_row_icon_svg / _fe_result_card_header (already generalized for
+# GA, reused unchanged here with GC's own category_colors/item_shapes),
+# _fe_kpi_check_delta, _fe_flow_stroke_width, _render_equipment_honest_
+# count, _render_equipment_items, _plant_state_source_info,
+# _digital_twin_cycle_log_status -- none of these is copied.
+#
+# AUDIT, checked directly before writing anything (not assumed): UNLIKE
+# GA-005..010, MOST of GC-001..015 genuinely DO have live registered
+# models -- register_gc_chain() (python/gc_gas_cleaning_chain.py) registers
+# 13 of the 15 items live (every one except GC-002 and GC-011). Confirmed
+# by direct grep: no ("GC-002", ...) or ("GC-011", ...) key is ever
+# registered. Per data/equipment_registry.json's own real item names,
+# GC-002 ("Primary Cyclone (dP)") is genuinely GC-001's own pressure-drop
+# instrumentation sub-item (GC-001's own docstring confirms this
+# explicitly: "GC-002 is GC-001's own pressure/instrumentation sub-item"),
+# GC-005 ("Quench Tower (Water)") is GC-004's, GC-011 ("Bag Filter (dP)")
+# is GC-010's, and GC-014 ("Gas Blower (Pressure)") is GC-013's -- the
+# SAME "one physical unit, two registry rows" pattern already established
+# for GA-002/003/004, and (per gc014_blower_pressure()'s own docstring)
+# explicitly reused verbatim for EU-003/EU-004 elsewhere in this project.
+# GC-005 and GC-014 DO have real live values (Blowdown, Pressure) despite
+# being sub-items -- shown as real live badges on their own annotation,
+# not fabricated as "Static" when they genuinely aren't.
+# =============================================================================
+
+_GC_CATEGORY_COLORS = {
+    "particulate": {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "Particulate Removal (Cyclones / Bag Filter)"},
+    "thermal":     {"fill": "#BFDBFE", "stroke": "#1D4ED8", "label": "Thermal (Quench)"},
+    "scrubbing":   {"fill": "#BBF7D0", "stroke": "#15803D", "label": "Trace-Contaminant Scrubbing"},
+    "motive":      {"fill": "#FECACA", "stroke": "#B91C1C", "label": "Motive (Blower)"},
+    "collection":  {"fill": "#DDD6FE", "stroke": "#6D28D9", "label": "Condensate Collection"},
+}
+
+_GC_SCHEMATIC_ITEMS = [
+    # (equipment_id, display name, category, live engine key)
+    ("GC-001", "Primary\nCyclone", "particulate", ("GC-001", "Gas")),
+    ("GC-003", "Secondary\nCyclone", "particulate", ("GC-003", "Gas")),
+    ("GC-004", "Quench\nTower", "thermal", ("GC-004", "Gas")),
+    ("GC-006", "Tar Removal\nUnit", "scrubbing", ("GC-006", "Tar outlet")),
+    ("GC-007", "Wet Scrubber\n(Tar)", "scrubbing", ("GC-007", "Tar")),
+    ("GC-008", "Wet Scrubber\n(H₂S)", "scrubbing", ("GC-008", "H2S")),
+    ("GC-009", "HCl Scrubber\n(Alkaline)", "scrubbing", ("GC-009", "HCl")),
+    ("GC-010", "Bag Filter\n(Dust)", "particulate", ("GC-010", "Dust")),
+    ("GC-012", "Activated\nCarbon Filter", "scrubbing", ("GC-012", "H2S/COS")),
+    ("GC-013", "Gas Blower\n/ ID Fan", "motive", ("GC-013", "Gas")),
+]
+# GC-002/005/011/014 -- real registry items, genuinely sub-items of the
+# SAME physical unit as GC-001/004/010/013 respectively (verified directly
+# against data/equipment_registry.json's own item names: "Primary Cyclone
+# (dP)", "Quench Tower (Water)", "Bag Filter (dP)", "Gas Blower
+# (Pressure)"). Unlike GA's own sub-items, GC-005/GC-014 DO have real live
+# values -- shown honestly, not flattened to "Static" just to match GA's
+# pattern.
+_GC_SUBITEMS = {
+    "GC-001": [("GC-002", "ΔP", None)],
+    "GC-004": [("GC-005", "Blowdown", ("GC-005", "Blowdown"))],
+    "GC-010": [("GC-011", "ΔP", None)],
+    "GC-013": [("GC-014", "Pressure", ("GC-014", "Pressure"))],
+}
+_GC_ITEM_SHAPE = {
+    "GC-001": "cyclone", "GC-003": "cyclone", "GC-004": "reactor", "GC-006": "scrubber",
+    "GC-007": "scrubber", "GC-008": "scrubber", "GC-009": "scrubber", "GC-010": "bagfilter",
+    "GC-012": "silo", "GC-013": "blower", "GC-015": "bin",
+}
+
+
+def _gc_edge_flow_values(snap):
+    """Real, live dry-gas flow (Nm3/h) on every main-chain arrow -- each
+    read directly from the relevant stage's own already-published Gas
+    entry (GC-001/003/004/013 all carry a real dry_flow_nm3_h; the
+    intermediate scrubbing stages GC-006..GC-012 do not themselves alter
+    bulk gas flow -- module docstring -- so the arrows spanning them carry
+    forward GC-004's own real flow, the same real number, not
+    re-derived)."""
+    def _flow(key):
+        entry = snap.get(key)
+        if entry is None or entry.get("status") == ps.STATUS_MISSING:
+            return None
+        return entry["value"].get("dry_flow_nm3_h")
+
+    f001 = _flow(("GC-001", "Gas"))
+    f003 = _flow(("GC-003", "Gas"))
+    f004 = _flow(("GC-004", "Gas"))
+    f013 = _flow(("GC-013", "Gas"))
+    # 9 edges: 001->003, 003->004, 004->006, 006->007, 007->008, 008->009,
+    # 009->010, 010->012, 012->013.
+    return [f001, f003, f004, f004, f004, f004, f004, f004, f004]
+
+
+def _gc_schematic_svg(snap):
+    box_w, box_h, gap, x0, y0 = 145, 92, 30, 110, 210
+    n = len(_GC_SCHEMATIC_ITEMS)
+    total_w = x0 + n * box_w + (n - 1) * gap + 190
+    total_h = y0 + box_h + 170
+    edge_values = _gc_edge_flow_values(snap)
+    max_flow = max([v for v in edge_values if v is not None], default=1.0)
+
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs>'
+        '<marker id="gc_arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" '
+        'orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L0,6 L9,3 z" fill="#374151"/></marker>'
+        '<filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-gc-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/>'
+            f'</linearGradient>'
+            for key, c in _GC_CATEGORY_COLORS.items()
+        )
+        + '</defs>',
+        f'<text x="{x0-14}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" '
+        f'text-anchor="end" fill="#374151">FROM GA-001</text>',
+        f'<line x1="{x0-110}" y1="{y0+box_h/2}" x2="{x0-6}" y2="{y0+box_h/2}" '
+        f'stroke="#374151" stroke-width="2.5" marker-end="url(#gc_arrow)"/>',
+    ]
+
+    boxes = []
+    for i, (eq_id, name, cat, key) in enumerate(_GC_SCHEMATIC_ITEMS):
+        boxes.append((x0 + i * (box_w + gap), y0, eq_id, name, cat, key))
+
+    for i, (x, y, eq_id, name, cat, key) in enumerate(boxes):
+        colors = _GC_CATEGORY_COLORS[cat]
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
+        badge_text = "No data" if is_missing else "Running"
+        shape_kind = _GC_ITEM_SHAPE[eq_id]
+        parts.append(
+            _fe_equipment_shape_svg(shape_kind, x, y, box_w, box_h, f'url(#grad-gc-{cat})', colors["stroke"])
+        )
+        parts.append(
+            f'<text x="{x+box_w/2}" y="{y+22}" text-anchor="middle" font-size="12.5" '
+            f'font-weight="bold" fill="#111827">{eq_id}</text>'
+        )
+        for li, line in enumerate(name.split("\n")):
+            parts.append(
+                f'<text x="{x+box_w/2}" y="{y+40+li*15}" text-anchor="middle" font-size="10.5" '
+                f'fill="#111827">{line}</text>'
+            )
+        badge_w = 62
+        parts.append(
+            f'<rect x="{x+box_w/2-badge_w/2}" y="{y+box_h-24}" width="{badge_w}" height="16" rx="8" '
+            f'fill="{badge_fill}"/>'
+        )
+        parts.append(
+            f'<text x="{x+box_w/2}" y="{y+box_h-12}" text-anchor="middle" font-size="9.5" '
+            f'font-weight="600" fill="{badge_fg}">{badge_text}</text>'
+        )
+
+        # -- Sub-item annotation, if this box has one (GC-002/005/011/014). --
+        subs = _GC_SUBITEMS.get(eq_id)
+        if subs:
+            sub_y = y - 30
+            parts.append(
+                f'<line x1="{x+box_w/2}" y1="{sub_y+16}" x2="{x+box_w/2}" y2="{y-4}" '
+                f'stroke="{colors["stroke"]}" stroke-width="1.6" stroke-dasharray="3,3"/>'
+            )
+            parts.append(
+                f'<rect x="{x-10}" y="{sub_y-14}" width="{box_w+20}" height="26" rx="6" '
+                f'fill="#FFFFFF" stroke="{colors["stroke"]}" stroke-width="1.3"/>'
+            )
+            sub_bits = []
+            for sub_id, sub_short, sub_key in subs:
+                if sub_key is not None:
+                    sub_entry = snap.get(sub_key)
+                    sub_missing = sub_entry is None or sub_entry.get("status") == ps.STATUS_MISSING
+                    sub_bits.append(f"{sub_id} ({sub_short}): {'no data' if sub_missing else 'live'}")
+                else:
+                    sub_bits.append(f"{sub_id} ({sub_short}): static")
+            parts.append(
+                f'<text x="{x+box_w/2}" y="{sub_y+1}" text-anchor="middle" font-size="8.3" '
+                f'font-weight="600" fill="{colors["stroke"]}">Same physical unit:</text>'
+            )
+            parts.append(
+                f'<text x="{x+box_w/2}" y="{sub_y+11}" text-anchor="middle" font-size="7.8" '
+                f'fill="#374151">{" · ".join(sub_bits)}</text>'
+            )
+
+        if i < len(boxes) - 1:
+            xn = boxes[i + 1][0]
+            ev = edge_values[i]
+            sw = _fe_flow_stroke_width(ev, max_flow)
+            parts.append(
+                f'<line x1="{x+box_w}" y1="{y+box_h/2}" x2="{xn-6}" y2="{y+box_h/2}" '
+                f'stroke="#374151" stroke-width="{sw}" marker-end="url(#gc_arrow)"/>'
+            )
+            ev_label = f"{ev:.1f} Nm³/h" if ev is not None else "no data"
+            parts.append(f'<rect x="{x+box_w+1}" y="{y+box_h/2-19}" width="{gap-2}" height="13" fill="#FFFFFF"/>')
+            parts.append(
+                f'<text x="{x+box_w+gap/2}" y="{y+box_h/2-9}" text-anchor="middle" font-size="8.5" '
+                f'font-weight="600" fill="#1D4ED8">{ev_label}</text>'
+            )
+
+    last_x = boxes[-1][0] + box_w
+    lead_out_ev = edge_values[-1]
+    lead_out_sw = _fe_flow_stroke_width(lead_out_ev, max_flow)
+    parts.append(
+        f'<line x1="{last_x}" y1="{y0+box_h/2}" x2="{last_x+64}" y2="{y0+box_h/2}" '
+        f'stroke="#374151" stroke-width="{lead_out_sw}" marker-end="url(#gc_arrow)"/>'
+    )
+    lead_out_label = f"{lead_out_ev:.1f} Nm³/h" if lead_out_ev is not None else "no data"
+    parts.append(
+        f'<text x="{last_x+32}" y="{y0+box_h/2-9}" text-anchor="middle" font-size="9" '
+        f'font-weight="600" fill="#1D4ED8">{lead_out_label}</text>'
+    )
+    parts.append(f'<text x="{last_x+70}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" fill="#374151">TO HB-001</text>')
+
+    # -- GC-015: a real converging branch, collecting blowdowns from
+    # GC-004/GC-007/GC-008/GC-009 (GC-005's own blowdown is folded in too,
+    # mentioned in the label -- it is GC-004's own sub-item, not a separate
+    # box) -- module docstring's own mislabel correction 2. --
+    gc015_x = boxes[4][0] + box_w / 2  # centered under the scrubber cluster (GC-007)
+    gc015_y = y0 + box_h + 90
+    gc015_entry = snap.get(("GC-015", "Condensate"))
+    gc015_missing = gc015_entry is None or gc015_entry.get("status") == ps.STATUS_MISSING
+    source_boxes = {"GC-004": boxes[2], "GC-007": boxes[4], "GC-008": boxes[5], "GC-009": boxes[6]}
+    for src_id, (sx, sy, *_r) in source_boxes.items():
+        parts.append(
+            f'<line x1="{sx+box_w/2}" y1="{sy+box_h}" x2="{gc015_x}" y2="{gc015_y}" '
+            f'stroke="#6D28D9" stroke-width="1.6" stroke-dasharray="5,4" opacity="0.7"/>'
+        )
+    gc015_colors = _GC_CATEGORY_COLORS["collection"]
+    gc015_w, gc015_h = 130, 70
+    gc015_box_x, gc015_box_y = gc015_x - gc015_w / 2, gc015_y
+    parts.append(
+        _fe_equipment_shape_svg("bin", gc015_box_x, gc015_box_y, gc015_w, gc015_h + 30,
+                                 f'url(#grad-gc-collection)', gc015_colors["stroke"])
+    )
+    parts.append(
+        f'<text x="{gc015_x}" y="{gc015_box_y+18}" text-anchor="middle" font-size="12.5" '
+        f'font-weight="bold" fill="#111827">GC-015</text>'
+    )
+    parts.append(
+        f'<text x="{gc015_x}" y="{gc015_box_y+34}" text-anchor="middle" font-size="10.5" '
+        f'fill="#111827">Condensate Tank</text>'
+    )
+    gc015_badge_fill, gc015_badge_fg = ("#F3F4F6", "#6B7280") if gc015_missing else ("#DCFCE7", "#15803D")
+    gc015_badge_text = "No data" if gc015_missing else "Running"
+    parts.append(
+        f'<rect x="{gc015_x-31}" y="{gc015_box_y+gc015_h-24}" width="62" height="16" rx="8" fill="{gc015_badge_fill}"/>'
+    )
+    parts.append(
+        f'<text x="{gc015_x}" y="{gc015_box_y+gc015_h-12}" text-anchor="middle" font-size="9.5" '
+        f'font-weight="600" fill="{gc015_badge_fg}">{gc015_badge_text}</text>'
+    )
+    if not gc015_missing:
+        total = gc015_entry["value"]["total_m3_h"]
+        parts.append(
+            f'<text x="{gc015_x}" y="{gc015_box_y-6}" text-anchor="middle" font-size="9" '
+            f'font-weight="600" fill="#6D28D9">{total:.4f} m³/h total (5 real sources, incl. GC-005)</text>'
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _gc_schematic_legend_svg():
+    x0, line_h = 10, 20
+    total_w, total_h = 660, 220
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
+    for idx, colors in enumerate(_GC_CATEGORY_COLORS.values()):
+        ly = 16 + 22 + idx * line_h
+        parts.append(
+            f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+            f'stroke="{colors["stroke"]}" stroke-width="2"/>'
+        )
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    status_y0 = 16 + 22 + len(_GC_CATEGORY_COLORS) * line_h + 10
+    for dy, fill, fg, label, note in (
+        (0, "#DCFCE7", "#15803D", "Running", "A real registered model output this cycle"),
+        (line_h, "#F3F4F6", "#6B7280", "No data", "A live model exists but is genuinely Missing this cycle"),
+    ):
+        ly = status_y0 + dy
+        parts.append(f'<rect x="{x0}" y="{ly-15}" width="46" height="14" rx="7" fill="{fill}"/>')
+        parts.append(
+            f'<text x="{x0+23}" y="{ly-5}" text-anchor="middle" font-size="8.5" font-weight="600" '
+            f'fill="{fg}">{label}</text>'
+        )
+        parts.append(f'<text x="{x0+56}" y="{ly}" font-size="11" fill="#111827">{note}</text>')
+    note_y = status_y0 + 2 * line_h
+    parts.append(f'<text x="{x0}" y="{note_y}" font-size="11" font-weight="600" fill="#1D4ED8">12.3 Nm³/h</text>')
+    parts.append(
+        f'<text x="{x0+80}" y="{note_y}" font-size="11" fill="#111827">'
+        f'Real live dry gas flow between stages -- GC-006..GC-012 remove trace species only, '
+        f'so the SAME real GC-004 flow carries forward unchanged.</text>'
+    )
+    parts.append(
+        f'<text x="{x0}" y="{note_y+line_h}" font-size="11" fill="#111827">'
+        f'GC-002/005/011/014 (dashed annotation boxes): real registry sub-items of the SAME '
+        f'physical unit as GC-001/004/010/013 -- GC-005/GC-014 genuinely have real live values, '
+        f'shown honestly, not flattened to match GC-002/011\'s own "static" state.</text>'
+    )
+    parts.append(
+        f'<text x="{x0}" y="{note_y+2*line_h}" font-size="11" fill="#111827" font-style="italic">'
+        f'GC-015 (purple, below): a real converging branch -- collects blowdown from GC-004, '
+        f'GC-005 (via GC-004), GC-007, GC-008, GC-009 -- 5 real source streams, summed live.</text>'
+    )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# =============================================================================
+# Gas Cleaning Section 2 -- Live KPIs. Reuses _fe_kpi_check_delta,
+# _fe_inline_bar_svg, _fe_tag_html directly. Comparison bars ONLY for
+# GC-008/GC-009 -- the two items with a real, SEPARATELY-stated target
+# efficiency (">99.5%"/>"97%") to compare their own computed efficiency
+# against (NOT the trivial outlet-vs-outlet_target identity every stage
+# has by construction -- efficiency = (inlet-outlet_target)/inlet makes
+# outlet == outlet_target always, so that comparison would be circular).
+# GC-009's own bar honestly falls short of its own target line -- the
+# known gap, shown, not hidden.
+# =============================================================================
+def _render_gc_live_kpis(snap):
+    gc007 = snap.get(("GC-007", "Tar"))
+    gc008 = snap.get(("GC-008", "H2S"))
+    gc009 = snap.get(("GC-009", "HCl"))
+    gc010 = snap.get(("GC-010", "Dust"))
+    gc013 = snap.get(("GC-013", "Gas"))
+
+    kpis = []
+    if gc007 is not None and gc007.get("status") != ps.STATUS_MISSING:
+        v = gc007["value"]
+        kpis.append(dict(
+            label="Tar removal (GC-007)", icon="🌫️", raw=v["efficiency"], text=f"{v['efficiency']*100:.1f}%",
+            skey="tab5_kpi_delta__tar_eff", entry=gc007, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d*100:+.2f} pp",
+        ))
+    if gc008 is not None and gc008.get("status") != ps.STATUS_MISSING:
+        v = gc008["value"]
+        target = 0.995  # GC-008's own separately-stated ">99.5%" target
+        kpis.append(dict(
+            label="H₂S removal (GC-008)", icon="🧪", raw=v["efficiency"], text=f"{v['efficiency']*100:.2f}%",
+            skey="tab5_kpi_delta__h2s_eff", entry=gc008,
+            compare=f"vs GC-008's own Confirmed target >{target*100:.1f}%",
+            bar=_fe_inline_bar_svg(v["efficiency"] / target, "#15803D", target_frac=1.0),
+            delta_fmt=lambda d: f"{d*100:+.2f} pp",
+        ))
+    if gc009 is not None and gc009.get("status") != ps.STATUS_MISSING:
+        v = gc009["value"]
+        target = 0.97  # GC-009's own separately-stated ">97%" target
+        shortfall = v["efficiency"] < target
+        kpis.append(dict(
+            label="HCl removal (GC-009)", icon="⚗️", raw=v["efficiency"], text=f"{v['efficiency']*100:.2f}%",
+            skey="tab5_kpi_delta__hcl_eff", entry=gc009,
+            compare=(
+                f"{'⚠️ BELOW' if shortfall else '✓ meets'} GC-009's own Confirmed target >{target*100:.0f}% "
+                f"-- a real, known, honest shortfall, not hidden" if shortfall else
+                f"vs GC-009's own Confirmed target >{target*100:.0f}%"
+            ),
+            bar=_fe_inline_bar_svg(v["efficiency"] / target, "#B91C1C" if shortfall else "#15803D", target_frac=1.0),
+            delta_fmt=lambda d: f"{d*100:+.2f} pp",
+        ))
+    if gc010 is not None and gc010.get("status") != ps.STATUS_MISSING:
+        v = gc010["value"]
+        kpis.append(dict(
+            label="Dust removal (GC-010)", icon="🌪️", raw=v["efficiency"], text=f"{v['efficiency']*100:.2f}%",
+            skey="tab5_kpi_delta__dust_eff", entry=gc010, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d*100:+.2f} pp",
+        ))
+    if gc013 is not None and gc013.get("status") != ps.STATUS_MISSING:
+        v = gc013["value"]
+        kpis.append(dict(
+            label="Final gas flow (GC-013 → HB-001)", icon="🌬️", raw=v["dry_flow_nm3_h"],
+            text=f"{v['dry_flow_nm3_h']:.2f} Nm³/h",
+            skey="tab5_kpi_delta__final_flow", entry=gc013, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.2f} Nm³/h",
+        ))
+
+    if not kpis:
+        st.warning("No GC live values available this cycle to condense into KPI cards.")
+        return
+
+    cols = st.columns(len(kpis))
+    for col, kpi in zip(cols, kpis):
+        with col.container(border=True):
+            st.markdown(
+                _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
+                unsafe_allow_html=True,
+            )
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
+            st.metric(
+                f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
+                delta_color="normal" if delta is not None else "off",
+                help=f"{kpi['label']}: {kpi['text']} ({note})",
+            )
+            if kpi["bar"]:
+                st.markdown(kpi["bar"], unsafe_allow_html=True)
+            if kpi["compare"]:
+                st.caption(kpi["compare"])
+    st.caption(
+        "Tar/dust removal and final gas flow are real live values with no comparison bar -- no "
+        "SEPARATE Confirmed target efficiency exists for those items to compare against (their "
+        "outlet targets define their own computed efficiency directly, a circular comparison, not "
+        "shown as a bar). GC-008/GC-009's own bars compare against a genuinely SEPARATE, "
+        "independently-stated target efficiency -- GC-009's own real, known shortfall (96.67% vs "
+        "its own stated >97%) is shown honestly, not hidden."
+    )
+
+
+# All 15 GC items, main-chain items plus GC-015 -- used by Sections 3/4
+# together so both stay in sync with the same real list.
+_GC_ALL_ITEMS = _GC_SCHEMATIC_ITEMS + [
+    ("GC-015", "Condensate\nTank", "collection", ("GC-015", "Condensate")),
+]
+_GC_SUBITEMS_FLAT = [
+    (sub_id, sub_short, sub_key, parent_id)
+    for parent_id, subs in _GC_SUBITEMS.items()
+    for sub_id, sub_short, sub_key in subs
+]
+
+
+# =============================================================================
+# Gas Cleaning Section 3 -- Process Flow & Equipment Status. Reuses
+# _FE_STATUS_TABLE_CSS, _fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_row_icon_svg directly. UNLIKE GA, most GC items genuinely
+# have live models -- "Static" is used ONLY for GC-002/GC-011 (confirmed,
+# no live key registered anywhere); GC-005/GC-014 get real Running/No-data
+# status, honestly, since they genuinely have one.
+# =============================================================================
+def _render_gc_status_table(snap):
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    item_rows = []
+    live_count = 0
+    for eq_id, name, cat, key in _GC_ALL_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        state = "missing" if is_missing else "running"
+        if state == "running":
+            live_count += 1
+        changed, note = _fe_status_changed_flag(f"tab5_status_changed__{eq_id}", state)
+        item_rows.append(dict(eq_id=eq_id, name=name.replace("\n", " "), cat=cat, key=key, state=state,
+                               changed=changed, note=note))
+
+    total = len(_GC_ALL_ITEMS)
+    summary_bg, summary_fg = ("#DCFCE7", "#15803D") if live_count == total else ("#FEF3C7", "#B45309")
+    st.markdown(
+        f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+        f'{live_count}/{total} live</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Computed directly from the same per-item checks below, for the 11 real main-chain/"
+        "condensate items. GC-002/005/011/014 (real registry sub-items of the same physical unit "
+        "as GC-001/004/010/013) are listed separately below, each with their own real status -- "
+        "GC-002/GC-011 are genuinely Static (no live model registered anywhere, confirmed "
+        "directly); GC-005/GC-014 genuinely DO have live values, shown honestly."
+    )
+
+    for cat_key, colors in _GC_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(
+            f'<div class="fe-status-group-title">'
+            f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+            f'{colors["label"]}</div>',
+            unsafe_allow_html=True,
+        )
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"], _GC_CATEGORY_COLORS, _GC_ITEM_SHAPE)
+            trs.append(
+                f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{r["name"]}</td>'
+                f'<td>{_ga_status_pill_html(r["state"])}</td>'
+                f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                f'<td><code>{r["key"][0]}/{r["key"][1]}</code></td></tr>'
+            )
+        st.markdown(
+            '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+            '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        '<div class="fe-status-group-title">'
+        '<span class="fe-cat-swatch" style="background:#E5E7EB;border-color:#6B7280;"></span>'
+        'Same-physical-unit sub-items (GC-002/005/011/014)</div>',
+        unsafe_allow_html=True,
+    )
+    sub_trs = []
+    for sub_id, sub_short, sub_key, parent_id in _GC_SUBITEMS_FLAT:
+        if sub_key is not None:
+            sub_entry = snap.get(sub_key)
+            sub_missing = sub_entry is None or sub_entry.get("status") == ps.STATUS_MISSING
+            state = "missing" if sub_missing else "running"
+            key_str = f"{sub_key[0]}/{sub_key[1]}"
+        else:
+            state = "static"
+            key_str = "— (no live key registered)"
+        changed, note = _fe_status_changed_flag(f"tab5_status_changed__{sub_id}", state)
+        sub_trs.append(
+            f'<tr><td></td><td>{sub_id}</td><td>{sub_short} (same physical unit as {parent_id})</td>'
+            f'<td>{_ga_status_pill_html(state)}</td>'
+            f'<td>{_fe_changed_pill_html(changed, note)}</td>'
+            f'<td><code>{key_str}</code></td></tr>'
+        )
+    st.markdown(
+        '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+        '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+        f'<tbody>{"".join(sub_trs)}</tbody></table>',
+        unsafe_allow_html=True,
+    )
+
+
+# =============================================================================
+# Gas Cleaning Section 4 -- Live Simulation & Engineering Results.
+# Expandable per-item cards, GC-001 through GC-015. Every confidence_note/
+# missing_reason string is GC's own REAL text, read directly and shown
+# verbatim -- never retyped or paraphrased. Downstream-consumer tags:
+# checked directly -- the module's OWN docstring states explicitly "it
+# does not integrate GC-013's output into HB-001... explicitly Phase 1
+# later work" -- so NO downstream tag is shown anywhere in this section,
+# even for GC-013 (the item physically closest to HB-001), because the
+# real code confirms that connection does not exist yet (unlike FE-005/
+# FE-008's own real, live GA-001 connections). Known findings surfaced
+# honestly, not smoothed over: GC-009's HCl shortfall (96.67% vs its own
+# stated >97% target) gets its own prominent banner, matching GA-001's own
+# precedent for a real, known gap; GC-004's card includes the real,
+# separately-declined "~70% gas-volume contraction" static-registry
+# finding (equipment_engineering_estimates.py) alongside the live model's
+# own, different confidence_note -- clearly labeled as two separate
+# things, not conflated.
+# =============================================================================
+def _gc_card(eq_id, cat, title, snap, changed_key_entry=None):
+    """Shared card opener -- same _fe_result_card_header pattern as GA."""
+    if changed_key_entry is not None:
+        changed, note = _fe_status_changed_flag(f"tab5_s4_changed__{eq_id}", changed_key_entry)
+    else:
+        changed, note = None, "no live entry"
+    _fe_result_card_header(eq_id, cat, f"{eq_id} — {title}", changed=changed, note=note,
+                            category_colors=_GC_CATEGORY_COLORS, item_shapes=_GC_ITEM_SHAPE)
+
+
+def _render_gc_live_results(snap):
+    gc001_gas = snap.get(("GC-001", "Gas"))
+    if gc001_gas is not None:
+        st.caption(f"Simulation snapshot as of {gc001_gas['timestamp']} (this cycle's own real, traceable timestamp).")
+
+    # -- GC-001 --------------------------------------------------------------
+    with st.container(border=True):
+        _gc_card("GC-001", "particulate", "Primary Cyclone", snap,
+                 gc001_gas["value"] if gc001_gas else None)
+        gc001_dust = snap.get(("GC-001", "Dust"))
+        gc001_temp = snap.get(("GC-001", "Temperature"))
+        if gc001_gas is not None and gc001_gas.get("status") != ps.STATUS_MISSING:
+            v = gc001_gas["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Dry gas flow", f"{v['dry_flow_nm3_h']:.2f} Nm³/h")
+            c2.metric("H₂ (dry mol%)", f"{v['H2_mol_pct_dry']:.1f}%")
+            with st.expander("Full status & traceability — GC-001 Gas"):
+                st.caption(f"Status: {gc001_gas['status']} · {gc001_gas['confidence_note']}")
+        if gc001_temp is not None:
+            st.metric("Outlet temperature", f"{gc001_temp['value']:.0f} °C")
+            with st.expander("Full status & traceability — GC-001 Temperature"):
+                st.caption(f"Status: {gc001_temp['status']} · {gc001_temp['confidence_note']}")
+        if gc001_dust is not None:
+            st.metric("Dust removal (inlet)", "Missing / Cannot Calculate")
+            with st.expander("Full status & traceability — GC-001 Dust"):
+                st.caption(f"Status: {gc001_dust['status']} · {gc001_dust['missing_reason']}")
+        st.caption(
+            "**GC-002 (Primary Cyclone, ΔP)** — real registry sub-item of this SAME physical unit "
+            "(data/equipment_registry.json's own item name: \"Primary Cyclone (ΔP)\"); no live model "
+            "is registered for it anywhere in this project (confirmed directly)."
+        )
+
+    # -- GC-003 ----------------------------------------------------------------
+    with st.container(border=True):
+        gc003_gas = snap.get(("GC-003", "Gas"))
+        _gc_card("GC-003", "particulate", "Secondary Cyclone", snap,
+                 gc003_gas["value"] if gc003_gas else None)
+        gc003_dust = snap.get(("GC-003", "Dust"))
+        gc003_temp = snap.get(("GC-003", "Temperature"))
+        if gc003_gas is not None:
+            v = gc003_gas["value"]
+            st.metric("Dry gas flow", f"{v['dry_flow_nm3_h']:.2f} Nm³/h")
+            with st.expander("Full status & traceability — GC-003 Gas"):
+                st.caption(f"Status: {gc003_gas['status']} · {gc003_gas['confidence_note']}")
+        if gc003_dust is not None:
+            v = gc003_dust["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Dust removal efficiency", f"{v['efficiency']*100:.1f}%")
+            c2.metric("Outlet dust", f"{v['outlet_mg_nm3']:.1f} mg/Nm³")
+            with st.expander("Full status & traceability — GC-003 Dust"):
+                st.caption(f"Status: {gc003_dust['status']} · {gc003_dust['confidence_note']}")
+        if gc003_temp is not None:
+            st.metric("Inlet temperature", f"{gc003_temp['value']:.0f} °C")
+            with st.expander("Full status & traceability — GC-003 Temperature"):
+                st.caption(f"Status: {gc003_temp['status']} · {gc003_temp['confidence_note']}")
+
+    # -- GC-004 -- the quench tower, with the real, separately-declined ------
+    # "~70% contraction" static-registry finding surfaced alongside the
+    # live model's own, different confidence_note. --
+    with st.container(border=True):
+        gc004_gas = snap.get(("GC-004", "Gas"))
+        _gc_card("GC-004", "thermal", "Quench Tower", snap, gc004_gas["value"] if gc004_gas else None)
+        gc004_cond = snap.get(("GC-004", "Condensed water"))
+        gc004_duty = snap.get(("GC-004", "Cooling duty"))
+        gc005_bd = snap.get(("GC-005", "Blowdown"))
+        if gc004_gas is not None:
+            v = gc004_gas["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Dry gas flow (out)", f"{v['dry_flow_nm3_h']:.2f} Nm³/h")
+            c2.metric("Condensed water", f"{gc004_cond['value']:.4f} m³/h" if gc004_cond else "—")
+            c3.metric("Cooling duty", f"{gc004_duty['value']:.2f} kW" if gc004_duty else "—")
+            with st.expander("Full status & traceability — GC-004 Gas"):
+                st.caption(f"Status: {gc004_gas['status']} · {gc004_gas['confidence_note']}")
+        if gc004_cond is not None:
+            with st.expander("Full status & traceability — GC-004 Condensed water"):
+                st.caption(f"Status: {gc004_cond['status']} · {gc004_cond['confidence_note']}")
+        if gc004_duty is not None:
+            with st.expander("Full status & traceability — GC-004 Cooling duty"):
+                st.caption(f"Status: {gc004_duty['status']} · {gc004_duty['confidence_note']}")
+        st.info(
+            "**Real, separately-known finding (static registry layer, `equipment_engineering_"
+            "estimates.py`):** a static-registry Outputs (post-quench gas flow) estimate for "
+            "GC-004 was checked and explicitly DECLINED, unlike most of this train's other exact-"
+            "calc fills -- GC-004's own Confirmed remarks state a real, non-trivial gas-volume "
+            "change (\"~70% contraction\" cooling from 860 to 65 °C), and assuming outlet flow "
+            "equals inlet flow would rest on an unstated, physically unsound assumption this "
+            "project has no confirmed water-vapor/condensation data to actually calculate -- so "
+            "that STATIC estimate stayed Missing Data – Required rather than presenting a number "
+            "built on an unsound assumption. The LIVE model above uses a DIFFERENT, real method "
+            "instead (reading GA-001's own already-computed dry-basis composition directly, not "
+            "deriving a % contraction itself) -- its own confidence_note (above) states its own, "
+            "separate simplification. Two distinct things, not conflated: a declined static "
+            "estimate, and a real live calculation that took a different, defensible path.",
+            icon="ℹ️",
+        )
+        if gc005_bd is not None:
+            st.caption(
+                f"**GC-005 (Quench Tower, Water)** — real registry sub-item of this SAME physical "
+                f"unit, and genuinely live: {gc005_bd['value']:.3f} m³/h blowdown this cycle."
+            )
+            with st.expander("Full status & traceability — GC-005 Blowdown"):
+                st.caption(f"Status: {gc005_bd['status']} · {gc005_bd['confidence_note']}")
+
+    # -- GC-006 ------------------------------------------------------------------
+    with st.container(border=True):
+        gc006_out = snap.get(("GC-006", "Tar outlet"))
+        _gc_card("GC-006", "scrubbing", "Tar Removal Unit", snap, gc006_out["value"] if gc006_out else None)
+        gc006_in = snap.get(("GC-006", "Tar inlet"))
+        if gc006_out is not None:
+            st.metric("Tar outlet (reference point)", f"{gc006_out['value']:.0f} mg/Nm³")
+            with st.expander("Full status & traceability — GC-006 Tar outlet"):
+                st.caption(f"Status: {gc006_out['status']} · {gc006_out['confidence_note']}")
+        if gc006_in is not None:
+            st.metric("Tar inlet (raw syngas)", "Missing / Cannot Calculate")
+            with st.expander("Full status & traceability — GC-006 Tar inlet"):
+                st.caption(f"Status: {gc006_in['status']} · {gc006_in['missing_reason']}")
+
+    # -- GC-007/008/009 -- wet scrubbers ------------------------------------------
+    for eq_id, title, val_key, out_field, blowdown_key in (
+        ("GC-007", "Wet Scrubber (Tar)", ("GC-007", "Tar"), "mg_nm3", ("GC-007", "Blowdown")),
+        ("GC-008", "Wet Scrubber (H₂S)", ("GC-008", "H2S"), "ppm", ("GC-008", "Blowdown")),
+        ("GC-009", "HCl Scrubber (Alkaline)", ("GC-009", "HCl"), "ppm", ("GC-009", "Blowdown")),
+    ):
+        with st.container(border=True):
+            entry = snap.get(val_key)
+            _gc_card(eq_id, "scrubbing", title, snap, entry["value"] if entry else None)
+            if eq_id == "GC-009" and entry is not None:
+                v = entry["value"]
+                target = 0.97
+                shortfall = v["efficiency"] < target
+                if shortfall:
+                    st.markdown(
+                        '<div style="background:#FEF2F2;border:2px solid #B91C1C;border-radius:8px;'
+                        'padding:8px 14px;margin:8px 0;">'
+                        f'<span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ KNOWN SHORTFALL — '
+                        f'computed {v["efficiency"]*100:.2f}% removal, BELOW GC-009\'s own stated >97% target'
+                        '</span></div>',
+                        unsafe_allow_html=True,
+                    )
+            if entry is not None:
+                v = entry["value"]
+                unit_suffix = "mg/Nm³" if out_field == "mg_nm3" else "ppm"
+                inlet_key = "inlet_mg_nm3" if out_field == "mg_nm3" else "inlet_ppm"
+                outlet_key = "outlet_mg_nm3" if out_field == "mg_nm3" else "outlet_ppm"
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Inlet", f"{v[inlet_key]:.1f} {unit_suffix}")
+                c2.metric("Removal efficiency", f"{v['efficiency']*100:.2f}%")
+                c3.metric("Outlet", f"{v[outlet_key]:.2f} {unit_suffix}")
+                if eq_id in ("GC-008", "GC-009"):
+                    target = 0.995 if eq_id == "GC-008" else 0.97
+                    color = "#B91C1C" if v["efficiency"] < target else "#15803D"
+                    st.markdown(
+                        _fe_inline_bar_svg(v["efficiency"] / target, color, target_frac=1.0) +
+                        f'&nbsp; vs {eq_id}\'s own Confirmed target &gt;{target*100:.1f}%',
+                        unsafe_allow_html=True,
+                    )
+                with st.expander(f"Full status & traceability — {eq_id}"):
+                    st.caption(f"Status: {entry['status']} · {entry['confidence_note']}")
+            bd_entry = snap.get(blowdown_key)
+            if bd_entry is not None:
+                st.metric("Blowdown", f"{bd_entry['value']:.3f} m³/h")
+                with st.expander(f"Full status & traceability — {eq_id} Blowdown"):
+                    st.caption(f"Status: {bd_entry['status']} · {bd_entry['confidence_note']}")
+
+    # -- GC-010 --------------------------------------------------------------------
+    with st.container(border=True):
+        gc010 = snap.get(("GC-010", "Dust"))
+        _gc_card("GC-010", "particulate", "Bag Filter (Dust)", snap, gc010["value"] if gc010 else None)
+        if gc010 is not None:
+            v = gc010["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Inlet", f"{v['inlet_mg_nm3']:.0f} mg/Nm³")
+            c2.metric("Removal efficiency", f"{v['efficiency']*100:.2f}%")
+            c3.metric("Outlet", f"{v['outlet_mg_nm3']:.2f} mg/Nm³")
+            with st.expander("Full status & traceability — GC-010 Dust"):
+                st.caption(f"Status: {gc010['status']} · {gc010['confidence_note']}")
+        st.caption(
+            "**GC-011 (Bag Filter, ΔP)** — real registry sub-item of this SAME physical unit; no "
+            "live model is registered for it anywhere in this project (confirmed directly)."
+        )
+
+    # -- GC-012 ----------------------------------------------------------------------
+    with st.container(border=True):
+        gc012 = snap.get(("GC-012", "H2S/COS"))
+        _gc_card("GC-012", "scrubbing", "Activated Carbon Filter", snap, gc012["value"] if gc012 else None)
+        if gc012 is not None:
+            v = gc012["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Inlet (from GC-008)", f"{v['inlet_ppm']:.2f} ppm")
+            c2.metric("Polish efficiency", f"{v['efficiency']*100:.2f}%")
+            c3.metric("Outlet", f"{v['outlet_ppm']:.3f} ppm")
+            with st.expander("Full status & traceability — GC-012 H2S/COS"):
+                st.caption(f"Status: {gc012['status']} · {gc012['confidence_note']}")
+
+    # -- GC-013 ------------------------------------------------------------------------
+    with st.container(border=True):
+        gc013_gas = snap.get(("GC-013", "Gas"))
+        _gc_card("GC-013", "motive", "Gas Blower / ID Fan", snap, gc013_gas["value"] if gc013_gas else None)
+        gc013_fan = snap.get(("GC-013", "Fan power"))
+        gc014 = snap.get(("GC-014", "Pressure"))
+        if gc013_gas is not None:
+            v = gc013_gas["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Final dry gas flow", f"{v['dry_flow_nm3_h']:.2f} Nm³/h")
+            c2.metric("H₂ (dry mol%)", f"{v['H2_mol_pct_dry']:.1f}%")
+            with st.expander("Full status & traceability — GC-013 Gas"):
+                st.caption(f"Status: {gc013_gas['status']} · {gc013_gas['confidence_note']}")
+        if gc013_fan is not None:
+            v = gc013_fan["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Cumulative ΔP", f"{v['cumulative_dp_mbar']:.1f} mbar")
+            c2.metric("Hydraulic power", f"{v['hydraulic_power_w']:.1f} W")
+            with st.expander("Full status & traceability — GC-013 Fan power"):
+                st.caption(f"Status: {gc013_fan['status']} · {gc013_fan['confidence_note']}")
+        if gc014 is not None:
+            v = gc014["value"]
+            st.caption(
+                f"**GC-014 (Gas Blower, Pressure)** — real registry sub-item of this SAME physical "
+                f"unit, genuinely live: discharge {v['discharge_mbar_g']:.0f} mbar(g), suction "
+                f"{v['suction_mbar_g']:.0f} mbar(g), consistency check **{v['consistency_check']['verdict']}**."
+            )
+            with st.expander("Full status & traceability — GC-014 Pressure"):
+                st.caption(f"Status: {gc014['status']} · {gc014['confidence_note']}")
+
+    # -- GC-015 -- the real converging condensate branch -----------------------------
+    with st.container(border=True):
+        gc015 = snap.get(("GC-015", "Condensate"))
+        _gc_card("GC-015", "collection", "Condensate Tank", snap, gc015["value"] if gc015 else None)
+        gc015_oc = snap.get(("GC-015", "OperatingConditions"))
+        if gc015 is not None:
+            v = gc015["value"]
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("GC-004 condensed", f"{v['condensed_process_water_m3_h']:.4f}")
+            c2.metric("GC-005 blowdown", f"{v['gc005_blowdown_m3_h']:.4f}")
+            c3.metric("GC-007 blowdown", f"{v['gc007_blowdown_m3_h']:.4f}")
+            c4.metric("GC-008 blowdown", f"{v['gc008_blowdown_m3_h']:.4f}")
+            c5.metric("GC-009 blowdown", f"{v['gc009_blowdown_m3_h']:.4f}")
+            st.metric("Total (5 real sources, summed live)", f"{v['total_m3_h']:.4f} m³/h")
+            with st.expander("Full status & traceability — GC-015 Condensate"):
+                st.caption(f"Status: {gc015['status']} · {gc015['confidence_note']}")
+        if gc015_oc is not None:
+            v = gc015_oc["value"]
+            st.metric("Operating temperature range", f"{v['temperature_range_c'][0]:.0f}–{v['temperature_range_c'][1]:.0f} °C")
+            with st.expander("Full status & traceability — GC-015 OperatingConditions"):
+                st.caption(f"Status: {gc015_oc['status']} · {gc015_oc['confidence_note']}")
+
+
+# =============================================================================
+# Gas Cleaning Section 5 -- Mass Balance & Energy Notes.
+#
+# MASS-BALANCE AUDIT (this task, checked directly): unlike FE (a fully
+# independent multi-model closure) or GA (a single by-construction split),
+# GC's own "mass balance" is genuinely MIXED -- two different real
+# findings, not one:
+#   (a) The BULK gas-phase flow (dry_flow_nm3_h) from GC-004 through
+#       GC-013 is preserved BY CONSTRUCTION -- gc013_gas_final() directly
+#       returns GC-004's own value dict unchanged (module docstring:
+#       "GC-006..GC-012 remove trace tar/H2S/HCl/dust, not bulk gas-phase
+#       species"), not independently re-derived at each stage. Checking
+#       GC-004's flow == GC-013's flow would be trivial, not a real
+#       cross-check.
+#   (b) GC-015's own condensate summation, by contrast, IS a genuine,
+#       INDEPENDENT closing check -- 5 real streams, each computed by a
+#       DIFFERENT formula from different inputs (GC-004's own wet/dry mole
+#       split; GC-005's own Confirmed constant; GC-007/008/009's own
+#       separate L/G ratio x gas flow x GC-005's blowdown ratio) -- summed
+#       to a real total. Independently re-verified for this audit (outside
+#       the UI, a direct Python check against a real engine run): the
+#       total_m3_h field matches the sum of its own 5 stored components to
+#       floating-point precision, confirming the live code's own summation
+#       is genuinely correct, not just self-consistent by definition.
+# =============================================================================
+def _render_gc_mass_energy_balance(snap):
+    gas004 = snap.get(("GC-004", "Gas"))
+    gas013 = snap.get(("GC-013", "Gas"))
+    st.markdown("**Bulk gas-phase flow: GC-004 → GC-013 (BY CONSTRUCTION, not an independent check)**")
+    if gas004 is not None and gas013 is not None:
+        f004 = gas004["value"]["dry_flow_nm3_h"]
+        f013 = gas013["value"]["dry_flow_nm3_h"]
+        c1, c2 = st.columns(2)
+        c1.metric("GC-004 dry gas flow", f"{f004:.3f} Nm³/h")
+        c2.metric("GC-013 dry gas flow", f"{f013:.3f} Nm³/h")
+        if abs(f004 - f013) < 1e-9:
+            st.success(f"Flow preserved end to end: {f004:.3f} Nm³/h (residual = {f004-f013:.2e} Nm³/h).")
+        else:
+            st.warning(f"Flow differs: GC-004 {f004:.3f} vs GC-013 {f013:.3f} Nm³/h.")
+        st.caption(
+            "**Honest caveat:** this is NOT an independent cross-check -- `gc013_gas_final()` "
+            "directly returns GC-004's own value dict unchanged (GC-006..GC-012 remove trace "
+            "species only, module docstring). It confirms the pass-through is wired correctly, not "
+            "that bulk gas-phase mass is conserved by any independent physics."
+        )
+
+    st.divider()
+    st.markdown("**GC-015 condensate: a genuine, INDEPENDENT closing check (5 real, separately-computed sources)**")
+    gc015 = snap.get(("GC-015", "Condensate"))
+    if gc015 is None or gc015.get("status") == ps.STATUS_MISSING:
+        st.warning("GC-015's own condensate summation is unavailable this cycle.")
+    else:
+        v = gc015["value"]
+        recomputed = (
+            v["condensed_process_water_m3_h"] + v["gc005_blowdown_m3_h"] + v["gc007_blowdown_m3_h"]
+            + v["gc008_blowdown_m3_h"] + v["gc009_blowdown_m3_h"]
+        )
+        gap = v["total_m3_h"] - recomputed
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("GC-004 condensed", f"{v['condensed_process_water_m3_h']:.4f}")
+        c2.metric("GC-005 blowdown", f"{v['gc005_blowdown_m3_h']:.4f}")
+        c3.metric("GC-007 blowdown", f"{v['gc007_blowdown_m3_h']:.4f}")
+        c4.metric("GC-008 blowdown", f"{v['gc008_blowdown_m3_h']:.4f}")
+        c5.metric("GC-009 blowdown", f"{v['gc009_blowdown_m3_h']:.4f}")
+
+        changed_total, note_total = _fe_status_changed_flag("tab5_s5_changed__total", v["total_m3_h"])
+        st.markdown(
+            "Changed since last checked — Total: " + _fe_changed_pill_html(changed_total, note_total),
+            unsafe_allow_html=True,
+        )
+
+        if abs(gap) < 1e-9:
+            st.success(
+                f"**Sum verified**: {v['condensed_process_water_m3_h']:.4f} + {v['gc005_blowdown_m3_h']:.4f} + "
+                f"{v['gc007_blowdown_m3_h']:.4f} + {v['gc008_blowdown_m3_h']:.4f} + "
+                f"{v['gc009_blowdown_m3_h']:.4f} = {recomputed:.4f} m³/h, matching GC-015's own stored "
+                f"total_m3_h ({v['total_m3_h']:.4f} m³/h) exactly (residual = {gap:.2e} m³/h) -- "
+                f"re-verified independently for this audit, not just trusted."
+            )
+        else:
+            st.error(
+                f"**Sum does NOT match**: 5 components sum to {recomputed:.4f} m³/h, but GC-015's own "
+                f"stored total_m3_h is {v['total_m3_h']:.4f} m³/h (gap = {gap:.2e} m³/h). Reported "
+                f"honestly, not forced to close."
+            )
+        st.warning(
+            "**Honest caveat, stated explicitly:** GC-006 (a dry adsorber, no liquid blowdown) is "
+            "deliberately excluded, correcting this item's own pre-existing mislabeled remark "
+            "(module docstring, mislabel correction 2). This confirms the 5-source summation is "
+            "wired and arithmetically correct -- it does NOT confirm the real plant's own blowdown "
+            "rates match these Confirmed/Assumed design-basis figures.",
+            icon="⚠️",
+        )
+
+    st.divider()
+    st.markdown("**Energy Notes**")
+    gc004_duty = snap.get(("GC-004", "Cooling duty"))
+    gc013_fan = snap.get(("GC-013", "Fan power"))
+    e1, e2 = st.columns(2)
+    if gc004_duty is not None:
+        e1.metric("GC-004 sensible-heat cooling duty (live)", f"{gc004_duty['value']:.2f} kW")
+        e1.caption("Real, live -- gas-side sensible heat only; does NOT include condensation latent heat (see GC-004's own card, Section 4).")
+    if gc013_fan is not None:
+        v = gc013_fan["value"]
+        e2.metric("GC-013 fan hydraulic power (live)", f"{v['hydraulic_power_w']:.1f} W")
+        e2.caption("Real, live -- a LOWER BOUND on GC-013's own Confirmed 1.5 kW motor rating (fan/motor inefficiency not modeled).")
+    st.info(
+        "**Two real, live energy figures exist for this tab** (unlike GA, which had none) -- "
+        "GC-004's cooling duty and GC-013's fan hydraulic power. They are shown as separate Notes, "
+        "not a closing balance: they describe two physically different processes (thermal duty "
+        "removed from the gas vs. mechanical power added to move it), with no real, confirmed "
+        "link between them in this project's own model.",
+        icon="ℹ️",
+    )
+
+
+# =============================================================================
+# Gas Cleaning Section 6 -- Simulation Status. Identical structure to
+# Tabs 3/4's own finished versions, reusing _plant_state_source_info() and
+# _digital_twin_cycle_log_status() directly (both already plant-wide).
+# Deliberately omits a trend chart -- an even more clear-cut case than GA's
+# own: register_gc_chain() depends on GA-001's own registered Outputs
+# (which itself depends, lagged, on FE-005), so a GC-only mini-run without
+# the real FE+GA chains registered alongside it would not gracefully
+# degrade at all (unlike GA-001's own placeholder fallback) -- it would
+# simply fail to find its own required upstream input. Not worth building.
+# =============================================================================
+def _render_gc_simulation_status(snap):
+    entry = snap.get(("GC-001", "Gas")) or snap.get(("GC-013", "Gas"))
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    is_live = src_info["reachable"] and src_info["rows_found"] > 0
+
+    if is_live:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        age_str = f"{age_hours * 60:.0f} min ago" if age_hours < 2 else f"{age_hours:.1f}h ago"
+        st.success(
+            "**✅ Live continuous-runtime data** — this cycle's values were read directly from "
+            "`plant_state_current`, written by the real, scheduled GitHub Actions workflow "
+            "(`docs/continuous_runtime_design.md`) — not generated by this page load.",
+            icon="✅",
+        )
+    else:
+        reason = (
+            f"unreachable this page load ({src_info['error']})" if not src_info["reachable"]
+            else "reachable, but genuinely empty — no cycle has ever been published there yet"
+        )
+        st.warning(
+            f"**⚠️ Fallback: in-process bootstrap** — `plant_state_current` is {reason}, so this "
+            "page load ran the Digital Twin engine fresh, in-process, right now (the SAME fallback "
+            "`tab1_integration.build_live_snapshot()` has always used). Every value shown is still "
+            "real — it is just NOT read from the continuous runtime's own persisted output.",
+            icon="⚠️",
+        )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.caption(
+        "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
+        "of plant operating hours. The real continuity signal is the timestamp →"
+    )
+    if is_live and entry:
+        c2.metric("Published at (real, persisted)", src_info["published_at"])
+        c2.caption(f"{age_str} — this cycle's own real publish time from the continuous runtime.")
+    elif entry:
+        c2.metric("Computed at (this page load)", entry["timestamp"])
+        c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
+    c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
+    c3.caption(
+        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
+        "behavior, not a bug here."
+    )
+
+    st.markdown(
+        "**Store connection:** " + ("✅ reachable" if src_info["reachable"] else "❌ unreachable")
+        + (f" — `{src_info['error']}`" if not src_info["reachable"] else "")
+    )
+
+    log_status = _digital_twin_cycle_log_status()
+    if log_status["exists"]:
+        st.caption("**Durable historical cycle count:** available via `digital_twin_cycle_log`.")
+    else:
+        checked_note = "" if log_status.get("not_found") else f" — checked just now: `{log_status['error']}`"
+        st.caption(
+            "**Durable historical cycle count:** not yet available (requires `digital_twin_cycle_log`, "
+            f"not yet created{checked_note}) — checked live, this page load, not assumed."
+        )
+
+    st.caption(
+        "No \"last 5 warm-up cycles\" trend chart on this tab -- an even more clear-cut omission "
+        "than Gasification's own: `register_gc_chain()` depends on GA-001's own registered output "
+        "(itself lagged-dependent on FE-005), so a GC-only mini-run without the real FE+GA chains "
+        "registered alongside it would not gracefully degrade at all -- it would simply fail to "
+        "find its own required upstream input. Not worth building for a nice-to-have chart."
+    )
+
+    st.markdown(
+        "**Source, by section:** Sections 1–5 above read live output from `gc_gas_cleaning_chain."
+        "py`'s own registered GC models for 13 of the 15 GC items (every item except GC-002/GC-011, "
+        "confirmed directly, Section 3/4 above) — a real simulation result, not a static figure. "
+        "Section 7 below instead reads `equipment_registry.load_registry()` directly for ALL of "
+        "GC-001 through GC-015 — real registry/vendor/DOK-ING data (Confirmed) or a stated "
+        "engineering estimate, never a simulation output. The two are never blended: every value on "
+        "this tab is clearly one or the other, labeled at the point it's shown."
+    )
+
+    st.info(
+        "**Status, current as of this build.** The continuous simulation runtime "
+        "(`docs/continuous_runtime_design.md`) **is implemented and has run for real** — the SAME "
+        "scheduled GitHub Actions workflow that publishes Feed Handling's and Gasification's own "
+        "real cycles publishes Gas Cleaning's real cycles too (the same `plant_state_current` "
+        "publish, the same engine run). The banner at the top of this section tells you, for THIS "
+        "page load specifically, whether what you're looking at came from that real persisted "
+        "output or the in-process fallback engine run. What is still genuinely NOT implemented: a "
+        "durable, queryable history of past cycles (`digital_twin_cycle_log`, see above).",
+        icon="ℹ️",
+    )
+
+
+def _render_gc_tab():
+    # _gc_summary must land at MODULE scope -- tabs 6/7/8/9's own
+    # regression checks read it directly, the SAME pre-existing pattern
+    # already fixed for _ga_summary in _render_ga_tab() (the GA-build
+    # lesson, applied proactively here rather than re-discovered).
+    global _gc_summary
+    st.header("Gas Cleaning — GC-001 through GC-015")
+    st.caption(
+        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+        "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
+        "which one THIS page load used, and the full detail. 13 of the 15 GC items have a live "
+        "registered model (audited in Section 5/6 below) — GC-002/GC-011 are shown honestly as "
+        "**Static (no live model)**, real registry sub-items of GC-001/GC-010's own physical unit."
+    )
+    st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "".join(_fe_tag_html(k) for k in ("live", "confirmed", "estimate", "missing"))
+        + " — the SAME consistent color code used on the Feed Handling and Gasification tabs, "
+          "reused here verbatim.",
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "GA-001 → GC-001/003 (cyclones) → GC-004/005 (quench) → GC-006 (tar removal) → "
+        "GC-007/008/009 (wet scrubbers: tar/H₂S/HCl) → GC-010/011 (bag filter) → GC-012 "
+        "(activated carbon) → GC-013/014 (blower) → gas leaves toward HB-001 (a real, physical "
+        "flow direction -- NOT yet a live code-level connection; the module's own docstring states "
+        "explicitly this integration is separate, later work, checked directly not assumed). "
+        "GC-002/005/011/014 (annotated on their own parent box) are real registry sub-items of the "
+        "SAME physical unit, not separate process steps. GC-015 (purple, below) is a real "
+        "converging branch collecting blowdown from GC-004/005/007/008/009."
+    )
+    try:
+        _gc_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_gc_schematic_svg(_gc_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _gc_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_gc_schematic_exc}")
+    with st.expander("Legend & notes"):
+        st.markdown(_gc_schematic_legend_svg(), unsafe_allow_html=True)
+
+    st.divider()
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _gc_snap_for_kpis = _tab1_integration_snapshot()
+        _render_gc_live_kpis(_gc_snap_for_kpis)
+    except Exception as _gc_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_gc_kpis_exc}")
+
+    st.divider()
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live/static status shown visually in Section 1's schematic, as a table — for "
+        "accessibility/screen-reader parity, not a second diagram."
+    )
+    try:
+        _gc_snap_for_status = _tab1_integration_snapshot()
+        _render_gc_status_table(_gc_snap_for_status)
+    except Exception as _gc_status_exc:
+        st.error(f"Equipment status table failed to render: {_gc_status_exc}")
+
+    st.divider()
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
+    try:
+        _gc_snap_for_results = _tab1_integration_snapshot()
+        _render_gc_live_results(_gc_snap_for_results)
+    except Exception as _gc_results_exc:
+        st.error(f"Live simulation results failed to render: {_gc_results_exc}")
+
+    st.divider()
+    st.subheader("Section 5 — Mass Balance & Energy Notes")
+    try:
+        _gc_snap_for_balance = _tab1_integration_snapshot()
+        _render_gc_mass_energy_balance(_gc_snap_for_balance)
+    except Exception as _gc_balance_exc:
+        st.error(f"Mass balance / energy notes failed to render: {_gc_balance_exc}")
+
+    st.divider()
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _gc_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_gc_simulation_status(_gc_snap_for_sim_status)
+    except Exception as _gc_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_gc_sim_status_exc}")
+
+    st.divider()
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: GC-001 through GC-015 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Sensors & "
@@ -4995,6 +6167,11 @@ with tab5:
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.GC_IDS, _gc_summary["per_item"])
+
+
+with tab5:
+    _render_gc_tab()
+    _render_gc_tab()
 
 with tab6:
     st.header("Equipment Datasheets — Sensors & Analysers (SA-001 through SA-012)")
