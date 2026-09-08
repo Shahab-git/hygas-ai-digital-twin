@@ -7487,10 +7487,40 @@ def _render_hb_live_results(snap):
         _hb_card("HB-006", "psa", "PSA Unit", snap, hb006["value"] if hb006 else None)
         if hb006 is not None:
             v = hb006["value"]
+            # KNOWN SHORTFALL banner -- the SAME pattern GC-009's own HCl
+            # shortfall uses (visual prominence upgrade only; the underlying
+            # y_H2 value/computation is untouched -- see master_open_
+            # questions.md item 5's own 2026-09-08 UPDATE for the full root-
+            # cause writeup this banner cross-references).
+            hb006_target = 0.55  # HB-006's own Confirmed "Feed gas H2 content" target
+            hb006_shortfall = v["y_H2"] < hb006_target
+            if hb006_shortfall:
+                st.markdown(
+                    '<div style="background:#FEF2F2;border:2px solid #B91C1C;border-radius:8px;'
+                    'padding:8px 14px;margin:8px 0;">'
+                    f'<span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ KNOWN SHORTFALL — '
+                    f'live feed H₂ {v["y_H2"]*100:.2f}%, BELOW HB-006\'s own stated 55% Confirmed target'
+                    '</span></div>',
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "Root cause: the SAME registry/live-model composition mismatch as the N₂ finding — "
+                    "HB-006's own 55% target traces to the registry's own pre-live-model gas-composition "
+                    "chart, consistent with GA-001's Confirmed steam-blown technology description; the "
+                    "live model's own necessary air/steam simplification legitimately produces a more "
+                    "N₂-heavy (lower-H₂) gas instead. See `docs/master_open_questions.md` item 5's own "
+                    "2026-09-08 UPDATE for the full root-cause writeup."
+                )
             c1, c2, c3 = st.columns(3)
             c1.metric("Feed H₂ (dry)", f"{v['y_H2']*100:.2f}%")
             c2.metric("H₂ recovery", f"{v['recovery']*100:.2f}%")
             c3.metric("Feed CO₂", f"{v['y_CO2']*100:.2f}%")
+            hb006_bar_color = "#B91C1C" if hb006_shortfall else "#15803D"
+            st.markdown(
+                _fe_inline_bar_svg(v["y_H2"] / hb006_target, hb006_bar_color, target_frac=1.0) +
+                f'&nbsp; vs HB-006\'s own Confirmed target {hb006_target*100:.0f}%',
+                unsafe_allow_html=True,
+            )
             _hb_live_expander("HB-006 PSA", hb006)
         st.caption(
             "**HB-007 (PSA Unit, H₂ Recovery)** and **HB-008 (PSA Unit, Pressure)** are real registry "
