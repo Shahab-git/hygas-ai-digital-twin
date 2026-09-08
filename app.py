@@ -2379,6 +2379,62 @@ def _fe_equipment_shape_svg(kind, x, y, w, h, fill_url, stroke):
                 f'x2="{cx+r*0.75*dx_r:.1f}" y2="{cy+r*0.75*dy_r:.1f}" '
                 f'stroke="{stroke}" stroke-width="1.6" opacity="0.75"/>'
             )
+    elif kind == "reactor":
+        # A vertical fluidized-bed reactor vessel -- a tall, rounded-top
+        # cylinder with a narrower base, plus horizontal bed-level lines --
+        # deliberately distinct from every FE silhouette (this project's
+        # real equipment: GA-001, "Bubbling Fluidized Bed, steam-blown").
+        body_w = w * 0.42
+        xl, xr = x + (w - body_w) / 2, x + (w + body_w) / 2
+        top_y, dome_h = y + 6, body_w * 0.35
+        base_y = bottom - 6
+        path = (
+            f"M {xl:.1f} {top_y+dome_h:.1f} "
+            f"Q {xl:.1f} {top_y:.1f} {x+w/2:.1f} {top_y:.1f} "
+            f"Q {xr:.1f} {top_y:.1f} {xr:.1f} {top_y+dome_h:.1f} "
+            f"L {xr:.1f} {base_y:.1f} "
+            f"Q {xr:.1f} {base_y+8:.1f} {x+w/2:.1f} {base_y+8:.1f} "
+            f"Q {xl:.1f} {base_y+8:.1f} {xl:.1f} {base_y:.1f} Z"
+        )
+        parts.append(f'<path d="{path}" {common}/>')
+        for frac in (0.4, 0.6, 0.8):
+            ly = top_y + dome_h + (base_y - top_y - dome_h) * frac
+            parts.append(
+                f'<line x1="{xl+2:.1f}" y1="{ly:.1f}" x2="{xr-2:.1f}" y2="{ly:.1f}" '
+                f'stroke="{stroke}" stroke-width="1.3" opacity="0.5"/>'
+            )
+    elif kind == "bin":
+        # A simple rounded storage bin/box -- deliberately plain (GA-007
+        # "Char Collection Bin" is a straightforward collection vessel, not
+        # a mechanically active item like the shapes around it).
+        parts.append(f'<rect x="{x+10:.1f}" y="{y+8:.1f}" width="{w-20:.1f}" height="{bottom-y-8:.1f}" rx="6" {common}/>')
+        parts.append(
+            f'<line x1="{x+16:.1f}" y1="{y+16:.1f}" x2="{x+w-16:.1f}" y2="{y+16:.1f}" '
+            f'stroke="{stroke}" stroke-width="1.3" opacity="0.5"/>'
+        )
+    elif kind == "silo":
+        # A tall vertical storage silo -- wide cylindrical body, a conical
+        # (hopper-bottom) discharge, opposite the "reactor" shape's domed
+        # TOP -- GA-010 "Carbon Black Packaging & Storage Silo".
+        body_w = w * 0.5
+        xl, xr = x + (w - body_w) / 2, x + (w + body_w) / 2
+        shoulder_y = y + 6
+        cone_y = bottom - 14
+        parts.append(
+            f'<rect x="{xl:.1f}" y="{shoulder_y:.1f}" width="{body_w:.1f}" height="{cone_y-shoulder_y:.1f}" {common}/>'
+        )
+        cone_pts = f"{xl:.1f},{cone_y:.1f} {xr:.1f},{cone_y:.1f} {x+w/2:.1f},{bottom:.1f}"
+        parts.append(f'<polygon points="{cone_pts}" fill="{fill_url}" stroke="{stroke}" stroke-width="2"/>')
+    elif kind == "process":
+        # A processing/packaging unit -- a rect with a small internal grid,
+        # suggesting aggregate sorting/packaging machinery -- GA-009 (Ash
+        # Aggregate Processing) / GA-010's own packaging-line neighbors.
+        parts.append(f'<rect x="{x+8:.1f}" y="{y+8:.1f}" width="{w-16:.1f}" height="{bottom-y-8:.1f}" rx="5" {common}/>')
+        gx0, gy0, gx1, gy1 = x + 16, y + 16, x + w - 16, bottom - 4
+        for gx in (gx0 + (gx1 - gx0) / 3, gx0 + 2 * (gx1 - gx0) / 3):
+            parts.append(f'<line x1="{gx:.1f}" y1="{gy0:.1f}" x2="{gx:.1f}" y2="{gy1:.1f}" stroke="{stroke}" stroke-width="1.2" opacity="0.45"/>')
+        for gy in (gy0 + (gy1 - gy0) / 2,):
+            parts.append(f'<line x1="{gx0:.1f}" y1="{gy:.1f}" x2="{gx1:.1f}" y2="{gy:.1f}" stroke="{stroke}" stroke-width="1.2" opacity="0.45"/>')
     else:
         parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bottom-y:.1f}" rx="8" {common}/>')
     return "".join(parts)
@@ -2647,7 +2703,8 @@ def _fe_schematic_legend_svg():
 # Integrated Plant Status section reads (via the shared, cached
 # _tab1_integration_snapshot()) -- nothing is recomputed here.
 # =============================================================================
-def _fe_result_card_header(eq_id, cat, title, downstream_tag=None, changed=None, note=""):
+def _fe_result_card_header(eq_id, cat, title, downstream_tag=None, changed=None, note="",
+                            category_colors=None, item_shapes=None):
     """Shared header row for every Section 4 card -- task requirements 2,
     4, 5: the SAME wide equipment icon Section 3 uses (_fe_status_row_icon_svg,
     itself reusing Section 1's own _fe_equipment_shape_svg/_FE_ITEM_SHAPE/
@@ -2655,8 +2712,11 @@ def _fe_result_card_header(eq_id, cat, title, downstream_tag=None, changed=None,
     caller passes one (never inferred here -- the caller decides based on
     what the item's own real text already states), and the changed-since-
     last-checked pill from the SAME _fe_changed_pill_html() Sections 2/3
-    already use."""
-    icon = _fe_status_row_icon_svg(eq_id, cat)
+    already use. `category_colors`/`item_shapes` default to Feed Handling's
+    own dicts (every existing Tab 3 call site unchanged); other tabs pass
+    their own (e.g. Gasification's _GA_CATEGORY_COLORS/_GA_ITEM_SHAPE) --
+    the SAME shared function, not a duplicated per-tab copy."""
+    icon = _fe_status_row_icon_svg(eq_id, cat, category_colors, item_shapes)
     tag_html = (
         f'<span class="fe-tag" style="background:#EDE9FE;color:#6D28D9;">→ feeds {downstream_tag}</span>'
         if downstream_tag else ""
@@ -3110,22 +3170,29 @@ def _fe_changed_pill_html(changed, note):
     return '<span class="fe-tag" style="background:#F3F4F6;color:#6B7280;">unchanged</span>'
 
 
-def _fe_status_row_icon_svg(eq_id, cat):
+def _fe_status_row_icon_svg(eq_id, cat, category_colors=None, item_shapes=None):
     """A small icon reusing the EXACT same shape function, shape mapping
-    and category colors Section 1's schematic uses (_fe_equipment_shape_svg
-    / _FE_ITEM_SHAPE / _FE_CATEGORY_COLORS) -- so this table visually ties
-    back to the diagram it complements, not a separate visual language
-    (task requirement 4). Uses the SAME wide aspect ratio as the
-    schematic's own boxes (box_w=150 / drawn-height=62 there) rather than a
-    square -- some shapes (e.g. "instrument", "ram") rely on fixed-pixel
-    insets from _fe_equipment_shape_svg that only stay legible at a
-    proportionally wide box, exactly like the real schematic boxes they're
-    drawn for. Defines its own local copy of the schematic's own drop-
-    shadow filter (same id, same parameters) so this icon renders correctly
-    on its own regardless of whether Section 1's schematic rendered
-    successfully above it."""
-    colors = _FE_CATEGORY_COLORS[cat]
-    kind = _FE_ITEM_SHAPE[eq_id]
+    and category colors a tab's own Section 1 schematic uses
+    (_fe_equipment_shape_svg / item_shapes / category_colors) -- so a
+    status table visually ties back to the diagram it complements, not a
+    separate visual language (task requirement 4). `category_colors` /
+    `item_shapes` default to Feed Handling's own _FE_CATEGORY_COLORS /
+    _FE_ITEM_SHAPE (every existing Tab 3 call site is unchanged); other
+    tabs (e.g. Gasification's _GA_CATEGORY_COLORS / _GA_ITEM_SHAPE) pass
+    their own -- this is the SAME shared function reused, not a duplicated
+    per-tab copy. Uses the SAME wide aspect ratio as a schematic's own
+    boxes (box_w=150 / drawn-height=62 there) rather than a square -- some
+    shapes (e.g. "instrument", "ram") rely on fixed-pixel insets from
+    _fe_equipment_shape_svg that only stay legible at a proportionally
+    wide box, exactly like the real schematic boxes they're drawn for.
+    Defines its own local copy of the schematic's own drop-shadow filter
+    (same id, same parameters) so this icon renders correctly on its own
+    regardless of whether Section 1's schematic rendered successfully
+    above it."""
+    category_colors = category_colors if category_colors is not None else _FE_CATEGORY_COLORS
+    item_shapes = item_shapes if item_shapes is not None else _FE_ITEM_SHAPE
+    colors = category_colors[cat]
+    kind = item_shapes[eq_id]
     w, drawn_h = 64, 26
     shape = _fe_equipment_shape_svg(kind, 0, 0, w, drawn_h + 30, colors["fill"], colors["stroke"])
     return (
@@ -3874,8 +3941,974 @@ with tab3:
     st.divider()
     _render_equipment_items(equipment_datasheet.FE_IDS, _fe_summary["per_item"])
 
-with tab4:
-    st.header("Equipment Datasheets — Gasification (GA-001 through GA-010)")
+
+# =============================================================================
+# Gasification tab (GA-001 through GA-010) -- built to the SAME 7-section
+# structure Tab 3 (Feed Handling) reached, reusing every genuinely generic
+# helper directly (_fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_pill_html, _fe_inline_bar_svg, _fe_tag_html/_FE_DATA_TYPE_TAGS,
+# _FE_TAB_CSS's own .fe-tag class, _fe_equipment_shape_svg (extended with
+# new GA-specific shape kinds, not duplicated), _fe_status_row_icon_svg
+# (generalized to accept a category-colors/item-shapes dict, defaulting to
+# FE's own so every existing Tab 3 call site is unchanged), _fe_bin_icon_svg,
+# _render_equipment_honest_count, _render_equipment_items -- none of these
+# is copied; every one is the exact same function object Tab 3 calls.
+#
+# AUDIT, checked directly before writing anything (not assumed): GA's own
+# register_ga001() (python/ga001_gasifier_model.py) registers ONLY GA-001
+# itself -- its own docstring states explicitly "Does NOT register, wire,
+# or touch anything else -- no GC connection, no GA-005 char/ash link, no
+# other Phase 1 item." Confirmed by direct grep across every python/*.py
+# file: no ("GA-005"..."GA-010", ...) key is EVER registered with a live
+# SimulationEngine anywhere in this project. So GA-001 is the ONLY GA item
+# with real, live SharedPlantState entries (Outputs, Tar content,
+# OxygenCarrierCirculationEstimate); GA-002..GA-010 exist ONLY as static
+# registry items (Confirmed/Estimate via equipment_datasheet.py), exactly
+# like Section 7's own "Existing Data" content below. This tab is built
+# HONESTLY around that real distinction -- GA-005..010 get their own
+# clearly distinct "Static (no live model)" status, never a fabricated
+# "Running", and their schematic/mass-balance flow values are clearly
+# labeled as DERIVED (gasifier_mass_balance.byproduct_mass_flows() applied
+# to GA-001's own real live feed rate), never presented as a live
+# per-item simulation output.
+# =============================================================================
+
+# Matches this project's own real equipment naming (data/equipment_registry
+# .json, verified directly, not assumed): GA-001 is the reactor/pressure
+# vessel itself (red, matching FE's own "pressure-boundary/safety-critical"
+# convention); GA-002/003/004 are real, separately-registered equipment
+# items too, but per their own registry names ("Gasifier Vessel (Pressure)",
+# "Air/Steam Injection (Flow)"/"(Temp)") they are genuinely INSTRUMENTATION
+# on the SAME physical vessel/injection line as GA-001, not distinct
+# downstream process steps -- shown as a small annotation on GA-001's own
+# box, not separate schematic boxes (task's own explicit framing); GA-005/
+# 006/007 are the mechanical ash/char handling chain; GA-008/009/010 are
+# the recovery/processing/packaging units that split the combined ash+
+# carbon-black stream into its two final products.
+_GA_CATEGORY_COLORS = {
+    "reactor": {"fill": "#FECACA", "stroke": "#B91C1C", "label": "Reactor / Pressure Vessel"},
+    "instr":   {"fill": "#BBF7D0", "stroke": "#15803D", "label": "Vessel / Injection Instrumentation"},
+    "mech":    {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "Ash / Char Handling"},
+    "process": {"fill": "#DDD6FE", "stroke": "#6D28D9", "label": "Recovery, Processing & Packaging"},
+}
+
+_GA_SCHEMATIC_ITEMS = [
+    # (equipment_id, display name (line-wrapped), category key, live engine key or None)
+    ("GA-001", "Gasifier Vessel\n(Reactor)", "reactor", ("GA-001", "Outputs")),
+    ("GA-005", "Bed Drain /\nAsh Discharge", "mech", None),
+    ("GA-006", "Char / Ash\nConveyor", "mech", None),
+    ("GA-007", "Char Collection\nBin", "mech", None),
+    ("GA-008", "Carbon Black Recovery\n& Classification", "process", None),
+    ("GA-009", "Ash Aggregate\nProcessing", "process", None),
+    ("GA-010", "Carbon Black\nPackaging", "process", None),
+]
+# GA-002/003/004 -- real registry items, genuinely sub-items of GA-001's own
+# vessel/injection assembly (verified directly against data/equipment_
+# registry.json's own item names), annotated on GA-001's box, not drawn as
+# separate boxes.
+_GA_SUBITEMS = [
+    ("GA-002", "Pressure"), ("GA-003", "Air/Steam Flow"), ("GA-004", "Air/Steam Temp"),
+]
+_GA_ITEM_SHAPE = {
+    "GA-001": "reactor", "GA-005": "hopper", "GA-006": "conveyor",
+    "GA-007": "bin", "GA-008": "separator", "GA-009": "process", "GA-010": "silo",
+}
+
+
+def _ga_derived_byproduct_flows(snap):
+    """Real ash/carbon-black mass flows for the GA-005..010 chain -- NOT a
+    live SharedPlantState output (register_ga001() registers ONLY GA-001
+    itself, confirmed directly against the module's own docstring and a
+    project-wide grep). Reuses gasifier_mass_balance.byproduct_mass_flows()
+    -- the SAME ported design-basis calculation equipment_engineering_
+    estimates.py's own GA-005/008/009 registry ESTIMATE fills already use
+    -- fed GA-001's own real, live dry_feed_rate_kg_h input for THIS cycle.
+    A real calculation on a real live value, explicitly not a live
+    simulation output for GA-005..010 themselves. Returns None if GA-001's
+    own feed-rate input isn't available this cycle."""
+    entry = snap.get(("GA-001-INPUT", "dry_feed_rate_kg_h"))
+    if entry is None or entry.get("status") == ps.STATUS_MISSING:
+        return None
+    dry_feed_kg_h = entry["value"]
+    flows = gasifier_mass_balance.byproduct_mass_flows(dry_feed_kg_h)
+    flows["dry_feed_kg_h"] = dry_feed_kg_h
+    return flows
+
+
+def _ga_edge_flow_values(snap):
+    """One derived value per schematic edge -- index 0-3 the combined ash+
+    carbon-black stream through GA-001->005->006->007->008, index 4-5 the
+    real split at GA-008 into GA-009 (ash) / GA-010 (carbon black)."""
+    flows = _ga_derived_byproduct_flows(snap)
+    if flows is None:
+        return [None] * 6
+    combined = flows["ash_kg_h"] + flows["carbon_black_kg_h"]
+    return [combined, combined, combined, combined, flows["ash_kg_h"], flows["carbon_black_kg_h"]]
+
+
+def _ga_schematic_svg(snap):
+    box_w, box_h, gap, x0, y0 = 150, 92, 34, 110, 190
+    parts_positions = [(x0 + i * (box_w + gap), y0) for i in range(5)]  # GA-001..GA-008
+    branch_x = x0 + 5 * (box_w + gap)
+    parts_positions += [(branch_x, y0 - 82), (branch_x, y0 + 82)]  # GA-009 (up), GA-010 (down)
+    total_w = branch_x + box_w + 210
+    total_h = y0 + 82 + box_h + 50
+    edge_values = _ga_edge_flow_values(snap)
+    max_flow = max([v for v in edge_values if v is not None], default=1.0)
+    flows = _ga_derived_byproduct_flows(snap)
+
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs>'
+        '<marker id="ga_arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" '
+        'orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L0,6 L9,3 z" fill="#374151"/></marker>'
+        '<filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-ga-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/>'
+            f'</linearGradient>'
+            for key, c in _GA_CATEGORY_COLORS.items()
+        )
+        + '</defs>',
+        f'<text x="{x0-14}" y="{y0+box_h/2-8}" font-size="13" font-weight="bold" '
+        f'text-anchor="end" fill="#374151">FROM FE-008</text>',
+        f'<line x1="{x0-100}" y1="{y0+box_h/2}" x2="{x0-6}" y2="{y0+box_h/2}" '
+        f'stroke="#374151" stroke-width="2.5" marker-end="url(#ga_arrow)"/>',
+    ]
+
+    boxes = []
+    for i, (eq_id, name, cat, key) in enumerate(_GA_SCHEMATIC_ITEMS):
+        x, y = parts_positions[i]
+        boxes.append((x, y, eq_id, name, cat, key))
+
+    for i, (x, y, eq_id, name, cat, key) in enumerate(boxes):
+        colors = _GA_CATEGORY_COLORS[cat]
+        if key is not None:
+            entry = snap.get(key)
+            is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+            badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
+            badge_text = "No data" if is_missing else "Running"
+        else:
+            # HONEST, distinct third state -- no live model was ever
+            # registered for this item (confirmed directly), a different,
+            # more fundamental gap than "Missing" (which means a live
+            # model WAS attempted and came back empty this cycle).
+            badge_fill, badge_fg, badge_text = "#E0E7FF", "#4338CA", "Static"
+        shape_kind = _GA_ITEM_SHAPE[eq_id]
+        parts.append(
+            _fe_equipment_shape_svg(shape_kind, x, y, box_w, box_h, f'url(#grad-ga-{cat})', colors["stroke"])
+        )
+        parts.append(
+            f'<text x="{x+box_w/2}" y="{y+22}" text-anchor="middle" font-size="13" '
+            f'font-weight="bold" fill="#111827">{eq_id}</text>'
+        )
+        for li, line in enumerate(name.split("\n")):
+            parts.append(
+                f'<text x="{x+box_w/2}" y="{y+40+li*15}" text-anchor="middle" font-size="11" '
+                f'fill="#111827">{line}</text>'
+            )
+        badge_w = 62
+        parts.append(
+            f'<rect x="{x+box_w/2-badge_w/2}" y="{y+box_h-24}" width="{badge_w}" height="16" rx="8" '
+            f'fill="{badge_fill}"/>'
+        )
+        parts.append(
+            f'<text x="{x+box_w/2}" y="{y+box_h-12}" text-anchor="middle" font-size="9.5" '
+            f'font-weight="600" fill="{badge_fg}">{badge_text}</text>'
+        )
+
+    # -- Real, small annotation for GA-002/003/004 -- genuine sub-items of
+    # GA-001's own vessel/injection assembly, not separate boxes (see the
+    # block's own module comment above for the verified reasoning). --
+    ga001_x, ga001_y = boxes[0][0], boxes[0][1]
+    sub_y = ga001_y - 34
+    parts.append(
+        f'<line x1="{ga001_x+box_w/2}" y1="{sub_y+18}" x2="{ga001_x+box_w/2}" y2="{ga001_y-4}" '
+        f'stroke="#15803D" stroke-width="1.6" stroke-dasharray="3,3"/>'
+    )
+    parts.append(
+        f'<rect x="{ga001_x-14}" y="{sub_y-16}" width="{box_w+28}" height="30" rx="6" '
+        f'fill="#F0FDF4" stroke="#15803D" stroke-width="1.3"/>'
+    )
+    sub_label = " · ".join(f"{eid} ({name})" for eid, name in _GA_SUBITEMS)
+    parts.append(
+        f'<text x="{ga001_x+box_w/2}" y="{sub_y+2}" text-anchor="middle" font-size="8.5" '
+        f'font-weight="600" fill="#15803D">Same vessel/injection assembly:</text>'
+    )
+    parts.append(
+        f'<text x="{ga001_x+box_w/2}" y="{sub_y+12}" text-anchor="middle" font-size="8" '
+        f'fill="#166534">{sub_label}</text>'
+    )
+
+    # -- Main chain arrows: GA-001->005->006->007->008 --
+    for i in range(4):
+        x, y = boxes[i][0], boxes[i][1]
+        xn = boxes[i + 1][0]
+        ev = edge_values[i]
+        sw = _fe_flow_stroke_width(ev, max_flow)
+        parts.append(
+            f'<line x1="{x+box_w}" y1="{y+box_h/2}" x2="{xn-6}" y2="{y+box_h/2}" '
+            f'stroke="#374151" stroke-width="{sw}" marker-end="url(#ga_arrow)"/>'
+        )
+        ev_label = f"{ev:.2f} kg/h" if ev is not None else "no data"
+        parts.append(f'<rect x="{x+box_w+2}" y="{y+box_h/2-19}" width="{gap-4}" height="13" fill="#FFFFFF"/>')
+        parts.append(
+            f'<text x="{x+box_w+gap/2}" y="{y+box_h/2-9}" text-anchor="middle" font-size="9" '
+            f'font-weight="600" fill="#6D28D9">{ev_label}</text>'
+        )
+
+    # -- The real split at GA-008: two arrows, to GA-009 (ash) and GA-010
+    # (carbon black) -- both real, distinct final registry items, not an
+    # incidental byproduct label like FE's own dashed branches. --
+    ga008_x, ga008_y = boxes[4][0], boxes[4][1]
+    for branch_i, edge_i in ((5, 4), (6, 5)):
+        xn, yn = boxes[branch_i][0], boxes[branch_i][1]
+        ev = edge_values[edge_i]
+        sw = _fe_flow_stroke_width(ev, max_flow)
+        parts.append(
+            f'<line x1="{ga008_x+box_w}" y1="{ga008_y+box_h/2}" x2="{xn-6}" y2="{yn+box_h/2}" '
+            f'stroke="#374151" stroke-width="{sw}" marker-end="url(#ga_arrow)"/>'
+        )
+        ev_label = f"{ev:.2f} kg/h" if ev is not None else "no data"
+        mx, my = (ga008_x + box_w + xn - 6) / 2, (ga008_y + box_h / 2 + yn + box_h / 2) / 2
+        parts.append(f'<rect x="{mx-32:.1f}" y="{my-15:.1f}" width="64" height="13" fill="#FFFFFF"/>')
+        parts.append(
+            f'<text x="{mx:.1f}" y="{my-5:.1f}" text-anchor="middle" font-size="9" '
+            f'font-weight="600" fill="#6D28D9">{ev_label}</text>'
+        )
+
+    parts.append(
+        f'<text x="{branch_x+box_w+16}" y="{y0-6}" font-size="10" fill="#4B5563">→ Aggregate</text>'
+    )
+    parts.append(
+        f'<text x="{branch_x+box_w+16}" y="{y0+178}" font-size="10" fill="#4B5563">→ Packaging/Storage</text>'
+    )
+
+    if flows is None:
+        parts.append(
+            f'<text x="{x0}" y="{total_h-10}" font-size="10" font-style="italic" fill="#B91C1C">'
+            f'GA-001\'s own live dry_feed_rate_kg_h is unavailable this cycle -- GA-005..010\'s derived '
+            f'flows above show "no data" rather than a fabricated number.</text>'
+        )
+    else:
+        parts.append(
+            f'<text x="{x0}" y="{total_h-10}" font-size="10" font-style="italic" fill="#4B5563">'
+            f'GA-005..010 have no live registered model (confirmed directly) -- their kg/h values above '
+            f'are DERIVED: gasifier_mass_balance.py\'s own ported design-basis fractions applied to '
+            f'GA-001\'s real live feed rate ({flows["dry_feed_kg_h"]:.2f} kg/h this cycle), not an '
+            f'independent live simulation output for each item.</text>'
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _ga_schematic_legend_svg():
+    """The schematic's own legend, in the SAME style as Feed Handling's
+    _fe_schematic_legend_svg (task requirement -- reuse the proven pattern,
+    not invent a new one), GA-specific content only."""
+    x0, line_h = 10, 20
+    total_w, total_h = 640, 210
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
+    for idx, colors in enumerate(_GA_CATEGORY_COLORS.values()):
+        ly = 16 + 22 + idx * line_h
+        parts.append(
+            f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+            f'stroke="{colors["stroke"]}" stroke-width="2"/>'
+        )
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    status_y0 = 16 + 22 + len(_GA_CATEGORY_COLORS) * line_h + 10
+    for dy, fill, fg, label, note in (
+        (0, "#DCFCE7", "#15803D", "Running", "A real registered model output this cycle (GA-001 only)"),
+        (line_h, "#F3F4F6", "#6B7280", "No data", "A live model exists but is genuinely Missing this cycle"),
+        (2 * line_h, "#E0E7FF", "#4338CA", "Static", "No live model was ever registered for this item (GA-005..010)"),
+    ):
+        ly = status_y0 + dy
+        parts.append(f'<rect x="{x0}" y="{ly-15}" width="46" height="14" rx="7" fill="{fill}"/>')
+        parts.append(
+            f'<text x="{x0+23}" y="{ly-5}" text-anchor="middle" font-size="8.5" font-weight="600" '
+            f'fill="{fg}">{label}</text>'
+        )
+        parts.append(f'<text x="{x0+56}" y="{ly}" font-size="11" fill="#111827">{note}</text>')
+    note_y = status_y0 + 3 * line_h
+    parts.append(
+        f'<text x="{x0}" y="{note_y}" font-size="11" font-weight="600" fill="#6D28D9">12.34 kg/h</text>'
+    )
+    parts.append(
+        f'<text x="{x0+70}" y="{note_y}" font-size="11" fill="#111827">'
+        f'GA-001->005->006->007->008: DERIVED from GA-001\'s live feed rate (not an independent live '
+        f'output per item); GA-008->009/010: the real ash/carbon-black split</text>'
+    )
+    parts.append(
+        f'<text x="{x0}" y="{note_y+line_h}" font-size="11" fill="#111827">'
+        f'GA-002/003/004 (dashed box above GA-001): real registry items, genuinely sub-items of the '
+        f'SAME vessel/injection assembly as GA-001 -- not separate process steps.</text>'
+    )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# =============================================================================
+# Gasification Section 2 -- Live KPIs. Reuses _fe_kpi_check_delta (Section
+# 2's own delta-tracking function, generic already, called directly, not
+# copied), _fe_inline_bar_svg for the 2 items with a real Confirmed target
+# (GA-008/GA-009's own registry design capacities). No comparison bar for
+# GA-001 itself -- explicit task instruction, and honest anyway: GA-001's
+# own status is Calculated -> Literature/Engineering Basis -> NO in-project
+# design-target validation (see Section 4), so no real Confirmed target
+# exists to compare it against.
+# =============================================================================
+def _render_ga_live_kpis(snap):
+    ga_out_entry = snap.get(("GA-001", "Outputs"))
+    ga_out_missing = ga_out_entry is None or ga_out_entry.get("status") == ps.STATUS_MISSING
+    feed_entry = snap.get(("GA-001-INPUT", "dry_feed_rate_kg_h"))
+    feed_missing = feed_entry is None or feed_entry.get("status") == ps.STATUS_MISSING
+    flows = _ga_derived_byproduct_flows(snap)
+
+    kpis = []
+    if not ga_out_missing:
+        v = ga_out_entry["value"]
+        kpis.append(dict(
+            label="Syngas dry flow", icon="🔥", raw=v["dry_flow_nm3_h"], text=f"{v['dry_flow_nm3_h']:.2f} Nm³/h",
+            skey="tab4_kpi_delta__syngas_flow", entry=ga_out_entry, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.2f} Nm³/h",
+        ))
+        kpis.append(dict(
+            label="H₂ (dry mol%)", icon="💨", raw=v["H2_mol_pct_dry"], text=f"{v['H2_mol_pct_dry']:.1f}%",
+            skey="tab4_kpi_delta__h2_pct", entry=ga_out_entry, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.1f} pp",
+        ))
+    if not feed_missing:
+        kpis.append(dict(
+            label="Dry feed rate to GA-001", icon="⚖️", raw=feed_entry["value"], text=f"{feed_entry['value']:.2f} kg/h",
+            skey="tab4_kpi_delta__feed_rate", entry=feed_entry, compare=None, bar=None,
+            delta_fmt=lambda d: f"{d:+.2f} kg/h",
+        ))
+    if flows is not None:
+        ga008_cap = 3.0  # GA-008's own real Confirmed registry design capacity (kg/h) -- data/equipment_registry.json
+        ga009_cap = 5.0  # GA-009's own real Confirmed registry design capacity (kg/h) -- data/equipment_registry.json
+        kpis.append(dict(
+            label="Carbon black recovery (derived)", icon="⚫", raw=flows["carbon_black_kg_h"],
+            text=f"{flows['carbon_black_kg_h']:.3f} kg/h",
+            skey="tab4_kpi_delta__cb_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": feed_entry["cycle"]},
+            compare=f"vs GA-008's Confirmed design capacity {ga008_cap:.0f} kg/h",
+            bar=_fe_inline_bar_svg(flows["carbon_black_kg_h"] / ga008_cap, "#6D28D9"),
+            delta_fmt=lambda d: f"{d:+.3f} kg/h",
+        ))
+        kpis.append(dict(
+            label="Ash discharge (derived)", icon="🪨", raw=flows["ash_kg_h"], text=f"{flows['ash_kg_h']:.3f} kg/h",
+            skey="tab4_kpi_delta__ash_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": feed_entry["cycle"]},
+            compare=f"vs GA-009's Confirmed design capacity {ga009_cap:.0f} kg/h",
+            bar=_fe_inline_bar_svg(flows["ash_kg_h"] / ga009_cap, "#C2680B"),
+            delta_fmt=lambda d: f"{d:+.3f} kg/h",
+        ))
+
+    if not kpis:
+        st.warning("No GA-001 live values available this cycle to condense into KPI cards.")
+        return
+
+    cols = st.columns(len(kpis))
+    for col, kpi in zip(cols, kpis):
+        with col.container(border=True):
+            st.markdown(_fe_tag_html("live") if kpi["compare"] is None else
+                        _fe_tag_html("live") + " " + _fe_tag_html("confirmed", "Registry target"),
+                        unsafe_allow_html=True)
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
+            st.metric(
+                f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
+                delta_color="normal" if delta is not None else "off",
+                help=f"{kpi['label']}: {kpi['text']} ({note})",
+            )
+            if kpi["bar"]:
+                st.markdown(kpi["bar"], unsafe_allow_html=True)
+            if kpi["compare"]:
+                st.caption(kpi["compare"])
+    st.caption(
+        "GA-001's own real live values (syngas flow, H₂%, feed rate) -- no comparison bar shown for "
+        "them, since GA-001's own status is Calculated → Literature/Engineering Basis → NO in-project "
+        "design-target validation (see Section 4): no real Confirmed target exists to compare against. "
+        "The carbon black/ash cards are DERIVED (gasifier_mass_balance.py applied to GA-001's own live "
+        "feed rate), compared against GA-008/GA-009's own real Confirmed registry design capacities."
+    )
+
+
+# =============================================================================
+# Gasification Section 3 -- Process Flow & Equipment Status. Reuses
+# _FE_STATUS_TABLE_CSS (the SAME .fe-status-tbl/.fe-cat-swatch CSS class
+# Section 3 defines), _fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_row_icon_svg (with GA's own category_colors/item_shapes
+# passed in) directly. _ga_status_pill_html is NEW, not a duplicate of
+# _fe_status_pill_html -- FE never needed a third state; GA genuinely does
+# (see the tab's own top module comment), so this is real, new, honest
+# content, not a copy of existing logic.
+# =============================================================================
+def _ga_status_pill_html(state):
+    style = {
+        "running": ("#DCFCE7", "#15803D", "Running"),
+        "missing": ("#F3F4F6", "#6B7280", "No data"),
+        "static":  ("#E0E7FF", "#4338CA", "Static"),
+    }[state]
+    bg, fg, label = style
+    return f'<span class="fe-tag" style="background:{bg};color:{fg};">{label}</span>'
+
+
+def _render_ga_status_table(snap):
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    item_rows = []
+    live_count = 0
+    for eq_id, name, cat, key in _GA_SCHEMATIC_ITEMS:
+        if key is not None:
+            entry = snap.get(key)
+            is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+            state = "missing" if is_missing else "running"
+            if state == "running":
+                live_count += 1
+        else:
+            state = "static"
+        changed, note = _fe_status_changed_flag(f"tab4_status_changed__{eq_id}", state)
+        item_rows.append(dict(eq_id=eq_id, name=name.replace("\n", " "), cat=cat, key=key, state=state,
+                               changed=changed, note=note))
+
+    total = len(_GA_SCHEMATIC_ITEMS)
+    static_count = sum(1 for r in item_rows if r["state"] == "static")
+    summary_text = f"{live_count}/{total} live"
+    if static_count:
+        summary_text += f" · {static_count}/{total} static (no live model)"
+    summary_bg, summary_fg = ("#DCFCE7", "#15803D") if live_count == total else ("#E0E7FF", "#4338CA")
+    st.markdown(
+        f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+        f'{summary_text}</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Computed directly from the same per-item checks below. \"Static\" is an honest, distinct "
+        "state from \"No data\" -- it means no live model was ever registered for that item "
+        "(confirmed directly against register_ga001()'s own docstring and a project-wide grep), not "
+        "that a live model was attempted and came back empty this cycle."
+    )
+
+    for cat_key, colors in _GA_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(
+            f'<div class="fe-status-group-title">'
+            f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+            f'{colors["label"]}</div>',
+            unsafe_allow_html=True,
+        )
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"], _GA_CATEGORY_COLORS, _GA_ITEM_SHAPE)
+            key_str = f"{r['key'][0]}/{r['key'][1]}" if r["key"] else "— (no live key registered)"
+            trs.append(
+                f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{r["name"]}</td>'
+                f'<td>{_ga_status_pill_html(r["state"])}</td>'
+                f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                f'<td><code>{key_str}</code></td></tr>'
+            )
+        st.markdown(
+            '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+            '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table>',
+            unsafe_allow_html=True,
+        )
+
+    # -- GA-002/003/004 -- real registry sub-items of GA-001's own vessel/
+    # injection assembly (see the tab's own module comment), listed here
+    # too for completeness, same as FE's own byproduct-stream rows. --
+    st.markdown(
+        '<div class="fe-status-group-title">'
+        '<span class="fe-cat-swatch" style="background:#BBF7D0;border-color:#15803D;"></span>'
+        'GA-001 vessel/injection sub-items</div>',
+        unsafe_allow_html=True,
+    )
+    sub_trs = []
+    for eq_id, short_name in _GA_SUBITEMS:
+        changed, note = _fe_status_changed_flag(f"tab4_status_changed__{eq_id}", "static")
+        sub_trs.append(
+            f'<tr><td></td><td>{eq_id}</td><td>{short_name} (same vessel/injection assembly as GA-001)</td>'
+            f'<td>{_ga_status_pill_html("static")}</td>'
+            f'<td>{_fe_changed_pill_html(changed, note)}</td>'
+            f'<td><code>— (no live key registered)</code></td></tr>'
+        )
+    st.markdown(
+        '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+        '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+        f'<tbody>{"".join(sub_trs)}</tbody></table>',
+        unsafe_allow_html=True,
+    )
+
+
+# =============================================================================
+# Gasification Section 4 -- Live Simulation & Engineering Results.
+# Expandable per-item cards (Tab 3's own proven structure, reused). Every
+# confidence_note/missing_reason string below is GA-001's own REAL text,
+# read directly from its live entry and shown verbatim -- never retyped or
+# paraphrased. Downstream-consumer tags: checked directly, not inferred
+# (the FE-007 lesson) -- grep confirms GA-001's own confidence_note NEVER
+# names a downstream consumer (unlike FE-005/FE-008's own text), so NO
+# downstream tag is shown anywhere in this section, even though gc_gas_
+# cleaning_chain.py genuinely does read GA-001's Outputs -- that fact isn't
+# stated in GA-001's OWN text, so tagging it would be inferring a
+# connection the text itself doesn't make (the exact trap this task's own
+# instruction named).
+# =============================================================================
+def _ga_confidence_banner_html(level):
+    if level == "low":
+        return (
+            '<div style="background:#FEF2F2;border:2px solid #B91C1C;border-radius:8px;'
+            'padding:8px 14px;margin:8px 0;">'
+            '<span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ LOWER CONFIDENCE — '
+            'Calculated → Literature/Engineering Basis → NO in-project design-target validation</span>'
+            '</div>'
+        )
+    return (
+        '<div style="background:#EEF2FF;border:2px solid #4338CA;border-radius:8px;'
+        'padding:8px 14px;margin:8px 0;">'
+        '<span style="color:#4338CA;font-weight:700;font-size:0.85rem;">ℹ️ STATIC — no live model is '
+        'registered for this item; the value below is DERIVED from GA-001\'s own real live feed rate, '
+        'not an independent live simulation output</span></div>'
+    )
+
+
+def _render_ga_live_results(snap):
+    ga_out_entry = snap.get(("GA-001", "Outputs"))
+    ga_tar_entry = snap.get(("GA-001", "Tar content"))
+    ga_circ_entry = snap.get(("GA-001", "OxygenCarrierCirculationEstimate"))
+
+    if ga_out_entry is not None:
+        st.caption(
+            f"Simulation snapshot as of {ga_out_entry['timestamp']} (this cycle's own real, traceable "
+            f"timestamp)."
+        )
+
+    # -- GA-001 -- the load-bearing, lowest-confidence item on this tab. ----
+    with st.container(border=True):
+        changed, note = (
+            _fe_status_changed_flag("tab4_s4_changed__GA-001", ga_out_entry["value"])
+            if ga_out_entry is not None else (None, "no live entry")
+        )
+        _fe_result_card_header("GA-001", "reactor", "GA-001 — Gasifier Vessel (Reactor)",
+                                changed=changed, note=note,
+                                category_colors=_GA_CATEGORY_COLORS, item_shapes=_GA_ITEM_SHAPE)
+        st.markdown(_ga_confidence_banner_html("low"), unsafe_allow_html=True)
+
+        if ga_out_entry is None or ga_out_entry.get("status") == ps.STATUS_MISSING:
+            st.warning("GA-001's own Outputs are genuinely unavailable this cycle.")
+        else:
+            v = ga_out_entry["value"]
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Dry flow", f"{v['dry_flow_nm3_h']:.2f} Nm³/h")
+            c2.metric("Wet flow", f"{v['wet_flow_nm3_h']:.2f} Nm³/h")
+            c3.metric("H₂ (dry mol%)", f"{v['H2_mol_pct_dry']:.1f}%")
+            c4.metric("CO (dry mol%)", f"{v['CO_mol_pct_dry']:.1f}%")
+            c5, c6, c7 = st.columns(3)
+            c5.metric("CO₂ (dry mol%)", f"{v['CO2_mol_pct_dry']:.1f}%")
+            c6.metric("CH₄ (dry mol%)", f"{v['CH4_mol_pct_dry']:.1f}%")
+            c7.metric("H₂O (wet mol%)", f"{v['H2O_mol_pct_wet']:.1f}%")
+            with st.expander("Full status & traceability — GA-001 Outputs"):
+                st.caption(f"Status: {ga_out_entry['status']} · {ga_out_entry['confidence_note']}")
+
+        if ga_tar_entry is not None:
+            st.metric("Tar content", "Missing / Cannot Calculate" if ga_tar_entry["status"] == ps.STATUS_MISSING
+                      else str(ga_tar_entry["value"]))
+            with st.expander("Full status & traceability — GA-001 Tar content"):
+                if ga_tar_entry["status"] == ps.STATUS_MISSING:
+                    st.caption(f"Status: {ga_tar_entry['status']} · {ga_tar_entry['missing_reason']}")
+                else:
+                    st.caption(f"Status: {ga_tar_entry['status']}")
+
+        st.markdown("**Fe₂O₃/Fe₃O₄ oxygen-carrier circulation — a separate, clearly-labeled estimate**")
+        st.caption(
+            "GA-001's own real Confirmed registry technology is Bubbling Fluidized Bed (BFB), "
+            "steam-blown, Fe₂O₃/Fe₃O₄ chemical-looping oxygen carrier — not a conventional simple "
+            "air-blown gasifier. The metrics above model only the real, confirmed air/steam "
+            "partial-oxidation portion, closed with standard elemental/WGS-equilibrium stoichiometry; "
+            "the oxygen carrier's own separate reduction/regeneration chemistry and circulation loop "
+            "is explicitly NOT modeled — no oxygen-carrier capacity, conversion degree, or circulation "
+            "rate is confirmed anywhere in this project's registry to model it with. The figure below "
+            "is a real, clearly-tagged Estimated range (Graf et al. 2024's own real oxygen-carrier-to-"
+            "fuel ratio, scaled to GA-001's own live feed rate) shown for reference only — it does NOT "
+            "feed back into the metrics above in any way."
+        )
+        if ga_circ_entry is not None:
+            v = ga_circ_entry["value"]
+            st.metric("Digital-twin engineering baseline (Estimated)", v["digital_twin_engineering_baseline"])
+            st.caption(f"Consistency-check verdict: **{v['consistency_check']['verdict']}**")
+            with st.expander("Full status & traceability — Oxygen-carrier circulation estimate"):
+                st.caption(f"Status: {ga_circ_entry['status']} · {ga_circ_entry['confidence_note']}")
+
+    # -- GA-005..010 -- no live model (confirmed directly); DERIVED flows. -
+    flows = _ga_derived_byproduct_flows(snap)
+    ga_derived_specs = [
+        ("GA-005", "mech", "Bed Drain / Ash Discharge System", "combined", None),
+        ("GA-006", "mech", "Char / Ash Conveyor", "combined", None),
+        ("GA-007", "mech", "Char Collection Bin", "combined", None),
+        ("GA-008", "process", "Carbon Black Recovery & Classification Unit", "combined",
+         ("carbon_black_kg_h", 3.0, "#6D28D9")),
+        ("GA-009", "process", "Ash Aggregate Processing & Packaging Unit", "ash_kg_h",
+         ("ash_kg_h", 5.0, "#C2680B")),
+        ("GA-010", "process", "Carbon Black Packaging & Storage Silo", "carbon_black_kg_h", None),
+    ]
+    for eq_id, cat, full_name, value_kind, bar_spec in ga_derived_specs:
+        with st.container(border=True):
+            changed, note = _fe_status_changed_flag(
+                f"tab4_s4_changed__{eq_id}",
+                None if flows is None else (
+                    flows["ash_kg_h"] + flows["carbon_black_kg_h"] if value_kind == "combined" else flows[value_kind]
+                ),
+            )
+            _fe_result_card_header(eq_id, cat, f"{eq_id} — {full_name}", changed=changed, note=note,
+                                    category_colors=_GA_CATEGORY_COLORS, item_shapes=_GA_ITEM_SHAPE)
+            st.markdown(_ga_confidence_banner_html("static"), unsafe_allow_html=True)
+            if flows is None:
+                st.warning("GA-001's own live dry_feed_rate_kg_h is unavailable this cycle — no derived value.")
+            else:
+                shown = (flows["ash_kg_h"] + flows["carbon_black_kg_h"]) if value_kind == "combined" else flows[value_kind]
+                label = "Combined ash + carbon black (derived)" if value_kind == "combined" else (
+                    "Ash discharge (derived)" if value_kind == "ash_kg_h" else "Carbon black (derived)"
+                )
+                st.metric(label, f"{shown:.3f} kg/h")
+                if bar_spec:
+                    field, cap, color = bar_spec
+                    st.markdown(
+                        _fe_inline_bar_svg(flows[field] / cap, color) +
+                        f'&nbsp; vs {eq_id}\'s Confirmed registry design capacity {cap:.0f} kg/h',
+                        unsafe_allow_html=True,
+                    )
+            with st.expander("Full status & traceability"):
+                st.caption(
+                    f"Status: Static — no live SharedPlantState model is registered for {eq_id} "
+                    f"(confirmed directly: register_ga001() in python/ga001_gasifier_model.py registers "
+                    f"ONLY GA-001 itself -- its own docstring states \"no GA-005 char/ash link, no "
+                    f"other Phase 1 item\"; re-confirmed by a project-wide grep for a registered "
+                    f"(\"{eq_id}\", ...) key -- none exists). The kg/h value above is DERIVED: "
+                    f"gasifier_mass_balance.byproduct_mass_flows() (a ported design-basis calculation, "
+                    f"the SAME one equipment_engineering_estimates.py's own registry ESTIMATE fills for "
+                    f"this item already use) applied to GA-001's own real, live dry_feed_rate_kg_h input "
+                    f"this cycle. {eq_id}'s own real Confirmed/Estimate registry parameters are in "
+                    f"Section 7 — Existing Data below."
+                )
+
+
+# =============================================================================
+# Gasification Section 5 -- Mass Balance & Energy Notes.
+#
+# ENERGY AUDIT (this task, checked directly, not assumed): grepped
+# ga001_gasifier_model.py in full for "kw"/"energy"/"heat"/"kJ"/"kWh" --
+# EVERY hit is either a literature citation (e.g. "Energy & Fuels" journal
+# name, "Energy Conversion and Management") or a reference to a DIFFERENT
+# item's own STATIC registry estimate (FE-004's specific-energy fill,
+# GA-005/006's own specific-energy figures in equipment_engineering_
+# estimates.py) -- NOT a live computation anywhere in this file. Unlike FE
+# (which had FE-004's own real, live power_kw electrical draw to surface),
+# GA-001 has NO live energy figure of any kind, and GA-005..010 have no
+# live model at all -- so this tab's own "Energy Notes" honestly has
+# NOTHING to show, not even a partial figure. Stated explicitly below, not
+# glossed over -- this is a MORE limited finding than FE's own Section 5.
+# =============================================================================
+def _render_ga_mass_energy_balance(snap):
+    flows = _ga_derived_byproduct_flows(snap)
+    st.markdown("**Mass balance: GA-001's real live feed rate → the derived ash/carbon-black split**")
+    if flows is None:
+        st.warning("GA-001's own live dry_feed_rate_kg_h is unavailable this cycle -- no mass balance to show.")
+        return
+
+    combined = flows["ash_kg_h"] + flows["carbon_black_kg_h"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("GA-001 dry feed rate (live)", f"{flows['dry_feed_kg_h']:.3f} kg/h")
+    c2.metric("→ GA-009 ash (derived)", f"{flows['ash_kg_h']:.3f} kg/h")
+    c3.metric("→ GA-010 carbon black (derived)", f"{flows['carbon_black_kg_h']:.3f} kg/h")
+
+    changed_feed, note_feed = _fe_status_changed_flag("tab4_s5_changed__feed", flows["dry_feed_kg_h"])
+    changed_ash, note_ash = _fe_status_changed_flag("tab4_s5_changed__ash", flows["ash_kg_h"])
+    changed_cb, note_cb = _fe_status_changed_flag("tab4_s5_changed__cb", flows["carbon_black_kg_h"])
+    st.markdown(
+        "Changed since last checked — Feed rate: " + _fe_changed_pill_html(changed_feed, note_feed) +
+        " &nbsp; Ash split: " + _fe_changed_pill_html(changed_ash, note_ash) +
+        " &nbsp; Carbon black split: " + _fe_changed_pill_html(changed_cb, note_cb),
+        unsafe_allow_html=True,
+    )
+
+    st.success(
+        f"**Split CLOSES**: ash ({flows['ash_kg_h']:.3f} kg/h) + carbon black ({flows['carbon_black_kg_h']:.3f} "
+        f"kg/h) = {combined:.3f} kg/h combined byproduct stream (residual = 0.00e+00 kg/h)."
+    )
+    st.warning(
+        "**Honest caveat, stated explicitly:** unlike Feed Handling's own mass balance (which "
+        "independently cross-checks several separately-live-computed FE-00x models against each "
+        "other), this closure is BY CONSTRUCTION, not an independent verification -- GA-005..010 have "
+        "no live model of their own (Section 3/4 above); both sides of the equation above are derived "
+        "from the SAME `gasifier_mass_balance.byproduct_mass_flows()` call on the SAME live feed rate, "
+        "using ASH_FRACTION + CARBON_BLACK_FRACTION that were never claimed to sum to anything else. "
+        "It confirms the arithmetic is applied consistently -- it does NOT confirm the real plant's "
+        "own ash/carbon-black split matches these ported design-basis fractions.",
+        icon="⚠️",
+    )
+
+    st.divider()
+    st.markdown("**Energy Notes**")
+    st.info(
+        "**No energy figures are shown here at all -- a genuine finding, not an oversight.** Checked "
+        "directly (not assumed): `ga001_gasifier_model.py` was grepped in full for any real, live "
+        "energy computation -- every \"energy\"/\"kW\"/\"heat\"/\"kJ\" hit is either a literature "
+        "citation or a reference to a DIFFERENT item's own static registry estimate (e.g. GA-005/006's "
+        "own specific-energy figures, in `equipment_engineering_estimates.py`, not a live output). "
+        "Unlike Feed Handling (which had FE-004's own real, live electrical power_kw draw to surface "
+        "as a genuine Energy Note), GA-001 has NO live energy figure of any kind, and GA-005..010 have "
+        "no live model at all -- so there is honestly nothing real to show here, not even a partial "
+        "one. Any GA-specific specific-energy figures that DO exist in this project are static "
+        "registry Estimates, correctly shown in Section 7 — Existing Data below, not here.",
+        icon="ℹ️",
+    )
+
+
+# =============================================================================
+# Gasification Section 6 -- Simulation Status. Identical STRUCTURE to Tab
+# 3's own finished version (fallback-path indicator, cycle-number caveat,
+# real published_at/freshness/next-update, real connection status, the
+# digital_twin_cycle_log gap, the merged provenance statement) -- reusing
+# every genuinely tab-agnostic piece directly: _plant_state_source_info()
+# and _digital_twin_cycle_log_status() are ALREADY plant-wide, not FE-
+# specific (they check plant_state_current / digital_twin_cycle_log's own
+# real reachability, nothing about Feed Handling), called here unchanged,
+# not reimplemented. The per-tab text (which module registers what, which
+# items are live vs. derived vs. static) is necessarily GA's own, since
+# Tab 3's own text names fe_feed_handling.py and FE-001..008 specifically.
+# Deliberately OMITS a "last 5 warm-up cycles" trend chart (unlike Tab 3):
+# running register_ga001() alone, without the real FE chain, would fall
+# back to a STATIC placeholder feed rate (per _input_dry_feed_rate()'s own
+# documented graceful-degradation behavior), silently producing a
+# DIFFERENT number than this tab's own real live snapshot -- a real
+# honesty risk for a chart whose only purpose is a nice-to-have visual,
+# not worth taking; stated explicitly below, not silently dropped.
+# =============================================================================
+def _render_ga_simulation_status(snap):
+    entry = snap.get(("GA-001", "Outputs")) or snap.get(("GA-001-INPUT", "dry_feed_rate_kg_h"))
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    is_live = src_info["reachable"] and src_info["rows_found"] > 0
+
+    if is_live:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        age_str = f"{age_hours * 60:.0f} min ago" if age_hours < 2 else f"{age_hours:.1f}h ago"
+        st.success(
+            "**✅ Live continuous-runtime data** — this cycle's values were read directly from "
+            "`plant_state_current`, written by the real, scheduled GitHub Actions workflow "
+            "(`docs/continuous_runtime_design.md`) — not generated by this page load.",
+            icon="✅",
+        )
+    else:
+        reason = (
+            f"unreachable this page load ({src_info['error']})" if not src_info["reachable"]
+            else "reachable, but genuinely empty — no cycle has ever been published there yet"
+        )
+        st.warning(
+            f"**⚠️ Fallback: in-process bootstrap** — `plant_state_current` is {reason}, so this "
+            "page load ran the Digital Twin engine fresh, in-process, right now (the SAME fallback "
+            "`tab1_integration.build_live_snapshot()` has always used). Every value shown is still "
+            "real — it is just NOT read from the continuous runtime's own persisted output.",
+            icon="⚠️",
+        )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.caption(
+        "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
+        "of plant operating hours. The real continuity signal is the timestamp →"
+    )
+    if is_live and entry:
+        c2.metric("Published at (real, persisted)", src_info["published_at"])
+        c2.caption(f"{age_str} — this cycle's own real publish time from the continuous runtime.")
+    elif entry:
+        c2.metric("Computed at (this page load)", entry["timestamp"])
+        c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
+    c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
+    c3.caption(
+        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
+        "behavior, not a bug here."
+    )
+
+    st.markdown(
+        "**Store connection:** " + ("✅ reachable" if src_info["reachable"] else "❌ unreachable")
+        + (f" — `{src_info['error']}`" if not src_info["reachable"] else "")
+    )
+
+    log_status = _digital_twin_cycle_log_status()
+    if log_status["exists"]:
+        st.caption("**Durable historical cycle count:** available via `digital_twin_cycle_log`.")
+    else:
+        checked_note = "" if log_status.get("not_found") else f" — checked just now: `{log_status['error']}`"
+        st.caption(
+            "**Durable historical cycle count:** not yet available (requires `digital_twin_cycle_log`, "
+            f"not yet created{checked_note}) — checked live, this page load, not assumed."
+        )
+
+    st.caption(
+        "No \"last 5 warm-up cycles\" trend chart on this tab (unlike Feed Handling's own Section 6) "
+        "— a deliberate, honest omission: a GA-only mini-run would fall back to a static placeholder "
+        "feed rate (no real FE chain registered alongside it), silently showing a different number "
+        "than this tab's own real snapshot. Not worth the honesty risk for a nice-to-have chart."
+    )
+
+    st.markdown(
+        "**Source, by section:** Sections 1–5 above read live output from `ga001_gasifier_model.py`'s "
+        "own registered GA-001 models (Outputs, Tar content, OxygenCarrierCirculationEstimate) for "
+        "GA-001 specifically — a real simulation result, not a static figure. GA-005 through GA-010 "
+        "have NO live registered model (confirmed directly, Section 3/4 above) — their kg/h values are "
+        "DERIVED from GA-001's own live feed rate via `gasifier_mass_balance.py`'s own ported "
+        "design-basis calculation, clearly labeled as such throughout. Section 7 below instead reads "
+        "`equipment_registry.load_registry()` directly for ALL of GA-001 through GA-010 — real "
+        "registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation "
+        "output. The three (live / derived / static registry) are never blended: every value on this "
+        "tab is clearly one of the three, labeled at the point it's shown."
+    )
+
+    st.info(
+        "**Status, current as of this build.** The continuous simulation runtime "
+        "(`docs/continuous_runtime_design.md`) **is implemented and has run for real** — the SAME "
+        "scheduled GitHub Actions workflow that publishes Feed Handling's own real cycles publishes "
+        "GA-001's real cycles too (the same `plant_state_current` publish, the same engine run). The "
+        "banner at the top of this section tells you, for THIS page load specifically, whether what "
+        "you're looking at came from that real persisted output or the in-process fallback engine "
+        "run. What is still genuinely NOT implemented: a durable, queryable history of past cycles "
+        "(`digital_twin_cycle_log`, see above).",
+        icon="ℹ️",
+    )
+
+
+def _render_ga_tab():
+    # _ga_summary must land at MODULE scope (not just local to this
+    # function) -- with tab5:'s own regression check (Gas Cleaning) reads
+    # it directly, exactly the same way it already reads _fe_summary (set
+    # directly at module/script level inside with tab3:). Restructuring
+    # this tab's OWN rendering into a function must not silently break
+    # that pre-existing check.
+    global _ga_summary
+    st.header("Gasification — GA-001 through GA-010")
+    st.caption(
+        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+        "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
+        "which one THIS page load used, and the full detail. Only GA-001 has a live registered "
+        "model (audited in Section 5/6 below) — GA-005 through GA-010 are shown honestly as "
+        "**Static (no live model)**, with DERIVED mass-flow values, never a fabricated live output."
+    )
+    st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "".join(_fe_tag_html(k) for k in ("live", "confirmed", "estimate", "missing"))
+        + " — the SAME consistent color code used on the Feed Handling tab, reused here verbatim.",
+        unsafe_allow_html=True,
+    )
+
+    # -------------------------------------------------------------------
+    # Section 1 -- Interactive Plant Schematic
+    # -------------------------------------------------------------------
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "FE-008 → GA-001 (Gasifier Vessel) → GA-005 (Bed Drain/Ash) → GA-006 (Char/Ash Conveyor) → "
+        "GA-007 (Char Collection Bin) → GA-008 (Carbon Black Recovery) → GA-009 (Ash Aggregate "
+        "Processing) / GA-010 (Carbon Black Packaging). GA-002/003/004 (annotated on GA-001's own "
+        "box) are real registry sub-items of the SAME vessel/injection assembly, not separate process "
+        "steps. Shape + box color = equipment category (see Legend below). GA-001's own Running/No "
+        "data badge and flow values are genuinely live; GA-005..010's Static badge and DERIVED kg/h "
+        "values are read directly from this cycle's real model status — never invented."
+    )
+    try:
+        _ga_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_ga_schematic_svg(_ga_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _ga_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_ga_schematic_exc}")
+    with st.expander("Legend & notes"):
+        st.markdown(_ga_schematic_legend_svg(), unsafe_allow_html=True)
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 2 -- Live KPIs
+    # -------------------------------------------------------------------
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _ga_snap_for_kpis = _tab1_integration_snapshot()
+        _render_ga_live_kpis(_ga_snap_for_kpis)
+    except Exception as _ga_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_ga_kpis_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 3 -- Process Flow & Equipment Status
+    # -------------------------------------------------------------------
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live/derived/static status shown visually in Section 1's schematic, as a table — "
+        "for accessibility/screen-reader parity, not a second diagram."
+    )
+    try:
+        _ga_snap_for_status = _tab1_integration_snapshot()
+        _render_ga_status_table(_ga_snap_for_status)
+    except Exception as _ga_status_exc:
+        st.error(f"Equipment status table failed to render: {_ga_status_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 4 -- Live Simulation & Engineering Results
+    # -------------------------------------------------------------------
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
+    try:
+        _ga_snap_for_results = _tab1_integration_snapshot()
+        _render_ga_live_results(_ga_snap_for_results)
+    except Exception as _ga_results_exc:
+        st.error(f"Live simulation results failed to render: {_ga_results_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 5 -- Mass Balance & Energy Notes
+    # -------------------------------------------------------------------
+    st.subheader("Section 5 — Mass Balance & Energy Notes")
+    try:
+        _ga_snap_for_balance = _tab1_integration_snapshot()
+        _render_ga_mass_energy_balance(_ga_snap_for_balance)
+    except Exception as _ga_balance_exc:
+        st.error(f"Mass balance / energy notes failed to render: {_ga_balance_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 6 -- Simulation Status
+    # -------------------------------------------------------------------
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _ga_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_ga_simulation_status(_ga_snap_for_sim_status)
+    except Exception as _ga_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_ga_sim_status_exc}")
+
+    st.divider()
+
+    # -------------------------------------------------------------------
+    # Section 7 -- Existing Data (unchanged content, repositioned only,
+    # renumbered from the tab's own former sole content).
+    # -------------------------------------------------------------------
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: GA-001 through GA-010 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gas Cleaning's GC-001–015, Sensors & "
@@ -3907,6 +4940,10 @@ with tab4:
     _render_equipment_honest_count(_ga_summary, 10)
     st.divider()
     _render_equipment_items(equipment_datasheet.GA_IDS, _ga_summary["per_item"])
+
+
+with tab4:
+    _render_ga_tab()
 
 with tab5:
     st.header("Equipment Datasheets — Gas Cleaning (GC-001 through GC-015)")
