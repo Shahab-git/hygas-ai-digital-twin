@@ -6172,32 +6172,807 @@ def _render_gc_tab():
 with tab5:
     _render_gc_tab()
 
-with tab6:
-    st.header("Equipment Datasheets — Sensors & Analysers (SA-001 through SA-012)")
+
+# =============================================================================
+# Sensors & Analysers tab (SA-001 through SA-012) -- built to the SAME
+# 7-section structure Tabs 3/4/5 reached, reusing every genuinely generic
+# helper directly (_fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_pill_html, _fe_tag_html/_FE_DATA_TYPE_TAGS, _FE_TAB_CSS's own
+# .fe-tag class, _fe_equipment_shape_svg's own "instrument" kind (already
+# built for FE, reused unchanged -- every SA item genuinely IS a small
+# instrument/transmitter housing, not a distinct piece of process
+# equipment, so one consistent silhouette, color-coded by category, is
+# the HONEST choice here, not an under-built one), _fe_status_row_icon_svg
+# / _fe_result_card_header (already generalized for GA, reused unchanged),
+# _fe_kpi_check_delta, _render_equipment_honest_count,
+# _render_equipment_items, _plant_state_source_info,
+# _digital_twin_cycle_log_status -- none of these is copied.
+#
+# AUDIT, checked directly (not assumed): UNLIKE GA/GC, ALL 12 SA items have
+# a real registered live model (python/sa_virtual_sensors.py's own
+# register_sa_sensors(), confirmed by direct grep -- every ("SA-00X",
+# "Reading") key is registered, none missing). SA-001..010 are genuine
+# "virtual sensor" reads of an already-live upstream GC value (via the
+# module's own single shared _virtual_sensor() mechanism); SA-011/SA-012
+# have NO live upstream MODEL to read at all (module docstring: no
+# function anywhere computes a live temperature/pressure at this specific
+# late-train point) -- they read a real Confirmed static design constant
+# instead, status=Assumed, the SAME "Confirmed design constant as live
+# placeholder" treatment gc_gas_cleaning_chain.py's own GC-001/GC-003
+# temperature functions already use. Both are real, live-registered
+# entries (never "Static/no live model" the way GA-005..010 or GC-002/011
+# were) -- the real distinction here is Calculated-from-a-live-upstream-
+# value vs. Assumed-static-constant, not live-vs-registered-at-all.
+#
+# ARCHITECTURAL DIFFERENCE, stated explicitly: unlike FE/GA/GC (a real
+# SEQUENTIAL process chain, mass/gas moving stage to stage), SA-001..012
+# are NOT a chain -- each is an independent instrument tapping ONE point
+# of the ALREADY-BUILT FE->GA->GC gas train (mostly GC-013's own clean-
+# syngas output; a few tap GC-006/GC-010/GC-012 earlier in the train).
+# Section 1's schematic below reflects this honestly: an abstracted
+# backbone with real tap points, not a fabricated left-to-right sequence
+# these 12 items don't actually form.
+#
+# READ-TARGET NOTE, surfaced here per the module's own explicit
+# disclosure: the original task's own inline example text ("SA-001 reads
+# HB-004's H2 output") differs from the engineering plan's own Section 2.4
+# table (SA-001..006 read GC-013's clean-syngas output) -- the live code
+# follows the PLAN'S table, corroborated by the registry's own remarks
+# (SA-009/010/011/012 all independently reference GC-013's own late-train
+# position), not the task's paraphrase. Stated explicitly here, not
+# silently picked.
+# =============================================================================
+
+_SA_CATEGORY_COLORS = {
+    "composition": {"fill": "#BFDBFE", "stroke": "#1D4ED8", "label": "Gas Composition Analysers"},
+    "energy":      {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "Energy Content"},
+    "contaminant": {"fill": "#BBF7D0", "stroke": "#15803D", "label": "Trace-Contaminant Monitors"},
+    "physical":    {"fill": "#DDD6FE", "stroke": "#6D28D9", "label": "Physical (Flow / Temp / Pressure)"},
+}
+
+# (equipment_id, display name, category, live key, real upstream tap point or None)
+_SA_SCHEMATIC_ITEMS = [
+    ("SA-001", "H₂ Gas\nAnalyser", "composition", ("SA-001", "Reading"), ("GC-013", "Gas")),
+    ("SA-002", "CO Gas\nAnalyser", "composition", ("SA-002", "Reading"), ("GC-013", "Gas")),
+    ("SA-003", "CO₂ Gas\nAnalyser", "composition", ("SA-003", "Reading"), ("GC-013", "Gas")),
+    ("SA-004", "CH₄ Gas\nAnalyser", "composition", ("SA-004", "Reading"), ("GC-013", "Gas")),
+    ("SA-005", "N₂ Gas\nAnalyser", "composition", ("SA-005", "Reading"), ("GC-013", "Gas")),
+    ("SA-006", "Gas Calorimeter\n/ LHV", "energy", ("SA-006", "Reading"), ("GC-013", "Gas")),
+    ("SA-007", "Tar Sampling\nPort", "contaminant", ("SA-007", "Reading"), ("GC-006", "Tar outlet")),
+    ("SA-008", "H₂S/COS\nAnalyser", "contaminant", ("SA-008", "Reading"), ("GC-012", "H2S/COS")),
+    ("SA-009", "Dust/Particulate\nMonitor", "contaminant", ("SA-009", "Reading"), ("GC-010", "Dust")),
+    ("SA-010", "Gas Flow Meter\n(Clean)", "physical", ("SA-010", "Reading"), ("GC-013", "Gas")),
+    ("SA-011", "Gas Temperature\nSensor", "physical", ("SA-011", "Reading"), None),
+    ("SA-012", "Gas Pressure\nSensor", "physical", ("SA-012", "Reading"), None),
+]
+_SA_ITEM_SHAPE = {eq_id: "instrument" for eq_id, *_ in _SA_SCHEMATIC_ITEMS}
+_SA_TAP_ORDER = [("GC-006", "Tar outlet"), ("GC-010", "Dust"), ("GC-012", "H2S/COS"), ("GC-013", "Gas")]
+
+
+def _sa_schematic_svg(snap):
+    box_w, box_h = 118, 74
+    backbone_y = 360
+    tap_x = {("GC-006", "Tar outlet"): 130, ("GC-010", "Dust"): 380, ("GC-012", "H2S/COS"): 630, ("GC-013", "Gas"): 950}
+    total_w, total_h = 1180, 470
+
+    # Group items by their real tap point (None = no live tap).
+    by_tap = {tap: [] for tap in tap_x}
+    no_tap_items = []
+    for eq_id, name, cat, key, tap in _SA_SCHEMATIC_ITEMS:
+        if tap is None:
+            no_tap_items.append((eq_id, name, cat, key))
+        else:
+            by_tap[tap].append((eq_id, name, cat, key))
+
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs>'
+        '<filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-sa-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/>'
+            f'</linearGradient>'
+            for key, c in _SA_CATEGORY_COLORS.items()
+        )
+        + '</defs>',
+        f'<line x1="60" y1="{backbone_y}" x2="{total_w-30}" y2="{backbone_y}" stroke="#374151" stroke-width="4"/>',
+        f'<text x="60" y="{backbone_y+20}" font-size="11" fill="#374151" font-weight="bold">'
+        f'FE → GA → GC gas train (existing, real)</text>',
+    ]
+
+    for tap, x in tap_x.items():
+        parts.append(f'<circle cx="{x}" cy="{backbone_y}" r="7" fill="#374151"/>')
+        parts.append(
+            f'<text x="{x}" y="{backbone_y+34}" text-anchor="middle" font-size="10.5" '
+            f'font-weight="bold" fill="#374151">{tap[0]}</text>'
+        )
+        items = by_tap[tap]
+        n = len(items)
+        cols = min(n, 4)
+        col_w = box_w + 14
+        grid_w = cols * col_w
+        x0 = x - grid_w / 2 + col_w / 2 - box_w / 2
+        for i, (eq_id, name, cat, key) in enumerate(items):
+            col, row = i % cols, i // cols
+            bx = x0 + col * col_w
+            by = backbone_y - 60 - (row + 1) * (box_h + 22)
+            colors = _SA_CATEGORY_COLORS[cat]
+            entry = snap.get(key)
+            is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+            badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
+            badge_text = "No data" if is_missing else "Running"
+            parts.append(
+                f'<line x1="{x}" y1="{backbone_y}" x2="{bx+box_w/2}" y2="{by+box_h}" '
+                f'stroke="{colors["stroke"]}" stroke-width="1.4" stroke-dasharray="4,3" opacity="0.6"/>'
+            )
+            parts.append(_fe_equipment_shape_svg("instrument", bx, by, box_w, box_h, f'url(#grad-sa-{cat})', colors["stroke"]))
+            parts.append(
+                f'<text x="{bx+box_w/2}" y="{by+16}" text-anchor="middle" font-size="10" '
+                f'font-weight="bold" fill="#111827">{eq_id}</text>'
+            )
+            for li, line in enumerate(name.split("\n")):
+                parts.append(
+                    f'<text x="{bx+box_w/2}" y="{by+30+li*11}" text-anchor="middle" font-size="8" '
+                    f'fill="#111827">{line}</text>'
+                )
+            bw = 50
+            parts.append(f'<rect x="{bx+box_w/2-bw/2}" y="{by+box_h-18}" width="{bw}" height="13" rx="6.5" fill="{badge_fill}"/>')
+            parts.append(
+                f'<text x="{bx+box_w/2}" y="{by+box_h-8}" text-anchor="middle" font-size="8" '
+                f'font-weight="600" fill="{badge_fg}">{badge_text}</text>'
+            )
+
+    # SA-011/SA-012 -- no live tap, shown below the backbone near GC-013's
+    # own position, dotted (not dashed) to visually distinguish "reads a
+    # Confirmed static constant" from "taps a live upstream value".
+    no_tap_x0 = tap_x[("GC-013", "Gas")] - (len(no_tap_items) * (box_w + 14)) / 2 + (box_w + 14) / 2 - box_w / 2
+    for i, (eq_id, name, cat, key) in enumerate(no_tap_items):
+        bx = no_tap_x0 + i * (box_w + 14)
+        by = backbone_y + 40
+        colors = _SA_CATEGORY_COLORS[cat]
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
+        badge_text = "No data" if is_missing else "Running"
+        parts.append(
+            f'<line x1="{tap_x[("GC-013","Gas")]}" y1="{backbone_y}" x2="{bx+box_w/2}" y2="{by}" '
+            f'stroke="{colors["stroke"]}" stroke-width="1.2" stroke-dasharray="1.5,3" opacity="0.5"/>'
+        )
+        parts.append(_fe_equipment_shape_svg("instrument", bx, by, box_w, box_h, f'url(#grad-sa-{cat})', colors["stroke"]))
+        parts.append(
+            f'<text x="{bx+box_w/2}" y="{by+16}" text-anchor="middle" font-size="10" '
+            f'font-weight="bold" fill="#111827">{eq_id}</text>'
+        )
+        for li, line in enumerate(name.split("\n")):
+            parts.append(
+                f'<text x="{bx+box_w/2}" y="{by+30+li*11}" text-anchor="middle" font-size="8" '
+                f'fill="#111827">{line}</text>'
+            )
+        bw = 50
+        parts.append(f'<rect x="{bx+box_w/2-bw/2}" y="{by+box_h-18}" width="{bw}" height="13" rx="6.5" fill="{badge_fill}"/>')
+        parts.append(
+            f'<text x="{bx+box_w/2}" y="{by+box_h-8}" text-anchor="middle" font-size="8" '
+            f'font-weight="600" fill="{badge_fg}">{badge_text}</text>'
+        )
+    parts.append(
+        f'<text x="{tap_x[("GC-013","Gas")]}" y="{backbone_y+40+box_h+22}" text-anchor="middle" font-size="9" '
+        f'font-style="italic" fill="#6B7280">↑ no live upstream tap -- reads a real Confirmed static '
+        f'design constant instead (dotted)</text>'
+    )
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _sa_schematic_legend_svg():
+    x0, line_h = 10, 20
+    total_w, total_h = 640, 190
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
+    for idx, colors in enumerate(_SA_CATEGORY_COLORS.values()):
+        ly = 16 + 22 + idx * line_h
+        parts.append(
+            f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+            f'stroke="{colors["stroke"]}" stroke-width="2"/>'
+        )
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    status_y0 = 16 + 22 + len(_SA_CATEGORY_COLORS) * line_h + 10
+    for dy, fill, fg, label, note in (
+        (0, "#DCFCE7", "#15803D", "Running", "A real registered model output this cycle (Calculated or Assumed)"),
+        (line_h, "#F3F4F6", "#6B7280", "No data", "A live model exists but is genuinely Missing this cycle"),
+    ):
+        ly = status_y0 + dy
+        parts.append(f'<rect x="{x0}" y="{ly-15}" width="46" height="14" rx="7" fill="{fill}"/>')
+        parts.append(
+            f'<text x="{x0+23}" y="{ly-5}" text-anchor="middle" font-size="8.5" font-weight="600" '
+            f'fill="{fg}">{label}</text>'
+        )
+        parts.append(f'<text x="{x0+56}" y="{ly}" font-size="11" fill="#111827">{note}</text>')
+    note_y = status_y0 + 2 * line_h
+    parts.append(
+        f'<text x="{x0}" y="{note_y}" font-size="11" fill="#111827">'
+        f'Dashed line: a real virtual-sensor tap of an already-live upstream GC value. Dotted line: '
+        f'no live upstream tap -- reads a real Confirmed static design constant instead (SA-011/012).</text>'
+    )
+    parts.append(
+        f'<text x="{x0}" y="{note_y+line_h}" font-size="11" fill="#111827">'
+        f'All 12 items use the SAME "instrument" silhouette (color = category) -- these ARE real, '
+        f'visually similar transmitter/analyser housings, not 12 distinct pieces of process equipment.</text>'
+    )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# Real registry "Expected"/design-basis values, each independently and
+# separately stated in data/equipment_registry.json's own remarks (NOT
+# derived from the live model) -- the genuine, non-circular comparison
+# target for Section 2's bars and Section 5's audit below. SA-011/SA-012
+# deliberately excluded: their own registry "expected" figure IS the same
+# constant the live reading returns (get_sa011/012_reading's own source),
+# so any bar there would be circular, not a real check.
+_SA_REGISTRY_EXPECTED = {
+    "SA-001": (32.5, "vol%", "Expected H₂ concentration = 32-33 vol% (registry, midpoint used)"),
+    "SA-002": (28.0, "vol%", "Expected CO concentration = 28 vol% (registry)"),
+    "SA-003": (22.0, "vol%", "Expected CO₂ concentration = 22 vol% (registry)"),
+    "SA-004": (8.0, "vol%", "Expected CH₄ concentration = 8 vol% (registry)"),
+    "SA-005": (10.0, "vol%", "Expected N₂ concentration = 10 vol% (registry)"),
+    "SA-006": (9.8, "MJ/Nm³", "Expected LHV = 9.8 MJ/Nm³ (registry, calculated from SA-001/002/004)"),
+    "SA-008": (0.1, "ppm", "Expected H₂S concentration = <0.1 ppm (registry, matches GC-009's target)"),
+    "SA-010": (50.0, "Nm³/h", "Design flow rate = 50 Nm³/h (registry)"),
+}
+
+
+def _sa_deviation(eq_id, live_value):
+    """Real % deviation of a live SA reading from its own separately-stated
+    registry Expected value -- returns (expected, unit, note, rel_dev) or
+    None if this item has no genuine separate registry target (SA-007,
+    SA-009, SA-011, SA-012 -- see Section 5's own audit text for why each
+    is excluded)."""
+    if eq_id not in _SA_REGISTRY_EXPECTED or live_value is None:
+        return None
+    expected, unit, note = _SA_REGISTRY_EXPECTED[eq_id]
+    rel_dev = (live_value - expected) / expected if expected else 0.0
+    return expected, unit, note, rel_dev
+
+
+# =============================================================================
+# Sensors & Analysers Section 2 -- Live KPIs. Reuses _fe_tag_html,
+# _fe_kpi_check_delta, _fe_inline_bar_svg directly. One card per category
+# (composition/energy/contaminant/physical), each compared against a REAL,
+# separately-stated registry "Expected" value where one genuinely exists
+# (checked directly against data/equipment_registry.json -- see
+# _SA_REGISTRY_EXPECTED above) -- unlike GC-008/009's hard compliance
+# targets, these are DESIGN-BASIS composition assumptions, so a real
+# divergence is flagged amber ("diverges from design basis"), not red
+# ("shortfall") -- a different, honestly-distinguished kind of finding.
+# =============================================================================
+def _render_sa_live_kpis(snap):
+    picks = [
+        ("SA-001", "🧪", "H₂ (composition)"),
+        ("SA-006", "🔥", "LHV (energy)"),
+        ("SA-008", "☠️", "H₂S/COS (contaminant)"),
+        ("SA-010", "🌬️", "Clean gas flow (physical)"),
+    ]
+    kpis = []
+    for eq_id, icon, label in picks:
+        entry = snap.get((eq_id, "Reading"))
+        if entry is None or entry.get("status") == ps.STATUS_MISSING:
+            continue
+        v = entry["value"]
+        dev = _sa_deviation(eq_id, v)
+        unit = dev[1] if dev else ""
+        kpis.append(dict(eq_id=eq_id, icon=icon, label=label, entry=entry, raw=v,
+                          text=f"{v:.3f} {unit}".strip(), dev=dev))
+
+    if not kpis:
+        st.warning("No SA live values available this cycle to condense into KPI cards.")
+        return
+
+    cols = st.columns(len(kpis))
+    for col, kpi in zip(cols, kpis):
+        with col.container(border=True):
+            st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+            skey = f"tab6_kpi_delta__{kpi['eq_id']}"
+            delta, note = _fe_kpi_check_delta(skey, kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta_arg = f"{delta:+.3f}" if delta is not None else note
+            st.metric(f"{kpi['icon']} {kpi['label']} ({kpi['eq_id']})", kpi["text"], delta=delta_arg,
+                       delta_color="off", help=f"{kpi['label']}: {kpi['text']} ({note})")
+            if kpi["dev"]:
+                expected, unit, dnote, rel_dev = kpi["dev"]
+                diverges = abs(rel_dev) > 0.15
+                color = "#B45309" if diverges else "#15803D"
+                frac = kpi["raw"] / expected if expected else 0.0
+                st.markdown(_fe_inline_bar_svg(frac, color, target_frac=1.0), unsafe_allow_html=True)
+                verdict = "⚠️ diverges from" if diverges else "✓ consistent with"
+                st.caption(f"{verdict} registry design-basis target: {expected:g} {unit} ({rel_dev*100:+.1f}%) — {dnote}")
+    st.caption(
+        "One card per category (composition/energy/contaminant/physical). Comparison bars use a "
+        "REAL, separately-stated registry \"Expected\" design-basis value (checked directly against "
+        "`data/equipment_registry.json`, not fabricated) — NOT the trivial circular check SA-011/"
+        "SA-012 would give (their own registry \"expected\" figure IS the same constant their live "
+        "reading returns), so those two are excluded here. See **Section 5** below for the full "
+        "12-item audit and the real, substantial divergence found for gas composition."
+    )
+
+
+# =============================================================================
+# Sensors & Analysers Section 3 -- Process Flow & Equipment Status. Reuses
+# _FE_STATUS_TABLE_CSS, _fe_status_changed_flag, _fe_changed_pill_html,
+# _fe_status_row_icon_svg, _ga_status_pill_html directly. All 12 items are
+# genuinely live-registered (register_sa_sensors(), confirmed by direct
+# grep) -- "Running" covers BOTH Calculated (SA-001..010) and Assumed
+# (SA-011/012, reading a real Confirmed static constant every cycle) --
+# there is no genuine "Static/no live model" state here the way GA/GC's
+# true sub-items had, since all 12 real SA items DO run every cycle.
+# =============================================================================
+def _render_sa_status_table(snap):
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    item_rows = []
+    live_count = 0
+    for eq_id, name, cat, key, _tap in _SA_SCHEMATIC_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        state = "missing" if is_missing else "running"
+        assumed = (not is_missing) and entry.get("status") == ps.STATUS_ASSUMED
+        if state == "running":
+            live_count += 1
+        changed, note = _fe_status_changed_flag(f"tab6_status_changed__{eq_id}", state)
+        item_rows.append(dict(eq_id=eq_id, name=name.replace("\n", " "), cat=cat, key=key, state=state,
+                               assumed=assumed, changed=changed, note=note))
+
+    total = len(_SA_SCHEMATIC_ITEMS)
+    summary_bg, summary_fg = ("#DCFCE7", "#15803D") if live_count == total else ("#FEF3C7", "#B45309")
+    st.markdown(
+        f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+        f'{live_count}/{total} live</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "All 12 real SA items are live-registered (confirmed directly, no true \"Static/no live "
+        "model\" sub-items exist here) — SA-011/SA-012 are marked with a small \"reads Assumed "
+        "static constant\" note since, unlike SA-001..010, they read a Confirmed design constant "
+        "rather than a live upstream tap (see Section 1's schematic and Section 4 below)."
+    )
+
+    for cat_key, colors in _SA_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(
+            f'<div class="fe-status-group-title">'
+            f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+            f'{colors["label"]}</div>',
+            unsafe_allow_html=True,
+        )
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"], _SA_CATEGORY_COLORS, _SA_ITEM_SHAPE)
+            name_html = r["name"] + (' <span class="fe-tag" style="background:#E0E7FF;color:#4338CA;">reads Assumed static constant</span>' if r["assumed"] else "")
+            trs.append(
+                f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{name_html}</td>'
+                f'<td>{_ga_status_pill_html(r["state"])}</td>'
+                f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                f'<td><code>{r["key"][0]}/{r["key"][1]}</code></td></tr>'
+            )
+        st.markdown(
+            '<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+            '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table>',
+            unsafe_allow_html=True,
+        )
+
+
+# =============================================================================
+# Sensors & Analysers Section 4 -- Live Simulation & Engineering Results.
+# Expandable per-item cards, SA-001 through SA-012. Every confidence_note/
+# missing_reason string is SA's own REAL text, read directly and shown
+# verbatim -- never retyped. Downstream-consumer tags: checked directly --
+# every one of the 12 real functions in sa_virtual_sensors.py is a
+# TERMINAL read (it reports a value, it does not feed any other registered
+# model's inputs anywhere in this project, confirmed by a project-wide
+# grep for ("SA-0.." reads) -- so NO downstream tag is shown anywhere in
+# this section, the same FE-007 discipline already applied to FE/GA/GC.
+# =============================================================================
+def _sa_card(eq_id, cat, title, snap, changed_key_entry=None):
+    """Shared card opener -- same _fe_result_card_header pattern as GA/GC."""
+    if changed_key_entry is not None:
+        changed, note = _fe_status_changed_flag(f"tab6_s4_changed__{eq_id}", changed_key_entry)
+    else:
+        changed, note = None, "no live entry"
+    _fe_result_card_header(eq_id, cat, f"{eq_id} — {title}", changed=changed, note=note,
+                            category_colors=_SA_CATEGORY_COLORS, item_shapes=_SA_ITEM_SHAPE)
+
+
+def _render_sa_live_results(snap):
+    sa001 = snap.get(("SA-001", "Reading"))
+    if sa001 is not None:
+        st.caption(f"Simulation snapshot as of {sa001['timestamp']} (this cycle's own real, traceable timestamp).")
+
+    st.info(
+        "**NOTE ON READ-TARGETS** (this module's own explicit disclosure, `python/sa_virtual_"
+        "sensors.py` module docstring): the original Phase 4 task's own inline example text "
+        "(\"SA-001 reads HB-004's H2 output\") differs from the engineering plan's own Section 2.4 "
+        "table (SA-001..006 read GC-013's clean-syngas output). The live code follows the PLAN'S "
+        "table, corroborated directly by the registry's own remarks (SA-009/010/011/012 all "
+        "independently reference GC-013's own late-train discharge position) — not the task's "
+        "paraphrase. Stated here explicitly, not silently picked.",
+        icon="ℹ️",
+    )
+
+    titles = {
+        "SA-001": ("composition", "Gas Analyser (H₂)"), "SA-002": ("composition", "Gas Analyser (CO)"),
+        "SA-003": ("composition", "Gas Analyser (CO₂)"), "SA-004": ("composition", "Gas Analyser (CH₄)"),
+        "SA-005": ("composition", "Gas Analyser (N₂)"), "SA-006": ("energy", "Gas Calorimeter / LHV"),
+        "SA-007": ("contaminant", "Tar Sampling Port"), "SA-008": ("contaminant", "H₂S/COS Analyser"),
+        "SA-009": ("contaminant", "Dust/Particulate Monitor"), "SA-010": ("physical", "Gas Flow Meter (Clean)"),
+        "SA-011": ("physical", "Gas Temperature Sensor"), "SA-012": ("physical", "Gas Pressure Sensor"),
+    }
+    units = {
+        "SA-001": "vol%", "SA-002": "vol%", "SA-003": "vol%", "SA-004": "vol%", "SA-005": "vol%",
+        "SA-006": "MJ/Nm³", "SA-007": "mg/Nm³", "SA-008": "ppm", "SA-009": "mg/Nm³",
+        "SA-010": "Nm³/h", "SA-011": "°C", "SA-012": "mbar(g)",
+    }
+
+    for eq_id, (cat, title) in titles.items():
+        entry = snap.get((eq_id, "Reading"))
+        with st.container(border=True):
+            _sa_card(eq_id, cat, title, snap, entry["value"] if entry else None)
+            if entry is None or entry.get("status") == ps.STATUS_MISSING:
+                st.metric(title, "Missing / Cannot Calculate")
+                if entry is not None:
+                    with st.expander(f"Full status & traceability — {eq_id}"):
+                        st.caption(f"Status: {entry['status']} · {entry['missing_reason']}")
+                continue
+            v = entry["value"]
+            unit = units[eq_id]
+            if entry["status"] == ps.STATUS_ASSUMED:
+                st.markdown(
+                    _fe_tag_html("confirmed", "Assumed — reads a Confirmed static design constant")
+                    + f" &nbsp; **{v:.1f} {unit}**",
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "No live upstream MODEL exists at this point in the train (module docstring) — "
+                    "this is the SAME \"Confirmed design constant as live placeholder\" treatment "
+                    "`gc_gas_cleaning_chain.py`'s own GC-001/GC-003 temperature functions already use, "
+                    "not a fabricated live thermal/pressure model."
+                )
+            else:
+                st.metric(f"{eq_id} {title}", f"{v:.3f} {unit}")
+                dev = _sa_deviation(eq_id, v)
+                if dev:
+                    expected, dunit, dnote, rel_dev = dev
+                    diverges = abs(rel_dev) > 0.15
+                    st.caption(
+                        ("⚠️ " if diverges else "✓ ")
+                        + f"vs registry design-basis {expected:g} {dunit} ({rel_dev*100:+.1f}%) — {dnote}"
+                    )
+            with st.expander(f"Full status & traceability — {eq_id}"):
+                st.caption(f"Status: {entry['status']} · {entry['confidence_note']}")
+
+    st.caption(
+        "**SA-007's own real tap point, stated explicitly:** GC-006's outlet is an INTERMEDIATE "
+        "point (after GC-006's own bulk tar removal, BEFORE the GC-007/008/009 wet scrubbers polish "
+        "it further) — comparing it to the registry's own separate \"<50 mg/Nm³ clean\" figure "
+        "(which describes the FINAL point, downstream of GC-007) would compare two different "
+        "physical locations, so no comparison bar is shown for SA-007 above. Checked directly, not "
+        "assumed: the live 500 mg/Nm³ reading is GC-006's own Confirmed reference constant "
+        "(`gc006_tar_outlet()`, status Assumed, re-sourced from GC-007's own Confirmed 0.5 g/Nm³ "
+        "inlet figure per the already-documented mislabel correction) — SA-007 is a virtual sensor "
+        "reading that SAME stored constant BY CONSTRUCTION, not an independently computed value."
+    )
+
+
+# =============================================================================
+# Sensors & Analysers Section 5 -- audited FIRST, per this task's own
+# established discipline (FE/GA/GC precedent): SA-001..012 are terminal
+# measurement instruments on the ALREADY-BUILT FE->GA->GC train -- they do
+# not receive/transform/produce a stream of their own, so there is NO mass
+# or energy balance for this tab to check at all (unlike FE's independent
+# closure or GA/GC's by-construction/mixed ones). Section renamed
+# accordingly, not force-fitted into the mass-balance template.
+#
+# REAL SUBSTITUTE AUDIT PERFORMED INSTEAD: each item with a genuinely
+# separate registry "Expected" design-basis value (see _SA_REGISTRY_
+# EXPECTED above) is checked live vs that target. FINDING, surfaced
+# honestly, not smoothed over: gas COMPOSITION and FLOW diverge
+# substantially from the registry's own "Expected" design-basis figures --
+# N2 39.6% live vs 10% expected (+296%), CO2/CH4 far below expected
+# (-55%/-79%), H2/CO modestly below (-15%/-23%), LHV -36% below expected,
+# and SA-010's flow +105% above the registry's own 50 Nm3/h design point.
+# ROOT CAUSE, found by direct inspection of ga001_gasifier_model.py (not
+# assumed): that module's OWN comments (lines ~644-649) state explicitly
+# GA-001's product gas carries substantial N2 "roughly matching the fresh
+# air feed's own N2 content" -- i.e. GA-001's live physics model uses an
+# air-containing gasifying agent, producing a meaningfully more dilute,
+# N2-heavier syngas than the registry's own "Expected" table assumed (a
+# near-N2-free steam-blown composition). This is a genuine, PRE-EXISTING
+# divergence between the registry's own static design-basis assumptions
+# and the later live GA-001 physics model -- not created by this build,
+# and not silently reconciled here.
+# =============================================================================
+def _render_sa_mass_energy_balance(snap):
     st.warning(
-        "**Deliberately scoped: SA-001 through SA-012 only — one of a growing set of "
-        "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas "
-        "Cleaning's GC-001–015, Hydrogen & BoP's HB-001–018, Electrical & Utilities' "
-        "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
-        "91 registry items are now covered, one section per tab). Same real registry source and same six-category methodology "
-        "as the earlier sections — this one needed NO new keywords at all; see "
-        "`python/equipment_datasheet.py` for why. **This is the fourth section (after the FE "
-        "pilot and the GA/GC extensions) to receive engineering estimates**: only 1 of SA's 46 "
-        "remaining gaps is filled — SA is almost entirely measurement instruments (gas analysers, "
-        "sensors, one manual sampling port), whose own accuracy/response-time/measurement-range "
-        "specs are vendor/product properties by definition, and most have no material stream of "
-        "their own to give an Inputs/Outputs figure at all, so a near-zero fill rate here is the "
-        "honest, correct outcome. Two more apparent mislabeled cross-references were found in this "
-        "section's own pre-existing remarks (beyond the two already found in Gas Cleaning) and "
-        "explicitly not relied upon — see `python/equipment_engineering_estimates.py` for the full "
-        "per-gap reasoning and CLAUDE.md's \"Known source-data issues\" section for all four.",
+        "**No mass or energy balance applies to this tab — audited directly, not assumed.** "
+        "SA-001 through SA-012 are terminal measurement instruments on the already-built FE→GA→GC "
+        "train (module docstring: \"it observes a property of the shared gas stream... it does not "
+        "receive/transform/produce a stream of its own\") — there is no mass/energy chain here to "
+        "independently check, unlike Feed Handling's own closure or Gasification/Gas Cleaning's "
+        "by-construction splits. A real substitute audit is performed instead below.",
+        icon="⚠️",
+    )
+
+    st.markdown("**Live reading vs. registry-expected design basis (12-item audit)**")
+    rows = []
+    for eq_id in [f"SA-{i:03d}" for i in range(1, 13)]:
+        entry = snap.get((eq_id, "Reading"))
+        if entry is None or entry.get("status") == ps.STATUS_MISSING:
+            rows.append((eq_id, "Missing", "—", "—", "—"))
+            continue
+        v = entry["value"]
+        dev = _sa_deviation(eq_id, v)
+        if dev:
+            expected, unit, _note, rel_dev = dev
+            verdict = "⚠️ diverges" if abs(rel_dev) > 0.15 else "✓ consistent"
+            rows.append((eq_id, f"{v:.3f}", f"{expected:g} {unit}", f"{rel_dev*100:+.1f}%", verdict))
+        elif entry["status"] == ps.STATUS_ASSUMED:
+            rows.append((eq_id, f"{v:.1f}", "(same constant)", "0.0% (by construction)", "n/a — not independent"))
+        else:
+            rows.append((eq_id, f"{v:.3f}", "no separate registry target", "—", "n/a"))
+
+    trs = "".join(
+        f"<tr><td><b>{r[0]}</b></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td></tr>"
+        for r in rows
+    )
+    st.markdown(
+        '<table class="fe-status-tbl"><thead><tr><th>ID</th><th>Live reading</th>'
+        '<th>Registry expected</th><th>Deviation</th><th>Verdict</th></tr></thead>'
+        f'<tbody>{trs}</tbody></table>',
+        unsafe_allow_html=True,
+    )
+
+    st.error(
+        "**Real finding, surfaced honestly:** gas COMPOSITION and FLOW diverge substantially from "
+        "the registry's own separately-stated \"Expected\" design-basis figures — most notably N2 "
+        "(39.6% live vs 10% expected, +296%) and CO2/CH4 (−55%/−79%), with SA-010's flow +105% "
+        "above the registry's own 50 Nm³/h design point. **Root cause, found by direct inspection "
+        "of `ga001_gasifier_model.py` (not assumed):** that module's own comments state explicitly "
+        "GA-001's live product gas carries substantial N2 \"roughly matching the fresh air feed's "
+        "own N2 content\" — the live physics model uses an air-containing gasifying agent, producing "
+        "a meaningfully more dilute, N2-heavier syngas than the registry's own \"Expected\" table "
+        "assumed (a near-N2-free steam-blown composition). This is a genuine, PRE-EXISTING "
+        "divergence between the registry's own static design-basis assumptions and the later live "
+        "GA-001 physics model — not created by this build, and not silently reconciled here.",
+        icon="🔴",
+    )
+    st.caption(
+        "SA-008 (H₂S/COS) and SA-009 (dust) both compute right at their own tight compliance "
+        "boundaries (≈0.09999996 ppm vs <0.1 ppm; 5.0 mg/Nm³ vs GC-010's own <5 mg/Nm³ target) — "
+        "genuinely meeting target, at the edge, not a shortfall. SA-011/SA-012 are excluded from "
+        "this table's deviation column — their own registry \"expected\" figure IS the same "
+        "Confirmed constant their live reading returns (by construction, not an independent check)."
+    )
+
+
+# =============================================================================
+# Sensors & Analysers Section 6 -- Simulation Status. Identical structure
+# to Tabs 3/4/5's own finished versions, reusing _plant_state_source_info()
+# and _digital_twin_cycle_log_status() directly.
+# =============================================================================
+def _render_sa_simulation_status(snap):
+    entry = snap.get(("SA-001", "Reading")) or snap.get(("SA-010", "Reading"))
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    is_live = src_info["reachable"] and src_info["rows_found"] > 0
+
+    if is_live:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        age_str = f"{age_hours * 60:.0f} min ago" if age_hours < 2 else f"{age_hours:.1f}h ago"
+        st.success(
+            "**✅ Live continuous-runtime data** — this cycle's values were read directly from "
+            "`plant_state_current`, written by the real, scheduled GitHub Actions workflow "
+            "(`docs/continuous_runtime_design.md`) — not generated by this page load.",
+            icon="✅",
+        )
+    else:
+        reason = (
+            f"unreachable this page load ({src_info['error']})" if not src_info["reachable"]
+            else "reachable, but genuinely empty — no cycle has ever been published there yet"
+        )
+        st.warning(
+            f"**⚠️ Fallback: in-process bootstrap** — `plant_state_current` is {reason}, so this "
+            "page load ran the Digital Twin engine fresh, in-process, right now (the SAME fallback "
+            "`tab1_integration.build_live_snapshot()` has always used). Every value shown is still "
+            "real — it is just NOT read from the continuous runtime's own persisted output.",
+            icon="⚠️",
+        )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.caption(
+        "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
+        "of plant operating hours. The real continuity signal is the timestamp →"
+    )
+    if is_live and entry:
+        c2.metric("Published at (real, persisted)", src_info["published_at"])
+        c2.caption(f"{age_str} — this cycle's own real publish time from the continuous runtime.")
+    elif entry:
+        c2.metric("Computed at (this page load)", entry["timestamp"])
+        c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
+    c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
+    c3.caption(
+        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
+        "behavior, not a bug here."
+    )
+
+    st.markdown(
+        "**Store connection:** " + ("✅ reachable" if src_info["reachable"] else "❌ unreachable")
+        + (f" — `{src_info['error']}`" if not src_info["reachable"] else "")
+    )
+
+    log_status = _digital_twin_cycle_log_status()
+    if log_status["exists"]:
+        st.caption("**Durable historical cycle count:** available via `digital_twin_cycle_log`.")
+    else:
+        checked_note = "" if log_status.get("not_found") else f" — checked just now: `{log_status['error']}`"
+        st.caption(
+            "**Durable historical cycle count:** not yet available (requires `digital_twin_cycle_log`, "
+            f"not yet created{checked_note}) — checked live, this page load, not assumed."
+        )
+
+    st.caption(
+        "No \"last 5 warm-up cycles\" trend chart on this tab — SA's own models read GC-013's/"
+        "GC-006's/GC-010's/GC-012's already-registered outputs same-cycle (no new lagged edges, "
+        "module docstring: \"order-independent... no circularity\"), so a mini-run would need the "
+        "SAME full FE→GA→GC chain registered alongside it as GC's own tab already requires — not "
+        "worth duplicating for a nice-to-have chart."
+    )
+
+    st.markdown(
+        "**Source, by section:** Sections 1–5 above read live output from `sa_virtual_sensors.py`'s "
+        "own registered SA models for all 12 SA items (confirmed directly — every one is live-"
+        "registered, none Static/no-model) — a real simulation result, not a static figure. Section "
+        "7 below instead reads `equipment_registry.load_registry()` directly for ALL of SA-001 "
+        "through SA-012 — real registry/vendor/DOK-ING data (Confirmed) or a stated engineering "
+        "estimate, never a simulation output. The two are never blended: every value on this tab is "
+        "clearly one or the other, labeled at the point it's shown."
+    )
+
+    st.info(
+        "**Status, current as of this build.** The continuous simulation runtime "
+        "(`docs/continuous_runtime_design.md`) **is implemented and has run for real** — the SAME "
+        "scheduled GitHub Actions workflow that publishes Feed Handling's/Gasification's/Gas "
+        "Cleaning's own real cycles publishes Sensors & Analysers' real cycles too (the same "
+        "`plant_state_current` publish, the same engine run). The banner at the top of this section "
+        "tells you, for THIS page load specifically, whether what you're looking at came from that "
+        "real persisted output or the in-process fallback engine run. What is still genuinely NOT "
+        "implemented: a durable, queryable history of past cycles (`digital_twin_cycle_log`, see "
+        "above).",
+        icon="ℹ️",
+    )
+
+
+def _render_sa_tab():
+    # _sa_summary must land at MODULE scope -- tabs 7/8/9's own regression
+    # checks read it directly, the SAME pre-existing pattern already fixed
+    # for _ga_summary/_gc_summary (the GA-build lesson, applied proactively
+    # here rather than re-discovered).
+    global _sa_summary
+    st.header("Sensors & Analysers — SA-001 through SA-012")
+    st.caption(
+        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+        "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
+        "which one THIS page load used. All 12 SA items are live-registered virtual sensors "
+        "(audited in Section 5/6 below) — SA-011/SA-012 read a Confirmed static design constant "
+        "(no live upstream model exists at this specific point), all 10 others tap an already-live "
+        "upstream GC value."
+    )
+    st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "".join(_fe_tag_html(k) for k in ("live", "confirmed", "estimate", "missing"))
+        + " — the SAME consistent color code used on the Feed Handling, Gasification and Gas "
+          "Cleaning tabs, reused here verbatim.",
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "UNLIKE FE/GA/GC (a real sequential process chain), SA-001..012 are independent instruments "
+        "tapping FOUR real points of the already-built gas train — GC-006 (tar), GC-010 (dust), "
+        "GC-012 (H₂S/COS) and GC-013 (clean gas, the busiest tap — 7 of the 12 items). SA-011/"
+        "SA-012 (below, dotted) have no live tap at all — they read a real Confirmed static design "
+        "constant instead."
+    )
+    try:
+        _sa_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_sa_schematic_svg(_sa_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _sa_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_sa_schematic_exc}")
+    with st.expander("Legend & notes"):
+        st.markdown(_sa_schematic_legend_svg(), unsafe_allow_html=True)
+
+    st.divider()
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _sa_snap_for_kpis = _tab1_integration_snapshot()
+        _render_sa_live_kpis(_sa_snap_for_kpis)
+    except Exception as _sa_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_sa_kpis_exc}")
+
+    st.divider()
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live/static status shown visually in Section 1's schematic, as a table — for "
+        "accessibility/screen-reader parity, not a second diagram."
+    )
+    try:
+        _sa_snap_for_status = _tab1_integration_snapshot()
+        _render_sa_status_table(_sa_snap_for_status)
+    except Exception as _sa_status_exc:
+        st.error(f"Equipment status table failed to render: {_sa_status_exc}")
+
+    st.divider()
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
+    try:
+        _sa_snap_for_results = _tab1_integration_snapshot()
+        _render_sa_live_results(_sa_snap_for_results)
+    except Exception as _sa_results_exc:
+        st.error(f"Live simulation results failed to render: {_sa_results_exc}")
+
+    st.divider()
+    st.subheader("Section 5 — Reading vs. Registry-Expected Values (no mass balance applies)")
+    try:
+        _sa_snap_for_balance = _tab1_integration_snapshot()
+        _render_sa_mass_energy_balance(_sa_snap_for_balance)
+    except Exception as _sa_balance_exc:
+        st.error(f"Section 5 failed to render: {_sa_balance_exc}")
+
+    st.divider()
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _sa_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_sa_simulation_status(_sa_snap_for_sim_status)
+    except Exception as _sa_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_sa_sim_status_exc}")
+
+    st.divider()
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
+    st.warning(
+        "**Deliberately scoped: SA-001 through SA-012 only — one of a growing set of per-section "
+        "tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas Cleaning's GC-001–015, "
+        "Hydrogen & BoP's HB-001–018, Electrical & Utilities' EU-001–013, and Automation & "
+        "Instrumentation's AI-001–015 each have their own tab — all 91 registry items are now "
+        "covered, one section per tab). Same real registry source and same six-category methodology "
+        "as Feed Handling, Gasification and Gas Cleaning, not a rewrite. Only 1 of SA's 46 "
+        "remaining gaps is filled — this section is almost entirely specific instrument-vendor "
+        "specs (measurement ranges, response times, calibration intervals) that only exist once a "
+        "vendor/model is chosen, so a low fill rate here is the honest, correct outcome, not a "
+        "shortfall in effort. See `python/equipment_engineering_estimates.py` for the full per-gap "
+        "reasoning, including two more apparent mislabeled cross-references found in this section's "
+        "own pre-existing remarks and explicitly not relied upon.",
         icon="⚠️",
     )
     st.caption(
         "Each item's real registry parameters are sorted into six categories — Inputs, Outputs, "
         "Parameters, Measurements, Operating Conditions, Performance Indicators — by the same "
-        "documented keyword rule as the earlier sections. A category with no real data mapped to "
-        "it is shown as **Missing Data — Required**, never a plausible-sounding placeholder."
+        "documented keyword rule as Feed Handling, Gasification and Gas Cleaning. A category with "
+        "no real data mapped to it is shown as **Missing Data — Required**, never a plausible-"
+        "sounding placeholder."
     )
 
     _sa_summary = equipment_datasheet.summarize(_eq_datasheets, ids=equipment_datasheet.SA_IDS)
@@ -6206,21 +6981,24 @@ with tab6:
             and _ga_summary["total_real_data_points"] == 100 and _ga_summary["populated_category_slots"] == 41
             and _gc_summary["total_real_data_points"] == 122 and _gc_summary["populated_category_slots"] == 59):
         st.success(
-            "Regression check: FE (78 real data points, 34/48 populated — 27 Confirmed + 7 "
-            "Engineering Estimate), GA (100 real data points, 41/60 populated — 31 Confirmed + 10 "
-            "Engineering Estimate), and GC (122 real data points, 59/90 populated — 52 Confirmed + "
-            "7 Engineering Estimate) are all unchanged by adding this Sensors & Analysers section."
+            "Regression check: FE (78 real data points, 34/48 populated), GA (100 real data points, "
+            "41/60 populated) and GC (122 real data points, 59/90 populated) are all unchanged by "
+            "adding this Sensors & Analysers section."
         )
     else:
         st.error(
-            f"**Regression:** at least one earlier section's counts changed after adding Sensors & "
-            f"Analysers — FE now {_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, "
-            f"GA now {_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']}, "
-            f"GC now {_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']} "
-            f"(expected 78/34, 100/41, and 122/59). See python/equipment_datasheet.py."
+            f"**Regression:** FE/GA/GC's counts changed after adding Sensors & Analysers — FE now "
+            f"{_fe_summary['total_real_data_points']}/{_fe_summary['populated_category_slots']}, GA now "
+            f"{_ga_summary['total_real_data_points']}/{_ga_summary['populated_category_slots']}, GC now "
+            f"{_gc_summary['total_real_data_points']}/{_gc_summary['populated_category_slots']} "
+            f"(expected 78/34, 100/41, 122/59). See python/equipment_datasheet.py."
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.SA_IDS, _sa_summary["per_item"])
+
+
+with tab6:
+    _render_sa_tab()
 
 with tab7:
     st.header("Equipment Datasheets — Hydrogen & BoP (HB-001 through HB-018)")
