@@ -25,6 +25,7 @@ from python import (
     equipment_engineering_estimates, tab1_integration, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
+    ai_automation_layer as ai_module,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -9149,8 +9150,872 @@ def _render_eu_tab():
 with tab8:
     _render_eu_tab()
 
-with tab9:
-    st.header("Equipment Datasheets — Automation & Instrumentation (AI-001 through AI-015)")
+## =============================================================================
+# Automation & Instrumentation tab (AI-001 through AI-015) -- built to the
+# SAME 7-section structure Tabs 3-8 reached, reusing every genuinely
+# generic helper directly (_fe_status_changed_flag, _fe_changed_pill_html,
+# _ga_status_pill_html, _fe_tag_html/_FE_DATA_TYPE_TAGS, _FE_TAB_CSS's own
+# .fe-tag class, _fe_status_row_icon_svg / _fe_result_card_header
+# (generalized five times already, reused unchanged with AI's own
+# category_colors/item_shapes), _render_equipment_honest_count,
+# _render_equipment_items, _plant_state_source_info,
+# _digital_twin_cycle_log_status -- none copied.
+#
+# STRUCTURALLY DIFFERENT FROM EVERY EARLIER TAB, represented honestly, not
+# forced into a flow-chain metaphor: AI-004/007/011/012/013/014 are
+# architectural (PLC state machine, SCADA aggregation, time-series log,
+# AI/optimization layer, the Digital Twin Engine itself), not physical
+# process equipment. Section 1's schematic shows the REAL architecture --
+# checked directly against every item's own real code-level dependencies,
+# not the intended/idealized wiring: AI-001/002/003 (sensing) are real,
+# independent registry items but are NOT literally wired as AI-004's own
+# code-level inputs (checked directly -- AI-004's own Tier-1 monitoring
+# targets are GA-001/GC-013/HB-006/HB-012/HB-013/EU-008/EU-009, process
+# equipment on other tabs, not AI-001/002/003) -- shown as their own real,
+# separate connections instead of a fabricated arrow. AI-012/013/014 have
+# `depends_on=[]` in the real code (pure relabeling/identity nodes, per
+# the roadmap's own "not a separate thing to build" framing) -- shown in
+# their own dotted-boundary "Intelligence Layer" zone, explicitly captioned
+# as NOT reading AI-007/AI-011 through this diagram's own arrows (their
+# real role is reading the Shared Plant State directly via each of their
+# own real modules elsewhere), not silently implied to be wired that way.
+# New shapes: "plc" (AI-004) and "server" (AI-007/011/012/013/014) --
+# genuinely new, no existing silhouette fits a controller or a compute/
+# database node. "network" (AI-005/006/008/009/010's own connectivity
+# tier) is also new. The sensing tier (AI-001/002/003) deliberately REUSES
+# FE's own existing "instrument" shape rather than adding a near-duplicate
+# "sensor" shape -- the same reuse-don't-duplicate discipline already
+# applied throughout this project (SA/HB/EU all reused "instrument" for
+# their own genuinely similar items).
+# =============================================================================
+
+_AI_CATEGORY_COLORS = {
+    "sensing":       {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "Sensing (Field Instruments)"},
+    "control":       {"fill": "#FEE2E2", "stroke": "#B91C1C", "label": "Control (PLC)"},
+    "aggregation":   {"fill": "#BFDBFE", "stroke": "#1D4ED8", "label": "Aggregation (SCADA / Time-Series Log)"},
+    "intelligence":  {"fill": "#DDD6FE", "stroke": "#6D28D9", "label": "Intelligence Layer (relabeling only)"},
+    "connectivity":  {"fill": "#E5E7EB", "stroke": "#6B7280", "label": "Connectivity Infrastructure (background tier)"},
+}
+
+# (equipment_id, display name, category, primary registered key, x, y)
+_AI_SCHEMATIC_ITEMS = [
+    ("AI-001", "Weather\nStation", "sensing", ("AI-001", "RenewableAvailability"), 90, 30),
+    ("AI-002", "Camera /\nVision", "sensing", ("AI-002", "ContaminationFlag"), 260, 30),
+    ("AI-003", "Bed Pressure-\nDrop Sensor", "sensing", ("AI-003", "BedPressureDrop"), 430, 30),
+    ("AI-004", "PLC\n(Main Control)", "control", ("AI-004", "GA-001-State"), 430, 170),
+    ("AI-007", "DCS / SCADA\nServer", "aggregation", ("AI-007", "ScadaSnapshot"), 260, 320),
+    ("AI-011", "Time-Series\nDatabase", "aggregation", ("AI-011", "LoggingStatus"), 600, 320),
+    ("AI-012", "AI Model Server\n(MPC/RL)", "intelligence", ("AI-012", "Identity"), 800, 460),
+    ("AI-013", "Digital Twin\nEngine", "intelligence", ("AI-013", "Identity"), 970, 460),
+    ("AI-014", "Orchestration\nController", "intelligence", ("AI-014", "OrchestrationState"), 1140, 460),
+    ("AI-015", "RFNBO\nMonitor", "intelligence", ("AI-015", "RfnboStatus"), 1310, 460),
+]
+_AI_CONNECTIVITY_ITEMS = [
+    ("AI-005", "OPC-UA\nGateway", ("AI-005", "Connectivity")),
+    ("AI-006", "MQTT\nBroker", ("AI-006", "Connectivity")),
+    ("AI-008", "Edge Computing\nServer", ("AI-008", "Connectivity")),
+    ("AI-009", "Cybersecurity\nFirewall", ("AI-009", "Connectivity")),
+    ("AI-010", "Cloud IoT\nHub", ("AI-010", "Connectivity")),
+]
+_AI_ITEM_SHAPE = {
+    "AI-001": "instrument", "AI-002": "instrument", "AI-003": "instrument",
+    "AI-004": "plc", "AI-007": "server", "AI-011": "server",
+    "AI-012": "server", "AI-013": "server", "AI-014": "server", "AI-015": "instrument",
+    "AI-005": "network", "AI-006": "network", "AI-008": "network", "AI-009": "network", "AI-010": "network",
+}
+_AI_BOX_W, _AI_BOX_H = 130, 80
+_AI_POS = {eq_id: (x, y) for eq_id, _n, _c, _k, x, y in _AI_SCHEMATIC_ITEMS}
+
+
+def _ai_schematic_svg(snap):
+    total_w, total_h = 1480, 660
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs><filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-ai-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/></linearGradient>'
+            for key, c in _AI_CATEGORY_COLORS.items()
+        ) + '</defs>',
+        '<defs><marker id="ai-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">'
+        '<path d="M0,0 L6,3 L0,6 Z" fill="#374151"/></marker>'
+        '<marker id="ai-arrow-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">'
+        '<path d="M0,0 L6,3 L0,6 Z" fill="#6B7280"/></marker></defs>',
+        # A real, checked-directly note: AI-004's own Tier-1 monitoring targets
+        # are process equipment on OTHER tabs (GA-001/GC-013/HB-006/HB-012/
+        # HB-013/EU-008/EU-009) -- not AI-001/002/003. Stated as text, not a
+        # fabricated arrow from the sensing tier.
+        f'<text x="{_AI_POS["AI-004"][0]+_AI_BOX_W/2:.1f}" y="153" text-anchor="middle" font-size="8" '
+        f'font-style="italic" fill="#B91C1C">real monitors: GA-001/GC-013/HB-006/HB-012/HB-013/EU-008/EU-009 (Tabs 4-8, lagged)</text>',
+        f'<text x="{(_AI_POS["AI-007"][0]+_AI_POS["AI-011"][0])/2+_AI_BOX_W/2:.1f}" y="298" text-anchor="middle" '
+        f'font-size="8" font-style="italic" fill="#1D4ED8">real plant tabs: FE/GA/GC/HB/EU/SA (same-cycle)</text>',
+    ]
+
+    def edge(a, b, style="solid", label=None):
+        ax, ay = _AI_POS[a]; bx, by = _AI_POS[b]
+        acx, bcx = ax + _AI_BOX_W / 2, bx + _AI_BOX_W / 2
+        if ay == by:
+            x1, y1, x2, y2 = ax + _AI_BOX_W, ay + _AI_BOX_H / 2, bx, by + _AI_BOX_H / 2
+        elif ay < by:
+            x1, y1, x2, y2 = acx, ay + _AI_BOX_H, bcx, by
+        else:
+            x1, y1, x2, y2 = acx, ay, bcx, by + _AI_BOX_H
+        dash = {"solid": "", "dashed": 'stroke-dasharray="6,4"'}[style]
+        color = "#374151" if style == "solid" else "#6B7280"
+        marker = "url(#ai-arrow)" if style == "solid" else "url(#ai-arrow-gray)"
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" '
+            f'stroke-width="2" {dash} marker-end="{marker}" opacity="{1.0 if style=="solid" else 0.65}"/>'
+        )
+        if label:
+            parts.append(f'<text x="{(x1+x2)/2:.1f}" y="{(y1+y2)/2-4:.1f}" text-anchor="middle" '
+                          f'font-size="8.5" fill="{color}">{label}</text>')
+
+    # AI-004's own real, lagged read of the Tier-1 process equipment (dashed,
+    # from a point above it, matching the text note above).
+    edge("AI-004", "AI-007", "dashed", "AI-004's own real state (lagged)")
+    # AI-015's own real, direct dependency -- HB-011 (Tab 7), not the
+    # aggregation/intelligence tiers.
+    parts.append(f'<line x1="{_AI_POS["AI-015"][0]+_AI_BOX_W/2:.1f}" y1="440" '
+                  f'x2="{_AI_POS["AI-015"][0]+_AI_BOX_W/2:.1f}" y2="{_AI_POS["AI-015"][1]:.1f}" '
+                  f'stroke="#6B7280" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ai-arrow-gray)" opacity="0.65"/>')
+    parts.append(f'<text x="{_AI_POS["AI-015"][0]+_AI_BOX_W/2:.1f}" y="436" text-anchor="middle" font-size="8" '
+                  f'fill="#6B7280">HB-011 (Tab 7)</text>')
+
+    # Intelligence-layer dotted boundary (a real, honest zone -- NOT an
+    # arrow-connected data path; AI-012/013/014 all have depends_on=[] in
+    # the real code, per the roadmap's own "not a separate thing to build"
+    # framing -- see the caption below the schematic for the full statement).
+    intel_x0 = _AI_POS["AI-012"][0] - 20
+    intel_x1 = _AI_POS["AI-014"][0] + _AI_BOX_W + 20
+    intel_y0, intel_y1 = 440, 440 + _AI_BOX_H + 40
+    parts.append(f'<rect x="{intel_x0:.1f}" y="{intel_y0:.1f}" width="{intel_x1-intel_x0:.1f}" '
+                  f'height="{intel_y1-intel_y0:.1f}" rx="8" fill="none" stroke="#6D28D9" '
+                  f'stroke-width="1.6" stroke-dasharray="4,4" opacity="0.6"/>')
+    parts.append(f'<text x="{(intel_x0+intel_x1)/2-70:.1f}" y="{intel_y0-8:.1f}" text-anchor="middle" '
+                  f'font-size="9" font-weight="bold" fill="#6D28D9">Intelligence Layer (reads Shared Plant '
+                  f'State directly via its own 11 real modules -- not through this diagram\'s own arrows)</text>')
+
+    for eq_id, name, cat, key, x, y in _AI_SCHEMATIC_ITEMS:
+        colors = _AI_CATEGORY_COLORS[cat]
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        badge_fill, badge_fg, badge_text = ("#F3F4F6", "#6B7280", "No data") if is_missing else ("#DCFCE7", "#15803D", "Running")
+        if eq_id == "AI-004":
+            # AI-004's own summary badge: FAULT if ANY Tier-1 item's own
+            # state is FAULT this cycle (real, checked directly).
+            fault_any = False
+            for tier1 in AI004_TIER1_ITEMS_APP:
+                st_entry = snap.get(("AI-004", f"{tier1}-State"))
+                if st_entry is not None and st_entry.get("status") != ps.STATUS_MISSING and st_entry["value"] == "FAULT":
+                    fault_any = True
+                    break
+            if fault_any:
+                badge_fill, badge_fg, badge_text = "#FEE2E2", "#B91C1C", "FAULT"
+        shape = _AI_ITEM_SHAPE[eq_id]
+        parts.append(_fe_equipment_shape_svg(shape, x, y, _AI_BOX_W, _AI_BOX_H, f'url(#grad-ai-{cat})', colors["stroke"]))
+        parts.append(f'<text x="{x+_AI_BOX_W/2:.1f}" y="{y+15:.1f}" text-anchor="middle" font-size="10" '
+                      f'font-weight="bold" fill="#111827">{eq_id}</text>')
+        for li, line in enumerate(name.split("\n")):
+            parts.append(f'<text x="{x+_AI_BOX_W/2:.1f}" y="{y+28+li*10:.1f}" text-anchor="middle" '
+                          f'font-size="8" fill="#111827">{line}</text>')
+        bw = 52
+        parts.append(f'<rect x="{x+_AI_BOX_W/2-bw/2:.1f}" y="{y+_AI_BOX_H-16:.1f}" width="{bw}" height="12" '
+                      f'rx="6" fill="{badge_fill}"/>')
+        parts.append(f'<text x="{x+_AI_BOX_W/2:.1f}" y="{y+_AI_BOX_H-7:.1f}" text-anchor="middle" font-size="7.5" '
+                      f'font-weight="600" fill="{badge_fg}">{badge_text}</text>')
+
+    # Connectivity background/supporting tier -- a distinct visual layer,
+    # NOT part of the explicit data-flow arrows above (correctly -- none of
+    # these 5 items produce a real data-flow connection in code, they are
+    # standalone Online/Offline/Degraded state placeholders, module docstring).
+    band_y0, band_y1 = 560, 650
+    parts.append(f'<rect x="10" y="{band_y0}" width="{total_w-20}" height="{band_y1-band_y0}" rx="10" '
+                  f'fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.5" stroke-dasharray="3,3"/>')
+    parts.append(f'<text x="24" y="{band_y0+16}" font-size="9" font-weight="bold" fill="#6B7280">Connectivity '
+                  f'Infrastructure (background/supporting tier -- no explicit data-flow arrows; everything '
+                  f'above implicitly relies on it)</text>')
+    conn_w, conn_h = 90, 46
+    step = (total_w - 60) / len(_AI_CONNECTIVITY_ITEMS)
+    for i, (eq_id, name, key) in enumerate(_AI_CONNECTIVITY_ITEMS):
+        cx0 = 30 + i * step
+        cy0 = band_y0 + 22
+        entry = snap.get(key)
+        state = entry["value"] if entry is not None and entry.get("status") != ps.STATUS_MISSING else "No data"
+        badge_fill, badge_fg = {"Online": ("#DCFCE7", "#15803D"), "Degraded": ("#FEF3C7", "#B45309"),
+                                  "Offline": ("#FEE2E2", "#B91C1C")}.get(state, ("#F3F4F6", "#6B7280"))
+        parts.append(_fe_equipment_shape_svg("network", cx0, cy0, conn_w, conn_h, 'url(#grad-ai-connectivity)', "#6B7280"))
+        parts.append(f'<text x="{cx0+conn_w/2:.1f}" y="{cy0+conn_h+10:.1f}" text-anchor="middle" font-size="7.5" '
+                      f'font-weight="bold" fill="#111827">{eq_id}</text>')
+        parts.append(f'<rect x="{cx0+conn_w/2-24:.1f}" y="{cy0+conn_h+14:.1f}" width="48" height="11" rx="5.5" '
+                      f'fill="{badge_fill}"/>')
+        parts.append(f'<text x="{cx0+conn_w/2:.1f}" y="{cy0+conn_h+22.5:.1f}" text-anchor="middle" font-size="7" '
+                      f'font-weight="600" fill="{badge_fg}">{state}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _ai_schematic_legend_svg():
+    x0, line_h = 10, 20
+    total_w, total_h = 700, 220
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
+    for idx, colors in enumerate(_AI_CATEGORY_COLORS.values()):
+        ly = 16 + 22 + idx * line_h
+        parts.append(f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+                      f'stroke="{colors["stroke"]}" stroke-width="2"/>')
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    y = 16 + 22 + len(_AI_CATEGORY_COLORS) * line_h + 8
+    for line in (
+        "This tab is architecturally different from every earlier one -- shown honestly, not forced "
+        "into a left-to-right process-flow metaphor.",
+        "Dashed arrows: real, checked-directly code dependencies (AI-004's own real Tier-1 reads; the "
+        "real plant tabs feeding AI-007/AI-011; AI-015's own real HB-011 dependency).",
+        "The dotted purple box (Intelligence Layer): AI-012/013/014 genuinely have `depends_on=[]` in "
+        "the real code (checked directly) -- NOT connected by an arrow from SCADA/the time-series log, "
+        "because that connection doesn't exist in code. Their real role (reading the Shared Plant "
+        "State directly via each of their own 11 real modules) is stated in text, not drawn as a "
+        "fabricated data path.",
+        "The dashed gray background band: AI-005/006/008/009/010, a genuinely separate connectivity "
+        "tier with no data-flow arrows at all -- none of these 5 items produce a real data-flow "
+        "connection in code (module docstring).",
+    ):
+        parts.append(f'<text x="{x0}" y="{y}" font-size="10.5" fill="#111827">{line}</text>')
+        y += line_h + line_h
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+AI004_TIER1_ITEMS_APP = ("GA-001", "GC-013", "HB-006", "HB-013", "EU-009")
+
+
+# =============================================================================
+# AI Section 2 -- Live KPIs. Only real values that genuinely exist as a
+# meaningful number/state -- no invented numeric KPI for an item that
+# doesn't produce one (task's own explicit requirement).
+# =============================================================================
+def _render_ai_live_kpis(snap):
+    cols = st.columns(4)
+
+    with cols[0].container(border=True):
+        st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+        online_count = 0
+        for eq_id, _name, key in _AI_CONNECTIVITY_ITEMS:
+            entry = snap.get(key)
+            if entry is not None and entry.get("status") != ps.STATUS_MISSING and entry["value"] == "Online":
+                online_count += 1
+        st.metric("🌐 Connectivity (AI-005/006/008/009/010)", f"{online_count}/5 Online")
+        st.caption("Assumed default -- no real network/health monitoring integration exists in this "
+                   "project to derive this live (module docstring).")
+
+    with cols[1].container(border=True):
+        st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+        running_count, fault_items = 0, []
+        for tier1 in AI004_TIER1_ITEMS_APP:
+            entry = snap.get(("AI-004", f"{tier1}-State"))
+            if entry is not None and entry.get("status") != ps.STATUS_MISSING:
+                if entry["value"] == "RUNNING":
+                    running_count += 1
+                elif entry["value"] == "FAULT":
+                    fault_items.append(tier1)
+        st.metric("🎛️ PLC Tier-1 state (AI-004)", f"{running_count}/5 RUNNING")
+        if fault_items:
+            st.caption(f"⚠️ FAULT: {', '.join(fault_items)} — see Section 3/4 for the real interlock reason.")
+
+    with cols[2].container(border=True):
+        ai007 = snap.get(("AI-007", "ScadaSnapshot"))
+        st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+        if ai007 is not None and ai007.get("status") != ps.STATUS_MISSING:
+            n_tabs = sum(1 for k in ("FE", "GA", "GC", "HB", "EU", "SA") if ai007["value"].get(k) is not None)
+            st.metric("📡 SCADA aggregation scope (AI-007)", f"{n_tabs}/6 plant tabs live")
+            st.caption("Real same-cycle count of FE/GA/GC/HB/EU/SA tabs with a non-Missing entry this "
+                       "cycle, plus AI-004's own GA-001/EU-009 states (not counted in the 6, see Section 5).")
+        else:
+            st.warning("AI-007 unavailable this cycle.")
+
+    with cols[3].container(border=True):
+        ai011 = snap.get(("AI-011", "LoggingStatus"))
+        st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
+        if ai011 is not None and ai011.get("status") != ps.STATUS_MISSING:
+            logged = ai011["value"]["logged"]
+            st.metric("🗄️ Time-series persistence (AI-011)", "✅ Logged" if logged else "❌ Not logged")
+            if not logged:
+                st.caption(f"Real, known reason: {ai011['value'].get('error', 'n/a')[:120]}")
+        else:
+            st.warning("AI-011 unavailable this cycle.")
+
+    st.caption(
+        "No KPI card for AI-001/002/003/012/013/014/015 — none of them produces a meaningful "
+        "aggregate NUMBER the way the four cards above do (AI-001/002/003 are single-value sensor "
+        "readings already shown in Section 4; AI-012/013/014 are identity/relabeling entries with no "
+        "numeric output at all; AI-015 is a conditional applicability flag). Shown honestly as "
+        "individual cards in Section 4 instead of a forced KPI here."
+    )
+
+
+# =============================================================================
+# AI Section 3 -- Process Flow & Equipment Status. Reuses _FE_STATUS_TABLE_CSS,
+# _fe_status_changed_flag, _fe_changed_pill_html, _fe_status_row_icon_svg,
+# _ga_status_pill_html directly. AI-012/013/014 get the SAME "Static" label
+# Tab 4 (Gasification) established for architectural/relabeled items with no
+# live-computable process quantity of their own -- reused, not reinvented.
+# =============================================================================
+def _render_ai_status_table(snap):
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    item_rows = []
+    live_count = 0
+    fault_count = 0
+    for eq_id, name, cat, key, _x, _y in _AI_SCHEMATIC_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        if eq_id in ("AI-012", "AI-013", "AI-014"):
+            # Relabeling/identity nodes, per the roadmap's own "not a separate
+            # thing to build" framing -- the SAME "Static" treatment Tab 4
+            # established for architectural items with no live process quantity.
+            state = "static"
+        elif eq_id == "AI-004":
+            fault_any = any(
+                (e := snap.get(("AI-004", f"{t}-State"))) is not None
+                and e.get("status") != ps.STATUS_MISSING and e["value"] == "FAULT"
+                for t in AI004_TIER1_ITEMS_APP
+            )
+            state = "fault" if fault_any else ("missing" if is_missing else "running")
+            if state == "fault":
+                fault_count += 1
+        else:
+            state = "missing" if is_missing else "running"
+        if state == "running":
+            live_count += 1
+        changed, note = _fe_status_changed_flag(f"tab9_status_changed__{eq_id}", state)
+        item_rows.append(dict(eq_id=eq_id, name=name.replace("\n", " "), cat=cat, key=key,
+                               state=state, changed=changed, note=note))
+
+    total = len(_AI_SCHEMATIC_ITEMS)
+    if fault_count:
+        summary_bg, summary_fg = "#FEE2E2", "#B91C1C"
+    else:
+        summary_bg, summary_fg = "#DCFCE7", "#15803D"
+    st.markdown(f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+                f'{live_count}/{total} live'
+                + (f' · {fault_count} FAULT' if fault_count else '') + '</div>', unsafe_allow_html=True)
+    st.caption(
+        "AI-012/013/014 shown as \"Static\" — the SAME label Tab 4 (Gasification) already established "
+        "for architectural/relabeled items with no live-computable process quantity of their own, "
+        "reused here, not reinvented. AI-004's own status turns red \"FAULT\" whenever ANY of its "
+        "real Tier-1 items reports FAULT — the SAME alarm treatment the Plant Operations Header and "
+        "the Electrical & Utilities tab already use for this exact condition."
+    )
+
+    for cat_key, colors in _AI_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(f'<div class="fe-status-group-title">'
+                    f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+                    f'{colors["label"]}</div>', unsafe_allow_html=True)
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"], _AI_CATEGORY_COLORS, _AI_ITEM_SHAPE)
+            trs.append(f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{r["name"]}</td>'
+                       f'<td>{_ga_status_pill_html(r["state"])}</td>'
+                       f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                       f'<td><code>{r["key"][0]}/{r["key"][1]}</code></td></tr>')
+        st.markdown('<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+                    '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+                    f'<tbody>{"".join(trs)}</tbody></table>', unsafe_allow_html=True)
+
+    st.markdown('<div class="fe-status-group-title">'
+                '<span class="fe-cat-swatch" style="background:#E5E7EB;border-color:#6B7280;"></span>'
+                'Connectivity Infrastructure (background tier)</div>', unsafe_allow_html=True)
+    sub_trs = []
+    for eq_id, name, key in _AI_CONNECTIVITY_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        state = "missing" if is_missing else "running"
+        changed, note = _fe_status_changed_flag(f"tab9_status_changed__{eq_id}", state)
+        val_str = entry["value"] if not is_missing else "—"
+        sub_trs.append(f'<tr><td></td><td>{eq_id}</td><td>{name.replace(chr(10)," ")} ({val_str})</td>'
+                       f'<td>{_ga_status_pill_html(state)}</td>'
+                       f'<td>{_fe_changed_pill_html(changed, note)}</td>'
+                       f'<td><code>{key[0]}/{key[1]}</code></td></tr>')
+    st.markdown('<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+                '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+                f'<tbody>{"".join(sub_trs)}</tbody></table>', unsafe_allow_html=True)
+
+
+# =============================================================================
+# AI Section 4 -- Live Simulation & Engineering Results. Expandable cards,
+# AI-001 through AI-015. Every confidence_note/missing_reason string is AI's
+# own REAL text, read directly, never retyped. AI-002's honest limitation is
+# unmistakable: the permanent Missing (real vision function) is shown SIDE
+# BY SIDE with the Calculated scenario-injectable flag, never collapsed.
+# AI-013's own honest framing is explicit: not a separate thing to build,
+# its real content lives on Tab 1. Downstream-consumer tags: checked
+# directly -- AI-004's own text does not name AI-007/AI-011 as a downstream
+# consumer, so none of the sensing/control cards carry a tag; AI-011 is
+# fed from GA-001/GC-013/HB-013/EU-009 (real, but those items' OWN text
+# doesn't name AI-011 either) -- no tags anywhere in this section.
+# =============================================================================
+def _ai_card(eq_id, cat, title, snap, changed_key_entry=None):
+    if changed_key_entry is not None:
+        changed, note = _fe_status_changed_flag(f"tab9_s4_changed__{eq_id}", changed_key_entry)
+    else:
+        changed, note = None, "no live entry"
+    _fe_result_card_header(eq_id, cat, f"{eq_id} — {title}", changed=changed, note=note,
+                            category_colors=_AI_CATEGORY_COLORS, item_shapes=_AI_ITEM_SHAPE)
+
+
+def _ai_live_expander(label, entry, field="confidence_note"):
+    with st.expander(f"Full status & traceability — {label}"):
+        st.caption(f"Status: {entry['status']} · {entry.get(field) or entry.get('confidence_note') or entry.get('missing_reason')}")
+
+
+def _render_ai_live_results(snap):
+    ai004 = snap.get(("AI-004", "GA-001-State"))
+    if ai004 is not None:
+        st.caption(f"Simulation snapshot as of {ai004['timestamp']} (this cycle's own real, traceable timestamp).")
+
+    # -- AI-001 ------------------------------------------------------------------
+    with st.container(border=True):
+        ai001 = snap.get(("AI-001", "RenewableAvailability"))
+        _ai_card("AI-001", "sensing", "Weather Station", snap, ai001["value"] if ai001 else None)
+        if ai001 is not None:
+            st.metric("Availability fraction", f"{ai001['value']['availability_fraction']*100:.0f}%")
+            st.caption("Already built and live since Phase 1d (`hb_remaining_chain.py`) — confirmed here, "
+                       "not rebuilt. Feeds HB-011 (Electrolyser, Tab 7), NOT AI-004 (checked directly).")
+            _ai_live_expander("AI-001 RenewableAvailability", ai001)
+
+    # -- AI-002 (the honest dual-tag, unmistakable) -----------------------------
+    with st.container(border=True):
+        ai002_det = snap.get(("AI-002", "ContaminationDetection"))
+        ai002_flag = snap.get(("AI-002", "ContaminationFlag"))
+        _ai_card("AI-002", "sensing", "Camera / Vision System", snap, ai002_flag["value"] if ai002_flag else None)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(_fe_tag_html("missing", "The REAL function") + " &nbsp; **Contamination Detection**",
+                        unsafe_allow_html=True)
+            if ai002_det is not None:
+                st.metric("Real vision pipeline", "Missing / Cannot Calculate")
+                st.caption(ai002_det["missing_reason"])
+        with c2:
+            st.markdown(_fe_tag_html("estimate", "Scenario-injectable only") + " &nbsp; **Contamination Flag**",
+                        unsafe_allow_html=True)
+            if ai002_flag is not None:
+                st.metric("Flag value", str(ai002_flag["value"]))
+                st.caption(ai002_flag["confidence_note"])
+        st.warning(
+            "**Never collapsed into one status that would overstate this as working computer vision.** "
+            "The real image-based contamination-detection function is permanently Missing (no vision-"
+            "model hosting is feasible on this deployment target, no labeled training data exists) — "
+            "shown side by side with a SEPARATE, Calculated scenario-injectable placeholder flag, "
+            "settable only via an explicit test/scenario harness, never a real vision result.",
+            icon="⚠️",
+        )
+        if ai002_det is not None:
+            _ai_live_expander("AI-002 ContaminationDetection", ai002_det, field="missing_reason")
+        if ai002_flag is not None:
+            _ai_live_expander("AI-002 ContaminationFlag", ai002_flag)
+
+    # -- AI-003 --------------------------------------------------------------------
+    with st.container(border=True):
+        ai003 = snap.get(("AI-003", "BedPressureDrop"))
+        _ai_card("AI-003", "sensing", "Bed Pressure-Drop Sensor", snap, ai003["value"] if ai003 else None)
+        if ai003 is not None:
+            st.metric("Bed pressure drop", f"{ai003['value']:.1f} mbar")
+            _ai_live_expander("AI-003 BedPressureDrop", ai003)
+
+    # -- AI-004 (all 5 Tier-1 states + the dual-scenario EU-009 pair) -----------------
+    with st.container(border=True):
+        _ai_card("AI-004", "control", "PLC (Main Control)", snap, None)
+        cols = st.columns(5)
+        for i, tier1 in enumerate(AI004_TIER1_ITEMS_APP):
+            entry = snap.get(("AI-004", f"{tier1}-State"))
+            with cols[i]:
+                val = entry["value"] if entry is not None and entry.get("status") != ps.STATUS_MISSING else "—"
+                st.metric(tier1, val)
+        for tier1 in AI004_TIER1_ITEMS_APP:
+            entry = snap.get(("AI-004", f"{tier1}-State"))
+            if entry is not None:
+                _ai_live_expander(f"AI-004 {tier1}-State", entry)
+        st.caption(
+            "All 5 of AI-004's own real cross-tab reads are LAGGED, not same-cycle (module docstring) "
+            "— a stated, honest abstraction: a diagnostic/monitoring layer detects a fault one cycle "
+            "after it occurs, the same finite scan-to-alarm latency any real polling-based PLC has, "
+            "distinct from a PROCESS model which genuinely needs same-cycle physics."
+        )
+        eu_resized = snap.get(("AI-004", "EU-009-State-IfResized"))
+        if eu_resized is not None:
+            st.markdown(f"**AI-004 EU-009-State-IfResized (additional key):** {eu_resized['value']} "
+                        f"({eu_resized['status']}) — see the Electrical & Utilities tab's own Section 2 "
+                        f"for the full dual-scenario treatment.")
+            _ai_live_expander("AI-004 EU-009-State-IfResized", eu_resized)
+
+    # -- AI-005/006/008/009/010 (connectivity, compact) ------------------------------
+    with st.container(border=True):
+        st.markdown(f"**AI-005/006/008/009/010 — Connectivity Infrastructure**")
+        cols = st.columns(5)
+        for i, (eq_id, name, key) in enumerate(_AI_CONNECTIVITY_ITEMS):
+            entry = snap.get(key)
+            with cols[i]:
+                val = entry["value"] if entry is not None and entry.get("status") != ps.STATUS_MISSING else "—"
+                st.metric(eq_id, val)
+        st.caption(
+            "Exactly one function each, all built from the SAME small factory — Assumed default "
+            "\"Online\", no real network/health monitoring integration exists in this project to "
+            "derive this live, no throughput model, no fabricated operational result beyond this one "
+            "state (module docstring)."
+        )
+        for eq_id, name, key in _AI_CONNECTIVITY_ITEMS:
+            entry = snap.get(key)
+            if entry is not None:
+                _ai_live_expander(f"{eq_id} Connectivity", entry)
+
+    # -- AI-007 -----------------------------------------------------------------------
+    with st.container(border=True):
+        ai007 = snap.get(("AI-007", "ScadaSnapshot"))
+        _ai_card("AI-007", "aggregation", "DCS / SCADA Server", snap, ai007["value"] if ai007 else None)
+        if ai007 is not None:
+            v = ai007["value"]
+            st.json({k: v[k] for k in ("FE", "GA", "GC", "HB", "EU", "SA", "AI004") if k in v}, expanded=False)
+            _ai_live_expander("AI-007 ScadaSnapshot", ai007)
+
+    # -- AI-011 ------------------------------------------------------------------------
+    with st.container(border=True):
+        ai011 = snap.get(("AI-011", "LoggingStatus"))
+        _ai_card("AI-011", "aggregation", "Time-Series Database", snap, ai011["value"] if ai011 else None)
+        if ai011 is not None:
+            v = ai011["value"]
+            st.metric("Logged this cycle", "✅ True" if v["logged"] else "❌ False")
+            st.json(v["summary"], expanded=False)
+            _ai_live_expander("AI-011 LoggingStatus", ai011)
+
+    # -- AI-012 --------------------------------------------------------------------------
+    with st.container(border=True):
+        ai012 = snap.get(("AI-012", "Identity"))
+        _ai_card("AI-012", "intelligence", "AI Model Server (MPC/RL)", snap, ai012["value"] if ai012 else None)
+        if ai012 is not None:
+            st.markdown(f"**Role:** {ai012['value']['role']}")
+            st.caption("Real modules: " + ", ".join(f"`{m}`" for m in ai012["value"]["real_modules"]))
+            _ai_live_expander("AI-012 Identity", ai012)
+
+    # -- AI-013 (the honest "not a separate thing to build" framing, unmistakable) ---
+    with st.container(border=True):
+        ai013 = snap.get(("AI-013", "Identity"))
+        _ai_card("AI-013", "intelligence", "Digital Twin Engine", snap, ai013["value"] if ai013 else None)
+        st.info(
+            "**Per this project's own established finding, AI-013 is NOT a separate thing to build.** "
+            "It IS this project's own already-real 11-module AI/optimization layer — a CONSUMER of the "
+            "Shared Plant State, never a producer. Its real content is already visible on **Tab 1 "
+            "(Digital Twin)**, not fabricated fresh here as standalone \"AI-013 results\".",
+            icon="ℹ️",
+        )
+        if ai013 is not None:
+            st.markdown(f"**Role:** {ai013['value']['role']}")
+            st.caption("Real modules: " + ", ".join(f"`{m}`" for m in ai013["value"]["real_modules"]))
+            _ai_live_expander("AI-013 Identity", ai013)
+        ok, violations = ai_module.verify_ai013_read_only()
+        st.markdown(("✅ " if ok else "🔴 ") +
+                    f"Real, mechanical read-only enforcement check: {'PASSED' if ok else 'FAILED'} — "
+                    f"scanned all {len(ai_module.AI013_REAL_MODULES)} of its own real module files' source text "
+                    f"for `SharedPlantState`'s writer-only API, not a code-review claim.")
+        if not ok:
+            st.error(f"Violations: {violations}")
+
+    # -- AI-014 ------------------------------------------------------------------------
+    with st.container(border=True):
+        ai014 = snap.get(("AI-014", "OrchestrationState"))
+        _ai_card("AI-014", "intelligence", "Multi-Module Orchestration Controller", snap, ai014["value"] if ai014 else None)
+        if ai014 is not None:
+            v = ai014["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Active modules", v["active_modules"])
+            c2.metric("Max supported", v["max_modules_supported"])
+            c3.metric("Orchestration active", "Yes" if v["orchestration_active"] else "No")
+            st.caption(v["note"])
+            _ai_live_expander("AI-014 OrchestrationState", ai014)
+
+    # -- AI-015 -------------------------------------------------------------------------
+    with st.container(border=True):
+        ai015 = snap.get(("AI-015", "RfnboStatus"))
+        _ai_card("AI-015", "intelligence", "RFNBO Compliance & Guarantee-of-Origin Monitor", snap, ai015["value"] if ai015 else None)
+        if ai015 is not None:
+            v = ai015["value"]
+            st.metric("Applicable this cycle", "Yes" if v["applicable"] else "No")
+            if v["applicable"]:
+                st.json(v["checklist_summary"], expanded=False)
+            else:
+                st.caption(v.get("reason", ""))
+            _ai_live_expander("AI-015 RfnboStatus", ai015)
+
+
+# =============================================================================
+# AI Section 5 -- audited FIRST, per this task's own expected finding: NO
+# mass or energy balance applies to this tab at all -- AI-001 through
+# AI-015 are architectural/control/data-processing items, not physical
+# process equipment with a material or energy stream of their own (the
+# SAME real finding this section's own Existing Data warning already
+# states: "AI-004 through AI-014... are data-processing/network systems
+# with no material or energy stream of their own"). Renamed accordingly,
+# per the Tab 6 (Sensors & Analysers) precedent -- and used for something
+# genuinely useful instead: AI-011's real persisted log contents, AI-007's
+# real aggregation scope, and AI-004's own real Tier-1 monitoring/lag
+# mechanism, all read live, not fabricated.
+# =============================================================================
+def _render_ai_architecture_notes(snap):
+    st.warning(
+        "**No mass or energy balance applies to this tab — audited directly, not assumed.** "
+        "AI-001 through AI-015 are architectural/control/data-processing systems (a PLC state "
+        "machine, a SCADA aggregator, a time-series log, gateways/brokers/servers, an AI/"
+        "optimization layer) — none of them has a material or energy stream of its own the way "
+        "FE/GA/GC/SA/HB/EU's own equipment does. Renamed to **Architecture & Data Flow Notes**, "
+        "the same honest-reframing precedent Sensors & Analysers' own Section 5 already established, "
+        "and used for something genuinely useful below instead.",
+        icon="⚠️",
+    )
+
+    st.markdown("**(a) AI-007's own real aggregation scope — exactly what it reads, live**")
+    ai007 = snap.get(("AI-007", "ScadaSnapshot"))
+    if ai007 is not None and ai007.get("status") != ps.STATUS_MISSING:
+        v = ai007["value"]
+        present = [k for k in ("FE", "GA", "GC", "HB", "EU", "SA") if v.get(k) is not None]
+        st.metric("Plant tabs aggregated this cycle", f"{len(present)}/6", ", ".join(present))
+        st.caption(
+            "Real, same-cycle reads (never lagged) from FE-001/GA-001/GC-013/HB-013/EU-009/SA-001, "
+            "PLUS AI-004's own already-lagged GA-001-State/EU-009-State — the real role a plant SCADA "
+            "server plays (cross-tab aggregation), not an independent calculation of its own."
+        )
+    else:
+        st.warning("AI-007's own aggregation is unavailable this cycle.")
+
+    st.divider()
+    st.markdown("**(b) AI-011's own real persisted log contents — what it actually writes, live**")
+    ai011 = snap.get(("AI-011", "LoggingStatus"))
+    if ai011 is not None and ai011.get("status") != ps.STATUS_MISSING:
+        v = ai011["value"]
+        st.markdown(f"**Logged this cycle:** {'✅ True' if v['logged'] else '❌ False'}")
+        st.json(v["summary"], expanded=True)
+        if not v["logged"]:
+            st.caption(f"Real, known reason (Calculated, not hidden as Missing): {v.get('error', 'n/a')}")
+        else:
+            st.caption(f"Persisted to Supabase table `digital_twin_cycle_log`, row id {v.get('row_id')}.")
+    else:
+        st.warning("AI-011's own logging status is unavailable this cycle.")
+
+    st.divider()
+    st.markdown("**(c) AI-004's own real Tier-1 monitoring scope and lag mechanism**")
+    rows = []
+    for tier1 in AI004_TIER1_ITEMS_APP:
+        entry = snap.get(("AI-004", f"{tier1}-State"))
+        val = entry["value"] if entry is not None and entry.get("status") != ps.STATUS_MISSING else "—"
+        rows.append(f"<tr><td><b>{tier1}</b></td><td>{val}</td></tr>")
+    st.markdown('<table class="fe-status-tbl"><thead><tr><th>Tier-1 item</th><th>AI-004 state</th></tr></thead>'
+                f'<tbody>{"".join(rows)}</tbody></table>', unsafe_allow_html=True)
+    st.caption(
+        "All 5 reads are LAGGED, not same-cycle (checked directly in `register_ai_layer()`'s own "
+        "code) — a diagnostic/monitoring layer correctly detects a fault one cycle after it occurs, "
+        "not instantly, the same finite scan-to-alarm latency any real polling-based PLC has."
+    )
+
+    st.divider()
+    st.markdown("**(d) AI-013's own real read-only enforcement — a mechanical check, not a claim**")
+    ok, violations = ai_module.verify_ai013_read_only()
+    if ok:
+        st.success(
+            f"✅ All {len(ai_module.AI013_REAL_MODULES)} of AI-013's own real module files were scanned directly "
+            f"for `shared_plant_state.py`'s writer-only API ({', '.join(ai_module._WRITE_API_MARKERS)}) — none "
+            f"found. AI-013 is genuinely read-only, verified mechanically, not asserted."
+        )
+    else:
+        st.error(f"🔴 Violations found: {violations}")
+
+
+# =============================================================================
+# AI Section 6 -- Simulation Status. Identical structure to Tabs 3-8's own.
+# =============================================================================
+def _render_ai_simulation_status(snap):
+    entry = snap.get(("AI-004", "GA-001-State")) or snap.get(("AI-007", "ScadaSnapshot"))
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    is_live = src_info["reachable"] and src_info["rows_found"] > 0
+
+    if is_live:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        age_str = f"{age_hours * 60:.0f} min ago" if age_hours < 2 else f"{age_hours:.1f}h ago"
+        st.success(
+            "**✅ Live continuous-runtime data** — this cycle's values were read directly from "
+            "`plant_state_current`, written by the real, scheduled GitHub Actions workflow "
+            "(`docs/continuous_runtime_design.md`) — not generated by this page load.", icon="✅")
+    else:
+        reason = (f"unreachable this page load ({src_info['error']})" if not src_info["reachable"]
+                  else "reachable, but genuinely empty — no cycle has ever been published there yet")
+        st.warning(
+            f"**⚠️ Fallback: in-process bootstrap** — `plant_state_current` is {reason}, so this "
+            "page load ran the Digital Twin engine fresh, in-process, right now (the SAME fallback "
+            "`tab1_integration.build_live_snapshot()` has always used). Every value shown is still "
+            "real — it is just NOT read from the continuous runtime's own persisted output.", icon="⚠️")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.caption("⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running "
+               "total of plant operating hours. The real continuity signal is the timestamp →")
+    if is_live and entry:
+        c2.metric("Published at (real, persisted)", src_info["published_at"])
+        c2.caption(f"{age_str} — this cycle's own real publish time from the continuous runtime.")
+    elif entry:
+        c2.metric("Computed at (this page load)", entry["timestamp"])
+        c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
+    c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
+    c3.caption("From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` "
+               "§1). GitHub's own scheduler can jitter by a few minutes; occasional skips are documented "
+               "GitHub behavior, not a bug here.")
+
+    st.markdown("**Store connection:** " + ("✅ reachable" if src_info["reachable"] else "❌ unreachable")
+                + (f" — `{src_info['error']}`" if not src_info["reachable"] else ""))
+
+    log_status = _digital_twin_cycle_log_status()
+    if log_status["exists"]:
+        st.caption("**Durable historical cycle count:** available via `digital_twin_cycle_log`.")
+    else:
+        checked_note = "" if log_status.get("not_found") else f" — checked just now: `{log_status['error']}`"
+        st.caption(f"**Durable historical cycle count:** not yet available (requires "
+                   f"`digital_twin_cycle_log`, not yet created{checked_note}) — checked live, this page "
+                   f"load, not assumed. (AI-011's own Section 5 finding above explains exactly why.)")
+
+    st.caption(
+        "No \"last 5 warm-up cycles\" trend chart on this tab — AI's own models depend on the full "
+        "FE→GA→GC→HB→EU chain's live output (same reasoning as Gas Cleaning's/Hydrogen & BoP's/"
+        "Electrical & Utilities' own tabs), and AI-004's own PLC states are additionally LAGGED "
+        "(Section 4's/5's own finding) — a meaningful mini-run trend would need many more warm-up "
+        "cycles than a small chart could show honestly. Not worth building for a nice-to-have chart."
+    )
+
+    st.markdown(
+        "**Source, by section:** Sections 1–5 above read live output from `ai_automation_layer.py`'s "
+        "own registered AI models for the items with a live key (confirmed directly, Section 3/4 "
+        "above) — a real simulation result, not a static figure. Section 7 below instead reads "
+        "`equipment_registry.load_registry()` directly for ALL of AI-001 through AI-015 — real "
+        "registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate, never a "
+        "simulation output. The two are never blended: every value on this tab is clearly one or the "
+        "other, labeled at the point it's shown."
+    )
+
+    st.info(
+        "**Status, current as of this build.** The continuous simulation runtime "
+        "(`docs/continuous_runtime_design.md`) **is implemented and has run for real** — the SAME "
+        "scheduled GitHub Actions workflow that publishes the earlier sections' own real cycles "
+        "publishes Automation & Instrumentation's real cycles too (the same `plant_state_current` "
+        "publish, the same engine run). The banner at the top of this section tells you, for THIS "
+        "page load specifically, whether what you're looking at came from that real persisted output "
+        "or the in-process fallback engine run. What is still genuinely NOT implemented: a durable, "
+        "queryable history of past cycles (`digital_twin_cycle_log`, see Section 5's own finding "
+        "above for exactly why).", icon="ℹ️")
+
+
+def _render_ai_tab():
+    # _ai_summary must land at MODULE scope -- this tab's own trailing
+    # "Registry-wide completeness" block (unchanged, below) reads it
+    # directly, the SAME pre-existing pattern already fixed six times
+    # before (_ga_summary/_gc_summary/_sa_summary/_hb_summary/_eu_summary).
+    global _ai_summary
+    st.header("Automation & Instrumentation — AI-001 through AI-015")
+    st.caption(
+        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+        "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
+        "which one THIS page load used. **This tab is structurally different from every earlier "
+        "one, shown honestly, not forced into a flow-chain metaphor** — AI-004/007/011/012/013/014 "
+        "are architectural (a PLC state machine, SCADA aggregation, a time-series log, the AI/"
+        "optimization layer, the Digital Twin Engine itself), not physical process equipment. This "
+        "is the final of nine per-section tabs — all 91 registry items are now covered."
+    )
+    st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "".join(_fe_tag_html(k) for k in ("live", "confirmed", "estimate", "missing"))
+        + " — the SAME consistent color code used on every earlier tab, reused here verbatim.",
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "The REAL architecture, checked directly against every item's own real code-level "
+        "dependencies, not the idealized wiring: sensing (AI-001/002/003) are real, independent "
+        "instruments — NOT literally wired as AI-004's own code-level inputs (its real Tier-1 "
+        "monitors are process equipment on Tabs 4-8). AI-004 (PLC) → AI-007 (SCADA) via its own "
+        "real, lagged state; the real plant tabs (FE/GA/GC/HB/EU/SA) feed AI-007/AI-011 directly, "
+        "same-cycle. The Intelligence Layer (AI-012/013/014, dotted box) genuinely has no code-level "
+        "dependency on SCADA/the time-series log (`depends_on=[]`, checked directly) — its real role "
+        "is reading the Shared Plant State directly via its own 11 modules, stated in text, not "
+        "drawn as a fabricated arrow. AI-015 depends on HB-011 (Tab 7) directly. Connectivity "
+        "infrastructure (AI-005/006/008/009/010) is its own background/supporting tier, no "
+        "data-flow arrows at all — see Legend."
+    )
+    try:
+        _ai_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_ai_schematic_svg(_ai_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _ai_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_ai_schematic_exc}")
+    with st.expander("Legend & notes"):
+        st.markdown(_ai_schematic_legend_svg(), unsafe_allow_html=True)
+
+    st.divider()
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _ai_snap_for_kpis = _tab1_integration_snapshot()
+        _render_ai_live_kpis(_ai_snap_for_kpis)
+    except Exception as _ai_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_ai_kpis_exc}")
+
+    st.divider()
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live/FAULT/Static status shown visually in Section 1's schematic, as a table — "
+        "for accessibility/screen-reader parity, not a second diagram."
+    )
+    try:
+        _ai_snap_for_status = _tab1_integration_snapshot()
+        _render_ai_status_table(_ai_snap_for_status)
+    except Exception as _ai_status_exc:
+        st.error(f"Equipment status table failed to render: {_ai_status_exc}")
+
+    st.divider()
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
+    try:
+        _ai_snap_for_results = _tab1_integration_snapshot()
+        _render_ai_live_results(_ai_snap_for_results)
+    except Exception as _ai_results_exc:
+        st.error(f"Live simulation results failed to render: {_ai_results_exc}")
+
+    st.divider()
+    st.subheader("Section 5 — Architecture & Data Flow Notes")
+    try:
+        _ai_snap_for_notes = _tab1_integration_snapshot()
+        _render_ai_architecture_notes(_ai_snap_for_notes)
+    except Exception as _ai_notes_exc:
+        st.error(f"Architecture & data flow notes failed to render: {_ai_notes_exc}")
+
+    st.divider()
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _ai_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_ai_simulation_status(_ai_snap_for_sim_status)
+    except Exception as _ai_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_ai_sim_status_exc}")
+
+    st.divider()
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: AI-001 through AI-015 only — the last of nine per-section tabs, "
         "which together now cover all 91 registry items** (Feed Handling's FE-001–008, "
@@ -9234,6 +10099,10 @@ with tab9:
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.AI_IDS, _ai_summary["per_item"])
+
+
+with tab9:
+    _render_ai_tab()
 
     st.divider()
     st.header("Registry-wide completeness — all 91 items, all 9 tabs")
