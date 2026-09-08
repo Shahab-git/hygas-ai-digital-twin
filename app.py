@@ -24,6 +24,7 @@ from python import (
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
     equipment_engineering_estimates, tab1_integration, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
+    hb_wgs_psa_storage_chain as hbchain_module,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -2494,6 +2495,32 @@ def _fe_equipment_shape_svg(kind, x, y, w, h, fill_url, stroke):
                 f'fill="none" stroke="{stroke}" stroke-width="2.2" opacity="0.8"/>'
             )
         parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="4" fill="{stroke}"/>')
+    elif kind == "heatex":
+        # A shell-and-tube style heat exchanger -- a rounded-rect shell with
+        # an internal zigzag coil line (proportional offsets throughout --
+        # the "cyclone" lesson applied from the start, stays valid at any
+        # box size incl. small icons) plus two hot/cold connection stubs --
+        # HB-003 (Heat Exchanger) / HB-005 (Steam Generator, thermally
+        # similar equipment, reused rather than a near-identical 2nd shape).
+        avail_h = bottom - y
+        body_y0, body_h = y + avail_h * 0.12, avail_h * 0.76
+        parts.append(
+            f'<rect x="{x+6:.1f}" y="{body_y0:.1f}" width="{w-12:.1f}" height="{body_h:.1f}" '
+            f'rx="{min(body_h, 10)*0.3:.1f}" {common}/>'
+        )
+        zig_y0, zig_y1 = body_y0 + body_h * 0.3, body_y0 + body_h * 0.7
+        zx0, zx1, n_seg = x + 12, x + w - 12, 5
+        pts = [f"{zx0 + (zx1-zx0)*i/n_seg:.1f},{(zig_y0 if i % 2 == 0 else zig_y1):.1f}" for i in range(n_seg + 1)]
+        parts.append(f'<polyline points="{" ".join(pts)}" fill="none" stroke="{stroke}" stroke-width="1.6" opacity="0.8"/>')
+        stub_w, stub_h = max(w * 0.06, 3.0), max(body_h * 0.18, 2.0)
+        parts.append(
+            f'<rect x="{x:.1f}" y="{body_y0+2:.1f}" width="{stub_w:.1f}" height="{stub_h:.1f}" '
+            f'fill="{fill_url}" stroke="{stroke}" stroke-width="1.3"/>'
+        )
+        parts.append(
+            f'<rect x="{x+w-stub_w:.1f}" y="{body_y0+body_h-stub_h-2:.1f}" width="{stub_w:.1f}" '
+            f'height="{stub_h:.1f}" fill="{fill_url}" stroke="{stroke}" stroke-width="1.3"/>'
+        )
     else:
         parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bottom-y:.1f}" rx="8" {common}/>')
     return "".join(parts)
@@ -4416,6 +4443,14 @@ def _ga_status_pill_html(state):
         "running": ("#DCFCE7", "#15803D", "Running"),
         "missing": ("#F3F4F6", "#6B7280", "No data"),
         "static":  ("#E0E7FF", "#4338CA", "Static"),
+        # "estimated" added for HB-010/HB-014/HB-016's own real Estimated-status
+        # baseline entries (ps.STATUS_ESTIMATED) -- a genuinely new status this
+        # project's status vocabulary already has (plant_status.py's own
+        # ALL_STATUSES), never shown by FE/GA/GC/SA since none of them had one;
+        # every existing caller of this function is unaffected (they never pass
+        # "estimated"), the SAME generalize-don't-duplicate pattern already used
+        # for _fe_status_row_icon_svg/_fe_result_card_header.
+        "estimated": ("#FEF3C7", "#B45309", "Estimated"),
     }[state]
     bg, fg, label = style
     return f'<span class="fe-tag" style="background:{bg};color:{fg};">{label}</span>'
@@ -7000,8 +7035,921 @@ def _render_sa_tab():
 with tab6:
     _render_sa_tab()
 
-with tab7:
-    st.header("Equipment Datasheets — Hydrogen & BoP (HB-001 through HB-018)")
+## =============================================================================
+# Hydrogen & BoP tab (HB-001 through HB-018) -- built to the SAME 7-section
+# structure Tabs 3/4/5/6 reached, reusing every genuinely generic helper
+# directly (_fe_status_changed_flag, _fe_changed_pill_html, _ga_status_pill_html
+# (its own "estimated" state added above, backward-compatible), _fe_tag_html/
+# _FE_DATA_TYPE_TAGS, _FE_TAB_CSS's own .fe-tag class, _fe_equipment_shape_svg
+# (extended with one new "heatex" kind, reused for HB-003 AND HB-005 -- every
+# other HB item reuses an EXISTING kind from FE/GA/GC's own dispatcher),
+# _fe_status_row_icon_svg / _fe_result_card_header (already generalized twice,
+# reused unchanged with HB's own category_colors/item_shapes), _fe_kpi_check_
+# delta, _render_equipment_honest_count, _render_equipment_items,
+# _plant_state_source_info, _digital_twin_cycle_log_status -- none copied.
+#
+# ARCHITECTURE, checked directly (not assumed): UNLIKE every earlier tab, HB
+# is not one chain -- it is a MAIN WGS/PSA/storage/dispensing chain (HB-001 ->
+# HB-005/HB-003 -> HB-004 -> HB-006 -> HB-009 -> HB-012 -> HB-013 -> HB-018)
+# plus THREE real branches: (1) HB-011 (Electrolyser), a parallel H2 source
+# feeding HB-013's SAME storage vessel, driven by AI-001's own illustrative
+# availability signal (not a real weather feed -- see Section 4); (2) HB-010
+# (Membrane Separator), a parallel separation path reading the SAME live WGS
+# Composition node HB-006 reads, with a genuinely Missing recovery/purity half
+# (no confirmed membrane selectivity) alongside a real Estimated selectivity
+# baseline; (3) the LOHC branch (HB-007 -> HB-014 -> HB-015 -> HB-016 ->
+# HB-017), where HB-007's own permanently-Missing H2-split-fraction boundary
+# key STRUCTURALLY BLOCKS every function downstream of it from ever being
+# called (simulation_engine.py's own automatic Missing-propagation, confirmed
+# directly, not four independently-declared gaps) -- shown honestly as one
+# root cause cascading forward, not four separate red flags.
+#
+# STATUS VOCABULARY, extended honestly where the real code needs it: HB-010's
+# own SelectivityEstimate and HB-014's/HB-016's own KineticsBaselineEstimate
+# are genuinely ps.STATUS_ESTIMATED entries -- a real status this project's
+# own vocabulary already has (plant_status.py's own ALL_STATUSES) but no
+# earlier tab ever needed to show; _ga_status_pill_html gained an "estimated"
+# state for this (see above), not a bespoke duplicate.
+# =============================================================================
+
+_HB_CATEGORY_COLORS = {
+    "wgs":                 {"fill": "#FDE4C0", "stroke": "#C2680B", "label": "WGS Reactors & Heat Recovery"},
+    "psa":                 {"fill": "#BFDBFE", "stroke": "#1D4ED8", "label": "PSA & Membrane Separation"},
+    "storage_compression": {"fill": "#BBF7D0", "stroke": "#15803D", "label": "Compression & H₂ Storage"},
+    "lohc":                {"fill": "#DDD6FE", "stroke": "#6D28D9", "label": "LOHC Branch (structurally blocked)"},
+    "dispensing":          {"fill": "#FBCFE8", "stroke": "#BE185D", "label": "Dispensing"},
+}
+
+# (equipment_id, display name, category, primary registered key, x, y,
+#  blocked_from -- the upstream id whose own Missing status structurally
+#  blocks this item's function from ever being called, or None if this item
+#  is either genuinely live or is itself the real root-cause leaf)
+_HB_SCHEMATIC_ITEMS = [
+    ("HB-001", "WGS Reactor\nHTS", "wgs", ("HB-001", "HTS"), 60, 220, None),
+    ("HB-005", "Steam\nGenerator", "wgs", ("HB-005", "Steam"), 230, 220, None),
+    ("HB-003", "Heat\nExchanger", "wgs", ("HB-003", "HeatExchanger"), 400, 220, None),
+    ("HB-004", "WGS Reactor\nLTS", "wgs", ("HB-004", "LTS"), 570, 220, None),
+    ("HB-006", "PSA Unit", "psa", ("HB-006", "PSA"), 740, 220, None),
+    ("HB-009", "PSA Tail Gas\nHandler", "psa", ("HB-009", "TailGas"), 910, 220, None),
+    ("HB-012", "H₂\nCompressor", "storage_compression", ("HB-012", "Compressor"), 1080, 220, None),
+    ("HB-013", "H₂ Storage\nVessel", "storage_compression", ("HB-013", "Storage"), 1250, 220, None),
+    ("HB-018", "H₂ Dispensing\nStation", "dispensing", ("HB-018", "Dispensing"), 1420, 220, None),
+    ("HB-011", "Electrolyser\n(PEM)", "storage_compression", ("HB-011", "Electrolyser"), 1250, 50, None),
+    ("HB-010", "Membrane\nSeparator", "psa", ("HB-010", "Feed"), 590, 50, None),
+    ("HB-007", "H₂ Split\nFraction", "lohc", ("HB-007", "H2SplitFraction"), 740, 380, None),
+    ("HB-014", "LOHC\nHydrogenation", "lohc", ("HB-014", "MassBalance"), 910, 380, "HB-007"),
+    ("HB-015", "LOHC Storage\nTank", "lohc", ("HB-015", "Inventory"), 1080, 380, "HB-014"),
+    ("HB-016", "LOHC\nDehydrogenation", "lohc", ("HB-016", "MassBalance"), 1250, 380, "HB-015"),
+    ("HB-017", "H₂\nPurification", "lohc", ("HB-017", "MassBalance"), 1420, 380, "HB-016"),
+]
+_HB_ITEM_SHAPE = {
+    "HB-001": "reactor", "HB-005": "heatex", "HB-003": "heatex", "HB-004": "reactor",
+    "HB-006": "silo", "HB-009": "process", "HB-012": "blower", "HB-013": "silo",
+    "HB-018": "valve", "HB-011": "reactor", "HB-010": "separator", "HB-007": "instrument",
+    "HB-014": "reactor", "HB-015": "bin", "HB-016": "reactor", "HB-017": "separator",
+}
+_HB_BOX_W, _HB_BOX_H = 130, 90
+_HB_POS = {eq_id: (x, y) for eq_id, _n, _c, _k, x, y, _b in _HB_SCHEMATIC_ITEMS}
+
+
+def _hb_schematic_svg(snap):
+    total_w, total_h = 1600, 580
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        '<defs><filter id="fe-shadow" x="-30%" y="-30%" width="160%" height="160%">'
+        '<feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#0F172A" flood-opacity="0.28"/>'
+        '</filter>'
+        + "".join(
+            f'<linearGradient id="grad-hb-{key}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>'
+            f'<stop offset="100%" stop-color="{c["fill"]}" stop-opacity="1"/></linearGradient>'
+            for key, c in _HB_CATEGORY_COLORS.items()
+        ) + '</defs>',
+        f'<text x="20" y="18" font-size="11" font-style="italic" fill="#6B7280">AI-001 (Automation '
+        f'tab item) — illustrative availability signal only, see Section 4</text>',
+        f'<line x1="1315" y1="24" x2="1315" y2="46" stroke="#6B7280" stroke-width="1.4" '
+        f'stroke-dasharray="1.5,3" marker-end="url(#hb-arrow-gray)"/>',
+        '<defs><marker id="hb-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">'
+        '<path d="M0,0 L6,3 L0,6 Z" fill="#374151"/></marker>'
+        '<marker id="hb-arrow-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">'
+        '<path d="M0,0 L6,3 L0,6 Z" fill="#6B7280"/></marker></defs>',
+    ]
+
+    def edge(a, b, style="solid", label=None):
+        ax, ay = _HB_POS[a]; bx, by = _HB_POS[b]
+        acx, bcx = ax + _HB_BOX_W / 2, bx + _HB_BOX_W / 2
+        if ay == by:
+            x1, y1, x2, y2 = ax + _HB_BOX_W, ay + _HB_BOX_H / 2, bx, by + _HB_BOX_H / 2
+        elif ay < by:
+            x1, y1, x2, y2 = acx, ay + _HB_BOX_H, bcx, by
+        else:
+            x1, y1, x2, y2 = acx, ay, bcx, by + _HB_BOX_H
+        dash = {"solid": "", "dashed": 'stroke-dasharray="6,4"', "dotted": 'stroke-dasharray="1.5,4"'}[style]
+        color = "#374151" if style == "solid" else "#6B7280"
+        marker = "url(#hb-arrow)" if style == "solid" else "url(#hb-arrow-gray)"
+        parts.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" '
+            f'stroke-width="2" {dash} marker-end="{marker}" opacity="{1.0 if style=="solid" else 0.65}"/>'
+        )
+        if label:
+            parts.append(f'<text x="{(x1+x2)/2:.1f}" y="{(y1+y2)/2-4:.1f}" text-anchor="middle" '
+                          f'font-size="8.5" fill="{color}">{label}</text>')
+
+    for a, b in (("HB-001", "HB-005"), ("HB-005", "HB-003"), ("HB-003", "HB-004"), ("HB-004", "HB-006"),
+                  ("HB-006", "HB-009"), ("HB-009", "HB-012"), ("HB-012", "HB-013"), ("HB-013", "HB-018")):
+        edge(a, b, "solid")
+    edge("HB-011", "HB-013", "dashed", "feeds")
+    edge("HB-004", "HB-010", "dashed", "WGS tap")
+    edge("HB-006", "HB-007", "dashed")
+    for a, b in (("HB-007", "HB-014"), ("HB-014", "HB-015"), ("HB-015", "HB-016"), ("HB-016", "HB-017")):
+        edge(a, b, "dashed")
+    edge("HB-017", "HB-013", "dotted", "registry-stated, not live-wired")
+
+    for eq_id, name, cat, key, x, y, blocked_from in _HB_SCHEMATIC_ITEMS:
+        colors = _HB_CATEGORY_COLORS[cat]
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        badge_fill, badge_fg = ("#F3F4F6", "#6B7280") if is_missing else ("#DCFCE7", "#15803D")
+        badge_text = "No data" if is_missing else "Running"
+        shape = _HB_ITEM_SHAPE[eq_id]
+        parts.append(_fe_equipment_shape_svg(shape, x, y, _HB_BOX_W, _HB_BOX_H, f'url(#grad-hb-{cat})', colors["stroke"]))
+        parts.append(f'<text x="{x+_HB_BOX_W/2:.1f}" y="{y+16:.1f}" text-anchor="middle" font-size="10.5" '
+                      f'font-weight="bold" fill="#111827">{eq_id}</text>')
+        for li, line in enumerate(name.split("\n")):
+            parts.append(f'<text x="{x+_HB_BOX_W/2:.1f}" y="{y+30+li*11:.1f}" text-anchor="middle" '
+                          f'font-size="8.5" fill="#111827">{line}</text>')
+        bw = 56
+        parts.append(f'<rect x="{x+_HB_BOX_W/2-bw/2:.1f}" y="{y+_HB_BOX_H-18:.1f}" width="{bw}" height="13" '
+                      f'rx="6.5" fill="{badge_fill}"/>')
+        parts.append(f'<text x="{x+_HB_BOX_W/2:.1f}" y="{y+_HB_BOX_H-8:.1f}" text-anchor="middle" font-size="8" '
+                      f'font-weight="600" fill="{badge_fg}">{badge_text}</text>')
+        if blocked_from:
+            parts.append(f'<text x="{x+_HB_BOX_W/2:.1f}" y="{y+_HB_BOX_H+13:.1f}" text-anchor="middle" '
+                          f'font-size="7.5" font-style="italic" fill="#B91C1C">blocked ← {blocked_from}</text>')
+        elif eq_id == "HB-007":
+            parts.append(f'<text x="{x+_HB_BOX_W/2:.1f}" y="{y+_HB_BOX_H+13:.1f}" text-anchor="middle" '
+                          f'font-size="7.5" font-style="italic" fill="#B91C1C">real root cause (leaf)</text>')
+
+    # HB-002/HB-008 sub-item annotations -- real registry sub-items of the
+    # SAME physical unit, no live key of their own (Confirmed static
+    # constants used directly), the SAME treatment as GA/GC's own sub-items.
+    parts.append(f'<text x="{60+_HB_BOX_W/2:.1f}" y="234" text-anchor="middle" font-size="7.5" '
+                  f'fill="#4338CA">HB-002 (CO Conv.) — Static</text>')
+    parts.append(f'<text x="{740+_HB_BOX_W/2:.1f}" y="234" text-anchor="middle" font-size="7.5" '
+                  f'fill="#4338CA">HB-008 (Pressure) — Static</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _hb_schematic_legend_svg():
+    x0, line_h = 10, 20
+    total_w, total_h = 660, 230
+    parts = [
+        f'<svg viewBox="0 0 {total_w} {total_h}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;height:auto;font-family:sans-serif;">',
+        f'<rect x="0" y="0" width="{total_w}" height="{total_h}" fill="#FFFFFF"/>',
+        f'<text x="{x0}" y="16" font-size="12" font-weight="bold" fill="#111827">Legend:</text>',
+    ]
+    for idx, colors in enumerate(_HB_CATEGORY_COLORS.values()):
+        ly = 16 + 22 + idx * line_h
+        parts.append(f'<rect x="{x0}" y="{ly-12}" width="18" height="14" rx="3" fill="{colors["fill"]}" '
+                      f'stroke="{colors["stroke"]}" stroke-width="2"/>')
+        parts.append(f'<text x="{x0+26}" y="{ly}" font-size="11" fill="#111827">{colors["label"]}</text>')
+    y = 16 + 22 + len(_HB_CATEGORY_COLORS) * line_h + 8
+    for line in (
+        "Solid arrow: the real main WGS → PSA → compression → storage → dispensing chain.",
+        "Dashed arrow: a real branch connection (Electrolyser feeding storage; the Membrane "
+        "Separator's own tap of the same live WGS Composition node HB-006 reads).",
+        "Dotted arrow: HB-017's own registry-stated routing back to HB-013 (\"rejoins HB-013 via "
+        "HB-012\") — real but NOT live-wired in code, shown honestly as intent, not fabricated flow.",
+        "\"blocked ← X\": this item's own live function is structurally never called this cycle — "
+        "simulation_engine.py's own automatic Missing-propagation, cascading from item X's own "
+        "Missing status, confirmed directly (an instrumented call-counter proves it).",
+        "HB-002/HB-008 (small italic labels): real registry sub-items of the SAME physical unit as "
+        "HB-001/HB-006, with no live key of their own — Confirmed static constants used directly.",
+    ):
+        parts.append(f'<text x="{x0}" y="{y}" font-size="10.5" fill="#111827">{line}</text>')
+        y += line_h
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# =============================================================================
+# HB Section 2 -- Live KPIs. Reuses _fe_tag_html, _fe_kpi_check_delta,
+# _fe_inline_bar_svg directly. Comparison bars ONLY where a real, SEPARATE
+# Confirmed target exists (checked directly, not assumed): HB-011's own SEC
+# at load=1.0 vs its own Confirmed 55 kWh/Nm3 rating; HB-012's own computed
+# compressor power vs its own Confirmed 10 kW motor rating.
+# =============================================================================
+def _render_hb_live_kpis(snap):
+    hb001 = snap.get(("HB-001", "HTS"))
+    hb004 = snap.get(("HB-004", "LTS"))
+    hb012 = snap.get(("HB-012", "Compressor"))
+    hb013 = snap.get(("HB-013", "Storage"))
+
+    kpis = []
+    if hb001 is not None and hb001.get("status") != ps.STATUS_MISSING:
+        v = hb001["value"]
+        kpis.append(dict(label="HTS conversion (HB-001)", icon="🌡️", raw=v["X_hts"], text=f"{v['X_hts']*100:.1f}%",
+                          skey="tab7_kpi_delta__hts_x", entry=hb001, compare=None, bar=None,
+                          delta_fmt=lambda d: f"{d*100:+.2f} pp"))
+    if hb004 is not None and hb004.get("status") != ps.STATUS_MISSING:
+        v = hb004["value"]
+        kpis.append(dict(label="Overall WGS conversion (HB-004)", icon="⚗️", raw=v["overall_conversion"],
+                          text=f"{v['overall_conversion']*100:.1f}%", skey="tab7_kpi_delta__wgs_overall",
+                          entry=hb004, compare=None, bar=None, delta_fmt=lambda d: f"{d*100:+.2f} pp"))
+    if hb012 is not None and hb012.get("status") != ps.STATUS_MISSING:
+        v = hb012["value"]
+        target = 10.0  # HB-012's own separately-stated Confirmed motor rating
+        kpis.append(dict(label="Compressor power (HB-012)", icon="🔧", raw=v["power_kW"],
+                          text=f"{v['power_kW']:.2f} kW", skey="tab7_kpi_delta__compressor_kw", entry=hb012,
+                          compare=f"vs HB-012's own Confirmed motor rating {target:.0f} kW",
+                          bar=_fe_inline_bar_svg(v["power_kW"] / target, "#15803D" if v["power_kW"] < target else "#B91C1C", target_frac=1.0),
+                          delta_fmt=lambda d: f"{d:+.3f} kW"))
+    if hb013 is not None and hb013.get("status") != ps.STATUS_MISSING:
+        v = hb013["value"]
+        kpis.append(dict(label="H₂ storage level (HB-013)", icon="🛢️", raw=v["level_kg"],
+                          text=f"{v['level_kg']:.3f} kg ({v['fraction_full']*100:.1f}% of 50 kg)",
+                          skey="tab7_kpi_delta__storage_kg", entry=hb013, compare=None, bar=None,
+                          delta_fmt=lambda d: f"{d:+.3f} kg"))
+
+    if not kpis:
+        st.warning("No HB live values available this cycle to condense into KPI cards.")
+        return
+
+    cols = st.columns(len(kpis))
+    for col, kpi in zip(cols, kpis):
+        with col.container(border=True):
+            st.markdown(
+                _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
+                unsafe_allow_html=True,
+            )
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
+            st.metric(f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
+                       delta_color="normal" if delta is not None else "off",
+                       help=f"{kpi['label']}: {kpi['text']} ({note})")
+            if kpi["bar"]:
+                st.markdown(kpi["bar"], unsafe_allow_html=True)
+            if kpi["compare"]:
+                st.caption(kpi["compare"])
+    st.caption(
+        "HTS/overall-WGS conversion have no comparison bar — kinetics.py's own design-target "
+        "validation (75.0%/85.0% at the ORIGINAL synthetic design point) is a different check, "
+        "already covered in Section 5/6, not a live-vs-target bar here (this cycle's live y_CO_in "
+        "genuinely differs from that design point — see Section 4). HB-012's bar compares a real, "
+        "separately-stated Confirmed motor rating; HB-013's storage level has no separate target "
+        "(50 kg IS its own capacity, a trivial ceiling, not a design point to compare against)."
+    )
+
+
+# =============================================================================
+# HB Section 3 -- Process Flow & Equipment Status. Reuses _FE_STATUS_TABLE_CSS,
+# _fe_status_changed_flag, _fe_changed_pill_html, _fe_status_row_icon_svg,
+# _ga_status_pill_html (its own new "estimated" state) directly.
+# =============================================================================
+_HB_ADDITIONAL_KEYS = [
+    # (parent eq_id, sub-label, key, pill-state-if-not-missing)
+    ("HB-010", "Separation", ("HB-010", "Separation"), "missing"),
+    ("HB-010", "SelectivityEstimate", ("HB-010", "SelectivityEstimate"), "estimated"),
+    ("HB-014", "ReactionKinetics", ("HB-014", "ReactionKinetics"), "missing"),
+    ("HB-014", "KineticsBaselineEstimate", ("HB-014", "KineticsBaselineEstimate"), "estimated"),
+    ("HB-016", "ReactionKinetics", ("HB-016", "ReactionKinetics"), "missing"),
+    ("HB-016", "KineticsBaselineEstimate", ("HB-016", "KineticsBaselineEstimate"), "estimated"),
+]
+
+
+def _render_hb_status_table(snap):
+    st.markdown(_FE_STATUS_TABLE_CSS, unsafe_allow_html=True)
+
+    item_rows = []
+    live_count = 0
+    for eq_id, name, cat, key, _x, _y, blocked_from in _HB_SCHEMATIC_ITEMS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        state = "missing" if is_missing else "running"
+        if state == "running":
+            live_count += 1
+        note_extra = f" (structurally blocked ← {blocked_from})" if blocked_from else (
+            " (real root-cause leaf)" if eq_id == "HB-007" else "")
+        changed, note = _fe_status_changed_flag(f"tab7_status_changed__{eq_id}", state)
+        item_rows.append(dict(eq_id=eq_id, name=name.replace("\n", " ") + note_extra, cat=cat, key=key,
+                               state=state, changed=changed, note=note))
+
+    total = len(_HB_SCHEMATIC_ITEMS)
+    summary_bg, summary_fg = ("#DCFCE7", "#15803D") if live_count == total else ("#FEF3C7", "#B45309")
+    st.markdown(f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
+                f'{live_count}/{total} live</div>', unsafe_allow_html=True)
+    st.caption(
+        "5 items are genuinely Missing — HB-007 (the real root-cause leaf: no data anywhere "
+        "specifies the LOHC split fraction) plus HB-014/015/016/017, ALL structurally blocked "
+        "cascading forward from HB-007's own Missing status (simulation_engine.py's own automatic "
+        "propagation, confirmed directly) — one root cause, not five independent gaps. HB-002/HB-008 "
+        "(real registry sub-items of HB-001/HB-006, no live key of their own) listed separately below."
+    )
+
+    for cat_key, colors in _HB_CATEGORY_COLORS.items():
+        cat_rows = [r for r in item_rows if r["cat"] == cat_key]
+        if not cat_rows:
+            continue
+        st.markdown(f'<div class="fe-status-group-title">'
+                    f'<span class="fe-cat-swatch" style="background:{colors["fill"]};border-color:{colors["stroke"]};"></span>'
+                    f'{colors["label"]}</div>', unsafe_allow_html=True)
+        trs = []
+        for r in cat_rows:
+            icon = _fe_status_row_icon_svg(r["eq_id"], r["cat"], _HB_CATEGORY_COLORS, _HB_ITEM_SHAPE)
+            trs.append(f'<tr><td>{icon}</td><td><b>{r["eq_id"]}</b></td><td>{r["name"]}</td>'
+                       f'<td>{_ga_status_pill_html(r["state"])}</td>'
+                       f'<td>{_fe_changed_pill_html(r["changed"], r["note"])}</td>'
+                       f'<td><code>{r["key"][0]}/{r["key"][1]}</code></td></tr>')
+        st.markdown('<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+                    '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+                    f'<tbody>{"".join(trs)}</tbody></table>', unsafe_allow_html=True)
+
+    st.markdown('<div class="fe-status-group-title">'
+                '<span class="fe-cat-swatch" style="background:#E5E7EB;border-color:#6B7280;"></span>'
+                'Sub-items & additional keys (HB-002/HB-008 static; HB-010/HB-014/HB-016\'s own '
+                'additional non-primary keys)</div>', unsafe_allow_html=True)
+    sub_trs = []
+    for parent_id, sub_short, sub_key in (("HB-002", "CO Conv. (HB-001's own unit)", None),
+                                            ("HB-008", "Pressure (HB-006's own unit)", None)):
+        changed, note = _fe_status_changed_flag(f"tab7_status_changed__{parent_id}", "static")
+        sub_trs.append(f'<tr><td></td><td>{parent_id}</td><td>{sub_short}</td>'
+                       f'<td>{_ga_status_pill_html("static")}</td>'
+                       f'<td>{_fe_changed_pill_html(changed, note)}</td>'
+                       f'<td><code>— (no live key)</code></td></tr>')
+    for parent_id, sub_label, key, pill_state in _HB_ADDITIONAL_KEYS:
+        entry = snap.get(key)
+        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
+        state = "missing" if is_missing else pill_state
+        changed, note = _fe_status_changed_flag(f"tab7_status_changed__{parent_id}_{sub_label}", state)
+        sub_trs.append(f'<tr><td></td><td>{parent_id}</td><td>{sub_label} (additional key)</td>'
+                       f'<td>{_ga_status_pill_html(state)}</td>'
+                       f'<td>{_fe_changed_pill_html(changed, note)}</td>'
+                       f'<td><code>{key[0]}/{key[1]}</code></td></tr>')
+    st.markdown('<table class="fe-status-tbl"><thead><tr><th></th><th>ID</th><th>Name</th>'
+                '<th>Live status</th><th>Changed since last checked</th><th>Registered key</th></tr></thead>'
+                f'<tbody>{"".join(sub_trs)}</tbody></table>', unsafe_allow_html=True)
+
+
+# =============================================================================
+# HB Section 4 -- Live Simulation & Engineering Results. Expandable per-item
+# cards, HB-001 through HB-018 (18 cards, folding each item's own additional
+# keys in with it, the SAME "one card per equipment item" pattern GC used for
+# its own multi-key sub-items). Every confidence_note/missing_reason string
+# is HB's own REAL text, read directly, never retyped. Downstream-consumer
+# tags: checked directly -- HB-013's own confidence_note explicitly names
+# real downstream consumers (HB-018 Dispensing, EU-006 Fuel Cell) via its own
+# declared inputs/text, so ITS card gets tags; every other card's own text
+# was checked the same way and, where it does not explicitly name a
+# downstream consumer, gets none (the FE-007 rule, reapplied).
+# =============================================================================
+def _hb_card(eq_id, cat, title, snap, changed_key_entry=None):
+    if changed_key_entry is not None:
+        changed, note = _fe_status_changed_flag(f"tab7_s4_changed__{eq_id}", changed_key_entry)
+    else:
+        changed, note = None, "no live entry"
+    _fe_result_card_header(eq_id, cat, f"{eq_id} — {title}", changed=changed, note=note,
+                            category_colors=_HB_CATEGORY_COLORS, item_shapes=_HB_ITEM_SHAPE)
+
+
+def _hb_missing_expander(label, entry):
+    with st.expander(f"Full status & traceability — {label}"):
+        st.caption(f"Status: {entry['status']} · {entry['missing_reason']}")
+
+
+def _hb_live_expander(label, entry):
+    with st.expander(f"Full status & traceability — {label}"):
+        st.caption(f"Status: {entry['status']} · {entry['confidence_note']}")
+
+
+def _render_hb_live_results(snap):
+    hb001 = snap.get(("HB-001", "HTS"))
+    if hb001 is not None:
+        st.caption(f"Simulation snapshot as of {hb001['timestamp']} (this cycle's own real, traceable timestamp).")
+
+    # -- HB-001 ---------------------------------------------------------------
+    with st.container(border=True):
+        _hb_card("HB-001", "wgs", "WGS Reactor HTS", snap, hb001["value"] if hb001 else None)
+        if hb001 is not None:
+            v = hb001["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Live y_CO_in (from GC-013)", f"{v['y_CO_in']*100:.2f}%")
+            c2.metric("HTS conversion X", f"{v['X_hts']*100:.2f}%")
+            _hb_live_expander("HB-001 HTS", hb001)
+        st.caption("**HB-002 (WGS Reactor HTS, CO Conv.)** — real registry sub-item of this SAME "
+                   "physical unit; no live model registered for it (its own Confirmed 4:1 steam-to-"
+                   "CO ratio is used directly as a constant, HB-002's/HB-005's own STEAM_TO_CO_MOLAR_RATIO).")
+
+    # -- HB-005/HB-003 (built in dependency order, shown together) -----------
+    with st.container(border=True):
+        hb005 = snap.get(("HB-005", "Steam"))
+        _hb_card("HB-005", "wgs", "Steam Generator", snap, hb005["value"] if hb005 else None)
+        if hb005 is not None:
+            v = hb005["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Live steam mass flow", f"{v['steam_kg_h']:.2f} kg/h")
+            c2.metric("Preheat input (HB-003)", f"{v['preheat_temp_c']:.0f} °C")
+            _hb_live_expander("HB-005 Steam", hb005)
+        hb003 = snap.get(("HB-003", "HeatExchanger"))
+        if hb003 is not None:
+            st.markdown(f"**HB-003 — Heat Exchanger**")
+            v = hb003["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Hot-side (gas) duty", f"{v['Q_hot_side_kW']:.3f} kW")
+            c2.metric("Cold-side (water) duty", f"{v['Q_cold_side_kW']:.3f} kW")
+            st.caption("Genuine two-sided cross-check, NOT forced to match — see Section 5's audit.")
+            _hb_live_expander("HB-003 HeatExchanger", hb003)
+
+    # -- HB-004 ----------------------------------------------------------------
+    with st.container(border=True):
+        hb004 = snap.get(("HB-004", "LTS"))
+        _hb_card("HB-004", "wgs", "WGS Reactor LTS", snap, hb004["value"] if hb004 else None)
+        if hb004 is not None:
+            v = hb004["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("LTS conversion X (relative)", f"{v['X_lts_relative']*100:.2f}%")
+            c2.metric("Overall WGS conversion", f"{v['overall_conversion']*100:.2f}%")
+            _hb_live_expander("HB-004 LTS", hb004)
+        wgs = snap.get(("WGS", "Composition"))
+        if wgs is not None:
+            st.caption(f"**WGS full composition** (new adapter mass-balance, atom-balance verified — "
+                       f"see Section 5): CO {wgs['value']['CO']*100:.2f}%, H₂ {wgs['value']['H2']*100:.2f}%, "
+                       f"CO₂ {wgs['value']['CO2']*100:.2f}%.")
+
+    # -- HB-006 (PSA -- purity+recovery+composition together, real registry ---
+    # sub-items HB-007 aspect / HB-008 aspect noted honestly, not conflated
+    # with the SEPARATE registered ("HB-007","H2SplitFraction") LOHC key). ---
+    with st.container(border=True):
+        hb006 = snap.get(("HB-006", "PSA"))
+        _hb_card("HB-006", "psa", "PSA Unit", snap, hb006["value"] if hb006 else None)
+        if hb006 is not None:
+            v = hb006["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Feed H₂ (dry)", f"{v['y_H2']*100:.2f}%")
+            c2.metric("H₂ recovery", f"{v['recovery']*100:.2f}%")
+            c3.metric("Feed CO₂", f"{v['y_CO2']*100:.2f}%")
+            _hb_live_expander("HB-006 PSA", hb006)
+        st.caption(
+            "**HB-007 (PSA Unit, H₂ Recovery)** and **HB-008 (PSA Unit, Pressure)** are real registry "
+            "sub-items of this SAME physical PSA unit — HB-007's OWN registry aspect (recovery "
+            "efficiency) IS covered live above (`recovery`, from `psa.psa_recovery()`, unchanged); "
+            "HB-008's own pressure aspect uses HB-006's/HB-012's own Confirmed 8.0/1.2 bar(a) "
+            "constants directly, no live model. **The SEPARATELY-registered `('HB-007',"
+            "'H2SplitFraction')` key below is a DIFFERENT quantity** — not this recovery efficiency, "
+            "but whether/how much of the recovered H₂ diverts to the LOHC branch — permanently "
+            "Missing, the real root cause of the LOHC branch's own block (see below)."
+        )
+
+    # -- HB-009 -----------------------------------------------------------------
+    with st.container(border=True):
+        hb009 = snap.get(("HB-009", "TailGas"))
+        _hb_card("HB-009", "psa", "PSA Tail Gas Handler", snap, hb009["value"] if hb009 else None)
+        if hb009 is not None:
+            v = hb009["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Tail gas flow", f"{v['tail_flow_nm3_h']:.2f} Nm³/h")
+            c2.metric("Tail H₂ fraction", f"{v['tail_h2_fraction']*100:.2f}%")
+            c3.metric("PSA product (H₂) flow", f"{v['product_flow_nm3_h']:.2f} Nm³/h")
+            st.caption("→ feeds GA-001 as a real recycle input (Phase 1d, lagged) — stated explicitly in "
+                       "this item's own confidence_note.")
+            _hb_live_expander("HB-009 TailGas", hb009)
+
+    # -- HB-010 (dual-status pair + additional Estimated key) ------------------
+    with st.container(border=True):
+        hb010f = snap.get(("HB-010", "Feed"))
+        _hb_card("HB-010", "psa", "Membrane Separator", snap, hb010f["value"] if hb010f else None)
+        if hb010f is not None:
+            v = hb010f["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Feed flow", f"{v['feed_flow_nm3_h']:.1f} Nm³/h")
+            c2.metric("Feed H₂ (live)", f"{v['feed_composition']['y_H2']*100:.2f}%")
+            _hb_live_expander("HB-010 Feed", hb010f)
+        hb010s = snap.get(("HB-010", "Separation"))
+        if hb010s is not None:
+            st.metric("Recovery / product flow / permeate purity", "Missing / Cannot Calculate")
+            _hb_missing_expander("HB-010 Separation", hb010s)
+        hb010sel = snap.get(("HB-010", "SelectivityEstimate"))
+        if hb010sel is not None:
+            v = hb010sel["value"]
+            st.markdown(_fe_tag_html("estimate", "Internal-model-derived baseline") +
+                        f" &nbsp; implied selectivity ≈ **{v['digital_twin_engineering_baseline']}**",
+                        unsafe_allow_html=True)
+            st.caption(f"Consistency check: {v['consistency_check']['verdict']} — a real comparable "
+                       f"membrane module's own measured H₂/CO₂ selectivity ({v['comparable_module_h2_co2_selectivity']}) "
+                       f"falls inside this internally-derived range. Does NOT feed the Separation "
+                       f"calculation above — a separate, explicitly open follow-up question.")
+            _hb_live_expander("HB-010 SelectivityEstimate", hb010sel)
+
+    # -- HB-011 (+ AI-001 context) ------------------------------------------------
+    with st.container(border=True):
+        hb011 = snap.get(("HB-011", "Electrolyser"))
+        _hb_card("HB-011", "storage_compression", "Electrolyser (PEM)", snap, hb011["value"] if hb011 else None)
+        ai001 = snap.get(("AI-001", "RenewableAvailability"))
+        if ai001 is not None:
+            st.markdown(_fe_tag_html("estimate", "Illustrative, not real weather data") +
+                        f" &nbsp; AI-001 availability signal: **{ai001['value']['availability_fraction']*100:.0f}%**",
+                        unsafe_allow_html=True)
+            st.caption("AI-001 is an Automation & Instrumentation tab item, shown here only as HB-011's "
+                       "own real upstream driver — see that item's own honest limitation in its confidence_note.")
+        if hb011 is not None:
+            v = hb011["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Load fraction", f"{v['load_fraction']*100:.1f}%")
+            c2.metric("Power draw", f"{v['power_kw']:.2f} kW")
+            c3.metric("H₂ output", f"{v['h2_nm3_h']:.4f} Nm³/h")
+            st.caption("→ feeds HB-013's own storage inventory as a real, parallel inflow (lagged) — "
+                       "stated explicitly in this item's own confidence_note.")
+            _hb_live_expander("HB-011 Electrolyser", hb011)
+
+    # -- HB-012 -------------------------------------------------------------------
+    with st.container(border=True):
+        hb012 = snap.get(("HB-012", "Compressor"))
+        _hb_card("HB-012", "storage_compression", "H₂ Compressor", snap, hb012["value"] if hb012 else None)
+        if hb012 is not None:
+            v = hb012["value"]
+            c1, c2 = st.columns(2)
+            c1.metric("Compressor power", f"{v['power_kW']:.3f} kW")
+            c2.metric("H₂ mass flow", f"{v['h2_kg_h']:.4f} kg/h")
+            st.caption("→ feeds HB-013's own storage inventory as its primary inflow — stated explicitly "
+                       "in this item's own confidence_note.")
+            _hb_live_expander("HB-012 Compressor", hb012)
+
+    # -- HB-013 --------------------------------------------------------------------
+    with st.container(border=True):
+        hb013 = snap.get(("HB-013", "Storage"))
+        _hb_card("HB-013", "storage_compression", "H₂ Storage Vessel", snap, hb013["value"] if hb013 else None)
+        if hb013 is not None:
+            v = hb013["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Storage level", f"{v['level_kg']:.3f} kg ({v['fraction_full']*100:.1f}% of 50 kg)")
+            c2.metric("Inflow (Compressor + Electrolyser)", f"{v['inflow_kg_h']:.3f} kg/h")
+            c3.metric("Outflow (Dispensing + Fuel Cell)", f"{v['outflow_kg_h']:.3f} kg/h")
+            st.caption("→ feeds HB-018 (Dispensing) and EU-006 (Fuel Cell) as real, declared "
+                       "downstream consumers — both named explicitly in this item's own confidence_note.")
+            _hb_live_expander("HB-013 Storage", hb013)
+
+    # -- HB-014 (LOHC, structurally blocked -- + its own additional keys) --------
+    with st.container(border=True):
+        hb014mb = snap.get(("HB-014", "MassBalance"))
+        _hb_card("HB-014", "lohc", "LOHC Hydrogenation / Loading Reactor", snap, None)
+        st.markdown(
+            '<div style="background:#F3F4F6;border:2px solid #6B7280;border-radius:8px;padding:8px 14px;'
+            'margin:8px 0;"><span style="color:#6B7280;font-weight:800;font-size:0.85rem;">⛔ STRUCTURALLY '
+            'BLOCKED — cascades from HB-007\'s own permanently-Missing H₂ split fraction, never executes '
+            'under this project\'s current data</span></div>', unsafe_allow_html=True)
+        if hb014mb is not None:
+            _hb_missing_expander("HB-014 MassBalance", hb014mb)
+        hb014rk = snap.get(("HB-014", "ReactionKinetics"))
+        if hb014rk is not None:
+            st.caption("**ReactionKinetics** — a SEPARATE, unconditional gap (no catalyst kinetic data "
+                       "exists at all, independent of the split-fraction block):")
+            _hb_missing_expander("HB-014 ReactionKinetics", hb014rk)
+        hb014kb = snap.get(("HB-014", "KineticsBaselineEstimate"))
+        if hb014kb is not None:
+            v = hb014kb["value"]
+            st.markdown(_fe_tag_html("estimate", "Literature-based baseline") +
+                        f" &nbsp; DBT hydrogenation Ea ≈ **{v['digital_twin_engineering_baseline']}**",
+                        unsafe_allow_html=True)
+            st.caption("Lower confidence than HB-016's own baseline — no source matches both HB-014's "
+                       "own catalyst AND operating conditions at once (see this entry's own source_basis).")
+            _hb_live_expander("HB-014 KineticsBaselineEstimate", hb014kb)
+
+    # -- HB-015 (blocked) -----------------------------------------------------------
+    with st.container(border=True):
+        hb015 = snap.get(("HB-015", "Inventory"))
+        _hb_card("HB-015", "lohc", "LOHC Storage Tank (Lean/Rich Oil)", snap, None)
+        st.markdown(
+            '<div style="background:#F3F4F6;border:2px solid #6B7280;border-radius:8px;padding:8px 14px;'
+            'margin:8px 0;"><span style="color:#6B7280;font-weight:800;font-size:0.85rem;">⛔ STRUCTURALLY '
+            'BLOCKED — cascades from HB-014\'s own Missing MassBalance</span></div>', unsafe_allow_html=True)
+        if hb015 is not None:
+            _hb_missing_expander("HB-015 Inventory", hb015)
+
+    # -- HB-016 (blocked -- + its own additional keys) -------------------------------
+    with st.container(border=True):
+        hb016mb = snap.get(("HB-016", "MassBalance"))
+        _hb_card("HB-016", "lohc", "LOHC Dehydrogenation Unit", snap, None)
+        st.markdown(
+            '<div style="background:#F3F4F6;border:2px solid #6B7280;border-radius:8px;padding:8px 14px;'
+            'margin:8px 0;"><span style="color:#6B7280;font-weight:800;font-size:0.85rem;">⛔ STRUCTURALLY '
+            'BLOCKED — cascades from HB-015\'s own Missing Inventory</span></div>', unsafe_allow_html=True)
+        if hb016mb is not None:
+            _hb_missing_expander("HB-016 MassBalance", hb016mb)
+        hb016rk = snap.get(("HB-016", "ReactionKinetics"))
+        if hb016rk is not None:
+            st.caption("**ReactionKinetics** — a SEPARATE, unconditional gap, same reasoning as HB-014's own:")
+            _hb_missing_expander("HB-016 ReactionKinetics", hb016rk)
+        hb016kb = snap.get(("HB-016", "KineticsBaselineEstimate"))
+        if hb016kb is not None:
+            v = hb016kb["value"]
+            st.markdown(_fe_tag_html("estimate", "Literature-based baseline") +
+                        f" &nbsp; DBT dehydrogenation Ea ≈ **{v['digital_twin_engineering_baseline']}**",
+                        unsafe_allow_html=True)
+            cc = v["consistency_check"]
+            st.caption(f"Consistency check ({cc['verdict']}): a real back-derived reaction time is "
+                       f"{cc['ratio_to_reference']:.2f}× the source paper's own stated batch time — same "
+                       f"order of magnitude, a genuine match, not forced.")
+            _hb_live_expander("HB-016 KineticsBaselineEstimate", hb016kb)
+
+    # -- HB-017 (blocked) --------------------------------------------------------------
+    with st.container(border=True):
+        hb017 = snap.get(("HB-017", "MassBalance"))
+        _hb_card("HB-017", "lohc", "H₂ Purification (Post-LOHC Dehydrogenation)", snap, None)
+        st.markdown(
+            '<div style="background:#F3F4F6;border:2px solid #6B7280;border-radius:8px;padding:8px 14px;'
+            'margin:8px 0;"><span style="color:#6B7280;font-weight:800;font-size:0.85rem;">⛔ STRUCTURALLY '
+            'BLOCKED — cascades from HB-016\'s own Missing MassBalance</span></div>', unsafe_allow_html=True)
+        if hb017 is not None:
+            _hb_missing_expander("HB-017 MassBalance", hb017)
+        st.caption("HB-017's own registry-stated downstream routing (\"rejoins HB-013 via HB-012\") is "
+                   "real but NOT live-wired — no live number exists to merge while this stays Missing.")
+
+    # -- HB-018 -----------------------------------------------------------------------
+    with st.container(border=True):
+        hb018 = snap.get(("HB-018", "Dispensing"))
+        _hb_card("HB-018", "dispensing", "H₂ Dispensing Station", snap, hb018["value"] if hb018 else None)
+        if hb018 is not None:
+            v = hb018["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Dispensed", f"{v['dispensed_kg_h']:.3f} kg/h")
+            c2.metric("Available storage (prev. cycle)", f"{v['available_storage_kg']:.3f} kg")
+            c3.metric("Max rated throughput", f"{v['max_rated_kg_h']:.1f} kg/h")
+            st.caption("\"Demand\" modeled as HB-018's own Confirmed max rated throughput — an ASSUMED "
+                       "full-utilization worst case, no real FCEV traffic schedule exists in this project "
+                       "(stated explicitly in this item's own confidence_note).")
+            _hb_live_expander("HB-018 Dispensing", hb018)
+
+
+# =============================================================================
+# HB Section 5 -- audited FIRST. UNLIKE every earlier tab, HB genuinely offers
+# MULTIPLE independent engineering cross-checks (not one by-construction
+# split, and not "none applies" the way SA's did) -- reported here, not
+# hidden: (a) the WGS full-composition atom balance (C and O conservation,
+# independently re-verified for this audit, not just trusted); (b) HB-003's
+# real two-sided (hot/cold) energy-duty cross-check, PLUS a third,
+# independent reference point (HB-003's own Confirmed "Design heat duty=5kW");
+# (c) HB-011's own SEC-at-load=1.0 exact reproduction of its Confirmed rating;
+# (d) HB-012's own compressor power vs its Confirmed 10kW motor rating; (e)
+# HB-013's own real, live inventory mass balance (inflow-outflow, genuinely
+# accumulated cycle to cycle, not a static split). The LOHC branch (HB-014..
+# 017) has NO live mass balance to check at all -- structurally blocked.
+# =============================================================================
+def _render_hb_mass_energy_balance(snap):
+    st.markdown("**(a) WGS full-composition atom balance — a genuine, independent re-check**")
+    gc013 = snap.get(("GC-013", "Gas"))
+    hb001 = snap.get(("HB-001", "HTS"))
+    hb004 = snap.get(("HB-004", "LTS"))
+    if gc013 and hb001 and hb004 and all(e.get("status") != ps.STATUS_MISSING for e in (gc013, hb001, hb004)):
+        ok, detail = hbchain_module.verify_wgs_atom_balance(
+            gc013["value"], hb001["value"]["X_hts"], hb004["value"]["X_lts_relative"])
+        c1, c2 = st.columns(2)
+        c1.metric("Carbon in vs out", f"{detail['C'][0]:.6f} / {detail['C'][1]:.6f}")
+        c2.metric("Oxygen in vs out", f"{detail['O'][0]:.6f} / {detail['O'][1]:.6f}")
+        if ok:
+            st.success("Atom balance closes exactly (re-verified live, this page load, not just trusted "
+                       "from `wgs_full_composition()`'s own internal check).")
+        else:
+            st.error(f"Atom balance does NOT close: {detail}. Reported honestly, not forced.")
+    else:
+        st.warning("WGS atom balance unavailable this cycle (an upstream input is Missing).")
+
+    st.divider()
+    st.markdown("**(b) HB-003 Heat Exchanger — a genuine two-sided energy-duty cross-check**")
+    hb003 = snap.get(("HB-003", "HeatExchanger"))
+    if hb003 is not None and hb003.get("status") != ps.STATUS_MISSING:
+        v = hb003["value"]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Hot-side (gas) duty", f"{v['Q_hot_side_kW']:.3f} kW")
+        c2.metric("Cold-side (water) duty", f"{v['Q_cold_side_kW']:.3f} kW")
+        c3.metric("HB-003's own Confirmed 'Design heat duty'", "5 kW")
+        gap_pct = abs(v['Q_hot_side_kW'] - v['Q_cold_side_kW']) / max(v['Q_hot_side_kW'], v['Q_cold_side_kW']) * 100
+        st.caption(f"Hot/cold sides differ by {gap_pct:.1f}% — a genuine, NOT-forced-to-match cross-check "
+                   f"(reported honestly either way, same discipline as this project's other real "
+                   f"cross-checks). Both sides are also independently compared against a THIRD, "
+                   f"registry-stated reference point (5 kW design duty), not used as an input to either side.")
+    else:
+        st.warning("HB-003's own duty cross-check is unavailable this cycle.")
+
+    st.divider()
+    st.markdown("**(c)/(d) Confirmed-rating cross-checks — HB-011 Electrolyser & HB-012 Compressor**")
+    hb011 = snap.get(("HB-011", "Electrolyser"))
+    hb012 = snap.get(("HB-012", "Compressor"))
+    c1, c2 = st.columns(2)
+    if hb011 is not None and hb011.get("status") != ps.STATUS_MISSING:
+        v = hb011["value"]
+        with c1:
+            st.metric("HB-011 load fraction / power", f"{v['load_fraction']*100:.1f}% / {v['power_kw']:.2f} kW")
+            st.caption("At load=1.0 this module's own formula exactly reproduces HB-011's own Confirmed "
+                       "55.000 kWh/Nm³ SEC (verified in this module's own self-test) — a real, "
+                       "by-design exact match, not a coincidence.")
+    if hb012 is not None and hb012.get("status") != ps.STATUS_MISSING:
+        v = hb012["value"]
+        with c2:
+            within = v["power_kW"] < 10.0
+            st.metric("HB-012 computed power vs Confirmed 10 kW rating", f"{v['power_kW']:.3f} kW",
+                       delta=f"{v['power_kW']-10.0:+.3f} kW", delta_color="inverse")
+            st.markdown(("✅ within rating" if within else "🔴 EXCEEDS rating — physically implausible, flagged"))
+
+    st.divider()
+    st.markdown("**(e) HB-013 H₂ storage — a real, live inventory mass balance (accumulated, not by-construction)**")
+    hb013 = snap.get(("HB-013", "Storage"))
+    if hb013 is not None and hb013.get("status") != ps.STATUS_MISSING:
+        v = hb013["value"]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Inflow (Compressor + Electrolyser)", f"{v['inflow_kg_h']:.4f} kg/h")
+        c2.metric("Outflow (Dispensing + Fuel Cell)", f"{v['outflow_kg_h']:.4f} kg/h")
+        c3.metric("Net this cycle → level", f"{v['inflow_kg_h']-v['outflow_kg_h']:+.4f} kg/h → {v['level_kg']:.3f} kg")
+        changed, note = _fe_status_changed_flag("tab7_s5_changed__storage_level", v["level_kg"])
+        st.markdown("Changed since last checked — Level: " + _fe_changed_pill_html(changed, note), unsafe_allow_html=True)
+        st.caption("level(cycle N) = level(cycle N-1) + (inflow − outflow) × ASSUMED_HOURS_PER_CYCLE, "
+                   "clamped to [0, 50 kg] — a real accumulator across cycles, not a single-cycle split.")
+    else:
+        st.warning("HB-013's own inventory balance is unavailable this cycle.")
+
+    st.divider()
+    st.error(
+        "**LOHC branch (HB-014 through HB-017): NO live mass balance to check at all.** All four are "
+        "structurally blocked, cascading from HB-007's own permanently-Missing H₂ split fraction — "
+        "confirmed directly (not assumed): an instrumented call-counter in this module's own self-test "
+        "proves `hb014_mass_balance()` is genuinely never called, and every function downstream of it "
+        "cascades the same block forward. One root cause, four Missing entries, not four independent gaps.",
+        icon="🔴",
+    )
+
+
+# =============================================================================
+# HB Section 6 -- Simulation Status. Identical structure to Tabs 3/4/5/6's own.
+# =============================================================================
+def _render_hb_simulation_status(snap):
+    entry = snap.get(("HB-001", "HTS")) or snap.get(("HB-013", "Storage"))
+    src_info = _plant_state_source_info()
+    now_utc = datetime.now(timezone.utc)
+    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    is_live = src_info["reachable"] and src_info["rows_found"] > 0
+
+    if is_live:
+        published_dt = datetime.fromisoformat(src_info["published_at"])
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
+        age_str = f"{age_hours * 60:.0f} min ago" if age_hours < 2 else f"{age_hours:.1f}h ago"
+        st.success(
+            "**✅ Live continuous-runtime data** — this cycle's values were read directly from "
+            "`plant_state_current`, written by the real, scheduled GitHub Actions workflow "
+            "(`docs/continuous_runtime_design.md`) — not generated by this page load.", icon="✅")
+    else:
+        reason = (f"unreachable this page load ({src_info['error']})" if not src_info["reachable"]
+                  else "reachable, but genuinely empty — no cycle has ever been published there yet")
+        st.warning(
+            f"**⚠️ Fallback: in-process bootstrap** — `plant_state_current` is {reason}, so this "
+            "page load ran the Digital Twin engine fresh, in-process, right now (the SAME fallback "
+            "`tab1_integration.build_live_snapshot()` has always used). Every value shown is still "
+            "real — it is just NOT read from the continuous runtime's own persisted output.", icon="⚠️")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.caption("⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running "
+               "total of plant operating hours. The real continuity signal is the timestamp →")
+    if is_live and entry:
+        c2.metric("Published at (real, persisted)", src_info["published_at"])
+        c2.caption(f"{age_str} — this cycle's own real publish time from the continuous runtime.")
+    elif entry:
+        c2.metric("Computed at (this page load)", entry["timestamp"])
+        c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
+    c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
+    c3.caption("From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` "
+               "§1). GitHub's own scheduler can jitter by a few minutes; occasional skips are documented "
+               "GitHub behavior, not a bug here.")
+
+    st.markdown("**Store connection:** " + ("✅ reachable" if src_info["reachable"] else "❌ unreachable")
+                + (f" — `{src_info['error']}`" if not src_info["reachable"] else ""))
+
+    log_status = _digital_twin_cycle_log_status()
+    if log_status["exists"]:
+        st.caption("**Durable historical cycle count:** available via `digital_twin_cycle_log`.")
+    else:
+        checked_note = "" if log_status.get("not_found") else f" — checked just now: `{log_status['error']}`"
+        st.caption(f"**Durable historical cycle count:** not yet available (requires "
+                   f"`digital_twin_cycle_log`, not yet created{checked_note}) — checked live, this page "
+                   f"load, not assumed.")
+
+    st.caption(
+        "No \"last 5 warm-up cycles\" trend chart on this tab — HB's own models depend on the full "
+        "FE→GA→GC chain's live output (same reasoning as Gas Cleaning's own tab), and HB-013's own "
+        "storage level additionally accumulates across cycles (a lagged self-dependency) — a "
+        "meaningful mini-run trend would need many more warm-up cycles than a small chart could show "
+        "honestly. Not worth building for a nice-to-have chart."
+    )
+
+    st.markdown(
+        "**Source, by section:** Sections 1–5 above read live output from `hb_wgs_psa_storage_chain."
+        "py`'s and `hb_remaining_chain.py`'s own registered HB models for the items with a live key "
+        "(confirmed directly, Section 3/4 above) — a real simulation result, not a static figure. "
+        "Section 7 below instead reads `equipment_registry.load_registry()` directly for ALL of "
+        "HB-001 through HB-018 — real registry/vendor/DOK-ING data (Confirmed) or a stated "
+        "engineering estimate, never a simulation output. The two are never blended: every value on "
+        "this tab is clearly one or the other, labeled at the point it's shown."
+    )
+
+    st.info(
+        "**Status, current as of this build.** The continuous simulation runtime "
+        "(`docs/continuous_runtime_design.md`) **is implemented and has run for real** — the SAME "
+        "scheduled GitHub Actions workflow that publishes the earlier sections' own real cycles "
+        "publishes Hydrogen & BoP's real cycles too (the same `plant_state_current` publish, the "
+        "same engine run). The banner at the top of this section tells you, for THIS page load "
+        "specifically, whether what you're looking at came from that real persisted output or the "
+        "in-process fallback engine run. What is still genuinely NOT implemented: a durable, "
+        "queryable history of past cycles (`digital_twin_cycle_log`, see above).", icon="ℹ️")
+
+
+def _render_hb_tab():
+    # _hb_summary must land at MODULE scope -- tabs 8/9's own regression
+    # checks read it directly, the SAME pre-existing pattern already fixed
+    # for _ga_summary/_gc_summary/_sa_summary.
+    global _hb_summary
+    st.header("Hydrogen & BoP — HB-001 through HB-018")
+    st.caption(
+        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+        "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
+        "which one THIS page load used. UNLIKE every earlier tab, this is not one chain — a main "
+        "WGS→PSA→compression→storage→dispensing chain plus THREE real branches (Electrolyser, "
+        "Membrane Separator, LOHC) — see **Section 1** below. The LOHC branch is structurally "
+        "blocked end to end by one real, permanently-Missing root cause (HB-007) — audited honestly "
+        "in **Section 5**, not hidden."
+    )
+    st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "".join(_fe_tag_html(k) for k in ("live", "confirmed", "estimate", "missing"))
+        + " — the SAME consistent color code used on every earlier tab, reused here verbatim.",
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Section 1 — Interactive Plant Schematic")
+    st.caption(
+        "The real main chain: HB-001 (WGS HTS) → HB-005 (Steam Generator) → HB-003 (Heat Exchanger) "
+        "→ HB-004 (WGS LTS) → HB-006 (PSA) → HB-009 (Tail Gas) → HB-012 (Compressor) → HB-013 "
+        "(Storage) → HB-018 (Dispensing). Branches: HB-011 (Electrolyser) feeds HB-013 in parallel, "
+        "driven by AI-001's own illustrative signal; HB-010 (Membrane Separator) taps the same live "
+        "WGS Composition node HB-006 reads; the LOHC branch (HB-007→HB-014→HB-015→HB-016→HB-017) is "
+        "shown structurally blocked (see Legend)."
+    )
+    try:
+        _hb_snap_for_schematic = _tab1_integration_snapshot()
+        st.markdown(_hb_schematic_svg(_hb_snap_for_schematic), unsafe_allow_html=True)
+    except Exception as _hb_schematic_exc:
+        st.error(f"Plant schematic failed to render: {_hb_schematic_exc}")
+    with st.expander("Legend & notes"):
+        st.markdown(_hb_schematic_legend_svg(), unsafe_allow_html=True)
+
+    st.divider()
+    st.subheader("Section 2 — Live KPIs")
+    try:
+        _hb_snap_for_kpis = _tab1_integration_snapshot()
+        _render_hb_live_kpis(_hb_snap_for_kpis)
+    except Exception as _hb_kpis_exc:
+        st.error(f"Live KPIs failed to render: {_hb_kpis_exc}")
+
+    st.divider()
+    st.subheader("Section 3 — Process Flow & Equipment Status")
+    st.caption(
+        "The same live/blocked status shown visually in Section 1's schematic, as a table — for "
+        "accessibility/screen-reader parity, not a second diagram."
+    )
+    try:
+        _hb_snap_for_status = _tab1_integration_snapshot()
+        _render_hb_status_table(_hb_snap_for_status)
+    except Exception as _hb_status_exc:
+        st.error(f"Equipment status table failed to render: {_hb_status_exc}")
+
+    st.divider()
+    st.subheader("Section 4 — Live Simulation & Engineering Results")
+    try:
+        _hb_snap_for_results = _tab1_integration_snapshot()
+        _render_hb_live_results(_hb_snap_for_results)
+    except Exception as _hb_results_exc:
+        st.error(f"Live simulation results failed to render: {_hb_results_exc}")
+
+    st.divider()
+    st.subheader("Section 5 — Mass Balance & Energy Notes")
+    try:
+        _hb_snap_for_balance = _tab1_integration_snapshot()
+        _render_hb_mass_energy_balance(_hb_snap_for_balance)
+    except Exception as _hb_balance_exc:
+        st.error(f"Mass balance / energy notes failed to render: {_hb_balance_exc}")
+
+    st.divider()
+    st.subheader("Section 6 — Simulation Status")
+    try:
+        _hb_snap_for_sim_status = _tab1_integration_snapshot()
+        _render_hb_simulation_status(_hb_snap_for_sim_status)
+    except Exception as _hb_sim_status_exc:
+        st.error(f"Simulation status failed to render: {_hb_sim_status_exc}")
+
+    st.divider()
+    st.subheader("Section 7 — Existing Data (Equipment Datasheets)")
     st.warning(
         "**Deliberately scoped: HB-001 through HB-018 only — one of a growing set of "
         "per-section tabs** (Feed Handling's FE-001–008, Gasification's GA-001–010, Gas "
@@ -7059,6 +8007,10 @@ with tab7:
         )
     st.divider()
     _render_equipment_items(equipment_datasheet.HB_IDS, _hb_summary["per_item"])
+
+
+with tab7:
+    _render_hb_tab()
 
 with tab8:
     st.header("Equipment Datasheets — Electrical & Utilities (EU-001 through EU-013)")
