@@ -332,6 +332,69 @@ what remains open is a narrower, more specific question.
   Fuels* 38(19), 18660–18673 (DOI 10.1021/acs.energyfuels.4c02571), Table 8
   (primary numeric source); Adánez et al. (2012), *Prog. Energy Combust.
   Sci.* 38(2), 215–282 (supporting review).
+- **UPDATE (Sensors & Analysers build, Tab 6, 2026-09-08): a second,
+  independently-discovered downstream SYMPTOM of this SAME gap, this time
+  in the registry's own composition/design-basis data rather than in
+  GA-001's own physics.** Building SA-001 through SA-012 (live virtual
+  sensors reading GC-013's own already-established clean-syngas
+  composition) required comparing each live reading against
+  `data/equipment_registry.json`'s own separately-stated "Expected"
+  design-basis figures for SA-001–006/010 — and the two diverge
+  substantially, not marginally: **N₂ 39.6% live vs. 10% registry-
+  expected (+296%)**; CO₂ 9.8% vs. 22% expected (−55%); CH₄ 1.6% vs. 8%
+  expected (−79%); H₂ 27.5% vs. 32.5% expected (−15%); CO 21.5% vs. 28%
+  expected (−23%); SA-006's calorimeter LHV 6.26 vs. 9.8 MJ/Nm³ expected
+  (−36%); SA-010's clean gas flow 102.7 vs. 50 Nm³/h registry design flow
+  (+105%). **Root cause, traced directly to THIS item, not a separate
+  bug:** the registry's own "Expected" composition table is internally
+  consistent with GA-001's own Confirmed **steam-blown** chemical-looping
+  technology description (a true carrier-mediated process keeps
+  combustion air confined to a separate air reactor, so the FUEL-side
+  product gas stays close to N₂-free) — while the live model, per this
+  item's own finding above, does NOT implement that carrier chemistry and
+  instead adds the real, Confirmed ER=0.25 air flow DIRECTLY as a
+  partial-oxidation reactant in the SAME fuel-side reaction
+  (`ga001_gasifier_model.py`'s own comments: GA-001's product gas carries
+  substantial N₂ "roughly matching the fresh air feed's own N₂ content").
+  The registry's "Expected" table and the live model's own necessary
+  simplification were **never reconciled with each other** — one assumes
+  the full chemical-looping design intent, the other implements the
+  interim air/steam+WGS-equilibrium approximation this item already
+  documents as "a genuine, material simplification of the real
+  equipment... stated as such in the model's own docstring, not hidden."
+  **Confirmed NOT limited to SA's own tab:** HB-006's own registry "Feed
+  gas H₂ content = 55 vol%" remark states directly it "matches the
+  post-WGS composition already established in the mass/energy balance
+  dashboard's gas composition chart" — the SAME stale composition basis
+  SA's own "Expected" table traces to. `hb_wgs_psa_storage_chain.py`'s
+  own `hb006_psa_recovery()` already computes and reports this exact
+  divergence live in its own confidence_note ("Live feed H2
+  fraction=38.10% (HB-006's own Confirmed target: 55 vol%...)") — a real,
+  ~31% relative gap, shown today only as an informational, unforced
+  cross-check, not flagged as a shortfall the way GC-009's HCl shortfall
+  is. **Recommendation for a future pass:** give HB-006's own PSA card the
+  same explicit "diverges from registry design-basis" treatment SA's own
+  Section 5 now uses, rather than leaving the 55%-vs-38% gap unflagged.
+  Checked and NOT similarly implicated: GC-008's/GC-009's own comparison
+  bars (Gas Cleaning tab) compare against a separately-stated Confirmed
+  REMOVAL-EFFICIENCY target (a dimensionless ratio), a structurally
+  different kind of figure than an absolute composition/flow point-
+  value — not directly distorted by N₂ dilution the same way. GA-001's
+  own Tab 4 KPIs already carry NO comparison bar for H₂%/composition
+  (an explicit, deliberate choice from that build, given GA-001's own
+  lower-confidence status) — already correctly unaffected. **This does
+  NOT reopen a new question** — it is the SAME open question as this
+  item's own header (DOK-ING's real Fe₂O₃/Fe₃O₄ circulation rate/
+  capacity), now with a second, independent, quantified line of evidence
+  that the gap is real and has live, registry-facing consequences beyond
+  GA-001's own physics — closing it would very likely let the registry's
+  own composition table and this project's own live model be reconciled
+  directly, the same way closing item 3 would likely resolve item 6.
+  **Source:** `python/sa_virtual_sensors.py`, `app.py`'s own Tab 6
+  `_SA_REGISTRY_EXPECTED`/`_render_sa_mass_energy_balance()` (Section 5's
+  own 12-item audit table); `python/hb_wgs_psa_storage_chain.py`'s own
+  `hb006_psa_recovery()`; `data/equipment_registry.json` SA-001–006/010,
+  HB-006.
 
 ### 6. GA-001/GA-003 primary air-flow reconciliation
 - **Equipment ID(s):** GA-001, GA-003 (Air/Steam Injection, Flow).
@@ -349,7 +412,10 @@ what remains open is a narrower, more specific question.
 - **Why it matters:** This is the same underlying gap as item 3 (feed
   composition) surfacing a second time as a numeric cross-check — closing
   item 3 would very likely resolve this discrepancy directly, without a
-  separate answer.
+  separate answer. See also item 5's own UPDATE (2026-09-08) — a THIRD
+  surfacing of this same family of gap, this time in the registry's own
+  gas-composition/design-basis table (SA-001–006/010, HB-006), not just
+  the air-flow number.
 - **Source:** `python/ga001_gasifier_model.py` self-test ("Cross-check
   against GA-003's own registry-stated air flow").
 

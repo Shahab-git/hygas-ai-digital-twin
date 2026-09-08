@@ -136,6 +136,26 @@ FE-007 static fill almost exactly. `gasifier_mass_balance.py`'s own
 unchanged, as the graceful placeholder fallback when FE isn't registered,
 and by every static (non-live-engine) module that already depended on it.
 
+**New item to flag with DOK-ING (found during Tab 6/Sensors & Analysers'
+Section 5 audit, 2026-09-08):** the registry's own "Expected" gas-
+composition table (`data/equipment_registry.json`, SA-001–006/010) does
+not match the live model's own composition at all closely — N2 39.6%
+live vs. 10% registry-expected (+296%), CO2/CH4 -55%/-79%, flow +105% vs
+the 50 Nm3/h design point. Root cause: the registry's own "Expected"
+figures are consistent with GA-001's own Confirmed **steam-blown**
+chemical-looping technology description (see the Fe2O3/Fe3O4 circulation
+finding, `docs/master_open_questions.md` item 5), while the live model
+implements a stated, documented simplification — real Confirmed air
+(ER=0.25) added directly as a partial-oxidation reactant, not carrier-
+mediated — that legitimately produces a more N2-heavy gas. The two were
+never reconciled at the registry level. Confirmed NOT SA-only: HB-006's
+own registry "Feed gas H2 content = 55 vol%" traces to the SAME stale
+composition basis, and `hb_wgs_psa_storage_chain.py` already reports the
+resulting ~31% gap (38.1% live vs. 55% target) live, today, as an
+unflagged informational note. Full detail, the exact per-item numbers,
+and what's and isn't affected elsewhere in this project:
+`docs/master_open_questions.md`, item 5's own 2026-09-08 UPDATE.
+
 ## The 19 innovations and what equipment each belongs to
 
 Organise new modules around these, grouped by category. Each maps to a
