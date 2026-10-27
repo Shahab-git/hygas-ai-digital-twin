@@ -254,6 +254,47 @@ def _next_expected_tick_utc(now_utc):
     return tick if tick > now_utc else tick + timedelta(hours=1)
 
 
+# --- Keep-alive risk (audit fix I, docs/audit_2026-10-27.md) ----------------
+# GitHub disables a scheduled workflow after 60 days without repository
+# activity. The last commit on main is read from the PUBLIC GitHub API (no
+# credentials), cached for 6 h; any failure (rate limit, offline) simply hides
+# the line -- it never raises and never blocks the page. No CI job pushes
+# commits to keep the repo "alive".
+_REPO_COMMITS_URL = "https://api.github.com/repos/Shahab-git/hygas-ai-digital-twin/commits/main"
+_KEEPALIVE_WARN_AFTER_DAYS = 45
+_KEEPALIVE_DISABLE_AFTER_DAYS = 60
+
+
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def _repo_last_commit_iso():
+    """ISO date of the newest commit on main. Raises on failure so that a failed
+    lookup is NOT cached for 6 h (st.cache_data does not cache exceptions)."""
+    req = urllib.request.Request(
+        _REPO_COMMITS_URL,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "hygas-ai-digital-twin-dashboard"},
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        return json.load(resp)["commit"]["committer"]["date"]
+
+
+def _keepalive_warning(last_commit_iso, now_utc=None):
+    """Pure. None unless the last commit is older than 45 days; otherwise the
+    one-line warning with the date by which a manual commit is needed."""
+    if not last_commit_iso:
+        return None
+    now_utc = now_utc or datetime.now(timezone.utc)
+    last = datetime.fromisoformat(str(last_commit_iso).replace("Z", "+00:00"))
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    days = (now_utc - last).days
+    if days <= _KEEPALIVE_WARN_AFTER_DAYS:
+        return None
+    deadline = (last + timedelta(days=_KEEPALIVE_DISABLE_AFTER_DAYS)).strftime("%Y-%m-%d")
+    return (f"⚠️ Last commit on main was {days} days ago — GitHub disables scheduled workflows after "
+            f"{_KEEPALIVE_DISABLE_AFTER_DAYS} days without repository activity; a manual commit is needed "
+            f"by {deadline} to keep the runtime alive.")
+
+
 _SIM_STATUS_STYLE = {
     "RUNNING":          {"bg": "#DCFCE7", "fg": "#15803D", "dot": "#16A34A"},
     "STALE":            {"bg": "#FEF3C7", "fg": "#B45309", "dot": "#D97706"},
@@ -346,6 +387,12 @@ def _render_plant_operations_header():
         cycle_str = str(src_info["cycle"])
         update_str = f"{src_info['published_at']} ({age_hours:.1f}h ago)"
     rstyle = _SIM_STATUS_STYLE[sim_status]
+    try:
+        _keepalive_text = _keepalive_warning(_repo_last_commit_iso())
+    except Exception:
+        _keepalive_text = None  # GitHub unreachable / rate-limited: show nothing rather than guess
+    _keepalive_html = (f'<div class="poh-sub" style="color:#FBBF24;font-weight:700;">{_keepalive_text}</div>'
+                       if _keepalive_text else "")
     runtime_html = (
         f'<div class="poh-block"><div class="poh-label">SIMULATION RUNTIME</div>'
         f'<div class="poh-value"><span class="poh-status-pill" '
@@ -354,7 +401,8 @@ def _render_plant_operations_header():
         f'<div class="poh-sub">Cycle {cycle_str} · updated {update_str} · next ~'
         f'{next_tick_utc.strftime("%H:%M")} UTC (best-effort)</div>'
         f'<div class="poh-sub">Data source: <b>Simulated</b> (no physical sensor exists yet) · '
-        f'{"✅ connected" if src_info["reachable"] else "❌ unreachable"}</div></div>'
+        f'{"✅ connected" if src_info["reachable"] else "❌ unreachable"}</div>'
+        f'{_keepalive_html}</div>'
     )
 
     st.markdown(
