@@ -2,8 +2,9 @@
 HYGAS-AI — Live Digital Twin Status Dashboard
 
 Deploy at share.streamlit.io by pointing it at this repo. Uses the
-verified Python physics modules in /python — the same models that were
-cross-checked against the MATLAB/Simulink blocks during development.
+Python physics modules in /python. The Simulink figures quoted in this app
+are targets from prior MATLAB/Simulink work — those model files are not in
+this repository, so this repo does not itself verify that agreement.
 """
 import json
 import urllib.error
@@ -505,15 +506,16 @@ with tab1:
     # ---------------------------------------------------------------------
     # Section 4 — Validated milestones reference table
     # ---------------------------------------------------------------------
-    st.header("Validated Milestones")
-    st.caption("All confirmed running live in the MATLAB/Simulink model, not just calculated")
+    st.header("Milestones — targets from prior MATLAB/Simulink work")
+    st.caption("Targets from prior MATLAB/Simulink work — the model files are not in this repository. "
+               "The numbers below are quoted, not reproduced or verified here.")
 
     st.table({
         "Subsystem": ["Gasifier", "Gas Cleaning", "WGS HTS", "Interstage HX",
                       "WGS LTS", "WGS Overall", "PSA Recovery"],
         "Design Target": ["46.9 kg/h", "~45.9 kg/h", "75.0%", "~4.1 kW",
                            "40.0%", "85.0%", "75.0%"],
-        "Simulink Result": ["46.88 kg/h", "45.94 kg/h", "75.0%", "4.134 kW",
+        "Prior Simulink result (not reproducible here)": ["46.88 kg/h", "45.94 kg/h", "75.0%", "4.134 kW",
                              "40.0%", "85.0%", "75.0%"],
     })
 

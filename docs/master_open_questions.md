@@ -63,11 +63,21 @@ what remains open is a narrower, more specific question.
   cooling only. EU-008's own registry remark states this directly: *"Some
   margin above EU-004's established 12 kWth jacket cooling load."* This
   was found and reported during the original Phase 2 build.
-- **DIGITAL TWIN ENGINEERING BASELINE:** approximately **65–70 kW**
+- **DIGITAL TWIN ENGINEERING BASELINE:** approximately **55–60 kW**
   (Section 5 — a rounded engineering range, not a false-precision point
-  value; the underlying unrounded computation, ~58–67 kW peak × 15%
-  margin depending on the operating-envelope sample, is unchanged from
-  the original resizing-estimate task).
+  value; live peak demand ~50–55 kW × 15% margin).
+  - **CORRECTED 2026-10-27 (audit fix G2):** this item previously stated
+    65–70 kW (from an earlier operating-envelope sample, ~58–67 kW peak).
+    The code and the live entry say 55–60 kW:
+    `python/eu_utilities_chp.py` `eu008_recommended_capacity_estimate()`
+    (lines 613–655: `peak_demand_kw = max(previous peak, current demand)`,
+    `recommended_capacity_kw = peak × 1.15`, rounded by `_engineering_range`),
+    live value 59.79 kW against a 51.99 kW demand. Source of the correction:
+    `docs/audit_2026-10-27.md` (discrepancy 14). Because the peak is a running
+    maximum, the baseline can rise if demand ever rises; re-read it from the
+    live `("EU-008","RecommendedCapacityEstimate")` entry, not from this text.
+    (`docs/missing_parameter_protocol.md` and a docstring in
+    `python/ai_automation_layer.py` still quote 65–70 kW and were not touched.)
   - **Status of baseline:** `Internal-model-derived` (Section 7).
   - **Engineering basis:** sum of three independently-validated real
     duties — GC-004 quench sensible-heat duty + HB-003 cold-side duty +
@@ -879,7 +889,7 @@ defensible baseline under the protocol:
 
 | Item | Baseline established | Evidence level |
 |---|---|---|
-| 1. EU-008 cooling capacity | ≈65–70 kW | Internal-model-derived |
+| 1. EU-008 cooling capacity | ≈55–60 kW (corrected 2026-10-27, was 65–70) | Internal-model-derived |
 | 3/4. Feedstock composition + LHV | Live-wired to DOK-ING's confirmed ranges; H2-conversion efficiency 52–69% | Confirmed (wiring), Literature (composition) |
 | 5. Fe₂O₃/Fe₃O₄ circulation rate | ≈690–1,676 kg/h | Comparable-equipment / Literature-based |
 | 10. HB-010 membrane selectivity | ≈15.5–40.1 (dimensionless) | Internal-model-derived |
