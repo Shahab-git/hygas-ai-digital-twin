@@ -219,6 +219,40 @@ _STALE_AFTER_HOURS = 2.0  # 2x the real cron interval (design's own hourly
                            # Actions' own documented scheduling jitter, so
                            # one slightly-late run isn't misreported as
                            # STALE.
+_VERY_STALE_AFTER_HOURS = 6.0  # beyond this the Tab 2 banner turns red (audit fix F1); the header stays "STALE"
+
+
+def _freshness_level(age_hours):
+    """The ONE function that decides fresh / stale / very stale from a
+    snapshot's age in hours. The header's RUNNING/STALE pill and the Tab 2
+    banner both call it, so they can never disagree (audit finding 12)."""
+    if age_hours is None:
+        return "unknown"
+    if age_hours <= _STALE_AFTER_HOURS:
+        return "fresh"
+    if age_hours <= _VERY_STALE_AFTER_HOURS:
+        return "stale"
+    return "very_stale"
+
+
+def _runtime_age_hours(src_info, now_utc=None):
+    """Age in hours of the published snapshot (None if nothing is published)."""
+    if not (src_info.get("reachable") and src_info.get("rows_found")):
+        return None
+    now_utc = now_utc or datetime.now(timezone.utc)
+    published_dt = datetime.fromisoformat(src_info["published_at"])
+    if published_dt.tzinfo is None:
+        published_dt = published_dt.replace(tzinfo=timezone.utc)
+    return (now_utc - published_dt).total_seconds() / 3600.0
+
+
+def _next_expected_tick_utc(now_utc):
+    """Next requested run: the workflow cron is minute 17 of every hour
+    (best-effort -- GitHub may delay or drop it)."""
+    tick = now_utc.replace(minute=17, second=0, microsecond=0)
+    return tick if tick > now_utc else tick + timedelta(hours=1)
+
+
 _SIM_STATUS_STYLE = {
     "RUNNING":          {"bg": "#DCFCE7", "fg": "#15803D", "dot": "#16A34A"},
     "STALE":            {"bg": "#FEF3C7", "fg": "#B45309", "dot": "#D97706"},
@@ -296,7 +330,7 @@ def _render_plant_operations_header():
     # is -- see _SIM_STATUS_STYLE's own comment for the exact status logic.
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = (now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1))
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     if not src_info["reachable"]:
         sim_status = "OFFLINE"
         cycle_str = "—"
@@ -306,11 +340,8 @@ def _render_plant_operations_header():
         cycle_str = "—"
         update_str = "No cycle published yet"
     else:
-        published_dt = datetime.fromisoformat(src_info["published_at"])
-        if published_dt.tzinfo is None:
-            published_dt = published_dt.replace(tzinfo=timezone.utc)
-        age_hours = (now_utc - published_dt).total_seconds() / 3600.0
-        sim_status = "RUNNING" if age_hours <= _STALE_AFTER_HOURS else "STALE"
+        age_hours = _runtime_age_hours(src_info, now_utc)
+        sim_status = "RUNNING" if _freshness_level(age_hours) == "fresh" else "STALE"
         cycle_str = str(src_info["cycle"])
         update_str = f"{src_info['published_at']} ({age_hours:.1f}h ago)"
     rstyle = _SIM_STATUS_STYLE[sim_status]
@@ -320,7 +351,7 @@ def _render_plant_operations_header():
         f'style="background:{rstyle["bg"]};color:{rstyle["fg"]};">'
         f'<span class="poh-status-dot" style="background:{rstyle["dot"]};"></span>{sim_status}</span></div>'
         f'<div class="poh-sub">Cycle {cycle_str} · updated {update_str} · next ~'
-        f'{next_tick_utc.strftime("%H:%M")} UTC</div>'
+        f'{next_tick_utc.strftime("%H:%M")} UTC (best-effort)</div>'
         f'<div class="poh-sub">Data source: <b>Simulated</b> (no physical sensor exists yet) · '
         f'{"✅ connected" if src_info["reachable"] else "❌ unreachable"}</div></div>'
     )
@@ -3848,7 +3879,7 @@ def _render_fe_simulation_status(snap):
     entry = snap[("FE-001", "Inventory")]
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
 
     # -- Requirement 2: the fallback-path indicator -- IS this a genuine
     # read from plant_state_current, or did _tab1_integration_snapshot()
@@ -3969,79 +4000,118 @@ def _render_fe_simulation_status(snap):
 # duplicate of this content left behind).
 # =============================================================================
 
-def _plant_overview_status_counts(snap):
-    """Genuine totals across all 91 registry items -- Running/Static/
-    Missing/FAULT -- computed by re-checking each tab's own ALREADY-BUILT
-    item lists (_FE_SCHEMATIC_ITEMS, _GA_SCHEMATIC_ITEMS, etc.) against
-    the SAME live snapshot, using the SAME is_missing/FAULT/Static
-    conditions each tab's own Section 3 already established -- not a new
-    calculation, not duplicated physics, just aggregation. Covers all 91:
-    85 items with their own schematic-list entry, plus the 6 real
-    registry sub-items that have no live key of their own anywhere
-    (GA-002/003/004, HB-002/008, EU-001) -- each already treated as
-    Static/no-live-key by its own source tab, counted the same way here."""
-    counts = {"running": 0, "static": 0, "missing": 0, "fault": 0}
-    total = 0
+def _po_is_fault(snap, key):
+    e = snap.get(key)
+    return e is not None and e.get("status") != ps.STATUS_MISSING and e["value"] == "FAULT"
 
-    def _tally(key):
-        nonlocal total
-        total += 1
-        if key is None:
-            counts["static"] += 1
-            return
-        entry = snap.get(key)
-        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
-        counts["missing" if is_missing else "running"] += 1
 
-    for item in _FE_SCHEMATIC_ITEMS:
-        _tally(item[3])
-    for item in _GA_SCHEMATIC_ITEMS:
-        _tally(item[3])
-    for item in _GC_ALL_ITEMS:
-        _tally(item[3])
-    for item in _GC_SUBITEMS_FLAT:
-        _tally(item[2])
-    for item in _SA_SCHEMATIC_ITEMS:
-        _tally(item[3])
-    for item in _HB_SCHEMATIC_ITEMS:
-        _tally(item[3])
-    for item in _EU_SCHEMATIC_ITEMS:
-        eq_id, key = item[0], item[3]
-        if eq_id == "EU-009":
-            ai_state = snap.get(("AI-004", "EU-009-State"))
-            if ai_state is not None and ai_state.get("status") != ps.STATUS_MISSING and ai_state["value"] == "FAULT":
-                counts["fault"] += 1
-                total += 1
-                continue
-        _tally(key)
-    for item in _AI_SCHEMATIC_ITEMS:
-        eq_id, key = item[0], item[3]
+def _po_state_from_key(snap, key):
+    """running_live / running_assumed / static / missing for one item's primary key."""
+    if key is None:
+        return "static"
+    e = snap.get(key)
+    if e is None or e.get("status") == ps.STATUS_MISSING:
+        return "missing"
+    if e.get("status") == ps.STATUS_ASSUMED:
+        return "running_assumed"
+    return "running_live"
+
+
+def _plant_overview_item_states(snap):
+    """THE single source of per-item status for this tab (audit fix F): one
+    entry per registry item, 91 in total, {"group","id","key","state",
+    "fault_sources"}. The status counts, the unique-FAULT-event count AND the
+    compact schematic's box badges all read this list, so they cannot disagree
+    (audit finding 11: the E&U box said "Running" while EU-009 was FAULT).
+
+    It re-checks each tab's own ALREADY-BUILT item list (_FE_SCHEMATIC_ITEMS,
+    _GA_SCHEMATIC_ITEMS, ...) against the same live snapshot with the same
+    conditions each tab's Section 3 uses -- an aggregation, not a calculation.
+    states: running_live (primary value Calculated/Estimated/Measured),
+    running_assumed (primary value tagged Assumed), static (no live key),
+    missing, fault. fault_sources = the AI-004 state keys that report FAULT."""
+    items = []
+
+    def add(group, eq_id, key, state=None, fault_sources=()):
+        items.append({"group": group, "id": eq_id, "key": key,
+                      "state": state or _po_state_from_key(snap, key), "fault_sources": list(fault_sources)})
+
+    for it in _FE_SCHEMATIC_ITEMS:
+        add("FE", it[0], it[3])
+    for it in _GA_SCHEMATIC_ITEMS:
+        add("GA", it[0], it[3])
+    for it in _GC_ALL_ITEMS:
+        add("GC", it[0], it[3])
+    for it in _GC_SUBITEMS_FLAT:
+        add("GC", it[0], it[2])
+    for it in _SA_SCHEMATIC_ITEMS:
+        add("SA", it[0], it[3])
+    for it in _HB_SCHEMATIC_ITEMS:
+        add("HB", it[0], it[3])
+    for it in _EU_SCHEMATIC_ITEMS:
+        eq_id, key = it[0], it[3]
+        if eq_id == "EU-009" and _po_is_fault(snap, ("AI-004", "EU-009-State")):
+            add("EU", eq_id, key, "fault", [("AI-004", "EU-009-State")])
+            continue
+        add("EU", eq_id, key)
+    for it in _AI_SCHEMATIC_ITEMS:
+        eq_id, key = it[0], it[3]
         if eq_id in ("AI-012", "AI-013", "AI-014"):
-            counts["static"] += 1
-            total += 1
+            add("AI", eq_id, key, "static")
             continue
         if eq_id == "AI-004":
-            fault_any = any(
-                (e := snap.get(("AI-004", f"{t}-State"))) is not None
-                and e.get("status") != ps.STATUS_MISSING and e["value"] == "FAULT"
-                for t in AI004_TIER1_ITEMS_APP
-            )
-            if fault_any:
-                counts["fault"] += 1
-                total += 1
+            sources = [("AI-004", f"{t}-State") for t in AI004_TIER1_ITEMS_APP if _po_is_fault(snap, ("AI-004", f"{t}-State"))]
+            if sources:
+                add("AI", eq_id, key, "fault", sources)
                 continue
-        _tally(key)
-    for item in _AI_CONNECTIVITY_ITEMS:
-        _tally(item[2])
-    # The 6 real registry sub-items with no live key of their own anywhere
-    # in this project (GA-002/003/004, HB-002/008, EU-001) -- each already
-    # shown as a Static annotation on its own parent's box in its own
-    # source tab; counted the same way here, not re-derived.
-    for _ in range(6):
-        counts["static"] += 1
-        total += 1
+        add("AI", eq_id, key)
+    for it in _AI_CONNECTIVITY_ITEMS:
+        add("AI", it[0], it[2])
+    # The 6 real registry sub-items with no live key of their own anywhere in
+    # this project -- each already a Static annotation on its parent's box.
+    for group, eq_id in (("GA", "GA-002"), ("GA", "GA-003"), ("GA", "GA-004"),
+                         ("HB", "HB-002"), ("HB", "HB-008"), ("EU", "EU-001")):
+        add(group, eq_id, None, "static")
+    return items
 
-    return counts, total
+
+def _plant_overview_status_counts(snap):
+    """(counts, total): counts has exactly the five item categories
+    running_live + running_assumed + static + missing + fault == total (91)."""
+    items = _plant_overview_item_states(snap)
+    counts = {"running_live": 0, "running_assumed": 0, "static": 0, "missing": 0, "fault": 0}
+    for i in items:
+        counts[i["state"]] += 1
+    return counts, len(items)
+
+
+def _plant_overview_fault_events(snap):
+    """Unique fault EVENTS (not boxes): one AI-004 state entry that is FAULT is
+    ONE event even when it marks two items (EU-009 and AI-004)."""
+    items = _plant_overview_item_states(snap)
+    events = sorted({src for i in items for src in i["fault_sources"]}, key=str)
+    return {"events": events, "n_events": len(events), "affected_items": [i["id"] for i in items if i["state"] == "fault"]}
+
+
+def _plant_overview_missing_equipment_ids(snap):
+    """Equipment IDs with at least one Missing entry anywhere in the snapshot
+    (an item can be counted Running on its primary key and still own a Missing
+    secondary entry, e.g. FE-002/TrampMetalReject)."""
+    import re as _re
+    return sorted({k[0] for k, e in snap.items()
+                   if e.get("status") == ps.STATUS_MISSING and _re.fullmatch(r"[A-Z]{2}-\d{3}", str(k[0]))})
+
+
+def _plant_overview_group_badge(items, group):
+    """(fill, text colour, label) for one compact-schematic box, derived from
+    the same item states as the counts: FAULT beats missing beats running."""
+    gi = [i for i in items if i["group"] == group]
+    if any(i["state"] == "fault" for i in gi):
+        return ("#FEE2E2", "#B91C1C", "FAULT")
+    n_missing = sum(1 for i in gi if i["state"] == "missing")
+    if n_missing:
+        return ("#FEF3C7", "#B45309", f"{n_missing} missing")
+    return ("#DCFCE7", "#15803D", "Running")
 
 
 def _plant_overview_active_findings(snap):
@@ -4141,6 +4211,18 @@ _PLANT_OVERVIEW_SEVERITY_STYLE = {
 }
 
 
+def _plant_overview_md_to_html(text):
+    """Audit finding 13: the finding strings use **bold** and `code` markdown but
+    are rendered inside an HTML <div>, where Streamlit does not parse markdown, so
+    the asterisks/backticks showed literally. Escape, then convert both markers."""
+    import html as _html
+    import re as _re
+    t = _html.escape(text, quote=False)
+    t = _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = _re.sub(r"`(.+?)`", r"<code>\1</code>", t)
+    return t
+
+
 def _render_plant_overview_active_findings(snap):
     findings = _plant_overview_active_findings(snap)
     if not findings:
@@ -4154,12 +4236,13 @@ def _render_plant_overview_active_findings(snap):
     )
     for f in findings:
         style = _PLANT_OVERVIEW_SEVERITY_STYLE[f["severity"]]
+        detail_html = _plant_overview_md_to_html(f["detail"])
         st.markdown(
             f'<div style="background:{style["bg"]};border:2px solid {style["fg"]};border-radius:8px;'
             f'padding:10px 16px;margin:8px 0;">'
             f'<span style="color:{style["fg"]};font-weight:800;font-size:0.9rem;">{style["icon"]} '
             f'{f["id"]} — {f["title"]}</span><br/>'
-            f'<span style="font-size:0.85rem;color:#111827;">{f["detail"]}</span><br/>'
+            f'<span style="font-size:0.85rem;color:#111827;">{detail_html}</span><br/>'
             f'<span style="font-size:0.78rem;color:#6B7280;">Source: {f["tab"]}</span>'
             f'</div>',
             unsafe_allow_html=True,
@@ -4188,17 +4271,16 @@ def _plant_overview_compact_svg(snap):
         f'fill="#111827">MSW IN →</text>',
     ]
 
-    def badge_for(key):
-        entry = snap.get(key)
-        is_missing = entry is None or entry.get("status") == ps.STATUS_MISSING
-        return ("#FEE2E2", "#B91C1C", "No data") if is_missing else ("#DCFCE7", "#15803D", "Running")
+    # Audit fix F3: every box's badge is derived from the SAME per-item states the
+    # counts use (_plant_overview_item_states) -- not from one hand-picked key.
+    states = _plant_overview_item_states(snap)
 
     sections = [
-        ("FE", "Feed Handling", "FE-001–008", ("FE-001", "Inventory"), "#FDE4C0", "#C2680B"),
-        ("GA", "Gasification", "GA-001–010", ("GA-001", "Outputs"), "#DDD6FE", "#6D28D9"),
-        ("GC", "Gas Cleaning", "GC-001–015", ("GC-013", "Gas"), "#BFDBFE", "#1D4ED8"),
-        ("HB", "Hydrogen & BoP", "HB-001–018", ("HB-013", "Storage"), "#BBF7D0", "#15803D"),
-        ("EU", "Electrical & Utilities", "EU-001–013", ("EU-009", "GridBalance"), "#FDE4C0", "#C2680B"),
+        ("FE", "Feed Handling", "FE-001–008", "FE", "#FDE4C0", "#C2680B"),
+        ("GA", "Gasification", "GA-001–010", "GA", "#DDD6FE", "#6D28D9"),
+        ("GC", "Gas Cleaning", "GC-001–015", "GC", "#BFDBFE", "#1D4ED8"),
+        ("HB", "Hydrogen & BoP", "HB-001–018", "HB", "#BBF7D0", "#15803D"),
+        ("EU", "Electrical & Utilities", "EU-001–013", "EU", "#FDE4C0", "#C2680B"),
     ]
     order = ["FE", "GA", "GC", "HB", "EU"]
     for i in range(len(order) - 1):
@@ -4206,7 +4288,7 @@ def _plant_overview_compact_svg(snap):
         parts.append(f'<line x1="{xs[a]+box_w:.0f}" y1="{main_y+box_h/2:.0f}" x2="{xs[b]:.0f}" '
                       f'y2="{main_y+box_h/2:.0f}" stroke="#374151" stroke-width="2.5" marker-end="url(#po-arrow)"/>')
 
-    for key_id, label, sub, live_key, fill, stroke in sections:
+    for key_id, label, sub, group, fill, stroke in sections:
         x = xs[key_id]
         parts.append(f'<rect x="{x:.0f}" y="{main_y:.0f}" width="{box_w}" height="{box_h}" rx="8" '
                       f'fill="{fill}" fill-opacity="0.35" stroke="{stroke}" stroke-width="2.5"/>')
@@ -4214,7 +4296,7 @@ def _plant_overview_compact_svg(snap):
                       f'font-weight="bold" fill="#111827">{label}</text>')
         parts.append(f'<text x="{x+box_w/2:.0f}" y="{main_y+38:.0f}" text-anchor="middle" font-size="9" '
                       f'fill="#374151">{sub}</text>')
-        badge_fill, badge_fg, badge_text = badge_for(live_key)
+        badge_fill, badge_fg, badge_text = _plant_overview_group_badge(states, group)
         parts.append(f'<rect x="{x+box_w/2-32:.0f}" y="{main_y+50:.0f}" width="64" height="14" rx="7" '
                       f'fill="{badge_fill}"/>')
         parts.append(f'<text x="{x+box_w/2:.0f}" y="{main_y+60:.0f}" text-anchor="middle" font-size="8.5" '
@@ -4250,9 +4332,11 @@ def _plant_overview_compact_svg(snap):
                   f'(Tab 6\'s own real architecture) — not a chain link</text>')
     parts.append(f'<rect x="20" y="{main_y+box_h+70:.0f}" width="{total_w-40}" height="30" rx="8" '
                   f'fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.5" stroke-dasharray="3,3"/>')
+    ai_fault_sources = sorted({src[1].replace("-State", "") for i in states if i["group"] == "AI" for src in i["fault_sources"]})
+    ai_fault_text = f" — ⚠ AI-004 reports FAULT ({', '.join(ai_fault_sources)})" if ai_fault_sources else ""
     parts.append(f'<text x="{total_w/2:.0f}" y="{main_y+box_h+89:.0f}" text-anchor="middle" font-size="9" '
-                  f'fill="#6B7280">AI-001–015: architecture/control layer (PLC, SCADA, connectivity, '
-                  f'intelligence) — background tier, Tab 9\'s own real treatment, not a flow-chain box</text>')
+                  f'fill="{"#B91C1C" if ai_fault_sources else "#6B7280"}">AI-001–015: architecture/control layer (PLC, SCADA, connectivity, '
+                  f'intelligence) — background tier, Tab 9\'s own real treatment, not a flow-chain box{ai_fault_text}</text>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -4272,13 +4356,24 @@ def _render_plant_overview_tab():
     st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
 
     src_info = _plant_state_source_info()
-    if src_info["reachable"] and src_info["rows_found"] > 0:
-        st.success(
-            f"📡 Plant state as of **{src_info['published_at']}** (cycle {src_info['cycle']}), "
-            f"published by the continuous runtime — not this page load.", icon="✅")
-    else:
+    _po_age = _runtime_age_hours(src_info)
+    _po_level = _freshness_level(_po_age)   # the SAME function the header's RUNNING/STALE pill uses
+    if _po_level == "unknown":
         st.warning("📡 Showing an in-process bootstrap snapshot — the continuous runtime hasn't "
                    "published a reachable cycle this page load.", icon="⚠️")
+    else:
+        _po_banner = (
+            f"📡 Plant state as of **{src_info['published_at']}** (cycle {src_info['cycle']}) — "
+            f"**{_po_age:.1f} h old** — published by the continuous runtime, not this page load."
+        )
+        if _po_level == "fresh":
+            st.success(_po_banner, icon="✅")
+        elif _po_level == "stale":
+            st.warning(_po_banner + f" **STALE** (older than {_STALE_AFTER_HOURS:g} h; the header shows STALE too). "
+                       "The runtime is best-effort, not guaranteed hourly.", icon="⚠️")
+        else:
+            st.error(_po_banner + f" **VERY STALE** (older than {_VERY_STALE_AFTER_HOURS:g} h). The runtime "
+                     "has not published for a long time — treat every number below as old.", icon="🛑")
 
     try:
         snap = _tab1_integration_snapshot()
@@ -4290,11 +4385,32 @@ def _render_plant_overview_tab():
     st.subheader("Plant-Wide Status — genuine totals across all 91 items")
     try:
         counts, total = _plant_overview_status_counts(snap)
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🟢 Running", f"{counts['running']} / {total}")
-        c2.metric("🔵 Static (no live key)", f"{counts['static']} / {total}")
-        c3.metric("⚪ Missing", f"{counts['missing']} / {total}")
-        c4.metric("🔴 FAULT", f"{counts['fault']} / {total}")
+        fault_info = _plant_overview_fault_events(snap)
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("🟢 Running – live values", f"{counts['running_live']} / {total}",
+                  help="Item's primary value is Calculated, Estimated or Measured this cycle: a model result or a measurement.")
+        c2.metric("🟡 Running – assumed inputs only", f"{counts['running_assumed']} / {total}",
+                  help="Item's primary value is tagged Assumed: a stated default or constant, not a model result or a measurement.")
+        c3.metric("🔵 Static (no live key)", f"{counts['static']} / {total}",
+                  help="Registry item with no live value of its own anywhere in the model (design data / annotation only).")
+        c4.metric("⚪ Missing", f"{counts['missing']} / {total}",
+                  help="Item whose primary key is Missing this cycle (see the note below for equipment with a Missing secondary entry).")
+        c5.metric("🔴 FAULT events", f"{fault_info['n_events']}",
+                  help="Unique fault EVENTS. One state entry reporting FAULT is one event even if it marks several items.")
+        _sum = sum(counts.values())
+        st.caption(
+            f"Item categories: {counts['running_live']} + {counts['running_assumed']} + {counts['static']} + "
+            f"{counts['missing']} + {counts['fault']} FAULT items = **{_sum}**"
+            + ("" if _sum == total else f" ⚠️ does not equal the {total} items tracked")
+            + (f" · FAULT: **{fault_info['n_events']} unique event(s)**, affects {len(fault_info['affected_items'])} items: "
+               f"{', '.join(fault_info['affected_items'])} (each counted once in the {total})." if fault_info["n_events"] else
+               " · No FAULT event this cycle.")
+        )
+        _missing_ids = _plant_overview_missing_equipment_ids(snap)
+        st.caption(
+            f"Missing {counts['missing']} = items whose primary key is Missing; {len(_missing_ids)} equipment IDs have "
+            f"at least one Missing entry: {', '.join(_missing_ids) if _missing_ids else 'none'}."
+        )
         st.caption(
             "Computed by re-checking each tab's own already-built item lists "
             "(`_FE_SCHEMATIC_ITEMS`, `_GA_SCHEMATIC_ITEMS`, ... `_AI_SCHEMATIC_ITEMS`) against this "
@@ -4359,8 +4475,8 @@ def _render_plant_overview_tab():
         if src_info["reachable"] and src_info["rows_found"] > 0:
             st.caption(
                 f"📡 Plant state as of **{src_info['published_at']}** (cycle {src_info['cycle']}), "
-                f"published by the continuous runtime — not this page load. Next tick ≈ the top of "
-                f"the next hour (`cron: 0 * * * *`)."
+                f"published by the continuous runtime — not this page load. Next run requested ≈ :17 past the "
+                f"hour (`cron: 17 * * * *`, best-effort — real gaps of 3–6 h have been measured)."
             )
         elif src_info["reachable"]:
             st.caption(
@@ -5305,7 +5421,7 @@ def _render_ga_simulation_status(snap):
     entry = snap.get(("GA-001", "Outputs")) or snap.get(("GA-001-INPUT", "dry_feed_rate_kg_h"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
@@ -6486,7 +6602,7 @@ def _render_gc_simulation_status(snap):
     entry = snap.get(("GC-001", "Gas")) or snap.get(("GC-013", "Gas"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
@@ -7320,7 +7436,7 @@ def _render_sa_simulation_status(snap):
     entry = snap.get(("SA-001", "Reading")) or snap.get(("SA-010", "Reading"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
@@ -8329,7 +8445,7 @@ def _render_hb_simulation_status(snap):
     entry = snap.get(("HB-001", "HTS")) or snap.get(("HB-013", "Storage"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
@@ -9324,7 +9440,7 @@ def _render_eu_simulation_status(snap):
     entry = snap.get(("EU-CHP", "Dispatch")) or snap.get(("EU-009", "GridBalance"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
@@ -10247,7 +10363,7 @@ def _render_ai_simulation_status(snap):
     entry = snap.get(("AI-004", "GA-001-State")) or snap.get(("AI-007", "ScadaSnapshot"))
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
-    next_tick_utc = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    next_tick_utc = _next_expected_tick_utc(now_utc)
     is_live = src_info["reachable"] and src_info["rows_found"] > 0
 
     if is_live:
