@@ -89,3 +89,18 @@ def test_the_set_of_database_writers_is_the_known_one():
     assert unexpected == {}, f"new database writers need a guard decision: {unexpected}"
     for rel, (count, _why) in KNOWN_WRITERS.items():
         assert found.get(rel) == count, f"{rel}: expected {count} write call(s), found {found.get(rel)}"
+
+
+def test_a_real_supabase_client_or_host_is_refused_by_the_suite():
+    """The autouse guard in conftest.py: building a real client or resolving a
+    Supabase host fails the test (BaseException, so `except Exception` fallbacks
+    in the repo cannot hide it)."""
+    import socket
+
+    from conftest import RealSupabaseAttempt
+    from python import vendor_log
+
+    with pytest.raises(RealSupabaseAttempt):
+        vendor_log.create_client("https://example.supabase.co", "not-a-key")
+    with pytest.raises(RealSupabaseAttempt):
+        socket.getaddrinfo("example.supabase.co", 443)
