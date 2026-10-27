@@ -130,6 +130,19 @@ def _plant_state_source_info():
     }
 
 
+def _display_cycle(entry_cycle=None):
+    """THE one cycle number the app shows (audit follow-up D1): the persisted
+    RUNTIME/CycleCounter via _plant_state_source_info() -- the same value the
+    header and the Tab 2 banner show. Every entry carries SharedPlantState's own
+    `cycle`, which restarts at 2 on each rehydration, so the per-tab "Cycle
+    number" metrics used to disagree with the header. `entry_cycle` is returned
+    only when no persisted store is being read (offline bootstrap snapshot)."""
+    info = _plant_state_source_info()
+    if info.get("reachable") and info.get("rows_found") and info.get("cycle") is not None:
+        return info["cycle"]
+    return entry_cycle
+
+
 # =============================================================================
 # Plant Operations Header -- persistent bar above all tabs. Deliberately
 # scoped to ONLY what's genuinely real and available today (task's own
@@ -3170,7 +3183,7 @@ def _fe_kpi_freshness_caption(entry):
             published_dt = published_dt.replace(tzinfo=timezone.utc)
         age_min = (datetime.now(timezone.utc) - published_dt).total_seconds() / 60.0
         age_str = f"{age_min:.0f} min ago" if age_min < 120 else f"{age_min/60.0:.1f}h ago"
-        return f"Cycle {entry['cycle']} · published {entry['timestamp']} · {age_str}"
+        return f"Cycle {_display_cycle(entry['cycle'])} · published {entry['timestamp']} · {age_str}"
     except Exception:
         return f"Cycle {entry.get('cycle', '—')}"
 
@@ -3279,7 +3292,7 @@ def _render_fe_live_kpis(snap):
     for col, kpi in zip(cols, kpis):
         with col.container(border=True):
             st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
-            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
             # `help` guarantees the full real value stays reachable (a
             # hover tooltip) even if this card's own on-screen text is
@@ -3963,7 +3976,7 @@ def _render_fe_simulation_status(snap):
         )
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"])
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]))
     c1.caption(
         "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
         "of plant operating hours. The real continuity signal is the timestamp →"
@@ -5055,14 +5068,14 @@ def _render_ga_live_kpis(snap):
         kpis.append(dict(
             label="Carbon black recovery (derived)", icon="⚫", raw=flows["carbon_black_kg_h"],
             text=f"{flows['carbon_black_kg_h']:.3f} kg/h",
-            skey="tab4_kpi_delta__cb_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": feed_entry["cycle"]},
+            skey="tab4_kpi_delta__cb_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": _display_cycle(feed_entry["cycle"])},
             compare=f"vs GA-008's Confirmed design capacity {ga008_cap:.0f} kg/h",
             bar=_fe_inline_bar_svg(flows["carbon_black_kg_h"] / ga008_cap, "#6D28D9"),
             delta_fmt=lambda d: f"{d:+.3f} kg/h",
         ))
         kpis.append(dict(
             label="Ash discharge (derived)", icon="🪨", raw=flows["ash_kg_h"], text=f"{flows['ash_kg_h']:.3f} kg/h",
-            skey="tab4_kpi_delta__ash_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": feed_entry["cycle"]},
+            skey="tab4_kpi_delta__ash_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": _display_cycle(feed_entry["cycle"])},
             compare=f"vs GA-009's Confirmed design capacity {ga009_cap:.0f} kg/h",
             bar=_fe_inline_bar_svg(flows["ash_kg_h"] / ga009_cap, "#C2680B"),
             delta_fmt=lambda d: f"{d:+.3f} kg/h",
@@ -5078,7 +5091,7 @@ def _render_ga_live_kpis(snap):
             st.markdown(_fe_tag_html("live") if kpi["compare"] is None else
                         _fe_tag_html("live") + " " + _fe_tag_html("confirmed", "Registry target"),
                         unsafe_allow_html=True)
-            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
             st.metric(
                 f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
@@ -5500,7 +5513,7 @@ def _render_ga_simulation_status(snap):
         )
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption(
         "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
         "of plant operating hours. The real continuity signal is the timestamp →"
@@ -6117,7 +6130,7 @@ def _render_gc_live_kpis(snap):
                 _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
                 unsafe_allow_html=True,
             )
-            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
             st.metric(
                 f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
@@ -6681,7 +6694,7 @@ def _render_gc_simulation_status(snap):
         )
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption(
         "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
         "of plant operating hours. The real continuity signal is the timestamp →"
@@ -7195,7 +7208,7 @@ def _render_sa_live_kpis(snap):
         with col.container(border=True):
             st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
             skey = f"tab6_kpi_delta__{kpi['eq_id']}"
-            delta, note = _fe_kpi_check_delta(skey, kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta, note = _fe_kpi_check_delta(skey, kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = f"{delta:+.3f}" if delta is not None else note
             st.metric(f"{kpi['icon']} {kpi['label']} ({kpi['eq_id']})", kpi["text"], delta=delta_arg,
                        delta_color="off", help=f"{kpi['label']}: {kpi['text']} ({note})")
@@ -7515,7 +7528,7 @@ def _render_sa_simulation_status(snap):
         )
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption(
         "⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running total "
         "of plant operating hours. The real continuity signal is the timestamp →"
@@ -7964,7 +7977,7 @@ def _render_hb_live_kpis(snap):
                 _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
                 unsafe_allow_html=True,
             )
-            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], kpi["entry"]["cycle"])
+            delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
             st.metric(f"{kpi['icon']} {kpi['label']}", kpi["text"], delta=delta_arg,
                        delta_color="normal" if delta is not None else "off",
@@ -8518,7 +8531,7 @@ def _render_hb_simulation_status(snap):
             "real — it is just NOT read from the continuous runtime's own persisted output.", icon="⚠️")
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption("⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running "
                "total of plant operating hours. The real continuity signal is the timestamp →")
     if is_live and entry:
@@ -8986,7 +8999,7 @@ def _render_eu_live_kpis(snap):
         st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
         if eu009 is not None and eu009.get("status") != ps.STATUS_MISSING:
             v = eu009["value"]
-            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__net_kw", v["net_kw"], eu009["timestamp"], eu009["cycle"])
+            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__net_kw", v["net_kw"], eu009["timestamp"], _display_cycle(eu009["cycle"]))
             st.metric("⚡ Net electrical balance (EU-009)",
                        f"{v['net_kw']:+.2f} kW ({'export' if v['net_kw']>=0 else 'import'})",
                        delta=f"{delta:+.3f} kW" if delta is not None else note,
@@ -8999,7 +9012,7 @@ def _render_eu_live_kpis(snap):
         if disp is not None and disp.get("status") != ps.STATUS_MISSING:
             units = disp["value"]["units"]
             chp_total_kw = sum(u["electrical_kw"] for u in units.values())
-            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__chp_total", chp_total_kw, disp["timestamp"], disp["cycle"])
+            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__chp_total", chp_total_kw, disp["timestamp"], _display_cycle(disp["cycle"]))
             st.metric("🔥 CHP dispatch total (electrical)", f"{chp_total_kw:.3f} kW",
                        delta=f"{delta:+.3f} kW" if delta is not None else note, delta_color="off", help=note)
             if chp_total_kw < 1e-6:
@@ -9058,7 +9071,7 @@ def _render_eu_live_kpis(snap):
         st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
         if eu013 is not None and eu013.get("status") != ps.STATUS_MISSING:
             v = eu013["value"]
-            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__district_heat", v["metered_kw"], eu013["timestamp"], eu013["cycle"])
+            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__district_heat", v["metered_kw"], eu013["timestamp"], _display_cycle(eu013["cycle"]))
             st.metric("🏘️ District heating output (EU-013)", f"{v['metered_kw']:.3f} kW",
                        delta=f"{delta:+.3f} kW" if delta is not None else note, delta_color="off", help=note)
             if v["metered_kw"] < 1e-6:
@@ -9071,7 +9084,7 @@ def _render_eu_live_kpis(snap):
         st.markdown(_fe_tag_html("live"), unsafe_allow_html=True)
         if eu010 is not None and eu010.get("status") != ps.STATUS_MISSING:
             v = eu010["value"]
-            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__ups_soc", v["soc_fraction"], eu010["timestamp"], eu010["cycle"])
+            delta, note = _fe_kpi_check_delta("tab8_kpi_delta__ups_soc", v["soc_fraction"], eu010["timestamp"], _display_cycle(eu010["cycle"]))
             st.metric("🔋 UPS/Battery SOC (EU-010)", f"{v['soc_fraction']*100:.1f}%",
                        delta=f"{delta*100:+.2f} pp" if delta is not None else note, delta_color="off", help=note)
         else:
@@ -9513,7 +9526,7 @@ def _render_eu_simulation_status(snap):
             "real — it is just NOT read from the continuous runtime's own persisted output.", icon="⚠️")
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption("⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running "
                "total of plant operating hours. The real continuity signal is the timestamp →")
     if is_live and entry:
@@ -10436,7 +10449,7 @@ def _render_ai_simulation_status(snap):
             "real — it is just NOT read from the continuous runtime's own persisted output.", icon="⚠️")
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Cycle number", entry["cycle"] if entry else "—")
+    c1.metric("Cycle number", _display_cycle(entry["cycle"]) if entry else "—")
     c1.caption("⚠️ Resets on every process restart — per-process bookkeeping, **not** a real running "
                "total of plant operating hours. The real continuity signal is the timestamp →")
     if is_live and entry:

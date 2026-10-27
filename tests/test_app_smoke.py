@@ -14,6 +14,7 @@ import re
 import urllib.error
 from unittest import mock
 
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from _fakes import FakeSupabase, patched_supabase
@@ -52,6 +53,7 @@ def _store_rows():
 
 
 def test_app_runs_offline_with_ten_tabs_and_tab2_counters_summing_to_91():
+    st.cache_data.clear()   # st.cache_data survives between AppTest runs in one process
     fake = FakeSupabase({"plant_state_current": _store_rows()})
     with patched_supabase(fake), mock.patch("urllib.request.urlopen", side_effect=_offline_urlopen):
         at = AppTest.from_file(APP, default_timeout=90).run()
@@ -81,3 +83,26 @@ def test_app_runs_offline_with_ten_tabs_and_tab2_counters_summing_to_91():
     assert (live, assumed, static, missing) == (parts["live"], parts["assumed"], parts["static"], parts["missing"])
     assert live + assumed + static + missing + fault_items == 91 == total
     assert metric_value("🔴 FAULT events") == "1"
+
+
+def test_one_cycle_number_everywhere_is_the_persisted_counter():
+    """Audit follow-up D1: with RUNTIME/CycleCounter = 7 in the store, the header and
+    every per-tab "Cycle number" metric (tabs 3-9) show 7, although each entry's own
+    SharedPlantState cycle in the fixture is different."""
+    st.cache_data.clear()
+    rows = _store_rows()
+    entry_cycles = {r["entry"]["cycle"] for r in rows}
+    assert 7 not in entry_cycles, "the fixture must not already contain cycle 7"
+    rows.append({"equipment_id": "RUNTIME", "category": "CycleCounter", "cycle": 7, "published_at": "2026-09-10T00:04:00Z",
+                 "entry": {"value": 7, "unit": "count", "status": "Calculated", "cycle": 2, "timestamp": "2026-09-10T00:04:00Z",
+                           "source": {"model": "cycle_clock.runtime_cycle_counter", "inputs": []}, "validation_basis": "N/A",
+                           "confidence_note": "", "missing_reason": None}})
+    fake = FakeSupabase({"plant_state_current": rows})
+    with patched_supabase(fake), mock.patch("urllib.request.urlopen", side_effect=_offline_urlopen):
+        at = AppTest.from_file(APP, default_timeout=90).run()
+    assert not at.exception, [str(e.value)[:300] for e in at.exception]
+    shown = [m.value for m in at.metric if m.label == "Cycle number"]
+    assert len(shown) == 7, shown                      # tabs 3-9
+    assert set(shown) == {"7"}, shown
+    header = " ".join(str(m.value) for m in at.markdown if "SIMULATION RUNTIME" in str(m.value))
+    assert "Cycle 7 " in header, header[:300]
