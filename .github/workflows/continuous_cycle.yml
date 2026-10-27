@@ -38,6 +38,10 @@ concurrency:
 
 jobs:
   run-cycle:
+    # Production-write guard: this job runs the cycle with production secrets and
+    # HYGAS_ALLOW_DB_WRITES=1. Scheduled runs only ever use the default branch, but a manual
+    # workflow_dispatch can pick any branch -- skip the job everywhere except main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
