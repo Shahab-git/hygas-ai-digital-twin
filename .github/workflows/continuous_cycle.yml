@@ -15,7 +15,10 @@
 #   2. data/plant_operator_setpoints_schema.sql run in the Supabase SQL
 #      Editor (optional -- the driver script degrades gracefully without
 #      it, but the setpoint mechanism won't be durable until it exists).
-#   3. This repo's own Settings -> Secrets and variables -> Actions has
+#   3. (Audit fix E4) The runtime prefers a SUPABASE_SERVICE_KEY secret and falls
+#      back to SUPABASE_KEY while it is not set -- data/migrations/004_tighten_rls.sql
+#      removes anon write access and must only be run after that secret exists.
+#   3b. This repo's own Settings -> Secrets and variables -> Actions has
 #      SUPABASE_URL and SUPABASE_KEY set to the SAME values already in
 #      .streamlit/secrets.toml locally. Never committed to this file or
 #      to the repo -- read only from GitHub's own encrypted secret store
@@ -64,7 +67,7 @@ jobs:
           mkdir -p .streamlit
           cat > .streamlit/secrets.toml << EOF
           SUPABASE_URL = "${{ secrets.SUPABASE_URL }}"
-          SUPABASE_KEY = "${{ secrets.SUPABASE_KEY }}"
+          SUPABASE_KEY = "${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}"
           EOF
 
       - name: Run one continuous simulation cycle
