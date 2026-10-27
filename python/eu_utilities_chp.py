@@ -151,6 +151,7 @@ full conservation-relationship, mass-balance, and dispatch-regime validation.
 import math
 
 from . import chp
+from . import cycle_clock
 from . import dispatch_ga
 from . import ga001_gasifier_model as ga001
 from . import hb_wgs_psa_storage_chain as hbchain
@@ -185,9 +186,10 @@ EU008_OVERLOAD_PENALTY_C_PER_UNIT_UTIL = 15.0  # Assumed: standard order-of-magn
                                                  # cooling-tower approach-temperature
                                                  # degradation under overload
 EU008_DAMPING = 0.5                             # Assumed: represents the tower water's
-                                                 # own thermal mass/inertia -- same class
-                                                 # of stated modeling choice as
-                                                 # ASSUMED_HOURS_PER_CYCLE elsewhere
+                                                 # own thermal mass/inertia. PER-CYCLE
+                                                 # (Assumed): NOT scaled by the cycle's
+                                                 # elapsed hours (audit fix A, cycle_clock.py
+                                                 # converts only the accumulators).
 EU008_ADEQUACY_DEROGATION_SPAN_C = 10.0          # Assumed: supply temp 10 degC above
                                                  # nominal -> effective duty derates to 0
                                                  # (a standard bounded linear approximation)
@@ -291,7 +293,7 @@ def _h2_budget_kw(get_input):
     mol = level_kg * 1000.0 / hbchain.M_H2
     nm3 = mol * ga001.NM3_PER_MOL
     energy_mj = nm3 * H2_LHV_MJ_PER_NM3
-    return energy_mj / 3.6 / hbchain.ASSUMED_HOURS_PER_CYCLE  # kW available this cycle
+    return energy_mj / 3.6 / cycle_clock.hours_per_cycle()  # kW available this cycle
 
 
 def eu_chp_dispatch(get_input):
@@ -541,7 +543,8 @@ def eu008_cooling_supply(get_input):
             f"EU-008's own Confirmed {EU008_RATED_CAPACITY_KW}kW capacity -> utilization="
             f"{utilization*100:.1f}%. supply_temp={new_supply_temp_c:.3f}C (damped "
             f"{EU008_DAMPING} x prev + {1-EU008_DAMPING} x target({target_supply_temp_c:.3f}C)), "
-            f"gap={gap_c:.4f}C from this cycle's target."
+            f"gap={gap_c:.4f}C from this cycle's target. Damping is PER-CYCLE (Assumed) -- "
+            f"not converted to continuous time, independent of the cycle's elapsed hours."
         ),
     }
 
@@ -784,10 +787,10 @@ def eu010_ups_battery(get_input):
     prev_soc_kwh = EU010_CAPACITY_KWH * 0.5 if prev["status"] == ps.STATUS_MISSING else prev["value"]["soc_kwh"]
 
     if net_kw >= 0.0:
-        charge_kwh = net_kw * hbchain.ASSUMED_HOURS_PER_CYCLE * EU010_ROUNDTRIP_EFFICIENCY
+        charge_kwh = net_kw * cycle_clock.hours_per_cycle() * EU010_ROUNDTRIP_EFFICIENCY
         new_soc_kwh = min(prev_soc_kwh + charge_kwh, EU010_CAPACITY_KWH)
     else:
-        discharge_kwh = min(-net_kw * hbchain.ASSUMED_HOURS_PER_CYCLE, prev_soc_kwh)
+        discharge_kwh = min(-net_kw * cycle_clock.hours_per_cycle(), prev_soc_kwh)
         new_soc_kwh = prev_soc_kwh - discharge_kwh
 
     return {
@@ -935,7 +938,7 @@ if __name__ == "__main__":
         if k == ("HB-013", "Storage"):
             # level_kg such that the H2 budget formula above yields 15 kW exactly
             target_kw = 15.0
-            energy_mj = target_kw * 3.6 * hbchain.ASSUMED_HOURS_PER_CYCLE
+            energy_mj = target_kw * 3.6 * cycle_clock.hours_per_cycle()
             nm3 = energy_mj / H2_LHV_MJ_PER_NM3
             mol = nm3 / ga001.NM3_PER_MOL
             kg = mol * hbchain.M_H2 / 1000.0

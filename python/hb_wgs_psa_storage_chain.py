@@ -82,6 +82,7 @@ self-test, which registers neither EU-006 nor (as before) HB-011/HB-018.
 """
 import math
 
+from . import cycle_clock
 from . import gc_gas_cleaning_chain as gc
 from . import kinetics
 from . import plant_status as ps
@@ -125,6 +126,10 @@ H2_STORAGE_CAPACITY_KG = 50.0
 # no defined wall-clock duration -- one cycle is treated as one hour for
 # the purpose of demonstrating HB-013's own inventory accumulation, a
 # genuine simplification flagged here, not silently assumed.
+# AUDIT FIX (finding 1): this constant is now only the DEFAULT source of dt.
+# Every accumulator reads python/cycle_clock.py's hours_per_cycle(), which
+# returns this value unless the continuous runtime sets the real elapsed
+# time (set_elapsed_hours) -- so offline runs and self-tests are unchanged.
 ASSUMED_HOURS_PER_CYCLE = 1.0
 
 
@@ -527,7 +532,8 @@ def hb013_storage_level(get_input):
     outflow_kg_h = dispensed_kg_h + fuel_cell_kg_h
 
     inflow_kg_h = compressor["h2_kg_h"] + electrolyser_inflow_kg_h
-    net_kg = (inflow_kg_h - outflow_kg_h) * ASSUMED_HOURS_PER_CYCLE
+    dt_h = cycle_clock.hours_per_cycle()
+    net_kg = (inflow_kg_h - outflow_kg_h) * dt_h
     new_level = min(max(prev_level + net_kg, 0.0), H2_STORAGE_CAPACITY_KG)
 
     # Same discipline as GA-001's own recycle input (ga001_gasifier_model.py's
@@ -555,7 +561,7 @@ def hb013_storage_level(get_input):
             f"level = prev_level({prev_level:.4f} kg) + [inflow(PSA route {compressor['h2_kg_h']:.4f} "
             f"+ electrolyser route {electrolyser_inflow_kg_h:.4f}) - outflow(dispensing "
             f"{dispensed_kg_h:.4f} + PEM Fuel Cell {fuel_cell_kg_h:.4f})] kg/h x ASSUMED "
-            f"{ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
+            f"{dt_h} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
             f"(HB-013's own Confirmed capacity). Electrolyser inflow, dispensing outflow, AND "
             f"Fuel Cell outflow (FIX, H2/syngas double-counting task -- see module docstring "
             f"addendum) all read the PREVIOUS cycle's value (lagged), zero when absent -- see this "

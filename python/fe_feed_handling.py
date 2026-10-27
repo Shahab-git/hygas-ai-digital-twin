@@ -81,6 +81,7 @@ register_ga001()'s OWN registration (adding one lagged_depends_on edge)
 changed -- proving the getter-discipline (roadmap Part 8.3) works exactly
 as designed.
 """
+from . import cycle_clock
 from . import hb_wgs_psa_storage_chain as hbchain
 from . import plant_status as ps
 
@@ -149,7 +150,8 @@ def fe001_inventory(get_input):
     delivery_rate_kg_h = get_input(("FE-001-INPUT", "msw_delivery_rate_kg_h"))["value"]
     prev = get_input(("FE-001", "Inventory"))  # lagged, self
     prev_level_t = FE001_LIVE_CAPACITY_T * 0.5 if prev["status"] == ps.STATUS_MISSING else prev["value"]["level_t"]
-    net_t = (delivery_rate_kg_h - FE003_NOMINAL_KG_H) / 1000.0 * hbchain.ASSUMED_HOURS_PER_CYCLE
+    dt_h = cycle_clock.hours_per_cycle()
+    net_t = (delivery_rate_kg_h - FE003_NOMINAL_KG_H) / 1000.0 * dt_h
     new_level_t = min(max(prev_level_t + net_t, 0.0), FE001_LIVE_CAPACITY_T)
     return {
         "value": {
@@ -162,7 +164,7 @@ def fe001_inventory(get_input):
         "confidence_note": (
             f"level = prev({prev_level_t:.4f} t) + (delivery({delivery_rate_kg_h:.3f} kg/h) - "
             f"FE-003's own Confirmed nominal({FE003_NOMINAL_KG_H} kg/h)) x "
-            f"{hbchain.ASSUMED_HOURS_PER_CYCLE} h/cycle, clamped to [0, {FE001_LIVE_CAPACITY_T}t] "
+            f"{dt_h} h/cycle, clamped to [0, {FE001_LIVE_CAPACITY_T}t] "
             f"(FE-001's own Confirmed live capacity). See this function's own docstring for the "
             f"stated simplification (delivery feeds FE-002 onward directly, not this level)."
         ),
