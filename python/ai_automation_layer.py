@@ -301,7 +301,9 @@ def get_ai004_eu009_state_if_resized(get_input):
     THE SAME fault logic as get_ai004_eu009_state() above (task
     requirement 1: "the same fault logic") -- ONLY the capacity basis
     differs: EU-008's own Estimated RecommendedCapacityEstimate (an
-    Internal-model-derived engineering baseline of approximately 65-70 kW,
+    Internal-model-derived engineering baseline of approximately 55-60 kW
+    (corrected 2026-10-27 from "65-70 kW", a stale figure -- see
+    docs/audit_2026-10-27.md, discrepancy 14, and eu008_recommended_capacity_estimate()),
     per the Missing Parameter Resolution Protocol -- see
     docs/missing_parameter_protocol.md and eu008_recommended_capacity_
     estimate()'s own docstring) instead of its real Confirmed 20 kW

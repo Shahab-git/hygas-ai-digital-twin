@@ -308,7 +308,7 @@ Do NOT automatically conclude:
 
 and do NOT automatically replace it with:
 
-`66.7 kW = correct`
+`59.8 kW = correct`
 
 Instead determine whether the 20 kW value was originally intended for a narrower duty, such as EU-004 jacket cooling, and whether other cooling consumers have a separate cooling path.
 
@@ -326,15 +326,21 @@ For example:
 
 Do NOT present:
 
-`66.73 kW`
+`59.79 kW`
 
 as though it were an exact plant specification if it is only an engineering estimate.
 
 Prefer:
 
-`approximately 65–70 kW`
+`approximately 55–60 kW`
 
 or another appropriate engineering range.
+
+> **Corrected 2026-10-27 (audit follow-up D2, `docs/audit_2026-10-27.md` discrepancy 14):** the EU-008 examples in this
+> section previously used 66.7 kW / 66.73 kW / "approximately 65–70 kW", the figures from an earlier operating-envelope
+> sample. The live baseline is 55–60 kW (unrounded 59.79 kW at the audited cycle): `python/eu_utilities_chp.py`,
+> `eu008_recommended_capacity_estimate()`. The examples illustrate phrasing, not a current specification; always re-read
+> the value from the live `("EU-008","RecommendedCapacityEstimate")` entry.
 
 Likewise, avoid excessive decimal places in:
 
