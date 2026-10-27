@@ -9,7 +9,9 @@ CHP utilisation. NACHIP pilot project (DOK-ING d.o.o., Zagreb, Croatia).
 Two parallel implementations are planned and should both be maintained:
 - **MATLAB/Simulink** (`/matlab`) — the rigorous, engineering-grade physics
   model. This is intended as the validated source of truth for every number
-  below, once built.
+  below, once built. As of 2026-10-27 the model files are NOT in this
+  repository (no `/matlab`, no `.m`/`.slx` file) -- every "Simulink" figure
+  here is a target from prior work, quoted, not reproduced or verified by this repo.
 - **Python** (`/python`) — verified cross-check implementations of the same
   physics, used as the backend for a live Streamlit dashboard, since
   Streamlit Cloud can't run Simulink.
@@ -47,8 +49,9 @@ they agree numerically before considering it done.
 The WGS/PSA/CHP rows are now confirmed live in this repo's Python code
 (each module's `__main__` block reproduces its target exactly; `app.py`
 runs end-to-end under `streamlit run`, checked 2026-08-25). The gasifier,
-gas cleaning, and interstage HX rows are prior MATLAB/Simulink results —
-targets for future implementation, not yet built here in either language.
+gas cleaning, and interstage HX rows are prior MATLAB/Simulink results (the
+model files are not in this repository) — targets for future implementation,
+not yet built here in either language.
 
 | Subsystem | Result | Target | Live in this repo? |
 |---|---|---|---|
@@ -541,6 +544,31 @@ the 75 is relied upon by any fill in
 individually against every FE/GA/GC/SA/HB/EU/AI estimate actually
 shipped, and none was used as a stated basis; no previously-shipped
 estimate has needed correction or withdrawal as a result of any sweep.
+
+## Known limitations (proven by docs/audit_2026-10-27.md)
+
+Only what the 2026-10-27 audit measured; nothing here is a new claim.
+
+- **Quasi-steady-state per cycle.** Each cycle is an algebraic solve. There are
+  no ODEs and no real-time dynamics. State that persists across cycles is limited
+  to accumulating inventories (FE-001, HB-013, EU-010) and per-cycle lags/damping
+  (`EU008_DAMPING`, the lagged couplings), which produce multi-cycle transients
+  (about five cycles to converge after a feed step) but are not time-domain models.
+  Since audit fix A the inventory step is the real elapsed time (`python/cycle_clock.py`);
+  the lags and damping stay per-cycle (Assumed).
+- **No Confirmed or Measured tier in the engine.** Engine statuses are Measured /
+  Calculated / Estimated / Assumed / Missing; "Confirmed" exists only as a label in
+  the registry/datasheets. The live snapshot has 0 Measured entries and every
+  non-trivial provenance chain ends in Assumed inputs.
+- **Gas-composition divergence is open (systemic, not N2-only).** Live GA-001 output
+  vs the registry's "Expected" table: H2 -16 %, CO -23 %, CO2 -55 %, CH4 -79 %,
+  N2 +296 %, LHV -36 %, flow +105 %. Several places still use the registry basis
+  (HB-006's 55 % target, HB-010's 55 % design feed and 50 Nm3/h, Tab 1's original
+  0.28 CO / 0.35 CO2 sections). See `docs/master_open_questions.md` items 3, 5, 6.
+- **No whole-plant energy balance.** The only efficiency figure is the partial
+  H2-energy / feed-LHV ratio (52-69 % over DOK-ING's 15-20 MJ/kg range). The GA-001
+  mass balance closes (0.001 %) only when ash and unconverted carbon are added;
+  those are not published streams, so on published streams the residual is 4.56 %.
 
 ## Not yet built (the actual current state)
 

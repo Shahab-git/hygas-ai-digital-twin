@@ -98,6 +98,8 @@ def mark_setpoint_applied(engine_key_str):
     row isn't re-applied (and re-logged as a fresh request) every
     subsequent tick. Degrades gracefully (a real, reported failure via the
     return value, not a crash) if the write itself fails."""
+    if not vendor_log.db_writes_allowed():
+        return False  # audit fix D3: no implicit DB write from a self-test / offline run
     try:
         vendor_log._get_client().table(_TABLE).update(
             {"applied_at": datetime.now(timezone.utc).isoformat()}

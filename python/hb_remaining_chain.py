@@ -155,6 +155,7 @@ genuine mutual pair, the same Phase 0 lagged mechanism, not an ad hoc one.
 """
 import math
 
+from . import cycle_clock
 from . import ga001_gasifier_model as ga001
 from . import hb_wgs_psa_storage_chain as hbchain
 from . import plant_status as ps
@@ -773,7 +774,7 @@ def hb015_inventory(get_input):
     feed = get_input(("HB-014", "MassBalance"))["value"]
     prev = get_input(("HB-015", "Inventory"))
     prev_level = 0.0 if prev["status"] == ps.STATUS_MISSING else prev["value"]["rich_tank_kg"]
-    new_level = prev_level + feed["carrier_circulation_kg_h"] * hbchain.ASSUMED_HOURS_PER_CYCLE
+    new_level = prev_level + feed["carrier_circulation_kg_h"] * cycle_clock.hours_per_cycle()
     return {
         "value": {"rich_tank_kg": new_level},
         "status": ps.STATUS_CALCULATED,
@@ -983,9 +984,10 @@ def hb018_dispensing(get_input):
     HB-013's own PREVIOUS cycle's available storage level (lagged))."""
     storage = get_input(("HB-013", "Storage"))  # lagged
     available_kg = 0.0 if storage["status"] == ps.STATUS_MISSING else storage["value"]["level_kg"]
-    max_dispense_kg = HB018_MAX_DISPENSE_RATE_KG_H * hbchain.ASSUMED_HOURS_PER_CYCLE
+    dt_h = cycle_clock.hours_per_cycle()
+    max_dispense_kg = HB018_MAX_DISPENSE_RATE_KG_H * dt_h
     dispensed_kg = min(max_dispense_kg, available_kg)
-    dispensed_kg_h = dispensed_kg / hbchain.ASSUMED_HOURS_PER_CYCLE
+    dispensed_kg_h = dispensed_kg / dt_h
 
     declared_inputs = [("HB-013", "Storage")] if storage["status"] != ps.STATUS_MISSING else []
     return {
@@ -999,7 +1001,7 @@ def hb018_dispensing(get_input):
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"dispensed = min(max_rate({HB018_MAX_DISPENSE_RATE_KG_H:.1f} kg/h) x "
-            f"{hbchain.ASSUMED_HOURS_PER_CYCLE} h/cycle, available storage({available_kg:.4f} kg)) = "
+            f"{dt_h} h/cycle, available storage({available_kg:.4f} kg)) = "
             f"{dispensed_kg:.4f} kg this cycle. 'Demand' modeled as HB-018's own Confirmed max rated "
             f"throughput (an ASSUMED full-utilization worst case -- no real FCEV traffic/demand "
             f"schedule exists anywhere in this project, see module docstring)."

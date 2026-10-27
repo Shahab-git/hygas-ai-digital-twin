@@ -104,20 +104,30 @@ written):
 ```yaml
 on:
   schedule:
-    - cron: "0 * * * *"   # once per real hour — see §2 for why this exact cadence
+    - cron: "17 * * * *"  # REQUESTS one run per hour, best-effort — see §2 (revised 2026-10-27)
   workflow_dispatch: {}    # manual "run it now" button in the GitHub UI, for testing
+concurrency:
+  group: continuous-cycle
+  cancel-in-progress: false   # never two cycles at once; an in-flight run finishes
 ```
+
+> **REVISED 2026-10-27 (audit fix B/H, `docs/audit_2026-10-27.md` finding 1).**
+> The original text below assumed hourly runs. Measured reality: 280 runs in
+> ~53 days (≈22 % of hourly); in the last 7 days 37 of 168 hourly slots ran, with
+> typical gaps of 3–6 h. The cron minute is now :17 (GitHub delays and drops
+> top-of-hour runs most) and a `concurrency` group prevents overlap — this does
+> **not** restore hourly runs and no guarantee is claimed. The model no longer
+> relies on the cadence: see the elapsed-time rule in §2.
 
 **Two honest, documented GitHub Actions limitations, stated now rather than
 discovered later:**
 
-- Scheduled workflows are **not** guaranteed to fire at exactly the top of
-  the hour — GitHub's own documentation states scheduled runs can be
-  delayed, sometimes by several minutes, during periods of high platform
-  load, and a run can occasionally be skipped. For an hourly steady-state
-  tick this jitter is immaterial (§2's own honest framing already treats
-  "one tick ≈ one hour," not "one tick ≈ exactly :00"), but it would matter
-  if a much tighter cadence were ever chosen.
+- **GitHub cron is best-effort.** Scheduled runs can be delayed or skipped,
+  and this was measured here to be far worse than "a few minutes": gaps of
+  3–6 h are normal for this repository (see the revision note above). The
+  runtime therefore treats the schedule as a *request*, not a clock. Every
+  quantity that depends on elapsed time uses the **real** elapsed time between
+  publishes (§2), so a late or missing run makes the data older, not wrong.
 - GitHub **automatically disables** a scheduled workflow after 60 days of
   no repository activity (any commit/PR/etc. counts, not just this
   workflow running). For an actively-developed repo this is a non-issue;
@@ -147,20 +157,51 @@ transient/dynamic.
 
 ### What one tick means, concretely
 
+> **REVISED 2026-10-27 (audit fix A/H) — the "exactly 1 hour" assumption is replaced
+> by the elapsed-time rule below.** The original paragraph (kept underneath as
+> history) said the tick had to be exactly one hour because every accumulator
+> multiplies by `ASSUMED_HOURS_PER_CYCLE = 1.0`. That premise failed in
+> production: runs arrive every 3–6 h, so inventories advanced 1 h per 3–6 h of
+> real time.
+>
+> **The rule now (`python/cycle_clock.py`, `scripts/run_continuous_cycle.py`):**
+>
+> 1. `elapsed_h = (now_utc − previous published_at) / 3600`, where `previous
+>    published_at` is the newest `published_at` in the rehydrated store.
+> 2. **Clamp to `[0.05, 12.0]` h.** Below 0.05 h (3 min — double-fire, zero or
+>    negative clock skew) → 0.05 h; above 12 h (a long outage, not 12+ hours of
+>    smooth accumulation) → 12 h. The driver prints a line whenever it clamps.
+> 3. **Empty store or unparsable timestamp → 1.0 h** (the historical default; not
+>    a clamp).
+> 4. The value is passed with `cycle_clock.set_elapsed_hours()` and read by the
+>    accumulators through `cycle_clock.hours_per_cycle()`: FE-001 inventory,
+>    HB-013 storage, EU-010 SOC, HB-018 dispensing (the HB-013 outflow), the EU CHP
+>    H₂ budget (kW from stored kg) and HB-015 (unreachable today). With nothing set
+>    the function returns `ASSUMED_HOURS_PER_CYCLE` (1.0), so offline runs and
+>    self-tests are bit-identical to before.
+> 5. The value actually used is published every run as the Calculated entry
+>    `("RUNTIME","ElapsedHours")` (previous timestamp, now, raw, clamp applied).
+> 6. **Still per-cycle, not continuous-time (Assumed):** `EU008_DAMPING` (tower
+>    water relaxation) and every `lagged_depends_on` coupling (the GA-001/HB-009
+>    recycle, the HB-013/HB-018/EU-006 storage loop, the EU-008 pair). A 6 h gap
+>    advances them by one step like a 1 h gap does.
+> 7. `("RUNTIME","CycleCounter")` (previous + 1) is the run counter shown in the
+>    header; `SharedPlantState.published_cycle` restarts at 2 on every rehydration.
+
 `ASSUMED_HOURS_PER_CYCLE = 1.0` already exists in
 `hb_wgs_psa_storage_chain.py` and already defines, for every
 accumulation-style model, "one `run_cycle()` = one real hour" — it is used,
 unmodified per this design's own constraint, by HB-013's storage-level
 update, FE-001's hopper-inventory update, and EU-010's battery-SOC update.
-**The continuous runtime's own tick interval is therefore not a free
+*(Historical, superseded:)* **The continuous runtime's own tick interval is therefore not a free
 choice — it must be exactly 1 hour, to keep matching what those three
 models already, silently, assume.** Any other real-world tick interval
 (say, once every 10 minutes) would make their own accumulation math wrong
 without any code change ever making that wrongness visible — inventory
 would appear to grow/drain six times too fast relative to the real elapsed
-time between ticks. Choosing `cron: "0 * * * *"` (§1) is not an arbitrary
-scheduling choice; it is the one interval that keeps every existing
-accumulation model correct, unmodified, for free.
+time between ticks. Choosing `cron: "0 * * * *"` (§1) was presented as the one
+interval that keeps every existing accumulation model correct, unmodified,
+for free — which only holds if the schedule is actually honoured.
 
 (An earlier open item already on this project's own list —
 `docs/master_open_questions.md`'s "ASSUMED_HOURS_PER_CYCLE mapping...a
@@ -544,7 +585,7 @@ own rebuild-every-render pattern ever was.
 | **Supabase storage** | `plant_state_current` is upserted (bounded at ~130 rows, never grows). `digital_twin_cycle_log` is ~4 numeric columns × 8,760 rows/year — trivial even over several years. `plant_operator_setpoints`/`measurement_promotions` are small, upsert-on-key tables. **None of this threatens Supabase's free-tier 500MB cap.** The deferred full-history table (§3) is the one piece that *could*, which is exactly why it's deferred rather than built speculatively. |
 | **Supabase free-project auto-pause** | A genuine, existing risk this project already carries: Supabase free-tier projects pause automatically after 7 days with no activity. **This design turns that into a solved problem as a side effect, not something needing separate defense** — an hourly write from the continuous runtime means the project is never idle for more than an hour, so it can never hit the 7-day pause threshold as long as the scheduled workflow is running. Worth stating explicitly since it's a real, positive consequence, not a coincidence to bury. |
 | **Streamlit Cloud compute** | *Reduced*, not increased, by this design: today, every viewer whose 60-second cache has expired triggers a full 5-cycle engine run inside the shared Streamlit process; under this design, the dashboard does a single Supabase `select` instead. The compute-heavy work moves entirely off Streamlit Cloud's own shared free tier and onto GitHub Actions' own separate, dedicated-per-run compute. |
-| **Compromises worth flagging now** | (1) The hourly cadence is not a free choice (§2) — a shorter interval would need the accumulation models themselves changed, explicitly out of scope. (2) The full per-key history table is deliberately not built yet (§3) — start without it, add it with a retention cap only if a real need appears. (3) A 5-minute dashboard cache TTL (§4) means a viewer can see data up to 5 minutes stale relative to the store, on top of up to ~1 hour of staleness relative to real time (§2/§5) — both are surfaced to the viewer via the freshness indicator, not hidden. |
+| **Compromises worth flagging now** | (1) ~~The hourly cadence is not a free choice (§2)~~ — superseded 2026-10-27: the accumulators now use the real elapsed time (§2, revised), so any cadence is correct for them; lags/damping remain per-cycle. (2) The full per-key history table is deliberately not built yet (§3) — start without it, add it with a retention cap only if a real need appears. (3) A 5-minute dashboard cache TTL (§4) means a viewer can see data up to 5 minutes stale relative to the store, on top of up to ~1 hour of staleness relative to real time (§2/§5) — both are surfaced to the viewer via the freshness indicator, not hidden. |
 
 ---
 

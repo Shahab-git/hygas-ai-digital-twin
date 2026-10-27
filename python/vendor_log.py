@@ -27,6 +27,19 @@ import tomllib
 from supabase import create_client
 
 _TABLE = "vendor_quotes"
+
+# Audit fix D (docs/audit_2026-10-27.md findings 4 and 21): engine runs, imports
+# and __main__ self-tests must never write to the database implicitly. Only the
+# continuous runtime (.github/workflows/continuous_cycle.yml) sets this variable.
+# Explicit, user-initiated UI writes (log a quote, confirm an assumption) are not
+# gated by it -- they only happen when someone presses a button.
+WRITES_ENV_VAR = "HYGAS_ALLOW_DB_WRITES"
+
+
+def db_writes_allowed():
+    return os.environ.get(WRITES_ENV_VAR) == "1"
+
+
 _SECRETS_PATH = os.path.join(os.path.dirname(__file__), "..", ".streamlit", "secrets.toml")
 
 _client = None

@@ -1,0 +1,61 @@
+# Test-only workflow (audit follow-up: prove the branch on CI's own Python BEFORE merge).
+#
+# SAFETY: this workflow uses NO secrets and sets NO Supabase variables. It runs
+# on pull requests and by hand only -- there is no `schedule`, and it can never
+# run the continuous cycle. Pull requests from a same-repo branch can read
+# repository secrets, which is exactly why nothing here references `secrets.*`.
+# The tests use an in-memory fake Supabase client and refuse to build a real
+# one (tests/conftest.py); HYGAS_ALLOW_DB_WRITES is forced to 0.
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 = what the hourly job runs today (required to be green);
+        # 3.12 = early warning before the runtime is ever upgraded.
+        python-version: ["3.11", "3.12"]
+    env:
+      HYGAS_ALLOW_DB_WRITES: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show the Python version
+        run: python --version
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Log resolved versions of the requirements.txt packages (the real freeze)
+        run: pip freeze | grep -i -E "^(streamlit|numpy|supabase|pandas|altair|scipy|pytest)=="
+
+      - name: Byte-compile app.py, python/ and scripts/ (catches syntax newer than this Python)
+        run: python -m compileall -q app.py python scripts
+
+      - name: Run tests
+        # Includes the zero-database-call assertions (tests/test_no_implicit_db_writes.py)
+        # and the Streamlit smoke test (tests/test_app_smoke.py). The 43 module
+        # self-tests are deliberately NOT run here.
+        run: python -m pytest -q tests

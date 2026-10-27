@@ -3,11 +3,16 @@ Continuous Simulation Runtime -- headless driver script
 (docs/continuous_runtime_design.md, approved design, sections 1/3/5/6).
 
 Run manually (`python scripts/run_continuous_cycle.py`) or on a real
-schedule via .github/workflows/continuous_cycle.yml (`cron: "0 * * * *"`
--- once per real hour, matching hb_wgs_psa_storage_chain.py's own
-ASSUMED_HOURS_PER_CYCLE = 1.0 exactly, per the design doc's own section 2
-reasoning -- this is not a free choice, it's the one interval that keeps
-HB-013/EU-010/FE-001's accumulation math correct, unmodified).
+schedule via .github/workflows/continuous_cycle.yml (hourly cron, which
+GitHub treats as best-effort: real gaps of 3-6 h were measured in the
+2026-10-27 audit). AUDIT FIX A: the accumulation step is no longer assumed
+to be 1 h -- this script measures the real elapsed time since the previous
+published_at, clamps it to [0.05, 12.0] h and passes it to
+python/cycle_clock.py, so HB-013/EU-010/FE-001 stay correct at any cadence.
+
+DATABASE WRITES: this script only persists / marks setpoints / logs when the
+environment variable HYGAS_ALLOW_DB_WRITES=1 is set (the workflow sets it;
+nothing else does). Without it the run is a dry run that only READS.
 
 Run once, after:
   1. data/plant_state_current_schema.sql has been run in the Supabase SQL
@@ -55,6 +60,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from python import ai_automation_layer as ai  # noqa: E402
+from python import cycle_clock  # noqa: E402
 from python import eu_utilities_chp as eu  # noqa: E402
 from python import fe_feed_handling as fe  # noqa: E402
 from python import ga001_gasifier_model as ga001  # noqa: E402
@@ -72,7 +78,11 @@ from python import vendor_log  # noqa: E402
 _STATE_TABLE = "plant_state_current"
 
 
-def register_full_engine(engine):
+def writes_allowed():
+    return vendor_log.db_writes_allowed()  # HYGAS_ALLOW_DB_WRITES == "1"
+
+
+def register_full_engine(engine, elapsed_info=None):
     """EXACTLY the same registration set, in the same order, as
     tab1_integration.build_live_snapshot() -- FE -> GA-001 -> GC -> HB(+
     remaining) -> EU -> SA -> AI. Duplicated here (not imported/called)
@@ -87,21 +97,39 @@ def register_full_engine(engine):
     eu.register_eu_chain(engine)
     sa.register_sa_sensors(engine)
     ai.register_ai_layer(engine)
+    if elapsed_info is not None:
+        # Driver-only entries (audit fixes A4/C1): ElapsedHours + CycleCounter.
+        cycle_clock.register_runtime_models(engine, elapsed_info)
 
 
-def load_persisted_snapshot():
-    """Reads every row from plant_state_current. Returns {} if the table
+def load_persisted_rows():
+    """Reads every row from plant_state_current. Returns [] if the table
     is empty or doesn't exist yet (a real, expected first-run/pre-schema
     condition, not an error) -- the caller then runs a bootstrap cycle
     with no prior history, exactly like today's own in-process
     build_live_snapshot() cold start."""
     try:
         resp = vendor_log._get_client().table(_STATE_TABLE).select("*").execute()
-        rows = resp.data or []
+        return resp.data or []
     except Exception as exc:
         print(f"  plant_state_current not reachable ({exc}) -- starting from an empty snapshot.")
-        return {}
+        return []
+
+
+def snapshot_from_rows(rows):
     return {(row["equipment_id"], row["category"]): row["entry"] for row in rows}
+
+
+def previous_published_at(rows):
+    """The newest published_at among the persisted rows (all rows of one
+    publish share it), or None for an empty store."""
+    stamps = [r.get("published_at") for r in rows if r.get("published_at")]
+    return max(stamps) if stamps else None
+
+
+def load_persisted_snapshot():
+    """Back-compat wrapper (entries only)."""
+    return snapshot_from_rows(load_persisted_rows())
 
 
 def rehydrate(persisted_entries, now_iso):
@@ -145,7 +173,10 @@ def apply_pending_operator_setpoints(engine):
             f"at {row.get('requested_at')}",
         )
         engine.promote_to_measurement(key, reader)
-        operator_setpoints.mark_setpoint_applied(row["engine_key"])
+        if writes_allowed():
+            operator_setpoints.mark_setpoint_applied(row["engine_key"])
+        else:
+            print(f"  HYGAS_ALLOW_DB_WRITES!=1 -> setpoint {row['engine_key']!r} applied in memory, NOT marked applied in the DB.")
         applied.append(row["engine_key"])
     return applied
 
@@ -184,7 +215,7 @@ def replay_measurement_promotions(engine):
     return promoted
 
 
-def persist_snapshot(state):
+def persist_snapshot(state, now_iso=None):
     """Upserts the FULL published snapshot into plant_state_current, one
     row per (equipment_id, category) key. Reuses tab1_integration.py's own
     existing _native() numpy-safety helper (design doc section 3's own
@@ -193,12 +224,22 @@ def persist_snapshot(state):
     are not natively JSON-serializable."""
     snapshot = state.get_snapshot()
     published_at = state.published_at
-    cycle = state.published_cycle
+    # Audit fix C1: `cycle` is the monotonic RUNTIME/CycleCounter, NOT
+    # SharedPlantState.published_cycle (which is always 2 after a rehydrate).
+    counter_entry = snapshot.get(cycle_clock.COUNTER_KEY)
+    if counter_entry is not None and counter_entry["status"] != "Missing":
+        cycle = int(counter_entry["value"])
+    else:
+        cycle = state.published_cycle
+    # Audit fix C3: set updated_at explicitly -- a fallback for when the
+    # data/migrations/001 BEFORE UPDATE trigger is not installed (a plain
+    # upsert never touches the column default after the first insert).
+    updated_at = now_iso or published_at
     rows = [
         {
             "equipment_id": equipment_id, "category": category,
             "entry": tab1_integration._native(entry),
-            "cycle": cycle, "published_at": published_at,
+            "cycle": cycle, "published_at": published_at, "updated_at": updated_at,
         }
         for (equipment_id, category), entry in snapshot.items()
     ]
@@ -211,40 +252,64 @@ def persist_snapshot(state):
     return len(rows)
 
 
-def main():
+def main(now_iso=None):
     t0 = time.monotonic()
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = now_iso or datetime.now(timezone.utc).isoformat()
     print(f"=== Continuous cycle run starting at {now_iso} ===")
+    allow = writes_allowed()
+    if not allow:
+        print("  HYGAS_ALLOW_DB_WRITES!=1 -> DRY RUN: reads only, nothing will be written to the database.")
 
     print("Loading persisted state from Supabase (plant_state_current)...")
-    persisted = load_persisted_snapshot()
+    rows = load_persisted_rows()
+    persisted = snapshot_from_rows(rows)
     print(f"  {len(persisted)} persisted key(s) found.")
 
-    print("Rehydrating SharedPlantState via the existing public write API...")
-    state = rehydrate(persisted, now_iso)
+    # Audit fix A3: real elapsed time since the previous publish becomes dt.
+    elapsed = cycle_clock.compute_elapsed_hours(previous_published_at(rows), now_iso)
+    if elapsed["clamped"]:
+        print(f"  ELAPSED-TIME CLAMP: {elapsed['clamp_reason']} -> using {elapsed['elapsed_h_used']} h")
+    elif elapsed["clamp_reason"]:
+        print(f"  {elapsed['clamp_reason']}")
+    print(f"  Elapsed hours used as the cycle time step: {elapsed['elapsed_h_used']:.4f} h "
+          f"(previous published_at={elapsed['previous_published_at']})")
+    cycle_clock.set_elapsed_hours(elapsed["elapsed_h_used"])
 
-    print("Building the engine (FE -> GA-001 -> GC -> HB(+remaining) -> EU -> SA -> AI)...")
-    engine = se.SimulationEngine(state)
-    register_full_engine(engine)
+    try:
+        print("Rehydrating SharedPlantState via the existing public write API...")
+        state = rehydrate(persisted, now_iso)
 
-    print("Applying pending operator setpoints...")
-    applied_setpoints = apply_pending_operator_setpoints(engine)
-    print(f"  {len(applied_setpoints)} setpoint(s) applied: {applied_setpoints}")
+        print("Building the engine (FE -> GA-001 -> GC -> HB(+remaining) -> EU -> SA -> AI + RUNTIME)...")
+        engine = se.SimulationEngine(state)
+        register_full_engine(engine, elapsed_info=elapsed)
 
-    print("Replaying durable measurement promotions...")
-    replay_measurement_promotions(engine)
+        print("Applying pending operator setpoints...")
+        applied_setpoints = apply_pending_operator_setpoints(engine)
+        print(f"  {len(applied_setpoints)} setpoint(s) applied: {applied_setpoints}")
 
-    print("Running one real cycle...")
-    cycle_no, published_at = engine.run_cycle(now=now_iso)
-    print(f"  Published cycle {cycle_no} at {published_at}.")
+        print("Replaying durable measurement promotions...")
+        replay_measurement_promotions(engine)
 
-    print("Persisting the new snapshot to plant_state_current...")
-    n_rows = persist_snapshot(state)
-    print(f"  {n_rows} row(s) upserted.")
+        print("Running one real cycle...")
+        cycle_no, published_at = engine.run_cycle(now=now_iso)
+        print(f"  Published cycle {cycle_no} at {published_at}.")
+    finally:
+        cycle_clock.set_elapsed_hours(None)
 
-    elapsed = time.monotonic() - t0
-    print(f"=== Continuous cycle run finished in {elapsed:.2f}s ===")
-    return elapsed
+    counter = state.get_snapshot().get(cycle_clock.COUNTER_KEY)
+    if counter is not None:
+        print(f"  RUNTIME/CycleCounter = {counter['value']}")
+
+    if allow:
+        print("Persisting the new snapshot to plant_state_current...")
+        n_rows = persist_snapshot(state, now_iso=now_iso)
+        print(f"  {n_rows} row(s) upserted.")
+    else:
+        print("Dry run: snapshot NOT persisted.")
+
+    elapsed_s = time.monotonic() - t0
+    print(f"=== Continuous cycle run finished in {elapsed_s:.2f}s ===")
+    return elapsed_s
 
 
 if __name__ == "__main__":

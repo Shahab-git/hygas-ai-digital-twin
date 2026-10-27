@@ -102,6 +102,12 @@ def record_measurement(engine, key, reader_fn, source_description=""):
     Returns {"applied": True, "logged": bool, "error": str|None}."""
     engine.promote_to_measurement(key, reader_fn)  # step 1 -- always succeeds or raises cleanly
     result = {"applied": True, "logged": False, "error": None}
+    if not vendor_log.db_writes_allowed():
+        # Audit fix D3: the __main__ self-test calls this and used to leave synthetic
+        # rows in the production table. The in-memory promotion above still happened.
+        result["error"] = (f"durable audit-trail write skipped: {vendor_log.WRITES_ENV_VAR} is not 1 "
+                           f"(writes are disabled outside the continuous runtime)")
+        return result
     try:
         payload = {
             "engine_key": _key_str(key), "source_description": source_description,

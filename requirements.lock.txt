@@ -1,0 +1,15 @@
+# requirements.lock.txt -- AUDIT FIX B3 (docs/audit_2026-10-27.md).
+# Pins for the six packages named in requirements.txt ONLY (no transitive
+# pins). PROVENANCE, stated plainly: this is NOT a pip freeze taken from the CI
+# runner (CI logs are not readable without credentials). It is what pip
+# resolves for CPython 3.11 / manylinux x86_64 wheels on 2026-10-27 for the
+# unpinned requirements.txt (pip install --dry-run --python-version 3.11
+# --only-binary=:all: --report). The workflow now prints the real freeze in its
+# log ("Log resolved versions" step) so the two can be compared.
+# requirements.txt is deliberately unchanged in this round.
+streamlit==1.66.1
+numpy==2.4.6
+pandas==3.1.0
+altair==6.3.0
+supabase==2.33.0
+scipy==1.17.1
