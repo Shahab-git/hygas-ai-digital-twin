@@ -10206,7 +10206,7 @@ def _render_ai_architecture_notes(snap):
         st.markdown(f"**Logged this cycle:** {'✅ True' if v['logged'] else '❌ False'}")
         st.json(v["summary"], expanded=True)
         if not v["logged"]:
-            st.caption(f"Real, known reason (Calculated, not hidden as Missing): {v.get('error', 'n/a')}")
+            st.caption(f"Real, known reason (Calculated, not hidden as Missing): {v.get('error') or v.get('reason', 'n/a')}")
         else:
             st.caption(f"Persisted to Supabase table `digital_twin_cycle_log`, row id {v.get('row_id')}.")
     else:

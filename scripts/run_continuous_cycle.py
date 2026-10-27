@@ -10,6 +10,10 @@ to be 1 h -- this script measures the real elapsed time since the previous
 published_at, clamps it to [0.05, 12.0] h and passes it to
 python/cycle_clock.py, so HB-013/EU-010/FE-001 stay correct at any cadence.
 
+DATABASE WRITES: this script only persists / marks setpoints / logs when the
+environment variable HYGAS_ALLOW_DB_WRITES=1 is set (the workflow sets it;
+nothing else does). Without it the run is a dry run that only READS.
+
 Run once, after:
   1. data/plant_state_current_schema.sql has been run in the Supabase SQL
      Editor, and
@@ -72,6 +76,10 @@ from python import tab1_integration  # noqa: E402
 from python import vendor_log  # noqa: E402
 
 _STATE_TABLE = "plant_state_current"
+
+
+def writes_allowed():
+    return vendor_log.db_writes_allowed()  # HYGAS_ALLOW_DB_WRITES == "1"
 
 
 def register_full_engine(engine, elapsed_info=None):
@@ -165,7 +173,10 @@ def apply_pending_operator_setpoints(engine):
             f"at {row.get('requested_at')}",
         )
         engine.promote_to_measurement(key, reader)
-        operator_setpoints.mark_setpoint_applied(row["engine_key"])
+        if writes_allowed():
+            operator_setpoints.mark_setpoint_applied(row["engine_key"])
+        else:
+            print(f"  HYGAS_ALLOW_DB_WRITES!=1 -> setpoint {row['engine_key']!r} applied in memory, NOT marked applied in the DB.")
         applied.append(row["engine_key"])
     return applied
 
@@ -245,6 +256,9 @@ def main(now_iso=None):
     t0 = time.monotonic()
     now_iso = now_iso or datetime.now(timezone.utc).isoformat()
     print(f"=== Continuous cycle run starting at {now_iso} ===")
+    allow = writes_allowed()
+    if not allow:
+        print("  HYGAS_ALLOW_DB_WRITES!=1 -> DRY RUN: reads only, nothing will be written to the database.")
 
     print("Loading persisted state from Supabase (plant_state_current)...")
     rows = load_persisted_rows()
@@ -286,9 +300,12 @@ def main(now_iso=None):
     if counter is not None:
         print(f"  RUNTIME/CycleCounter = {counter['value']}")
 
-    print("Persisting the new snapshot to plant_state_current...")
-    n_rows = persist_snapshot(state, now_iso=now_iso)
-    print(f"  {n_rows} row(s) upserted.")
+    if allow:
+        print("Persisting the new snapshot to plant_state_current...")
+        n_rows = persist_snapshot(state, now_iso=now_iso)
+        print(f"  {n_rows} row(s) upserted.")
+    else:
+        print("Dry run: snapshot NOT persisted.")
 
     elapsed_s = time.monotonic() - t0
     print(f"=== Continuous cycle run finished in {elapsed_s:.2f}s ===")

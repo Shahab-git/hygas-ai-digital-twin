@@ -68,4 +68,8 @@ jobs:
           EOF
 
       - name: Run one continuous simulation cycle
+        # The ONLY place that enables database writes (audit fix D): engine
+        # runs everywhere else (app, self-tests, offline snapshots) never write.
+        env:
+          HYGAS_ALLOW_DB_WRITES: "1"
         run: python scripts/run_continuous_cycle.py

@@ -476,17 +476,28 @@ def get_ai011_logging_status(get_input):
         "ga_dry_flow_nm3_h": _num(ga, "dry_flow_nm3_h"), "gc_h2_pct": _num(gc, "H2_mol_pct_dry"),
         "hb_storage_kg": _num(hb, "level_kg"), "eu_net_kw": _num(eu, "net_kw"),
     }
-    try:
-        row = log_cycle_to_timeseries_db(summary)
-        value = {"logged": True, "row_id": row.get("id"), "summary": summary}
-        note = f"Persisted to Supabase table '{_TS_TABLE}' (row id {row.get('id')})."
-    except Exception as exc:
-        value = {"logged": False, "error": str(exc), "summary": summary}
+    if not vendor_log.db_writes_allowed():
+        # Audit fix D2 (docs/audit_2026-10-27.md findings 4/21): an engine run (page load,
+        # self-test, offline snapshot) does NOT touch the database. Only the continuous
+        # runtime sets HYGAS_ALLOW_DB_WRITES=1. Honest, tagged result -- not an error, not Missing.
+        value = {"logged": False, "reason": "writes disabled outside the continuous runtime", "summary": summary}
         note = (
-            f"Write to Supabase table '{_TS_TABLE}' failed: {exc} -- reported as a real, known "
-            f"result (Calculated 'logged: False'), not hidden as Missing (this project DOES know "
-            f"what happened and why). See data/supabase_schema.sql for the required DDL."
+            f"Write to '{_TS_TABLE}' skipped: writes are disabled outside the continuous runtime "
+            f"({vendor_log.WRITES_ENV_VAR} is not 1). This is the designed behaviour of an offline/UI "
+            f"engine run, not a failure."
         )
+    else:
+        try:
+            row = log_cycle_to_timeseries_db(summary)
+            value = {"logged": True, "row_id": row.get("id"), "summary": summary}
+            note = f"Persisted to Supabase table '{_TS_TABLE}' (row id {row.get('id')})."
+        except Exception as exc:
+            value = {"logged": False, "error": str(exc), "summary": summary}
+            note = (
+                f"Write to Supabase table '{_TS_TABLE}' failed: {exc} -- reported as a real, known "
+                f"result (Calculated 'logged: False'), not hidden as Missing (this project DOES know "
+                f"what happened and why). See data/migrations/002_digital_twin_cycle_log.sql for the required DDL."
+            )
     return {
         "value": value, "status": ps.STATUS_CALCULATED, "model": "ai_automation_layer.get_ai011_logging_status",
         "inputs": [("GA-001", "Outputs"), ("GC-013", "Gas"), ("HB-013", "Storage"), ("EU-009", "GridBalance")],
