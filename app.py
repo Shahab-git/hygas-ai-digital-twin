@@ -105,9 +105,20 @@ def _plant_state_source_info():
         return {"reachable": True, "rows_found": 0, "error": None}
     cycles = {r["cycle"] for r in rows}
     published_ats = {r["published_at"] for r in rows}
+    # Audit fix C1: the monotonic RUNTIME/CycleCounter entry (persisted by the
+    # continuous driver) is THE cycle number shown in the header and the Tab 2
+    # banner; SharedPlantState.published_cycle restarts at 2 on every
+    # rehydration, so the rows' own `cycle` column is only the fallback.
+    counter_rows = [r for r in rows if r.get("equipment_id") == "RUNTIME" and r.get("category") == "CycleCounter"]
+    counter_value = None
+    if counter_rows:
+        try:
+            counter_value = int(counter_rows[0]["entry"]["value"])
+        except (KeyError, TypeError, ValueError):
+            counter_value = None
     return {
         "reachable": True, "rows_found": len(rows),
-        "cycle": max(cycles) if cycles else None,
+        "cycle": counter_value if counter_value is not None else (max(cycles) if cycles else None),
         # published_at is the SAME real timestamp on every row of one
         # publish (one upsert batch, one `now_iso` -- scripts/run_
         # continuous_cycle.py's own persist_snapshot()) -- max() is a

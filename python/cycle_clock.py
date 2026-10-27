@@ -117,7 +117,7 @@ def compute_elapsed_hours(previous_published_at, now):
 
 
 # ---------------------------------------------------------------------------
-# RUNTIME entries published by the continuous driver (audit fix A4).
+# RUNTIME entries published by the continuous driver (audit fixes A4 and C1).
 # Registered ONLY by scripts/run_continuous_cycle.py (register_runtime_models),
 # NOT by tab1_integration.build_live_snapshot(), so the offline 116-entry
 # snapshot is unchanged. They use the existing public engine API
@@ -126,6 +126,7 @@ def compute_elapsed_hours(previous_published_at, now):
 from . import plant_status as ps  # noqa: E402  (after the pure helpers above on purpose)
 
 ELAPSED_KEY = ("RUNTIME", "ElapsedHours")
+COUNTER_KEY = ("RUNTIME", "CycleCounter")
 
 
 def _make_elapsed_model(info):
@@ -149,7 +150,24 @@ def _make_elapsed_model(info):
     return runtime_elapsed_hours
 
 
+def runtime_cycle_counter(get_input):
+    """Monotonic run counter = previous persisted value + 1 (1 on an empty
+    store). Reads its own previous published value through the existing
+    lagged self-dependency, the same mechanism FE-001/HB-013/EU-010 use."""
+    prev = get_input(COUNTER_KEY)
+    n = 1 if prev["status"] == ps.STATUS_MISSING else int(prev["value"]) + 1
+    return {
+        "value": n, "status": ps.STATUS_CALCULATED, "model": "cycle_clock.runtime_cycle_counter",
+        "inputs": [COUNTER_KEY], "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            "Runs of the continuous driver since this counter was first persisted (previous + 1). "
+            "Replaces SharedPlantState.published_cycle, which restarts at 2 on every rehydration."
+        ),
+    }
+
+
 def register_runtime_models(engine, elapsed_info):
-    """Registers the RUNTIME entries on `engine`. `elapsed_info` is the
+    """Registers the two RUNTIME entries on `engine`. `elapsed_info` is the
     dict returned by compute_elapsed_hours()."""
     engine.register_model(ELAPSED_KEY, _make_elapsed_model(elapsed_info), unit="h")
+    engine.register_model(COUNTER_KEY, runtime_cycle_counter, unit="count", lagged_depends_on=[COUNTER_KEY])

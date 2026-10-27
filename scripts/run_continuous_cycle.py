@@ -204,7 +204,7 @@ def replay_measurement_promotions(engine):
     return promoted
 
 
-def persist_snapshot(state):
+def persist_snapshot(state, now_iso=None):
     """Upserts the FULL published snapshot into plant_state_current, one
     row per (equipment_id, category) key. Reuses tab1_integration.py's own
     existing _native() numpy-safety helper (design doc section 3's own
@@ -213,12 +213,22 @@ def persist_snapshot(state):
     are not natively JSON-serializable."""
     snapshot = state.get_snapshot()
     published_at = state.published_at
-    cycle = state.published_cycle
+    # Audit fix C1: `cycle` is the monotonic RUNTIME/CycleCounter, NOT
+    # SharedPlantState.published_cycle (which is always 2 after a rehydrate).
+    counter_entry = snapshot.get(cycle_clock.COUNTER_KEY)
+    if counter_entry is not None and counter_entry["status"] != "Missing":
+        cycle = int(counter_entry["value"])
+    else:
+        cycle = state.published_cycle
+    # Audit fix C3: set updated_at explicitly -- a fallback for when the
+    # data/migrations/001 BEFORE UPDATE trigger is not installed (a plain
+    # upsert never touches the column default after the first insert).
+    updated_at = now_iso or published_at
     rows = [
         {
             "equipment_id": equipment_id, "category": category,
             "entry": tab1_integration._native(entry),
-            "cycle": cycle, "published_at": published_at,
+            "cycle": cycle, "published_at": published_at, "updated_at": updated_at,
         }
         for (equipment_id, category), entry in snapshot.items()
     ]
@@ -272,8 +282,12 @@ def main(now_iso=None):
     finally:
         cycle_clock.set_elapsed_hours(None)
 
+    counter = state.get_snapshot().get(cycle_clock.COUNTER_KEY)
+    if counter is not None:
+        print(f"  RUNTIME/CycleCounter = {counter['value']}")
+
     print("Persisting the new snapshot to plant_state_current...")
-    n_rows = persist_snapshot(state)
+    n_rows = persist_snapshot(state, now_iso=now_iso)
     print(f"  {n_rows} row(s) upserted.")
 
     elapsed_s = time.monotonic() - t0
