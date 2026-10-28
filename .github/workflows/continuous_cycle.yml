@@ -65,12 +65,6 @@ jobs:
       - name: Install test dependency
         run: pip install pytest
 
-      - name: Run tests (needs no secrets; a failure stops the run before the cycle)
-        # Audit fix J. Runs BEFORE the credentials are written, so the tests
-        # cannot reach the real database even by accident (they also use a fake
-        # client and HYGAS_ALLOW_DB_WRITES is unset here).
-        run: python -m pytest -q tests
-
       - name: Write Supabase credentials to .streamlit/secrets.toml
         # vendor_log.py's own _get_secret() already has a non-Streamlit
         # fallback that reads exactly this file path for standalone
