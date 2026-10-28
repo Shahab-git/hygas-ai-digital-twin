@@ -304,7 +304,8 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
 
     scenario: list of timed step changes, each {"t_s": 600, <one or more of> "feed_kg_h": 45.8 (absolute, as
       received) | "feed_rel": 0.10 (+10 % of the base feed), "ER": 0.30, "T_setpoint_C": 920}. A step applies from the
-      first sub-step that STARTS at or after t_s.
+      first sub-step that STARTS at or after t_s. Steps with t_s <= 0 are INITIAL CONDITIONS: they are applied before the
+      warm-up, so the starting steady state (row 0) already has them (e.g. {"t_s": 0, "T_setpoint_C": 900}).
     dt_s / duration_s: sub-step and total length in seconds. taus: {name: seconds} overrides of TAU_SPECS (0 = off).
     warmup_cycles: engine cycles of 1 h with dynamics off, run first so every recycle/damped state starts from the
       steady state of the initial inputs (0 = no warm-up; used by the dt = 1 h identity test).
@@ -334,6 +335,22 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
     saved_damping = eu.EU008_DAMPING
     series = []
     cycle_index = 0
+
+    def apply_step(step):
+        if "feed_kg_h" in step:
+            ctx.feed_kg_h = float(step["feed_kg_h"])
+        if "feed_rel" in step:
+            ctx.feed_kg_h = base_feed * (1.0 + float(step["feed_rel"]))
+        if "ER" in step:
+            ctx.er = float(step["ER"])
+        if "T_setpoint_C" in step:
+            ctx.t_setpoint_c = float(step["T_setpoint_C"])
+
+    applied = 0
+    while applied < len(steps) and steps[applied]["t_s"] <= 0.0:      # initial conditions
+        apply_step(steps[applied])
+        applied += 1
+    ctx.t_state_c = ctx.t_setpoint_c
     try:
         # ---- warm-up: 1 h cycles, dynamics off, initial inputs --------------------------------------
         cycle_clock.set_elapsed_hours(1.0)
@@ -345,19 +362,10 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
         ctx.dynamics_on = True
 
         # ---- transient ------------------------------------------------------------------------------
-        applied = 0
         for k in range(n_steps):
             t_start = k * dt_s
             while applied < len(steps) and steps[applied]["t_s"] <= t_start + 1e-9:
-                step = steps[applied]
-                if "feed_kg_h" in step:
-                    ctx.feed_kg_h = float(step["feed_kg_h"])
-                if "feed_rel" in step:
-                    ctx.feed_kg_h = base_feed * (1.0 + float(step["feed_rel"]))
-                if "ER" in step:
-                    ctx.er = float(step["ER"])
-                if "T_setpoint_C" in step:
-                    ctx.t_setpoint_c = float(step["T_setpoint_C"])
+                apply_step(steps[applied])
                 applied += 1
             ctx.t_state_c = ctx.relax("T_gasifier", ctx.t_state_c, ctx.t_setpoint_c)
             cycle_clock.set_elapsed_hours(dt_s / 3600.0)

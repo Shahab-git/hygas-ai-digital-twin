@@ -220,3 +220,12 @@ def test_c7_an_unlisted_tau_is_caught_and_unknown_names_are_rejected(quiet_resul
         dy.run_transient([], dt_s=60, duration_s=60, taus={"Surprise": 5.0}, warmup_cycles=0)
     with pytest.raises(ValueError, match="unknown scenario key"):
         dy.run_transient([{"t_s": 0, "mystery": 1}], dt_s=60, duration_s=60, warmup_cycles=0)
+
+
+def test_steps_at_t_zero_are_initial_conditions():
+    """{"t_s": 0, ...} defines the starting steady state (used by the T 900 -> 930 demo): row 0 already has it."""
+    result = dy.run_transient([{"t_s": 0, "T_setpoint_C": 900.0}, {"t_s": 60, "T_setpoint_C": 930.0}], dt_s=60,
+                              duration_s=120, taus={"T_gasifier": 120, "GasHoldup": 0, "EU008_cooling_water": 0}, warmup_cycles=2)
+    assert result.series[0]["T_gasifier_C"] == 900.0 and result.series[0]["T_setpoint_C"] == 900.0
+    assert result.series[1]["T_setpoint_C"] == 900.0                       # step at t = 60 acts from the next sub-step
+    assert result.series[2]["T_gasifier_C"] == pytest.approx(930.0 - 30.0 * math.exp(-0.5))
