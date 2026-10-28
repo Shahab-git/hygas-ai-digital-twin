@@ -454,9 +454,9 @@ def _render_plant_operations_header():
 
 _render_plant_operations_header()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
     ["Digital Twin", "Plant Overview", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
-     "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis"]
+     "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Transient What-If"]
 )
 
 with tab1:
@@ -10856,3 +10856,13 @@ with tab9:
 
 with tab2:
     _render_plant_overview_tab()
+
+
+# Tab 11 -- a throw-away what-if simulation (python/ui_transient_tab.py). It never reads or writes the plant state published by the
+# hourly runtime and touches no database; a failure here must not take the other tabs down.
+with tab11:
+    try:
+        from python import ui_transient_tab
+        ui_transient_tab.render()
+    except Exception as _whatif_exc:
+        st.error(f"The Transient What-If tab could not be displayed ({type(_whatif_exc).__name__}).")

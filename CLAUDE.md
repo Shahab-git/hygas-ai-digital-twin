@@ -565,6 +565,15 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
   N2 +296 %, LHV -36 %, flow +105 %. Several places still use the registry basis
   (HB-006's 55 % target, HB-010's 55 % design feed and 50 Nm3/h, Tab 1's original
   0.28 CO / 0.35 CO2 sections). See `docs/master_open_questions.md` items 3, 5, 6.
+- **The hourly runtime is still quasi-steady.** A separate what-if layer (`python/dynamics.py`, `docs/dynamics_v0.md`) adds
+  Assumed first-order lags (gasifier temperature, fuel conversion, gas transport) and a tail-gas recycle delay for transient studies;
+  it is not wired into the runtime (the app only has the throw-away Tab 11 below), GC/HB/EU/SA stay algebraic, and its time constants are not validated against plant data.
+- **The "Transient What-If" tab (Tab 11) is a throw-away simulation, not the live plant.** It runs `python/dynamics.py` with Assumed time
+  constants in a child process, reads and writes nothing in the plant state or any database, and is not connected to the hourly runtime
+  (`docs/dynamics_v0.md` section 9). HB-013, HB-018 and EU-010 are not valid in transients and are never plotted.
+- **GA-001 temperature has almost no effect on the outputs.** It enters only through the water-gas-shift equilibrium constant (no energy
+  balance, carbon conversion fixed at 0.90, tar Missing): over 850-950 degC H2 production changes by 0.08 %. The thermal lag in the
+  dynamics layer is therefore nearly decorative until that changes.
 - **Store continuity is guarded, not proven.** An unreadable store aborts a writing run and a run that would
   shrink the store by more than 10 % is refused, but a store that is readable yet wrong (stale rows, a partial
   change under 10 %) is not detected, and a failed run is signalled only by a red Actions run and its email

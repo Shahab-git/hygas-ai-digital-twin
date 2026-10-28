@@ -4,7 +4,8 @@ own AppTest harness, offline.
 Offline means: the Supabase store is the fake client serving tests/fixtures/
 sample_snapshot.json (a TEST FIXTURE, not plant data); the weather feed
 (open-meteo) and the GitHub commit-age call are served canned JSON by a patched
-urlopen that refuses every other URL. Asserts: no exception, 10 tabs, and that
+urlopen that refuses every other URL. Asserts: no exception, 11 tabs (the 11th, "Transient What-If", was added
+after this test was written; the count is changed deliberately), and that
 Tab 2's category counters sum to 91.
 """
 import io
@@ -52,7 +53,7 @@ def _store_rows():
              "published_at": "2026-09-10T00:04:00Z"} for e in doc["entries"]]
 
 
-def test_app_runs_offline_with_ten_tabs_and_tab2_counters_summing_to_91():
+def test_app_runs_offline_with_eleven_tabs_and_tab2_counters_summing_to_91():
     st.cache_data.clear()   # st.cache_data survives between AppTest runs in one process
     fake = FakeSupabase({"plant_state_current": _store_rows()})
     with patched_supabase(fake), mock.patch("urllib.request.urlopen", side_effect=_offline_urlopen):
@@ -62,8 +63,8 @@ def test_app_runs_offline_with_ten_tabs_and_tab2_counters_summing_to_91():
     assert [c for c in fake.calls if c[0] != "select"] == [], "the app wrote to the (fake) database"
 
     labels = [t.label for t in at.tabs]
-    assert len(labels) == 10, labels
-    assert labels[1] == "Plant Overview" and labels[-1] == "Design Basis"
+    assert len(labels) == 11, labels      # was 10: Tab 11 "Transient What-If" is new; Tabs 1-10 are unchanged and keep their positions
+    assert labels[1] == "Plant Overview" and labels[-2] == "Design Basis" and labels[-1] == "Transient What-If"
 
     def metric_value(label):
         found = [m for m in at.metric if m.label == label]
