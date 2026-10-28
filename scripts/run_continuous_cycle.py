@@ -80,6 +80,13 @@ from python import vendor_log  # noqa: E402
 _STATE_TABLE = "plant_state_current"
 
 EXIT_STORE_UNREACHABLE = 2
+EXIT_SHRINK_GUARD = 3
+
+# Shrink guard: a run that would persist far fewer keys than the store holds is almost
+# certainly a bug (a model lost its registration, a partial read), not a plant change.
+SHRINK_MIN_STORED_KEYS = 20       # only judge a store that has at least this many keys
+SHRINK_MIN_FRACTION = 0.90        # the new snapshot must keep >= 90 % of the stored keys
+SHRINK_OVERRIDE_ENV = "HYGAS_ALLOW_SHRINK"   # "1" = intentional model change; never set in the workflow
 
 
 def writes_allowed():
@@ -186,6 +193,19 @@ def load_persisted_rows():
     """Rows of plant_state_current. [] only for an empty or missing table;
     raises StoreUnreachable when the store could not be read."""
     return read_store().rows
+
+
+def check_shrink(stored_keys, new_keys, override=False):
+    """None if persisting is fine; otherwise a dict describing the shrink.
+    Not applied when fewer than SHRINK_MIN_STORED_KEYS were stored (empty / missing
+    table = bootstrap, or a tiny store) or when `override` is true."""
+    n_stored, n_new = len(stored_keys), len(new_keys)
+    if override or n_stored < SHRINK_MIN_STORED_KEYS:
+        return None
+    if n_new >= SHRINK_MIN_FRACTION * n_stored:
+        return None
+    missing = sorted((k for k in stored_keys if k not in new_keys), key=str)
+    return {"n_stored": n_stored, "n_new": n_new, "n_missing": len(missing), "missing_first_20": missing[:20]}
 
 
 def snapshot_from_rows(rows):
@@ -392,6 +412,18 @@ def main(now_iso=None):
     counter = state.get_snapshot().get(cycle_clock.COUNTER_KEY)
     if counter is not None:
         print(f"  RUNTIME/CycleCounter = {counter['value']}")
+
+    if allow and store.outcome == STORE_OK:
+        override = os.environ.get(SHRINK_OVERRIDE_ENV) == "1"
+        shrink = check_shrink(set(persisted), set(state.get_snapshot()), override=override)
+        if shrink:
+            print(f"ERROR: shrink guard -- the store holds {shrink['n_stored']} key(s) but this run would persist only "
+                  f"{shrink['n_new']} (< {int(SHRINK_MIN_FRACTION * 100)}%); {shrink['n_missing']} stored key(s) would be lost. "
+                  f"First {len(shrink['missing_first_20'])} missing: {shrink['missing_first_20']}. "
+                  f"Aborting WITHOUT persisting. For an intentional model change set {SHRINK_OVERRIDE_ENV}=1 for one run.")
+            raise SystemExit(EXIT_SHRINK_GUARD)
+        if override and len(state.get_snapshot()) < SHRINK_MIN_FRACTION * len(persisted):
+            print(f"  {SHRINK_OVERRIDE_ENV}=1 -> shrink guard overridden: persisting {len(state.get_snapshot())} key(s) over {len(persisted)}.")
 
     if allow:
         print("Persisting the new snapshot to plant_state_current...")
