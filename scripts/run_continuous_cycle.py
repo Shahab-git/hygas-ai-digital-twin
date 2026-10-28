@@ -259,7 +259,10 @@ def rehydrate(persisted_entries, now_iso):
 
 
 def apply_pending_operator_setpoints(engine):
-    """design doc section 5, step 4."""
+    """design doc section 5, step 4. Applies every pending setpoint IN MEMORY (promote_to_measurement)
+    and returns the list of applied engine keys. It does NOT mark them applied in the database any
+    more: main() does that only AFTER persist_snapshot() succeeded, so a failed save leaves them
+    pending for the next run instead of losing them."""
     pending = operator_setpoints.list_pending_setpoints()
     applied = []
     for row in pending:
@@ -273,12 +276,19 @@ def apply_pending_operator_setpoints(engine):
             f"at {row.get('requested_at')}",
         )
         engine.promote_to_measurement(key, reader)
-        if writes_allowed():
-            operator_setpoints.mark_setpoint_applied(row["engine_key"])
-        else:
-            print(f"  HYGAS_ALLOW_DB_WRITES!=1 -> setpoint {row['engine_key']!r} applied in memory, NOT marked applied in the DB.")
         applied.append(row["engine_key"])
     return applied
+
+
+def mark_setpoints_applied(applied_keys):
+    """Called only after a successful persist. Returns the keys actually marked."""
+    marked = []
+    for engine_key in applied_keys:
+        if operator_setpoints.mark_setpoint_applied(engine_key):
+            marked.append(engine_key)
+        else:
+            print(f"  WARNING: could not mark setpoint {engine_key!r} applied; it stays pending and will be re-applied next run.")
+    return marked
 
 
 def replay_measurement_promotions(engine):
@@ -396,9 +406,9 @@ def main(now_iso=None):
         engine = se.SimulationEngine(state)
         register_full_engine(engine, elapsed_info=elapsed)
 
-        print("Applying pending operator setpoints...")
+        print("Applying pending operator setpoints (in memory; marked in the DB only after a successful save)...")
         applied_setpoints = apply_pending_operator_setpoints(engine)
-        print(f"  {len(applied_setpoints)} setpoint(s) applied: {applied_setpoints}")
+        print(f"  {len(applied_setpoints)} setpoint(s) applied in memory: {applied_setpoints}")
 
         print("Replaying durable measurement promotions...")
         replay_measurement_promotions(engine)
@@ -421,16 +431,28 @@ def main(now_iso=None):
                   f"{shrink['n_new']} (< {int(SHRINK_MIN_FRACTION * 100)}%); {shrink['n_missing']} stored key(s) would be lost. "
                   f"First {len(shrink['missing_first_20'])} missing: {shrink['missing_first_20']}. "
                   f"Aborting WITHOUT persisting. For an intentional model change set {SHRINK_OVERRIDE_ENV}=1 for one run.")
+            if applied_setpoints:
+                print(f"  {len(applied_setpoints)} setpoint(s) NOT marked applied -- they stay pending for the next run.")
             raise SystemExit(EXIT_SHRINK_GUARD)
         if override and len(state.get_snapshot()) < SHRINK_MIN_FRACTION * len(persisted):
             print(f"  {SHRINK_OVERRIDE_ENV}=1 -> shrink guard overridden: persisting {len(state.get_snapshot())} key(s) over {len(persisted)}.")
 
     if allow:
         print("Persisting the new snapshot to plant_state_current...")
-        n_rows = persist_snapshot(state, now_iso=now_iso)
+        try:
+            n_rows = persist_snapshot(state, now_iso=now_iso)
+        except Exception:
+            if applied_setpoints:
+                print(f"  Save failed: {len(applied_setpoints)} setpoint(s) NOT marked applied -- they stay pending for the next run.")
+            raise
         print(f"  {n_rows} row(s) upserted.")
+        if applied_setpoints:
+            marked = mark_setpoints_applied(applied_setpoints)
+            print(f"  {len(marked)} of {len(applied_setpoints)} setpoint(s) marked applied after the successful save.")
     else:
         print("Dry run: snapshot NOT persisted.")
+        if applied_setpoints:
+            print(f"  Dry run: {len(applied_setpoints)} setpoint(s) applied in memory only, NOT marked applied in the DB.")
 
     elapsed_s = time.monotonic() - t0
     print(f"=== Continuous cycle run finished in {elapsed_s:.2f}s ===")
