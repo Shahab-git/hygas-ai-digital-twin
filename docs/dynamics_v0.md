@@ -240,24 +240,55 @@ are the last result in the viewer's session and `st.cache_data` entries keyed on
 | control | range | note |
 |---|---|---|
 | Step type | feed / ER / gasifier T setpoint | one step per run |
-| Feed-rate change | −30 … +30 % | limit of the tab, not a validated range (base 41.67 kg/h as received) |
-| New ER | 0.2125 … 0.2875 | the declared Assumed bounds of `air_equivalence_ratio` (`python/uncertainty.py`); base 0.25 |
-| New T setpoint | 850 … 1000 °C | limit of the tab: below the Confirmed 1050 °C design temperature; 850 °C is the low end of section 7; base 950 °C |
-| Step time, duration | duration 10 … 240 min | the step is snapped to a sub-step boundary |
-| dt | 30 / 60 / 120 s | see the dt rule below |
+| Feed-rate change | −30 … +30 % | **tab limit, not a validated range** (base 41.67 kg/h as received) |
+| New ER | 0.2125 … 0.2875 | **tab limit, not a validated range**; fixed constants (see "Where the ER range comes from"); base 0.25 |
+| New T setpoint | 850 … 1000 °C | **tab limit, not a validated range**: below the Confirmed 1050 °C design temperature; 850 °C is the low end of section 7; base 950 °C |
+| Step time, duration | duration 10 … 240 min, **at most the longest run the caps allow at the chosen dt** | the step is snapped to a sub-step boundary; a duration above the maximum is reduced with a visible notice, not refused at Run |
+| dt | 10 / 15 / 30 / 60 / 120 s | see the dt rule and the defaults below |
 | the five time constants | each limited to its range in section 3 | each shows an `Assumed` tag, the reasoning (tooltip) and the question for DOK-ING |
 
 **dt rule.** A time constant shorter than 2·dt gets a visible warning (poorly resolved). A time constant shorter than dt **blocks** the run (the
 Run button is disabled and the message says which tau and what to change): its response would fit inside one step and t63/t95 could not be read.
 Measured in `tests/test_dynamics.py`: with tau = dt/2 the t95 spread across dt was 24 %, with tau = dt it was 0.3 %. Blocking at tau < 2·dt would
-leave **no** runnable combination at the Assumed defaults (`tau_gas` = 30 s), which is why the default dt is 30 s; at dt = 60 s raise `tau_gas` to ≥ 60 s
+leave **no** runnable combination at the Assumed defaults (`tau_gas` = 30 s), so the defaults use dt ≤ 30 s; at dt = 60 s raise `tau_gas` to ≥ 60 s
 and `tau_rec` to ≥ 120 s.
+
+**Defaults per step type** (changing the step type applies them; the reason is shown next to the controls): feed dt 30 s, 2 h (the slowest lag,
+`tau_conv` = 1200 s, dominates); **ER dt 10 s, 30 min** (an ER step passes through `tau_gas` = 30 s only and the GA-001 flow reaches 63 % in about 20 s, so only
+dt = 10 s samples it twice; at 15 s that t63 is correctly shown as unresolved); **T dt 15 s, 30 min** (the EU-008 demand reaches 63 % of a T step in about
+54 s, which needs dt ≤ 15 s). The longest run at each dt: 10 s → 40 min, 15 s → 60 min, 30 s → 120 min, 60 s and 120 s → 4 h (240 steps at 60 s).
+
+**"Not resolved".** A t63 or t95 shorter than 2·dt lies inside one or two samples, so it is an interpolation, not a measurement. The table and the response
+CSV then show **"not resolved (< 2 steps)"** instead of the number (the CSV header and a caption give the sampling interval); a time of at least 2·dt is
+always shown as a number. Choose a smaller dt to resolve it.
 
 **Caps** (protect the Streamlit server): at most **240 steps** per run (duration ÷ dt) and **4 h**; either one shows a "Cap hit" message and
 disables Run. Each step is one full engine cycle (~0.1 s on the development machine) plus a fixed ~6 s (24 warm-up cycles, the independent
 steady-state engine for the final values, process start). One run at a time per server process; a second press meanwhile says "another run is in progress".
-The worker is killed after 300 s. Measured on the development machine through the tab: default (feed +10 %, dt 30 s, 2 h, 240 steps) **29.9 s**;
-dt 60 s, 2 h (120 steps) **17.9 s**; the same parameters again **0.05 s** (cache). Streamlit Community Cloud timings are not measured.
+The worker is killed after 300 s. Measured on the development machine (Windows, Python 3.14), wall time of a run through the worker:
+
+| run | steps | wall time |
+|---|---|---|
+| feed, dt 30 s, 2 h (default) | 240 | 29.9 s |
+| ER, dt 10 s, 30 min (default) | 180 | 23.1 s |
+| T, dt 15 s, 30 min (default) | 120 | 17.5 s |
+| ER, dt 15 s, 60 min (longest at 15 s) | 240 | 29.0 s |
+| ER, dt 10 s, 40 min (longest at 10 s) | 240 | 29.0 s |
+| T, dt 15 s, 60 min (longest at 15 s) | 240 | 29.4 s |
+| dt 60 s, 4 h, `tau_gas` 60, `tau_rec` 120 (longest allowed) | 240 | 29.3 s |
+| the same parameters again | – | 0.05 s (cache) |
+
+No default scenario exceeds 60 s here. **Run times on Streamlit Community Cloud may be 2–3× slower than these local numbers (not measured; the app is not deployed from this branch).**
+
+**Memory.** Method: Windows `GetProcessMemoryInfo` through `ctypes` (peak working set = peak resident memory; no new dependency). The server was started with the offline
+fake store (never the real `secrets.toml`) and a real session rendered every tab: server process peak **271.9 MiB** (244.8–253.8 MiB current after one or two more
+sessions). The worker, running the real entry point (`worker_main`): **67.1 MiB** right after import, **68.0 MiB** peak after the default feed run, **68.1 MiB** after
+the longest allowed run (4 h at dt 60 s), **68.0 MiB** after the ER default. Sum of the peaks about **340 MiB**, below the 700 MiB threshold and about a third of the ~1 GB
+limit of a Community Cloud app, so no mitigation is proposed. A result payload is about 135 kB, and at most 8 are cached. Caveats: Windows / Python 3.14 here against Linux /
+Python 3.11 there; each further viewer session adds a few MiB; **real Community Cloud memory and CPU are NOT VERIFIED until deployed**. The Windows commit figure (peak
+pagefile usage, 819 MiB worker, 1744 MiB server) is reserved address space, not resident memory, and is not comparable to the cloud limit. A "refuse to run when memory is
+low" guard was **not** added: reading available memory portably without a new dependency (cgroup files on Linux, `GlobalMemoryStatusEx` on Windows) could not be verified for the
+cloud container, and the rule is not to guess.
 
 **Why a child process.** `run_transient` has to move two module-level globals while it runs (`cycle_clock`'s elapsed-hours override and
 `EU008_DAMPING`). The server runs every viewer in one process and `app.py`'s own cached engine runs read the same globals, so a run inside the server
@@ -274,7 +305,15 @@ parameters with the question each becomes, and two CSV downloads (the series car
 derives from them (EU-006, EU-009 grid balance, AI-004 states). Reason: the dispensing demand is Missing and the stock is drained each step (section 4).
 In a quiet run the plotted quantities are flat to 1e-14 while HB-013 swings, which is why the split is safe. Ask DOK-ING for the real dispensing profile.
 
-**Reading ER-step results.** An ER step overshoots (section 6): "t95" is the first crossing and happens within one step; use the peak column.
+**Where the ER range comes from.** `ER_RANGE = (0.2125, 0.2875)` and `ER_BASE = 0.25` in `python/ui_transient_sim.py` are **literals** (the default Assumed band of
+`air_equivalence_ratio`, 0.25 ± 15 %, copied; tab limits, not validated ranges). They used to be `uncertainty.bounds()` read when the module was first imported, which in the app
+happens after Tab 1's confirmation sync (`app.py:481`): with a confirmation row replayed into memory the slider would have narrowed to that row's range (checked in memory with the
+reader patched: 0.245–0.255 and default 0.255 with the sync, 0.2125–0.2875 and 0.2875 without). Now both give 0.2125–0.2875; a test pins this in child processes. Next to the slider the tab
+shows the air-ratio status ("Assumed, not confirmed" or "confirmation recorded, range …") read from the already-synced in-memory `ASSUMPTIONS`; it adds no database read.
+
+**Question for DOK-ING (also shown in the tab):** what is the real operating envelope for feed rate, air ratio (ER) and gasifier temperature? The input limits of this tab are not validated ranges.
+
+**Reading ER-step results.** An ER step overshoots (section 6): "t95" is the first crossing and can happen within a few steps; use the peak column, and note that times under 2·dt are shown as not resolved.
 
 **Not in the tab:** a "Replay" animation (optional; not built — a client-side animation could not be verified headlessly here), connecting a transient to
 live shared state, sensor ingestion, calibration, any change to the hourly runtime.
