@@ -56,7 +56,8 @@ def _tab(counters=None):
 
 def _quick(at, scenario, **extra):
     """Short run: 10 min at dt = 30 s with the step at 3 min (20 steps)."""
-    at.radio(key="wi_scenario").set_value(scenario)
+    at.radio(key="wi_scenario").set_value(scenario).run()        # a new step type brings its own dt / duration defaults ...
+    at.radio(key="wi_dt_s").set_value(30)                          # ... so the quick run sets its own: 10 min at dt = 30 s (20 steps)
     at.number_input(key="wi_duration_min").set_value(10)
     at.number_input(key="wi_step_min").set_value(3)
     for key, value in extra.items():
@@ -363,3 +364,91 @@ def test_reset_to_defaults_restores_every_input():
 def test_added_test_time_is_reported(runs):
     # the fixture's four real runs (child processes) are the bulk of this file; the budget is 45 s for the whole module
     assert runs["seconds"] < 45, runs["seconds"]
+
+
+# ------------------------------------------------------------------------------------ A: dt 10 / 15 s, clamp, "not resolved"
+def _exponential(tau, dt, n=80):
+    return [{"t_s": k * dt, "x": 1.0 - math.exp(-k * dt / tau)} for k in range(n)]
+
+
+@pytest.mark.parametrize("tau,dt", [(10.0, 30), (25.0, 15), (60.0, 30), (200.0, 30), (20.0, 10), (500.0, 120)])
+def test_a_a_time_is_flagged_not_resolved_exactly_when_it_is_shorter_than_two_steps(tau, dt):
+    series = _exponential(tau, dt)
+    keys = [q[0] for q in sim.PLOT_QUANTITIES]
+    for row in series:
+        row.update({k: row["x"] for k in keys})
+    row = sim.response_table(series, 0, {k: 1.0 for k in keys}, dt)[0]       # the step at t = 0, final value 1.0
+    for key, flag in (("t63", "t63_unresolved"), ("t95", "t95_unresolved")):
+        value = row[key]
+        assert value is not None and row[flag] == (value < 2 * dt), (tau, dt, key, value)
+
+
+def test_a_labels_appear_in_the_table_and_the_csv_only_in_the_unresolved_cases(runs):
+    seen_label = seen_number = 0
+    for name in ("er", "T"):
+        at, payload = runs[name]
+        dt = payload["params"]["dt_s"]
+        frame = next(d.value for d in at.dataframe if "t63 [s]" in list(d.value.columns))
+        csv_text = sim.build_response_csv(payload)
+        body = [line for line in csv_text.splitlines() if not line.startswith("#")][1:]
+        for r, (_i, shown), line in zip(payload["response"], frame.iterrows(), body):
+            for key, flag, column in (("t63", "t63_unresolved", "t63 [s]"), ("t95", "t95_unresolved", "t95 [s]")):
+                value = r[key] if r["meaningful"] else None
+                unresolved = value is not None and value < 2 * dt
+                assert r[flag] == unresolved, (name, r["key"], key)
+                assert (shown[column] == sim.UNRESOLVED_LABEL) == unresolved, (name, r["key"], key, shown[column])
+                if unresolved:
+                    seen_label += 1
+                elif value is not None:
+                    seen_number += 1
+                    assert shown[column] == f"{value:.0f}", (name, r["key"], key, shown[column])
+            assert (sim.UNRESOLVED_LABEL in line) == (r["t63_unresolved"] or r["t95_unresolved"]), line
+        assert f"# sampling interval dt = {dt} s" in csv_text
+        assert f"Sampling interval dt = {dt} s" in " ".join(c.value for c in at.caption)
+    assert seen_label >= 2 and seen_number >= 2           # both cases occurred, so the test is not vacuous
+
+
+def test_a_dt_10_and_15_are_runnable_only_when_the_rule_allows():
+    assert sim.DT_CHOICES_S == (10, 15, 30, 60, 120)
+    for dt in (10, 15):
+        assert sim.validate_params(sim.normalise_params({"dt_s": dt, "duration_min": 10, "step_min": 3})) == []      # the Assumed defaults
+    p = sim.normalise_params({"dt_s": 10, "duration_min": 10, "step_min": 3, "taus": {"tau_gas": 8.0}})              # 8 s < dt = 10 s
+    assert any("tau_gas = 8 s is shorter than dt = 10 s" in e for e in sim.validate_params(p))
+    p = sim.normalise_params({"dt_s": 15, "duration_min": 10, "step_min": 3, "taus": {"tau_gas": 14.0, "tau_rec": 12.0}})
+    errors = sim.validate_params(p)
+    assert any("tau_gas = 14 s is shorter than dt = 15 s" in e for e in errors) and any("tau_rec = 12 s is shorter than dt = 15 s" in e for e in errors)
+    blocked, warned = sim.check_resolution({**sim.default_taus(), "tau_gas": 20.0}, 15)
+    assert blocked == [] and [n for n, _ in warned] == ["tau_gas"]                                                    # 15 <= 20 < 30
+    assert sim.validate_params(sim.normalise_params({"dt_s": 10, "duration_min": 40})) == []                          # exactly 240 steps
+    assert any("Cap hit" in e for e in sim.validate_params(sim.normalise_params({"dt_s": 10, "duration_min": 41})))
+
+
+def test_a_the_duration_clamp_and_the_maximum_for_each_dt():
+    assert [sim.max_duration_s(d) for d in sim.DT_CHOICES_S] == [2400, 3600, 7200, 14400, 14400]
+    assert sim.clamp_duration_min(120, 10) == (40, True) and sim.clamp_duration_min(120, 15) == (60, True)
+    assert sim.clamp_duration_min(120, 30) == (120, False) and sim.clamp_duration_min(300, 60) == (240, True)
+    assert sim.clamp_duration_min(40, 10) == (40, False) and sim.clamp_duration_min(5, 30) == (10, False)
+
+
+def test_a_in_the_page_a_finer_dt_clamps_the_duration_and_says_so_instead_of_failing_at_run():
+    at = _tab().run()
+    assert at.number_input(key="wi_duration_min").value == 120 and "longest run is **120 min**" in " ".join(c.value for c in at.caption)
+    at.radio(key="wi_dt_s").set_value(10).run()
+    assert at.number_input(key="wi_duration_min").value == 40
+    assert any("reduced from 120 to 40 min" in w.value for w in at.warning)
+    assert "longest run is **40 min**" in " ".join(c.value for c in at.caption)
+    assert at.button(key="wi_run").disabled is False and not at.error
+    at.radio(key="wi_dt_s").set_value(30).run()
+    assert "longest run is **120 min**" in " ".join(c.value for c in at.caption)
+
+
+def test_a_each_step_type_brings_its_own_default_dt_and_duration_with_the_reason():
+    at = _tab().run()
+    assert (at.radio(key="wi_dt_s").value, at.number_input(key="wi_duration_min").value) == (30, 120)
+    for scenario, dt, duration in (("er", 10, 30), ("T", 15, 30), ("feed", 30, 120)):
+        at.radio(key="wi_scenario").set_value(scenario).run()
+        assert (at.radio(key="wi_dt_s").value, at.number_input(key="wi_duration_min").value) == (dt, duration), scenario
+        assert sim.SCENARIO_DEFAULTS[scenario]["why"] in " ".join(c.value for c in at.caption)
+        params = sim.normalise_params({"scenario": scenario, "dt_s": dt, "duration_min": duration, "step_min": at.number_input(key="wi_step_min").value})
+        assert sim.validate_params(params) == [] and params["duration_s"] // params["dt_s"] <= sim.MAX_STEPS
+        assert not at.error

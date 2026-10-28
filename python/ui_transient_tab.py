@@ -73,6 +73,28 @@ def _reset_to_defaults():
         st.session_state[key] = value
 
 
+def _on_scenario_change():
+    """A new step type brings its own default dt, duration and step time (sim.SCENARIO_DEFAULTS, the reason is shown next to the controls)."""
+    chosen = sim.SCENARIO_DEFAULTS[st.session_state[_K + "scenario"]]
+    st.session_state[_K + "dt_s"] = chosen["dt_s"]
+    st.session_state[_K + "duration_min"] = chosen["duration_min"]
+    st.session_state[_K + "step_min"] = chosen["step_min"]
+
+
+def _clamp_time_controls():
+    """Keeps the duration and the step time inside what the caps allow at the chosen dt (before the widgets are drawn). Returns a notice or None."""
+    s = st.session_state
+    duration, clamped = sim.clamp_duration_min(s[_K + "duration_min"], s[_K + "dt_s"])
+    notice = None
+    if clamped:
+        notice = (f"The duration was reduced from {s[_K + 'duration_min']} to {duration} min: at dt = {s[_K + 'dt_s']} s the caps "
+                  f"({sim.MAX_STEPS} steps, {sim.MAX_DURATION_S // 3600} h) allow at most {duration} min.")
+        s[_K + "duration_min"] = duration
+    if s[_K + "step_min"] > duration - 1:
+        s[_K + "step_min"] = max(1, duration - 1)
+    return notice
+
+
 def _current_params():
     s = st.session_state
     return sim.normalise_params({
@@ -90,9 +112,11 @@ def _cached_run(params_json):
 # -------------------------------------------------------------------------------------------------------- controls
 def _controls():
     s = st.session_state
+    notice = _clamp_time_controls()
     st.markdown("##### 1 · The disturbance")
-    st.radio("Step type", sim.SCENARIOS, key=_K + "scenario", format_func=lambda k: sim.SCENARIO_LABELS[k], horizontal=True)
-    c1, c2, c3, c4 = st.columns(4)
+    st.radio("Step type", sim.SCENARIOS, key=_K + "scenario", format_func=lambda k: sim.SCENARIO_LABELS[k], horizontal=True,
+             on_change=_on_scenario_change)
+    c1, c2, c3 = st.columns(3)
     with c1:
         if s[_K + "scenario"] == "feed":
             st.number_input("Feed-rate change [%]", min_value=sim.FEED_PCT_RANGE[0], max_value=sim.FEED_PCT_RANGE[1], step=5.0,
@@ -106,14 +130,20 @@ def _controls():
             st.number_input("New gasifier T setpoint [°C]", min_value=sim.T_RANGE[0], max_value=sim.T_RANGE[1], step=5.0, key=_K + "T_new",
                             help=f"Starts at {sim.T_BASE:g} °C (Confirmed registry value). Limits of this tab: below the Confirmed 1050 °C "
                             "design temperature; not a validated operating range.")
+    top_min = sim.max_duration_s(s[_K + "dt_s"]) // 60
     with c2:
-        st.number_input("Step time [min]", min_value=1, max_value=sim.MAX_DURATION_S // 60 - 1, step=1, key=_K + "step_min")
+        st.number_input("Step time [min]", min_value=1, max_value=max(1, int(s[_K + "duration_min"]) - 1), step=1, key=_K + "step_min")
     with c3:
-        st.number_input("Total duration [min]", min_value=sim.MIN_DURATION_S // 60, max_value=sim.MAX_DURATION_S // 60, step=10,
+        st.number_input("Total duration [min]", min_value=sim.MIN_DURATION_S // 60, max_value=top_min, step=5 if top_min <= 60 else 10,
                         key=_K + "duration_min", help=f"Hard caps: at most {sim.MAX_DURATION_S // 3600} h and {sim.MAX_STEPS} steps per run.")
-    with c4:
-        st.radio("Time step dt", sim.DT_CHOICES_S, key=_K + "dt_s", format_func=lambda d: f"{d} s", horizontal=True,
-                 help="Each step runs the full steady-state engine once (~0.1 s). Smaller dt resolves faster lags but costs more steps.")
+    st.radio("Time step dt", sim.DT_CHOICES_S, key=_K + "dt_s", format_func=lambda d: f"{d} s", horizontal=True,
+             help="Each step runs the full steady-state engine once (~0.1 s). A smaller dt resolves faster lags but allows a shorter run "
+                  "(240 steps at most).")
+    chosen = sim.SCENARIO_DEFAULTS[s[_K + "scenario"]]
+    st.caption(f"At dt = {s[_K + 'dt_s']} s the longest run is **{top_min} min** ({sim.MAX_STEPS} steps; hard cap {sim.MAX_DURATION_S // 3600} h). "
+               f"Defaults for this step type are dt = {chosen['dt_s']} s and {chosen['duration_min']} min: {chosen['why']}.")
+    if notice:
+        st.warning(notice)
 
     st.markdown("##### 2 · Time constants " + _tag("Assumed"), unsafe_allow_html=True)
     st.caption("All five are **Assumed** — placeholders from the registry geometry and engineering judgement, not measured. Each slider is limited "
@@ -153,8 +183,8 @@ def _response_frame(payload):
             t63 = t95 = "n/a (change < 0.01 %)"
             peak = "—"
         else:
-            t63 = f"{r['t63']:.0f}" if r["t63"] is not None else "not reached in this run"
-            t95 = f"{r['t95']:.0f}" if r["t95"] is not None else "not reached in this run"
+            t63 = (sim.UNRESOLVED_LABEL if r["t63_unresolved"] else f"{r['t63']:.0f}") if r["t63"] is not None else "not reached in this run"
+            t95 = (sim.UNRESOLVED_LABEL if r["t95_unresolved"] else f"{r['t95']:.0f}") if r["t95"] is not None else "not reached in this run"
             peak = f"{r['peak_pct']:.0f}"
         rows.append({"Quantity": _pretty(r["label"]), "Unit": _pretty(r["unit"]), "Before step": _fmt(r["before"]), "End of run": _fmt(r["end_of_run"]),
                      "Final steady state": _fmt(r["final"]), "Change": _fmt(r["change"]) if r["meaningful"] else "≈ 0", "t63 [s]": t63, "t95 [s]": t95,
@@ -204,6 +234,9 @@ def _render_results(payload):
     if stale:
         st.info("The inputs above have changed since this result. Press **Run what-if simulation** to update it.")
 
+    dt = p["dt_s"]
+    st.caption(f"Sampling interval dt = {dt} s. A response time shorter than 2·dt = {2 * dt} s lies inside one or two samples and is shown as "
+               f"“{sim.UNRESOLVED_LABEL}”; choose a smaller dt to resolve it.")
     st.markdown("**Response times** — seconds after the step to reach 63.2 % and 95 % of the change to the new steady state "
                 "(first crossing, linearly interpolated: the same definitions as `scripts/run_transient_demo.py`). A response that overshoots "
                 "crosses 95 % before it has settled — read the peak column.")

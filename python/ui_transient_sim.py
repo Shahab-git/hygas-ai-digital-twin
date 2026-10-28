@@ -39,10 +39,23 @@ BANNER_TEXT = ("WHAT-IF SIMULATION. Not the live plant. Time constants are Assum
                "This tab does not read or change the plant state published by the hourly runtime.")
 
 # ---- hard limits (Streamlit Community Cloud has little CPU/memory: one engine cycle costs ~0.1 s on the development machine)
-DT_CHOICES_S = (30, 60, 120)
+DT_CHOICES_S = (10, 15, 30, 60, 120)
 MAX_STEPS = 240                 # sub-steps (= engine cycles) per run; 240 x ~0.1 s ~ 25 s locally
 MAX_DURATION_S = 4 * 3600
 MIN_DURATION_S = 600
+UNRESOLVED_LABEL = "not resolved (< 2 steps)"      # shown instead of a t63 / t95 shorter than 2 x dt
+
+
+def max_duration_s(dt_s):
+    """The longest run the caps allow at this dt: 240 steps, and never more than 4 h (10 s -> 2400 s, 15 s -> 3600 s, 30 s -> 7200 s)."""
+    return min(MAX_DURATION_S, MAX_STEPS * int(dt_s))
+
+
+def clamp_duration_min(duration_min, dt_s):
+    """(duration in minutes limited to what the caps allow at this dt, True if it had to be reduced). Never below the minimum run."""
+    top = max_duration_s(dt_s) // 60
+    value = max(MIN_DURATION_S // 60, min(int(duration_min), top))
+    return value, value < int(duration_min)
 WORKER_TIMEOUT_S = 300          # the child is killed after this
 RESULT_MARKER = "@@WHATIF_RESULT@@"
 
@@ -57,6 +70,28 @@ T_RANGE = (850.0, 1000.0)       # 1000 < the Confirmed 1050 degC design temperat
 T_BASE = float(ga001.GA001_OPERATING_TEMPERATURE_C)                                # 950, Confirmed registry value
 FEED_BASE_KG_H = float(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H)
 
+# Defaults per step type (dt, duration, step time) with the reason shown next to the controls. Measured on the development machine with the Assumed
+# defaults (see docs/dynamics_v0.md, "Using the what-if tab"): the GA-001 flow reaches 63 % of an ER step in about 20 s (the recycle loop makes the
+# steady-state target jump first), so only dt = 10 s samples it twice; the EU-008 demand reaches 63 % of a T step in about 54 s, which needs dt <= 15 s.
+SCENARIO_DEFAULTS = {
+    "feed": {"dt_s": 30, "duration_min": 120, "step_min": 10,
+             "why": "the slowest lag, tau_conv = 1200 s, dominates, so dt = 30 s resolves it; 2 h shows the settling"},
+    "er": {"dt_s": 10, "duration_min": 30, "step_min": 5,
+           "why": "an ER step passes through tau_gas (30 s) only and the GA-001 flow reaches 63 % in about 20 s, so only dt = 10 s samples that "
+                  "twice; the gas, recycle and EU-008 demand responses are over within about 10 min, so 30 min (180 steps) is enough"},
+    "T": {"dt_s": 15, "duration_min": 30, "step_min": 5,
+          "why": "the EU-008 demand reaches 63 % of a T step in about 54 s, which needs dt <= 15 s to be sampled twice; the responses are over "
+                 "within about 8 min, so 30 min (120 steps) is enough"},
+}
+DEFAULTS = {
+    "feed": {"dt_s": 30, "duration_min": 120, "step_min": 10,
+             "why": "the slowest lag, tau_conv = 1200 s, dominates, so dt = 30 s resolves it; 2 h shows the settling"},
+    "er": {"dt_s": 15, "duration_min": 30, "step_min": 5,
+           "why": "an ER step only passes through tau_gas (30 s), which needs dt <= 15 s to be sampled twice per time constant; the gas, recycle "
+                  "and EU-008 demand responses are over within about 10 min, so 30 min (120 steps) is enough"},
+    "T": {"dt_s": 30, "duration_min": 60, "step_min": 5,
+          "why": "T_gasifier = 120 s and the outputs move only weakly, so dt = 30 s resolves it; the responses are over within about 15 min"},
+}
 DEFAULTS = {"scenario": "feed", "feed_pct": 10.0, "er_new": ER_RANGE[1], "T_new": 920.0,
             "step_min": 10, "duration_min": 120, "dt_s": 30}
 
@@ -261,10 +296,12 @@ def steady_state(inputs):
     return {k: float(v) for k, v in values.items()}, snap[("GA-001", "Outputs")]["status"]
 
 
-def response_table(series, step_s, steady_final):
+def response_table(series, step_s, steady_final, dt_s):
     """One row per plotted quantity. before = value at the end of the sub-step before the step acts (row at t = step), final = the
     independent steady-state engine at the final inputs, t63 / t95 = seconds after the step (demo definitions: fraction 0.632 / 0.95).
-    A change smaller than 0.01 % of the starting value is flagged not meaningful (as in the demo's results page)."""
+    A change smaller than 0.01 % of the starting value is flagged not meaningful (as in the demo's results page). A t63 / t95 shorter than
+    2 x dt is flagged unresolved: it lies within one or two samples, so it is an interpolation, not a measurement of the response. The
+    numbers stay in the payload; the display and the CSV show UNRESOLVED_LABEL instead."""
     before_row = next(r for r in series if r["t_s"] == step_s)
     last = series[-1]
     rows = []
@@ -273,10 +310,13 @@ def response_table(series, step_s, steady_final):
         change = xf - x0
         meaningful = abs(change) > 1e-4 * abs(x0) if x0 else abs(change) > 1e-12
         entry = {"key": key, "label": label, "unit": unit, "before": x0, "end_of_run": x_end, "final": xf, "change": change,
-                 "meaningful": bool(meaningful), "t63": None, "t95": None, "peak_pct": None, "end_pct": None}
+                 "meaningful": bool(meaningful), "t63": None, "t95": None, "peak_pct": None, "end_pct": None,
+                 "t63_unresolved": False, "t95_unresolved": False}
         if meaningful:
             entry["t63"] = time_to_fraction(series, key, x0, xf, 0.632, step_s)
             entry["t95"] = time_to_fraction(series, key, x0, xf, 0.95, step_s)
+            entry["t63_unresolved"] = entry["t63"] is not None and entry["t63"] < 2 * dt_s
+            entry["t95_unresolved"] = entry["t95"] is not None and entry["t95"] < 2 * dt_s
             fractions = [(r[key] - x0) / change * 100.0 for r in series if r["t_s"] >= step_s]
             entry["peak_pct"] = max(fractions)
             entry["end_pct"] = (x_end - x0) / change * 100.0
@@ -321,7 +361,7 @@ def simulate(params):
     payload = {
         "params": params, "magnitude": magnitude, "series": series,
         "units": {k: result.units.get(k, "") for k in SERIES_COLUMNS},
-        "response": response_table(series, params["step_s"], steady_final),
+        "response": response_table(series, params["step_s"], steady_final, params["dt_s"]),
         "steady_final": steady_final, "steady_status": steady_status,
         "assumptions": result.assumptions, "status": result.status, "limits": list(result.limits),
         "used_taus": list(result.used_taus), "banner": BANNER_TEXT,
@@ -426,13 +466,16 @@ def build_csv(payload):
 def build_response_csv(payload):
     out = io.StringIO()
     out.write(f"# {payload['banner']}\n# {payload['status']}\n# {payload['magnitude']}; t63 / t95 in seconds after the step "
-              f"(fractions 0.632 / 0.95 of the change to the independent steady-state engine at the final inputs; first crossing)\n")
+              f"(fractions 0.632 / 0.95 of the change to the independent steady-state engine at the final inputs; first crossing)\n"
+              f"# sampling interval dt = {payload['params']['dt_s']} s; a time shorter than 2 x dt = {2 * payload['params']['dt_s']} s is shown as "
+              f"'{UNRESOLVED_LABEL}'\n")
     writer = csv.writer(out, lineterminator="\n")
     writer.writerow(["quantity", "unit", "before_step", "end_of_run", "final_steady_state", "change", "t63_s", "t95_s", "peak_pct_of_change",
                      "meaningful_change"])
     for r in payload["response"]:
-        writer.writerow([r["label"], r["unit"], r["before"], r["end_of_run"], r["final"], r["change"], r["t63"], r["t95"], r["peak_pct"],
-                         r["meaningful"]])
+        writer.writerow([r["label"], r["unit"], r["before"], r["end_of_run"], r["final"], r["change"],
+                         UNRESOLVED_LABEL if r["t63_unresolved"] else r["t63"], UNRESOLVED_LABEL if r["t95_unresolved"] else r["t95"],
+                         r["peak_pct"], r["meaningful"]])
     return out.getvalue()
 
 
