@@ -309,7 +309,7 @@ def test_a_tau_outside_its_declared_range_is_refused():
 
 def test_input_limits_come_from_the_declared_ranges():
     assert sim.ER_RANGE == (0.2125, 0.2875)
-    for p, text in ((sim.normalise_params({"scenario": "er", "er_new": 0.30}), "declared Assumed range"),
+    for p, text in ((sim.normalise_params({"scenario": "er", "er_new": 0.30}), "limits of this tab"),
                     (sim.normalise_params({"scenario": "feed", "feed_pct": 50.0}), "Feed change"),
                     (sim.normalise_params({"scenario": "T", "T_new": 1100.0}), "T setpoint")):
         assert any(text in e for e in sim.validate_params(p)), text
@@ -452,3 +452,93 @@ def test_a_each_step_type_brings_its_own_default_dt_and_duration_with_the_reason
         params = sim.normalise_params({"scenario": scenario, "dt_s": dt, "duration_min": duration, "step_min": at.number_input(key="wi_step_min").value})
         assert sim.validate_params(params) == [] and params["duration_s"] // params["dt_s"] <= sim.MAX_STEPS
         assert not at.error
+
+
+# ------------------------------------------------------------------------------------------ C: where the ER range comes from
+_ER_SYNC_CHILD = """
+import json, sys
+sys.path.insert(0, {root!r})
+from unittest import mock
+from python import confirmation_loop as cl, uncertainty as u
+if {apply!r}:
+    row = {{"status": cl.STATUS_CONFIRMED, "confirmed_range_low": 0.245, "confirmed_range_high": 0.255}}
+    with mock.patch.object(cl, "load_status", return_value={{"air_equivalence_ratio": row}}):      # the reader is patched: no database
+        cl.sync_confirmed_from_db()
+from python import ui_transient_sim as sim              # imported AFTER the sync, as app.py does (Tab 1 runs before Tab 11)
+print(json.dumps({{"confirmed": u.is_confirmed("air_equivalence_ratio"), "uncertainty_bounds": list(u.bounds("air_equivalence_ratio")),
+                  "er_range": list(sim.ER_RANGE), "er_default": sim.DEFAULTS["er_new"], "er_base": sim.ER_BASE}}))
+"""
+
+
+def _er_child(apply):
+    env = sim.child_env(os.environ)
+    out = subprocess.run([__import__("sys").executable, "-c", _ER_SYNC_CHILD.format(root=ROOT, apply=apply)], capture_output=True, text=True,
+                         cwd=ROOT, env=env, timeout=60)
+    assert out.returncode == 0, out.stderr[-400:]
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+def test_c_the_er_range_is_the_same_with_and_without_the_confirmation_sync():
+    without, with_sync = _er_child(False), _er_child(True)
+    assert without["confirmed"] is False and with_sync["confirmed"] is True
+    assert without["uncertainty_bounds"] == [0.2125, 0.2875] and with_sync["uncertainty_bounds"] == [0.245, 0.255]     # the thing the tab no longer follows
+    assert without["er_range"] == with_sync["er_range"] == [0.2125, 0.2875]
+    assert without["er_default"] == with_sync["er_default"] == 0.2875 and without["er_base"] == with_sync["er_base"] == 0.25
+
+
+def test_c_the_er_limits_are_fixed_constants_with_the_documented_basis():
+    import ast
+    import inspect
+
+    from python import uncertainty
+
+    tree = ast.parse(inspect.getsource(sim))
+    assigned = {t.id: node.value for node in tree.body if isinstance(node, ast.Assign) for t in node.targets if isinstance(t, ast.Name)}
+    for name in ("ER_RANGE", "ER_BASE"):
+        value = assigned[name]
+        assert all(isinstance(n, ast.Constant) for n in ast.walk(value) if not isinstance(n, (ast.Tuple, ast.Load))), name   # literals only
+    cfg = uncertainty.ASSUMPTIONS["air_equivalence_ratio"]
+    lo, hi = cfg["point"] * (1 - cfg["fraction"]), cfg["point"] * (1 + cfg["fraction"])
+    assert sim.ER_BASE == cfg["point"] and sim.ER_RANGE == pytest.approx((lo, hi), abs=1e-12)          # the basis the docs state
+    for p in (sim.normalise_params({"scenario": "er", "er_new": 0.30}), sim.normalise_params({"scenario": "er", "er_new": 0.20})):
+        assert any("limits of this tab" in e and "tab limits, not validated ranges" in e for e in sim.validate_params(p))
+
+
+def test_c_the_slider_is_identical_with_and_without_the_sync_and_the_status_is_shown_from_memory_only():
+    from python import confirmation_loop as cl, uncertainty
+
+    def slider_and_caption():
+        at = _tab().run()
+        at.radio(key="wi_scenario").set_value("er").run()
+        s = at.slider(key="wi_er_new")
+        return (s.min, s.max, s.value), " ".join(c.value for c in at.caption), at
+
+    fake = FakeSupabase()
+    with patched_supabase(fake):
+        plain, caption_plain, _ = slider_and_caption()
+        row = {"status": cl.STATUS_CONFIRMED, "confirmed_range_low": 0.245, "confirmed_range_high": 0.255}
+        try:
+            with mock.patch.object(cl, "load_status", return_value={"air_equivalence_ratio": row}):
+                cl.sync_confirmed_from_db()
+            assert uncertainty.is_confirmed("air_equivalence_ratio")
+            synced, caption_synced, at = slider_and_caption()
+            assert not at.exception and not at.error
+        finally:
+            uncertainty.clear_confirmed("air_equivalence_ratio")
+    assert plain == synced == (0.2125, 0.2875, 0.2875)
+    assert "Air ratio status: Assumed, not confirmed" in caption_plain
+    assert "Air ratio status: confirmation recorded" in caption_synced and "0.245-0.255" in caption_synced
+    assert fake.calls == [], fake.calls                                           # the status needs no database call
+    assert not uncertainty.is_confirmed("air_equivalence_ratio")                  # the test left the process as it found it
+
+
+def test_c_the_input_limits_are_visibly_labelled_and_the_envelope_question_is_asked():
+    at = _tab().run()
+    markdown = "\n".join(m.value for m in at.markdown)
+    assert f"**Also ask DOK-ING:** {sim.ENVELOPE_QUESTION}" in markdown
+    assert "operating envelope for feed rate, air ratio (ER) and gasifier temperature" in sim.ENVELOPE_QUESTION
+    for scenario, text in (("feed", "-30 … +30 %"), ("er", "0.2125 … 0.2875"), ("T", "850 … 1000 °C")):
+        at.radio(key="wi_scenario").set_value(scenario).run()
+        captions = [c.value for c in at.caption if sim.LIMITS_NOTE in c.value]
+        assert len(captions) == 1 and text in captions[0], (scenario, captions)
+        assert sim.LIMITS_NOTE == "tab limits, not validated ranges"

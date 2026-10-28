@@ -64,8 +64,24 @@ SCENARIO_LABELS = {"feed": "Feed-rate step", "er": "ER step (air / equivalence r
 
 # ---- input limits. ER: the project's own declared Assumed bounds. Feed and T: LIMITS OF THIS TAB, not validated operating ranges.
 FEED_PCT_RANGE = (-30.0, 30.0)
-ER_RANGE = tuple(float(x) for x in uncertainty.bounds("air_equivalence_ratio"))     # (0.2125, 0.2875), Assumed
-ER_BASE = float(uncertainty.ASSUMPTIONS["air_equivalence_ratio"]["point"])          # 0.25
+# FIXED limits of this tab -- deliberately NOT read from uncertainty.bounds(): that function returns the DOK-ING-confirmed range once
+# confirmation_loop.sync_confirmed_from_db() has replayed a database row into memory (app.py runs it before Tab 11 is built), which would silently
+# narrow the slider to the confirmed band (e.g. 0.245-0.255) and make it depend on a database row. Basis: the default Assumed band of
+# air_equivalence_ratio in python/uncertainty.py, point 0.25 +/- 15 % (UNCERTAINTY_FRACTION), copied here as constants. Tab limits, not a validated range.
+ER_BASE = 0.25                  # the engine's base ER (uncertainty.ASSUMPTIONS point; pinned to it by a test)
+ER_RANGE = (0.2125, 0.2875)     # 0.25 x (1 - 0.15), 0.25 x (1 + 0.15)
+LIMITS_NOTE = "tab limits, not validated ranges"
+ENVELOPE_QUESTION = ("What is the real operating envelope for feed rate, air ratio (ER) and gasifier temperature? The input limits of this tab "
+                     "are not validated ranges.")
+
+
+def air_ratio_status():
+    """(confirmed?, text) for the air ratio, read from the IN-MEMORY uncertainty.ASSUMPTIONS only. In the app that state was already replayed from
+    the confirmation table by Tab 1's existing sync; this function itself makes no database call and the limits above never depend on it."""
+    if uncertainty.is_confirmed("air_equivalence_ratio"):
+        lo, hi = uncertainty.bounds("air_equivalence_ratio")
+        return True, f"Air ratio status: confirmation recorded, point {uncertainty.ASSUMPTIONS['air_equivalence_ratio']['point']:g}, range {lo:g}-{hi:g}"
+    return False, "Air ratio status: Assumed, not confirmed"
 T_RANGE = (850.0, 1000.0)       # 1000 < the Confirmed 1050 degC design temperature; 850 = low end of docs/dynamics_v0.md section 7
 T_BASE = float(ga001.GA001_OPERATING_TEMPERATURE_C)                                # 950, Confirmed registry value
 FEED_BASE_KG_H = float(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H)
@@ -199,11 +215,11 @@ def validate_params(p):
     if p.get("scenario") not in SCENARIOS:
         errors.append(f"Unknown scenario {p.get('scenario')!r}.")
     elif p["scenario"] == "feed" and not FEED_PCT_RANGE[0] <= p["feed_pct"] <= FEED_PCT_RANGE[1]:
-        errors.append(f"Feed change must be within {FEED_PCT_RANGE[0]:g} to {FEED_PCT_RANGE[1]:g} % (limit of this tab).")
+        errors.append(f"Feed change must be within {FEED_PCT_RANGE[0]:g} to {FEED_PCT_RANGE[1]:g} % ({LIMITS_NOTE}).")
     elif p["scenario"] == "er" and not ER_RANGE[0] <= p["er_new"] <= ER_RANGE[1]:
-        errors.append(f"New ER must be within the declared Assumed range {ER_RANGE[0]:.4g} to {ER_RANGE[1]:.4g}.")
+        errors.append(f"New ER must be within the limits of this tab, {ER_RANGE[0]:.4g} to {ER_RANGE[1]:.4g} ({LIMITS_NOTE}).")
     elif p["scenario"] == "T" and not T_RANGE[0] <= p["T_new"] <= T_RANGE[1]:
-        errors.append(f"New T setpoint must be within {T_RANGE[0]:g} to {T_RANGE[1]:g} degC (limit of this tab).")
+        errors.append(f"New T setpoint must be within {T_RANGE[0]:g} to {T_RANGE[1]:g} degC ({LIMITS_NOTE}).")
 
     ranges = tau_ranges()
     if set(p.get("taus", {})) != set(ranges):

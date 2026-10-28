@@ -120,16 +120,17 @@ def _controls():
     with c1:
         if s[_K + "scenario"] == "feed":
             st.number_input("Feed-rate change [%]", min_value=sim.FEED_PCT_RANGE[0], max_value=sim.FEED_PCT_RANGE[1], step=5.0,
-                            key=_K + "feed_pct", help=f"Relative to the {sim.FEED_BASE_KG_H:g} kg/h (as received) base feed. "
-                            "A limit of this tab, not a validated operating range.")
+                            key=_K + "feed_pct", help=f"Relative to the {sim.FEED_BASE_KG_H:g} kg/h (as received) base feed.")
+            st.caption(f"{sim.FEED_PCT_RANGE[0]:+g} … {sim.FEED_PCT_RANGE[1]:+g} %: {sim.LIMITS_NOTE}.")
         elif s[_K + "scenario"] == "er":
             st.slider("New ER (air / equivalence ratio)", sim.ER_RANGE[0], sim.ER_RANGE[1], step=0.0025, format="%.4f", key=_K + "er_new",
-                      help=f"Starts at {sim.ER_BASE:g}. The slider spans the declared Assumed range of air_equivalence_ratio "
-                      "(python/uncertainty.py).")
+                      help=f"Starts at {sim.ER_BASE:g}. Fixed limits (the default Assumed band, 0.25 ± 15 %), independent of any confirmation.")
+            st.caption(f"{sim.ER_RANGE[0]:g} … {sim.ER_RANGE[1]:g}: {sim.LIMITS_NOTE}. {sim.air_ratio_status()[1]}.")
         else:
             st.number_input("New gasifier T setpoint [°C]", min_value=sim.T_RANGE[0], max_value=sim.T_RANGE[1], step=5.0, key=_K + "T_new",
-                            help=f"Starts at {sim.T_BASE:g} °C (Confirmed registry value). Limits of this tab: below the Confirmed 1050 °C "
-                            "design temperature; not a validated operating range.")
+                            help=f"Starts at {sim.T_BASE:g} °C (Confirmed registry value). The upper limit is below the Confirmed 1050 °C "
+                            "design temperature.")
+            st.caption(f"{sim.T_RANGE[0]:g} … {sim.T_RANGE[1]:g} °C: {sim.LIMITS_NOTE}.")
     top_min = sim.max_duration_s(s[_K + "dt_s"]) // 60
     with c2:
         st.number_input("Step time [min]", min_value=1, max_value=max(1, int(s[_K + "duration_min"]) - 1), step=1, key=_K + "step_min")
@@ -268,6 +269,7 @@ def _render_findings(payload):
                            "Declared range [s]": f"{s.range_s[0]:g}–{s.range_s[1]:g}", "Question for DOK-ING": s.question_for_doking}
                           for n, s in dy.TAU_SPECS.items()])
     st.dataframe(frame, hide_index=True, use_container_width=True)
+    st.markdown(f"**Also ask DOK-ING:** {sim.ENVELOPE_QUESTION}")
     with st.expander("Reasoning behind each Assumed value"):
         for n, s in dy.TAU_SPECS.items():
             st.markdown(f"**{n}** ({s.status}) — {s.what}. {s.reasoning}")
