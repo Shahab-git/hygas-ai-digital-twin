@@ -144,13 +144,17 @@ def is_table_missing_error(exc):
     return bool(_TABLE_MISSING_TEXT.search(str(exc)))
 
 
-def safe_error_text(exc, limit=220):
-    """One-line error text that is safe to print/log: no URLs, no key-like tokens."""
-    text = f"{type(exc).__name__}: {exc}"
+def scrub_text(text, limit=220):
+    """One-line text that is safe to print/log: no URLs, no key-like tokens."""
+    text = str(text)
     text = re.sub(r"https?://\S+", "<url>", text)
     text = re.sub(r"eyJ[\w-]{10,}\.[\w-]+\.[\w-]+", "<token>", text)
     text = re.sub(r"\b(sb_|sk-|key[-_=:])\S{8,}", "<token>", text, flags=re.I)
     return " ".join(text.split())[:limit]
+
+
+def safe_error_text(exc, limit=220):
+    return scrub_text(f"{type(exc).__name__}: {exc}", limit)
 
 
 def _validate_rows(data):
@@ -362,11 +366,74 @@ def persist_snapshot(state, now_iso=None):
     return len(rows)
 
 
+def build_step_summary(summary):
+    """Markdown block for the Actions run page. Holds only counts, timestamps and scrubbed
+    reasons -- no secrets, no URLs."""
+    def cell(key, default="n/a"):
+        value = summary.get(key)
+        return default if value is None else scrub_text(value, 400) if isinstance(value, str) else str(value)
+
+    elapsed = summary.get("elapsed_h")
+    elapsed_txt = "n/a" if elapsed is None else f"{elapsed:.4f} h" + (
+        f" (CLAMPED: {summary.get('clamp_reason')})" if summary.get("clamped") else " (not clamped)")
+    lines = [
+        f"### Continuous cycle -- {summary.get('result', 'unknown')}",
+        "",
+        "| | |",
+        "|---|---|",
+        f"| Time (UTC) | {cell('now_utc')} |",
+        f"| Database writes | {'enabled' if summary.get('writes') else 'disabled (dry run)'} |",
+        f"| Store read | {cell('store_outcome')} |",
+        f"| Previous published_at | {cell('previous_published_at')} |",
+        f"| Elapsed hours used | {elapsed_txt} |",
+        f"| RUNTIME/CycleCounter | {cell('counter')} |",
+        f"| Keys read / rows upserted | {cell('keys_read')} / {cell('rows_upserted', '0')} |",
+        f"| Operator setpoints | applied in memory {cell('setpoints_applied', '0')}, marked in DB {cell('setpoints_marked', '0')} |",
+    ]
+    if summary.get("reason"):
+        lines.append(f"| **Reason** | **{cell('reason')}** |")
+    return chr(10).join(lines) + chr(10)
+
+
+def write_step_summary(summary):
+    """Appends the block to $GITHUB_STEP_SUMMARY when set (GitHub Actions provides it
+    automatically). Never raises: a summary problem must not change the run's outcome."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return False
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(build_step_summary(summary))
+        return True
+    except OSError as exc:
+        print(f"  WARNING: could not write the step summary: {safe_error_text(exc)}")
+        return False
+
+
 def main(now_iso=None):
+    summary = {"result": "FAILED"}
+    try:
+        elapsed_s = _run(now_iso, summary)
+        summary["result"] = "OK -- state saved" if summary.get("writes") else "OK -- dry run, nothing written"
+        return elapsed_s
+    except SystemExit as exc:
+        summary["result"] = f"ABORTED (exit status {exc.code})"
+        raise
+    except BaseException as exc:  # noqa: BLE001 -- recorded, then re-raised unchanged
+        summary["reason"] = summary.get("reason") or safe_error_text(exc)
+        summary["result"] = "FAILED"
+        raise
+    finally:
+        write_step_summary(summary)
+
+
+def _run(now_iso, summary):
     t0 = time.monotonic()
     now_iso = now_iso or datetime.now(timezone.utc).isoformat()
+    summary["now_utc"] = now_iso
     print(f"=== Continuous cycle run starting at {now_iso} ===")
     allow = writes_allowed()
+    summary["writes"] = allow
     if not allow:
         print("  HYGAS_ALLOW_DB_WRITES!=1 -> DRY RUN: reads only, nothing will be written to the database.")
 
@@ -379,11 +446,13 @@ def main(now_iso=None):
             # state (inventories, damped temperatures, cycle counter). Stop before building or running
             # anything and without persisting; the red Actions run is the alert.
             print(f"ERROR: {exc} -- aborting WITHOUT running a cycle or writing anything (the stored state is untouched).")
+            summary.update(store_outcome="unreachable", reason=f"store unreadable, run aborted, stored state untouched: {exc}")
             raise SystemExit(EXIT_STORE_UNREACHABLE)
         print(f"  {exc} -- dry run: continuing from an EMPTY snapshot (read-only, nothing will be written).")
         store = StoreRead([], "unreachable_dry_run", str(exc))
     rows = store.rows
     persisted = snapshot_from_rows(rows)
+    summary.update(store_outcome=store.outcome, keys_read=len(persisted))
     print(f"  store read outcome: {store.outcome} -- {len(persisted)} persisted key(s) found.")
     if store.outcome == STORE_TABLE_MISSING:
         print(f"  NOTE: {store.detail}. Bootstrapping from empty (first run before the schema exists).")
@@ -397,6 +466,8 @@ def main(now_iso=None):
     print(f"  Elapsed hours used as the cycle time step: {elapsed['elapsed_h_used']:.4f} h "
           f"(previous published_at={elapsed['previous_published_at']})")
     cycle_clock.set_elapsed_hours(elapsed["elapsed_h_used"])
+    summary.update(elapsed_h=elapsed["elapsed_h_used"], clamped=elapsed["clamped"], clamp_reason=elapsed["clamp_reason"],
+                   previous_published_at=elapsed["previous_published_at"])
 
     try:
         print("Rehydrating SharedPlantState via the existing public write API...")
@@ -409,6 +480,7 @@ def main(now_iso=None):
         print("Applying pending operator setpoints (in memory; marked in the DB only after a successful save)...")
         applied_setpoints = apply_pending_operator_setpoints(engine)
         print(f"  {len(applied_setpoints)} setpoint(s) applied in memory: {applied_setpoints}")
+        summary["setpoints_applied"] = len(applied_setpoints)
 
         print("Replaying durable measurement promotions...")
         replay_measurement_promotions(engine)
@@ -422,6 +494,7 @@ def main(now_iso=None):
     counter = state.get_snapshot().get(cycle_clock.COUNTER_KEY)
     if counter is not None:
         print(f"  RUNTIME/CycleCounter = {counter['value']}")
+        summary["counter"] = counter["value"]
 
     if allow and store.outcome == STORE_OK:
         override = os.environ.get(SHRINK_OVERRIDE_ENV) == "1"
@@ -433,6 +506,8 @@ def main(now_iso=None):
                   f"Aborting WITHOUT persisting. For an intentional model change set {SHRINK_OVERRIDE_ENV}=1 for one run.")
             if applied_setpoints:
                 print(f"  {len(applied_setpoints)} setpoint(s) NOT marked applied -- they stay pending for the next run.")
+            summary["reason"] = (f"shrink guard: store holds {shrink['n_stored']} key(s), run would persist {shrink['n_new']}; "
+                                 f"nothing written; first missing: {shrink['missing_first_20'][:5]}")
             raise SystemExit(EXIT_SHRINK_GUARD)
         if override and len(state.get_snapshot()) < SHRINK_MIN_FRACTION * len(persisted):
             print(f"  {SHRINK_OVERRIDE_ENV}=1 -> shrink guard overridden: persisting {len(state.get_snapshot())} key(s) over {len(persisted)}.")
@@ -446,8 +521,10 @@ def main(now_iso=None):
                 print(f"  Save failed: {len(applied_setpoints)} setpoint(s) NOT marked applied -- they stay pending for the next run.")
             raise
         print(f"  {n_rows} row(s) upserted.")
+        summary["rows_upserted"] = n_rows
         if applied_setpoints:
             marked = mark_setpoints_applied(applied_setpoints)
+            summary["setpoints_marked"] = len(marked)
             print(f"  {len(marked)} of {len(applied_setpoints)} setpoint(s) marked applied after the successful save.")
     else:
         print("Dry run: snapshot NOT persisted.")
