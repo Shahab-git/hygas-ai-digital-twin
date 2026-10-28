@@ -16,6 +16,16 @@ for p in (ROOT, os.path.join(ROOT, "tests")):
 os.environ["HYGAS_ALLOW_DB_WRITES"] = "0"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _no_real_step_summary():
+    """On GitHub Actions $GITHUB_STEP_SUMMARY is the real job summary; the driver appends to it when set. Unset it for the whole session
+    (session scope, so it is also gone while module-scoped fixtures run the driver) so a CI test run cannot add test blocks to the real
+    summary. Tests that exercise the summary set their own temp path with monkeypatch.setenv."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.delenv("GITHUB_STEP_SUMMARY", raising=False)
+        yield
+
+
 class RealSupabaseAttempt(BaseException):
     """Deliberately a BaseException so that the repo's own `except Exception`
     fallbacks cannot swallow it: a test that reaches a REAL Supabase client or
