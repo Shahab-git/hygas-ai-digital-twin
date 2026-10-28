@@ -279,13 +279,28 @@ def routing_run():
         return dy.run_transient(scenario, dt_s=60, duration_s=1200, taus=taus, warmup_cycles=6)
 
 
-def test_v01_er_effective_follows_tau_conv_exactly(routing_run):
+def test_v01_er_bypasses_tau_conv_and_is_seen_by_ga001_unlagged(routing_run):
+    """Item A (what-if tab round): an ER step goes through tau_gas ONLY. ER_effective is the raw ER at every sub-step
+    (it used to relax through tau_conv = 240 s here)."""
     rows = {r["t_s"]: r for r in routing_run.series}
-    e0 = rows[360]["ga001_ER_effective"]
     for t, row in rows.items():
-        if t >= 420:
-            expected = 0.30 + (e0 - 0.30) * math.exp(-(t - 360) / 240.0)
-            assert row["ga001_ER_effective"] == pytest.approx(expected, abs=1e-12), t
+        if t == 0:                      # warm-up end: no GA-001 diagnostics recorded yet
+            continue
+        assert row["ga001_ER_effective"] == (0.25 if t <= 360 else 0.30), t     # a step applies from the sub-step that starts at 360
+        assert row["ga001_ER_effective"] == row["ER"], t
+
+
+def test_v01_feed_effective_follows_tau_conv_exactly(routing_run):
+    """The feed is the quantity tau_conv acts on: every sub-step is the exact one-lag update toward the raw feed GA-001 reads
+    (routing_run: tau_conv = 240 s, dt = 60 s). Guards against the feed bypassing tau_conv."""
+    rows = {r["t_s"]: r for r in routing_run.series}
+    decay = math.exp(-60.0 / 240.0)
+    checked = 0
+    for t in range(120, 1201, 60):
+        raw, previous = rows[t]["ga001_dry_feed_raw_kg_h"], rows[t - 60]["ga001_dry_feed_effective_kg_h"]
+        assert rows[t]["ga001_dry_feed_effective_kg_h"] == pytest.approx(raw + (previous - raw) * decay, abs=1e-9), t
+        checked += 1
+    assert checked == 19 and rows[1200]["ga001_dry_feed_effective_kg_h"] < rows[1200]["ga001_dry_feed_raw_kg_h"]   # still relaxing
 
 
 def test_v01_routing_t_skips_tau_conv_er_and_feed_use_it(routing_run):
@@ -294,13 +309,14 @@ def test_v01_routing_t_skips_tau_conv_er_and_feed_use_it(routing_run):
     assert rows[240]["T_gasifier_C"] < 950.0
     assert rows[360]["ga001_ER_effective"] == rows[60]["ga001_ER_effective"] == pytest.approx(0.25)
     assert rows[360]["ga001_dry_feed_effective_kg_h"] == pytest.approx(rows[60]["ga001_dry_feed_effective_kg_h"], rel=1e-12)
-    # ER step (t = 360): ER_effective moves (through tau_conv), the effective feed does not
-    assert rows[480]["ga001_ER_effective"] > 0.25
+    # ER step (t = 360): ER_effective is at the new value at once (no tau_conv); the effective feed does not move
+    assert rows[420]["ga001_ER_effective"] == 0.30
     assert rows[540]["ga001_dry_feed_effective_kg_h"] == pytest.approx(rows[60]["ga001_dry_feed_effective_kg_h"], rel=1e-12)
-    # feed step (t = 600): the effective feed moves; ER_effective just keeps relaxing toward 0.30
+    # the OUTPUT does lag (tau_gas): one sub-step after the step it is not yet at the sub-step's steady-state value
+    assert rows[420]["ga001_dry_flow_nm3_h"] != pytest.approx(rows[420]["ga001_dry_flow_y1_nm3_h"], rel=1e-6)
+    # feed step (t = 600): the effective feed moves (tau_conv); ER_effective stays at 0.30
     assert rows[900]["ga001_dry_feed_effective_kg_h"] > rows[540]["ga001_dry_feed_effective_kg_h"] * 1.001
-    expected = 0.30 + (rows[360]["ga001_ER_effective"] - 0.30) * math.exp(-840 / 240.0)
-    assert rows[1200]["ga001_ER_effective"] == pytest.approx(expected, abs=1e-12)
+    assert rows[1200]["ga001_ER_effective"] == 0.30
 
 
 def test_v01_the_feed_seen_by_ga001_is_exactly_one_sub_step_late(routing_run):
@@ -320,7 +336,7 @@ def test_v01_gas_stage_matches_an_independent_numerical_integration_of_the_ode(r
     checked = 0
     for prev, row in zip(rows[2:], rows[3:]):
         y0, y1 = row["ga001_dry_flow_y0_nm3_h"], row["ga001_dry_flow_y1_nm3_h"]
-        eff = lambda r: (r["ga001_ER_effective"], r["ga001_dry_feed_effective_kg_h"])
+        eff = lambda r: r["ga001_dry_feed_effective_kg_h"]      # only the feed is conv-lagged (ER bypasses tau_conv)
         conv_moved = eff(row) != eff(prev)
         t_moved = row["T_gasifier_C"] != prev["T_gasifier_C"]
         if y1 == y0:
@@ -383,10 +399,13 @@ def _t95_spline(series, column, t_step):
 
 def test_v01_time_to_95_percent_of_ga001_flow_agrees_across_dt_for_t_and_er_steps():
     """dt = 30 / 60 / 120 s with tau_rec = 240 s (>= 2 dt_max, so the delay is resolved) and every other tau >= 2 dt_max.
-    Measured spreads 0.30 % (T) and 0.72 % (ER); with the engine's one-cycle lag they were 3.8 % and 6.1 %."""
+    Measured spreads 0.30 % (T) and 0.61 % (ER); with the engine's one-cycle lag they were 3.8 % and 6.1 %.
+    Item A: an ER step now passes through tau_gas ONLY, so the ER case uses tau_gas = 240 s (>= 2 dt_max, the rule stated above)
+    and a longer run; with tau_gas = 60 s the ER response is faster than a 120 s grid can resolve. The 1 % tolerance is unchanged."""
     taus = {**LAGS_OFF, "T_gasifier": 120, "tau_conv": 240, "tau_gas": 60, "tau_rec": 240}
-    for name, step in (("T", {"T_setpoint_C": 930.0}), ("ER", {"ER": 0.30})):
-        t95 = {dt: _t95_spline(dy.run_transient([{"t_s": 240, **step}], dt_s=dt, duration_s=1200, taus=taus, warmup_cycles=6).series,
-                               "ga001_dry_flow_nm3_h", 240) for dt in (30, 60, 120)}
+    taus_er = {**taus, "tau_gas": 240}
+    for name, step, tau_set, duration in (("T", {"T_setpoint_C": 930.0}, taus, 1200), ("ER", {"ER": 0.30}, taus_er, 2400)):
+        t95 = {dt: _t95_spline(dy.run_transient([{"t_s": 240, **step}], dt_s=dt, duration_s=duration, taus=tau_set,
+                                                warmup_cycles=6).series, "ga001_dry_flow_nm3_h", 240) for dt in (30, 60, 120)}
         values = list(t95.values())
         assert (max(values) - min(values)) / (sum(values) / len(values)) < 0.01, (name, t95)

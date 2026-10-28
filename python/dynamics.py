@@ -6,8 +6,8 @@ per sub-step (dt of seconds/minutes instead of one hour) and adds first-order st
 the engine's steady-state answer and what the rest of the plant sees:
 
   T_gasifier  -- lag from the temperature SETPOINT to the temperature GA-001 actually uses.
-  tau_conv    -- fuel conversion / bed inventory lag (minutes): acts on the INPUTS of the
-                 reaction zone, the dry feed rate and the equivalence ratio ER.
+  tau_conv    -- fuel conversion / bed inventory lag (minutes): acts on the dry FEED RATE
+                 entering the reaction zone (the solids inventory). It does NOT act on ER.
   tau_gas     -- gas-phase transport and mixing lag (tens of seconds): acts on GA-001's
                  OUTPUT flow and composition, whatever caused the change.
   tau_rec     -- TRANSPORT DELAY of the PSA tail gas recycled to GA-001 (HB-009 -> GA-001). The
@@ -19,12 +19,15 @@ the engine's steady-state answer and what the rest of the plant sees:
 
 Which input change goes through which lag (v0.1):
   feed step -> tau_conv (fuel inventory) then tau_gas (gas transport)   [both]
-  ER step   -> tau_conv then tau_gas                                    [both, see below]
+  ER step   -> tau_gas only                                             [no tau_conv]
   T step    -> T_gasifier, then tau_gas                                 [no tau_conv]
-ER goes through tau_conv because the oxidant changes the char burn-out and the bed's carbon
-inventory; this is a STRUCTURAL choice -- the steady-state model itself has no ER-dependent
-conversion (carbon conversion is a fixed 0.90), so the model cannot confirm it. Temperature
-acts on the gas through the water-gas-shift equilibrium, a gas-phase effect, so it skips tau_conv.
+ER skips tau_conv because air acts on the gas-phase reactions (partial oxidation, burn-out of the
+volatiles) within seconds to tens of seconds; the 1200 s tau_conv maps the SOLIDS inventory of the
+bed (residence time), which a change of air flow does not have to refill. This is a STRUCTURAL
+ASSUMPTION, not something the model derives -- the steady-state model has no ER-dependent
+conversion (carbon conversion is a fixed 0.90), so it can neither confirm nor refute it. Temperature
+acts on the gas through the water-gas-shift equilibrium, a gas-phase effect, so it skips tau_conv too.
+Consequence: ER_effective (the ER GA-001 sees) equals the raw ER; only the gas lag delays the ER response.
 
 WHAT THIS IS NOT:
   * GC, HB, EU and SA models are NOT given any inertia. They follow the (lagged) GA-001
@@ -54,7 +57,7 @@ EQUATIONS (all exact, stable at any dt):
 
 Per sub-step order: (1) scenario inputs fixed; (2) T_gasifier relaxed toward the setpoint; (3)
 cycle clock set to dt (always reset in a finally); (4) the engine runs ONE cycle; inside it the
-GA-001 wrapper advances tau_conv on the inputs and tau_gas on the outputs; (5) the row is recorded
+GA-001 wrapper advances tau_conv on the feed and tau_gas on the outputs; (5) the row is recorded
 at the END of the sub-step, so everything in a row belongs to the same instant.
 
 PER-CYCLE LAGS THAT CHANGE MEANING AT A SHORT STEP (reported, NOT fixed, see docs/dynamics_v0.md):
@@ -116,15 +119,16 @@ TAU_SPECS = {
         "and 95 %), and what is the heating actuator (burner, preheated air, electric)?"),
     "tau_conv": TauSpec(
         "tau_conv", 1200.0, (600.0, 2400.0), ps.STATUS_ASSUMED,
-        "fuel conversion / bed inventory lag acting on the dry feed rate and the ER entering the reaction zone",
+        "fuel conversion / bed inventory lag acting on the dry feed rate entering the reaction zone (not on ER)",
         "Mapping ASSUMED: data/equipment_registry.json (GA-001) gives 'Residence time (design)' = 20 min, described as "
         "the SOLIDS residence time in the bed ('typical for MSW/biomass gasification conversion at this scale'). A "
         "bubbling bed is well mixed in its solids, so it behaves like a CSTR, and a CSTR's inventory answers a change in "
         "its input with a first-order lag equal to its mean residence time: 20 min = 1200 s. The 20 min is a datasheet "
         "design figure; the CSTR mapping is the assumption. Range = a factor of 2 either side (600-2400 s) because "
         "real beds have dead zones and plug-flow regions that shorten the effective time and a carbon inventory that can "
-        "lengthen it. ER is routed through this lag as a structural choice (see module docstring); the steady model has "
-        "no ER-dependent conversion.",
+        "lengthen it. ER does NOT go through this lag: air acts on the gas-phase reactions within seconds to tens of "
+        "seconds, so an ER step is delayed by tau_gas only. That routing is a structural assumption, not "
+        "model-derived (the steady model has no ER-dependent conversion).",
         "Bed solids inventory (kg) and fuel feed rate (to give the real solids turnover time), and the measured "
         "response of the gas composition to a feed-rate step."),
     "tau_gas": TauSpec(
@@ -172,7 +176,7 @@ _TAIL_KEY = ("HB-009", "TailGas")
 SERIES_UNITS = {
     "t_s": "s", "T_setpoint_C": "degC", "T_gasifier_C": "degC", "feed_kg_h": "kg/h (as received)", "ER": "-",
     "ga001_dry_feed_raw_kg_h": "kg/h dry (what GA-001's feed input reads)", "ga001_dry_feed_effective_kg_h": "kg/h dry (after tau_conv)",
-    "ga001_ER_effective": "- (after tau_conv)",
+    "ga001_ER_effective": "- (equals the raw ER: ER is not lagged by tau_conv)",
     "ga001_dry_flow_nm3_h": "Nm3/h", "ga001_dry_flow_target_nm3_h": "Nm3/h (steady-state target at the raw inputs)",
     "ga001_dry_flow_y0_nm3_h": "Nm3/h (model at the sub-step's start state)", "ga001_dry_flow_y1_nm3_h": "Nm3/h (model at the sub-step's end state)",
     "H2_pct_dry": "mol% dry", "CO_pct_dry": "mol% dry", "CO2_pct_dry": "mol% dry", "CH4_pct_dry": "mol% dry",
@@ -438,14 +442,13 @@ def _ga001_dynamic_model(ctx):
         if tau["tau_conv"] > 0.0:
             if ctx.feed_eff is None:        # no warm-up (identity runs): start from the first input values
                 ctx.feed_eff = ctx.warm_feed if ctx.warm_feed is not None else feed_raw
-                ctx.er_eff = ctx.warm_er if ctx.warm_er is not None else er_raw
-            f0, e0 = ctx.feed_eff, ctx.er_eff
+            f0 = ctx.feed_eff
             f1 = ctx.relax("tau_conv", f0, feed_raw)
-            e1 = ctx.relax("tau_conv", e0, er_raw)
-            ctx.feed_eff, ctx.er_eff = f1, e1
+            ctx.feed_eff = f1
         else:
             f0 = f1 = feed_raw
-            e0 = e1 = er_raw
+        e0 = e1 = er_raw                    # ER bypasses tau_conv: a new ER holds for the whole sub-step
+        ctx.er_eff = er_raw
 
         # --- steady-state model at the sub-step's end state (the published answer's target) and start state ----
         y1_value = ga001.ga001_model(_substituted(get_input, ctx, f1, e1, t_end, feed_raw))
@@ -456,7 +459,7 @@ def _ga001_dynamic_model(ctx):
         y1, y0 = y1_value["value"], y0_value["value"]
 
         # --- gas-phase lag on the OUTPUTS: exact cascade along the exponential the inputs moved on ----------
-        conv_moved = tau["tau_conv"] > 0.0 and (f0, e0) != (f1, e1)
+        conv_moved = tau["tau_conv"] > 0.0 and f0 != f1
         if conv_moved:
             shape = tau["tau_conv"]
         elif ctx.t_override_active and tau["T_gasifier"] > 0.0 and t_start != t_end:
@@ -482,7 +485,7 @@ def _ga001_dynamic_model(ctx):
         if tau["tau_conv"] > 0.0 or tau["tau_gas"] > 0.0 or ctx.recycle_interpolated:
             out["confidence_note"] = (
                 y1_value.get("confidence_note", "") +
-                f" [dynamics-v0.1: tau_conv={tau['tau_conv']:g} s on feed/ER inputs, tau_gas={tau['tau_gas']:g} s on outputs, "
+                f" [dynamics-v0.1: tau_conv={tau['tau_conv']:g} s on the feed, tau_gas={tau['tau_gas']:g} s on outputs, "
                 f"tau_rec={tau['tau_rec']:g} s tail-gas delay (all Assumed); steady-state target dry flow "
                 f"{raw_target['dry_flow_nm3_h']:.4f} Nm3/h.]")
         return out

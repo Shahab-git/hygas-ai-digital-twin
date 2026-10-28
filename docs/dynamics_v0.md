@@ -12,7 +12,7 @@ Code: `python/dynamics.py` · tests: `tests/test_dynamics.py` · demo: `scripts/
 | | Dynamic in v0.1? |
 |---|---|
 | Gasifier temperature seen by GA-001 (`T_gasifier`) | **Yes** — first-order lag behind the setpoint |
-| Fuel conversion / bed inventory (`tau_conv`) | **Yes** — first-order lag on the dry feed rate and ER entering the reaction zone |
+| Fuel conversion / bed inventory (`tau_conv`) | **Yes** — first-order lag on the dry feed rate entering the reaction zone (ER is **not** routed through it, since the what-if-tab round) |
 | Gas-phase transport and mixing (`tau_gas`) | **Yes** — first-order lag on GA-001's outlet flow and composition |
 | HB-009 → GA-001 tail-gas recycle (`tau_rec`) | **Yes** — a transport *delay* replaces the engine's one-cycle lag |
 | EU-008 supply temperature | its per-cycle damping is converted to continuous time (identity at 1 h) |
@@ -36,13 +36,15 @@ engine's public `promote_to_measurement()`. No physics equation, Confirmed value
 | change | path |
 |---|---|
 | feed step | `tau_conv` (fuel inventory), then `tau_gas` (gas transport) |
-| ER step | `tau_conv`, then `tau_gas` — a **structural choice**: the oxidant changes the char burn-out and the bed's carbon inventory, but the steady model has no ER-dependent conversion (carbon conversion is a fixed 0.90), so the model cannot confirm it |
+| ER step | `tau_gas` **only** — air acts on the gas-phase reactions (partial oxidation, burn-out of the volatiles) in seconds to tens of seconds; the 1200 s `tau_conv` maps the *solids* inventory (bed residence time), which an air-flow change does not have to refill. This is a **structural assumption, not model-derived**: the steady model has no ER-dependent conversion (carbon conversion is a fixed 0.90), so it can neither confirm nor refute it. (v0.1 as first released routed ER through `tau_conv` too; that gave an ER t95 of 3602 s.) `ga001_ER_effective` in the series now equals the raw ER. |
 | T step | `T_gasifier`, then `tau_gas` (temperature acts on the gas through the water-gas-shift equilibrium, a gas-phase effect; no `tau_conv`) |
 
 **One lag** (exact, stable at any `dt`): `x ← target + (x − target)·exp(−dt/tau)`; `tau ≤ 0` means no lag.
 
-**Cascade** (`tau_conv` on the inputs, `tau_gas` on the outputs). The conversion state follows its input exactly.
-Inside a sub-step every conv-lagged input moves along the same exponential, so GA-001's response is
+**Cascade** (`tau_conv` on the feed, `tau_gas` on the outputs). The conversion state follows its input exactly.
+Inside a sub-step the conv-lagged input (the feed) moves along an exponential and ER is constant at its new value
+(it bypasses `tau_conv`; when a feed and an ER change fall in the same sub-step the start state `y0` already contains the new ER,
+which is exact for an ER applied from the start of the sub-step), so GA-001's response is
 `y(s) = y0 + (y1 − y0)·φ(s)`, `φ(s) = (1 − e^(−s/τc))/(1 − e^(−dt/τc))`, where `y0`/`y1` are the steady-state model
 evaluated at the sub-step's start/end conversion state. The gas state then solves `dx/dt = (y(s) − x)/τg` exactly:
 
@@ -184,15 +186,22 @@ Demo output (v0.1 defaults, dt = 60 s, 2 h, step at 10 min; seconds after the st
 | feed +10 % | GA-001 dry flow, Nm³/h | 102.75 | 113.03 | 1318 | 3713 |
 | | H₂ production, kg/h | 3.251 | 3.576 | 1324 | 3719 |
 | | EU-008 demand, kW | 51.99 | 57.19 | 1317 | 3713 |
-| ER 0.25 → 0.30 | GA-001 dry flow | 102.75 | 106.87 | 1204 | 3602 |
-| | H₂ production | 3.251 | 2.889 | 1239 | 3629 |
-| | EU-008 demand | 51.99 | 51.82 | 1509 | 3905 |
+| ER 0.25 → 0.30 | GA-001 dry flow | 102.75 | 106.87 | 34 | 51 |
+| | H₂ production | 3.251 | 2.889 | 54 | 163 |
+| | EU-008 demand | 51.99 | 51.82 | 207 | 324 |
 | T 900 → 930 °C | GA-001 dry flow | 103.51 | 103.05 | 162 | 408 |
 | | H₂ production | 3.2498 | 3.2505 | 115 | 192 |
 | | EU-008 demand | 51.98 | 51.99 | 54 | 83 |
 
-The t63 of the feed and ER responses now sits at `tau_conv` (+ the FE-005 sub-step for feed), instead of the 1626 s / 882 s of v0
-that came from the one-cycle recycle loop.
+The t63 of the feed response sits at `tau_conv` (+ the FE-005 sub-step), instead of the 1626 s of v0 that came from the one-cycle
+recycle loop. The ER rows changed with the lag-routing follow-up (ER through `tau_gas` only; was 1204 / 3602 s for GA-001 flow).
+
+**Read the ER rows with care — overshoot.** An ER step moves the steady-state target of GA-001's flow to 108.09 Nm³/h at once and the
+recycle loop then relaxes it to 106.87. The lagged flow therefore peaks at about 107.4 (≈ 114 % of the final change) before settling,
+so the *first crossing* of 95 % (the definition used here, the same as in the demo script and in the what-if tab) happens within one
+60 s sub-step even though the signal is not settled. t95 here means "first reaches 95 %", not "settled within 5 %"; the what-if tab's
+table shows the peak (% of final change) next to it. The EU-008 demand t63/t95 of 207 / 324 s is the EU-008 supply-temperature
+damping, not a plant lag.
 
 ## 7. Findings the layer exposes (reported, not fixed)
 
@@ -212,7 +221,8 @@ that came from the one-cycle recycle loop.
 
 * **`T_gasifier`:** real step response of the bed/outlet temperature to a setpoint or air-flow change (time to 63 %/95 %); the heating actuator.
 * **`tau_conv`:** bed solids inventory (kg) and fuel feed rate (solids turnover time); measured gas-composition response to a feed-rate step;
-  whether ER really acts on the conversion inventory.
+  whether ER acts on the solids/carbon inventory (as assumed in v0 and removed in the what-if-tab round) or only on the gas phase
+  (as assumed now) — the measured gas-composition response to an air-flow (ER) step settles this.
 * **`tau_gas`:** freeboard and outlet-duct volumes (gas residence time); measured outlet-gas response to a feed or ER step.
 * **`tau_rec`:** the real tail-gas path (buffer-tank volume and whether it is bypassed, blower flow, pipe length, actual tail-gas flow and temperature).
 * **`EU008_cooling_water`:** cooling-tower basin water volume and circulation rate.
