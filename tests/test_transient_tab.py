@@ -7,6 +7,8 @@ Offline: the Supabase client is the counting fake (tests/_fakes.py), urlopen and
 Real simulations run in the tab's child process (that is the production path); each costs a few seconds, so the scenario runs are
 done once, in one module-scoped fixture, and shared between the tests.
 """
+import contextlib
+import ipaddress
 import json
 import math
 import os
@@ -49,6 +51,39 @@ class _Counters:
         self.sockets = []
 
 
+def _is_loopback(address):
+    """True for an address that stays on this machine: a loopback IP (127.0.0.0/8, ::1), "localhost", or an AF_UNIX path. A hostname is NOT
+    loopback (reaching it would need DNS), so it is refused."""
+    if isinstance(address, (str, bytes)):
+        return True                                           # AF_UNIX path
+    host = address[0]
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+@contextlib.contextmanager
+def _refuse_external_sockets(counters):
+    """Zero-network guard: any connect / connect_ex to a NON-loopback address raises (and is counted) before a packet is sent. Loopback is
+    allowed because asyncio builds its internal event-loop socket pair by connecting to 127.0.0.1 (socket._fallback_socketpair on Windows,
+    and on any platform without a native socketpair); refusing it made every AppTest fail on Python 3.13 / Windows. That is not network use."""
+    originals = {name: getattr(socket.socket, name) for name in ("connect", "connect_ex")}
+
+    def guard(name):
+        def guarded(self, address, *args, **kwargs):
+            if _is_loopback(address):
+                return originals[name](self, address, *args, **kwargs)
+            counters.sockets.append(address)
+            raise AssertionError(f"the what-if tab opened a socket to {address!r}")
+        return guarded
+
+    with mock.patch.object(socket.socket, "connect", guard("connect")), mock.patch.object(socket.socket, "connect_ex", guard("connect_ex")):
+        yield
+
+
 def _tab(counters=None):
     """A fresh AppTest of the tab alone, offline."""
     return AppTest.from_string(SCRIPT, default_timeout=120)
@@ -77,14 +112,9 @@ def runs():
         counters.urlopen.append(args)
         raise AssertionError("the what-if tab made a network call")
 
-    def refuse_connect(self, *args, **kwargs):
-        counters.sockets.append(args)
-        raise AssertionError("the what-if tab opened a socket")
-
     out = {"fake": fake, "counters": counters}
     started = time.perf_counter()
-    with patched_supabase(fake), mock.patch("urllib.request.urlopen", side_effect=refuse_urlopen), \
-            mock.patch.object(socket.socket, "connect", refuse_connect):
+    with patched_supabase(fake), mock.patch("urllib.request.urlopen", side_effect=refuse_urlopen), _refuse_external_sockets(counters):
         at0 = _tab().run()
         out["default"] = at0
         for name, scenario, extra in (("feed", "feed", {}), ("er", "er", {}), ("T", "T", {}),
@@ -233,14 +263,9 @@ def test_the_simulation_itself_is_database_and_network_free_and_restores_the_glo
     cycles plus the first sub-steps run, then a failure is injected. The failing run restores cycle_clock and EU008_DAMPING
     (dynamics.run_transient's finally). The full-length runs happen in the child process (the `runs` fixture)."""
     fake = FakeSupabase()
-    sockets = []
-
-    def refuse(self, *args, **kwargs):
-        sockets.append(args)
-        raise AssertionError("socket connect")
-
+    counters = _Counters()
     params = sim.normalise_params({"duration_min": 10, "step_min": 3})
-    with patched_supabase(fake), mock.patch.object(socket.socket, "connect", refuse):
+    with patched_supabase(fake), _refuse_external_sockets(counters):
         calls = {"n": 0}
         original = dy.relax
 
@@ -253,7 +278,7 @@ def test_the_simulation_itself_is_database_and_network_free_and_restores_the_glo
         monkeypatch.setattr(dy, "relax", boom)
         with pytest.raises(RuntimeError, match="injected failure"):
             sim.simulate(params)
-    assert fake.calls == [] and sockets == []
+    assert fake.calls == [] and counters.sockets == []
     assert cycle_clock._elapsed_hours is None and eu.EU008_DAMPING == 0.5
 
 
@@ -546,3 +571,41 @@ def test_c_the_input_limits_are_visibly_labelled_and_the_envelope_question_is_as
         captions = [c.value for c in at.caption if sim.LIMITS_NOTE in c.value]
         assert len(captions) == 1 and text in captions[0], (scenario, captions)
         assert sim.LIMITS_NOTE == "tab limits, not validated ranges"
+
+
+# ---------------------------------------------------------------------------- the zero-network guard itself is loopback-aware
+def _attempt(method, address):
+    with socket.socket() as sock:
+        sock.settimeout(1)
+        return getattr(sock, method)(address)
+
+
+def test_the_socket_guard_refuses_external_addresses_and_allows_loopback():
+    counters = _Counters()
+    connect_before, connect_ex_before = socket.socket.connect, socket.socket.connect_ex
+    with _refuse_external_sockets(counters):
+        # loopback is allowed: a socketpair (what asyncio makes for every event loop) and an explicit connection to 127.0.0.1
+        left, right = socket.socketpair()
+        left.close(), right.close()
+        with socket.socket() as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            with socket.socket() as client:
+                client.settimeout(5)
+                client.connect(server.getsockname())
+        assert counters.sockets == []
+        # the path used on Windows / without a native socketpair connects to 127.0.0.1 too; it must not trip the guard
+        fallback = getattr(socket, "_fallback_socketpair", None)
+        if fallback is not None:
+            left, right = fallback()
+            left.close(), right.close()
+            assert counters.sockets == []
+        # external addresses are still refused, before anything is sent: a public IP, a hostname, connect_ex, create_connection
+        for call in (lambda: _attempt("connect", ("93.184.216.34", 80)), lambda: _attempt("connect", ("example.com", 80)),
+                     lambda: _attempt("connect_ex", ("8.8.8.8", 53)), lambda: socket.create_connection(("93.184.216.34", 443), timeout=1)):
+            with pytest.raises(AssertionError, match="opened a socket to"):
+                call()
+        assert [a[0] for a in counters.sockets] == ["93.184.216.34", "example.com", "8.8.8.8", "93.184.216.34"]
+    assert socket.socket.connect is connect_before and socket.socket.connect_ex is connect_ex_before      # the real methods are back
+    assert _is_loopback(("127.0.0.1", 1)) and _is_loopback(("::1", 1, 0, 0)) and _is_loopback("/tmp/x.sock")
+    assert not _is_loopback(("10.0.0.5", 1)) and not _is_loopback(("example.com", 1))
