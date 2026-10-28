@@ -10,6 +10,12 @@ the engine's steady-state answer and what the rest of the plant sees:
                  reaction zone, the dry feed rate and the equivalence ratio ER.
   tau_gas     -- gas-phase transport and mixing lag (tens of seconds): acts on GA-001's
                  OUTPUT flow and composition, whatever caused the change.
+  tau_rec     -- TRANSPORT DELAY of the PSA tail gas recycled to GA-001 (HB-009 -> GA-001). The
+                 engine reads that tail gas one CYCLE late; here it is read tau_rec SECONDS late
+                 (a buffer of past HB-009 values, linearly interpolated), supplied through the
+                 get_input handed to ga001_model -- no engine or model file is touched. The delay
+                 cannot be shorter than one sub-step (the current sub-step's tail gas does not exist
+                 yet), so the effective delay is max(tau_rec, dt). 0 keeps the engine's one-cycle lag.
 
 Which input change goes through which lag (v0.1):
   feed step -> tau_conv (fuel inventory) then tau_gas (gas transport)   [both]
@@ -133,6 +139,17 @@ TAU_SPECS = {
         "the range runs from no allowance (8 s) to a factor ~15 (120 s). Applies to every cause of a change.",
         "Freeboard and outlet-duct volumes (to give the real gas residence time), and the measured outlet-gas response "
         "to a feed or ER step."),
+    "tau_rec": TauSpec(
+        "tau_rec", 60.0, (10.0, 140.0), ps.STATUS_ASSUMED,
+        "transport delay of the PSA tail gas recycled from HB-009 to GA-001 (replaces the engine's one-cycle lag)",
+        "Derived from the registry, placeholder for the mixing model: data/equipment_registry.json (HB-009) gives a 'Tail "
+        "gas buffer tank volume' = 1 m3 'ahead of the gasifier feed'. Residence time V/Q at the audited tail flow "
+        "(84.3 Nm3/h, ~0.2 bar(g), 25-60 degC) is 42-47 s; at the registry's design tail flow (29.4 Nm3/h) it is 120-134 s. "
+        "Default 60 s lies between them (rounded to one minute); the range's lower end, 10 s, is an ENGINEERING PLACEHOLDER "
+        "(no source) for piping alone with the buffer bypassed. A well-mixed 1 m3 tank would act as a first-order lag "
+        "rather than a pure delay; v0.1 models a delay, as requested. Not shorter than one sub-step (max(tau_rec, dt)).",
+        "Real tail-gas path from the PSA to the gasifier: buffer-tank volume and whether it is bypassed, blower flow, pipe "
+        "length, and the actual tail-gas flow and temperature."),
     "EU008_cooling_water": TauSpec(
         "EU008_cooling_water", 3600.0 / math.log(2.0), (1800.0, 14400.0), ps.STATUS_ASSUMED,
         "EU-008 tower-water relaxation, the per-cycle damping EU008_DAMPING = 0.5 converted to continuous time",
@@ -150,6 +167,7 @@ _FEED_KEY = ("GA-001-INPUT", "dry_feed_rate_kg_h")
 _ER_KEY = ("GA-001-INPUT", "equivalence_ratio")
 _T_KEY = ("GA-001-INPUT", "operating_temperature_C")
 _MOISTURE_KEY = ("FE-005", "MoistureBalance")
+_TAIL_KEY = ("HB-009", "TailGas")
 
 SERIES_UNITS = {
     "t_s": "s", "T_setpoint_C": "degC", "T_gasifier_C": "degC", "feed_kg_h": "kg/h (as received)", "ER": "-",
@@ -161,6 +179,7 @@ SERIES_UNITS = {
     "N2_pct_dry": "mol% dry", "lhv_mj_nm3": "MJ/Nm3", "h2_production_kg_h": "kg/h",
     "hb013_storage_kg": "kg", "hb013_inflow_kg_h": "kg/h", "hb013_outflow_kg_h": "kg/h",
     "eu008_demand_kw": "kW", "eu008_supply_temp_c": "degC", "eu010_soc_kwh": "kWh", "ai004_eu009_state": "state",
+    "recycle_delay_s": "s (effective delay of the HB-009 tail gas read by GA-001)",
     "probe_conv": "fraction (unit step through tau_conv)", "probe_gas": "fraction (unit step through tau_gas)",
     "probe_cascade": "fraction (unit step through tau_conv then tau_gas)",
 }
@@ -187,11 +206,16 @@ def cascade_psi(dt_s, tau_conv_s, tau_gas_s):
 def gas_stage(x0, y0, y1, dt_s, tau_gas_s, tau_shape_s=None):
     """Advance the gas-phase lag one sub-step. x0 = gas state at the start, y0 / y1 = the steady-state model's
     answer at the start / end conv state, tau_shape_s = the time constant of the exponential along which the
-    inputs moved this sub-step (None or <= 0, or y1 == y0: the input is constant over the sub-step)."""
+    inputs moved this sub-step (None or <= 0: the input is taken to move linearly; y1 == y0: constant)."""
     if tau_gas_s <= 0.0:
         return y1
-    if y1 == y0 or tau_shape_s is None or tau_shape_s <= 0.0:
+    if y1 == y0:
         return relax(x0, y1, dt_s, tau_gas_s)
+    if tau_shape_s is None or tau_shape_s <= 0.0:
+        # the input moves LINEARLY across the sub-step (e.g. the delayed recycle): exact for a ramp
+        e_g = math.exp(-dt_s / tau_gas_s)
+        slope_tau = (y1 - y0) * tau_gas_s / dt_s
+        return y1 - slope_tau + (x0 - y0 + slope_tau) * e_g
     return y0 + (x0 - y0) * math.exp(-dt_s / tau_gas_s) + (y1 - y0) * cascade_psi(dt_s, tau_shape_s, tau_gas_s)
 
 
@@ -278,6 +302,39 @@ class TransientResult:
         return pd.DataFrame(self.series)
 
 
+def _interp_leaves(a, b, w):
+    """Linear interpolation of the numeric leaves of two identically shaped values (dicts recursed)."""
+    if isinstance(a, dict):
+        return {k: (_interp_leaves(a[k], b[k], w) if k in b else a[k]) for k in a}
+    if isinstance(a, bool) or not isinstance(a, (int, float)) or isinstance(b, bool) or not isinstance(b, (int, float)):
+        return a
+    return a + (b - a) * w
+
+
+def delayed_entry(buffer, t_query_s, tol_s):
+    """The published HB-009 tail-gas entry as it was at time t_query_s. `buffer` = [(t_s, entry), ...] in time order.
+    Exactly on a node -> that node's entry object UNCHANGED (this is what makes one cycle at dt = 1 h bit-identical to the
+    engine's own lagged read); before the first node -> the first; at/after the last -> the last (delay clamps to one
+    sub-step); otherwise linear interpolation of the numeric values. Returns (entry, interpolated: bool)."""
+    if not buffer:
+        return None, False
+    if t_query_s <= buffer[0][0] + tol_s:
+        return buffer[0][1], False
+    if t_query_s >= buffer[-1][0] - tol_s:
+        return buffer[-1][1], False
+    for (ta, ea), (tb, eb) in zip(buffer, buffer[1:]):
+        if ta <= t_query_s <= tb:
+            if abs(t_query_s - ta) <= tol_s:
+                return ea, False
+            if abs(t_query_s - tb) <= tol_s:
+                return eb, False
+            w = (t_query_s - ta) / (tb - ta)
+            out = dict(ea)
+            out["value"] = _interp_leaves(ea["value"], eb["value"], w)
+            return out, True
+    return buffer[-1][1], False
+
+
 class _Context:
     """Mutable run state shared by the engine overrides (closures read it at call time)."""
 
@@ -299,6 +356,11 @@ class _Context:
         self.feed_eff = None
         self.er_eff = None
         self.ga_state = None
+        # recycle delay: published HB-009 tail-gas entries with their end-of-sub-step times
+        self.tail_buffer = []
+        self.t_end_s = 0.0
+        self.recycle_interpolated = False
+        self.recycle_delay_s = None
         # per-sub-step diagnostics for the series
         self.diag = {}
         self.used_taus = set()
@@ -317,9 +379,10 @@ def _input_reader(ctx, attr, note):
     return reader
 
 
-def _substituted(get_input, ctx, feed, er, t_c, raw_feed):
+def _substituted(get_input, ctx, feed, er, t_c, raw_feed, t_ref_s=None):
     """A get_input for ga001_model with the conv-lagged feed/ER and the given temperature substituted."""
     ratio = (feed / raw_feed) if raw_feed else 1.0
+    t_ref = ctx.t_end_s if t_ref_s is None else t_ref_s      # time the recycled tail gas is referred to
 
     def gi(key):
         if key == _FEED_KEY:
@@ -334,6 +397,15 @@ def _substituted(get_input, ctx, feed, er, t_c, raw_feed):
             entry = dict(get_input(key))
             entry["value"] = t_c
             return entry
+        if key == _TAIL_KEY and ctx.dynamics_on and ctx.taus["tau_rec"] > 0.0:
+            entry, interpolated = delayed_entry(ctx.tail_buffer, t_ref - ctx.taus["tau_rec"], 1e-9 * max(ctx.dt_s, 1.0))
+            if entry is not None:
+                ctx.used_taus.add("tau_rec")
+                if t_ref_s is None:        # only the published (end-state) call decides whether the result is altered
+                    ctx.recycle_interpolated = ctx.recycle_interpolated or interpolated
+                ctx.recycle_delay_s = max(ctx.taus["tau_rec"], ctx.dt_s)
+                return entry
+            return get_input(key)
         if key == _MOISTURE_KEY:
             entry = get_input(key)
             if entry["status"] != ps.STATUS_MISSING and ratio != 1.0:
@@ -356,6 +428,7 @@ def _ga001_dynamic_model(ctx):
             ctx.warm_out = {k: result["value"][k] for k in _GA_LAGGED_KEYS}
             return result
 
+        ctx.recycle_interpolated = False
         feed_raw = get_input(_FEED_KEY)["value"]
         er_raw = get_input(_ER_KEY)["value"]
         t_end = get_input(_T_KEY)["value"]            # the T_gasifier-lagged value (the engine override)
@@ -363,8 +436,9 @@ def _ga001_dynamic_model(ctx):
 
         # --- conversion / bed-inventory lag on the INPUTS of the reaction zone ------------------------------
         if tau["tau_conv"] > 0.0:
-            if ctx.feed_eff is None:
-                ctx.feed_eff, ctx.er_eff = ctx.warm_feed, ctx.warm_er
+            if ctx.feed_eff is None:        # no warm-up (identity runs): start from the first input values
+                ctx.feed_eff = ctx.warm_feed if ctx.warm_feed is not None else feed_raw
+                ctx.er_eff = ctx.warm_er if ctx.warm_er is not None else er_raw
             f0, e0 = ctx.feed_eff, ctx.er_eff
             f1 = ctx.relax("tau_conv", f0, feed_raw)
             e1 = ctx.relax("tau_conv", e0, er_raw)
@@ -375,10 +449,10 @@ def _ga001_dynamic_model(ctx):
 
         # --- steady-state model at the sub-step's end state (the published answer's target) and start state ----
         y1_value = ga001.ga001_model(_substituted(get_input, ctx, f1, e1, t_end, feed_raw))
-        if (f0, e0, t_start) == (f1, e1, t_end):
+        if (f0, e0, t_start) == (f1, e1, t_end) and tau["tau_rec"] <= 0.0:
             y0_value = y1_value
-        else:
-            y0_value = ga001.ga001_model(_substituted(get_input, ctx, f0, e0, t_start, feed_raw))
+        else:   # the recycled tail gas is referred to the sub-step's START time here, to its END time in y1
+            y0_value = ga001.ga001_model(_substituted(get_input, ctx, f0, e0, t_start, feed_raw, t_ref_s=ctx.t_end_s - ctx.dt_s))
         y1, y0 = y1_value["value"], y0_value["value"]
 
         # --- gas-phase lag on the OUTPUTS: exact cascade along the exponential the inputs moved on ----------
@@ -390,7 +464,7 @@ def _ga001_dynamic_model(ctx):
         else:
             shape = None
         if ctx.ga_state is None:
-            ctx.ga_state = dict(ctx.warm_out)
+            ctx.ga_state = dict(ctx.warm_out) if ctx.warm_out is not None else {k: y0[k] for k in _GA_LAGGED_KEYS}
         if tau["tau_gas"] > 0.0:
             ctx.used_taus.add("tau_gas")
         for key in _GA_LAGGED_KEYS:
@@ -405,10 +479,12 @@ def _ga001_dynamic_model(ctx):
         lagged.update(ctx.ga_state)
         out = dict(y1_value)
         out["value"] = lagged
-        out["confidence_note"] = (
-            y1_value.get("confidence_note", "") +
-            f" [dynamics-v0.1: tau_conv={tau['tau_conv']:g} s on feed/ER inputs, tau_gas={tau['tau_gas']:g} s on outputs "
-            f"(both Assumed); steady-state target dry flow {raw_target['dry_flow_nm3_h']:.4f} Nm3/h.]")
+        if tau["tau_conv"] > 0.0 or tau["tau_gas"] > 0.0 or ctx.recycle_interpolated:
+            out["confidence_note"] = (
+                y1_value.get("confidence_note", "") +
+                f" [dynamics-v0.1: tau_conv={tau['tau_conv']:g} s on feed/ER inputs, tau_gas={tau['tau_gas']:g} s on outputs, "
+                f"tau_rec={tau['tau_rec']:g} s tail-gas delay (all Assumed); steady-state target dry flow "
+                f"{raw_target['dry_flow_nm3_h']:.4f} Nm3/h.]")
         return out
     return ga001_dynamic
 
@@ -442,6 +518,7 @@ def _row(ctx, t_s, snap):
         "eu008_supply_temp_c": float(snap[("EU-008", "CoolingSupply")]["value"]["supply_temp_c"]),
         "eu010_soc_kwh": float(snap[("EU-010", "UPS")]["value"]["soc_kwh"]),
         "ai004_eu009_state": snap[("AI-004", "EU-009-State")]["value"],
+        "recycle_delay_s": ctx.recycle_delay_s,
         "probe_conv": ctx.probe["conv"], "probe_gas": ctx.probe["gas"], "probe_cascade": ctx.probe["cascade"],
     }
 
@@ -482,7 +559,7 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
     if "T_setpoint_C" in touched:
         ctx.t_override_active = True
         engine.promote_to_measurement(_T_KEY, _input_reader(ctx, "t_state_c", "gasifier temperature after the T_gasifier lag"))
-    if taus["tau_conv"] > 0.0 or taus["tau_gas"] > 0.0:
+    if taus["tau_conv"] > 0.0 or taus["tau_gas"] > 0.0 or taus["tau_rec"] > 0.0:
         engine.promote_to_measurement(("GA-001", "Outputs"), _ga001_dynamic_model(ctx))
 
     base_feed = ctx.feed_kg_h
@@ -513,6 +590,7 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
             cycle_index += 1
         if warmup_cycles:
             series.append(_row(ctx, 0.0, state.get_snapshot()))
+            ctx.tail_buffer.append((0.0, state.get_snapshot()[_TAIL_KEY]))      # steady-state tail gas at t = 0
         ctx.dynamics_on = True
 
         # ---- transient ------------------------------------------------------------------------------
@@ -536,9 +614,13 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
             if taus["EU008_cooling_water"] > 0.0:
                 ctx.used_taus.add("EU008_cooling_water")
                 eu.EU008_DAMPING = eu008_damping_for_dt(dt_s, taus["EU008_cooling_water"])
+            ctx.t_end_s = (k + 1) * dt_s
             engine.run_cycle(now=synthetic_timestamp(cycle_index))
             cycle_index += 1
-            series.append(_row(ctx, (k + 1) * dt_s, state.get_snapshot()))
+            snapshot = state.get_snapshot()
+            if snapshot[_TAIL_KEY]["status"] != ps.STATUS_MISSING:
+                ctx.tail_buffer.append((ctx.t_end_s, snapshot[_TAIL_KEY]))
+            series.append(_row(ctx, ctx.t_end_s, snapshot))
     finally:
         cycle_clock.set_elapsed_hours(None)
         eu.EU008_DAMPING = saved_damping
