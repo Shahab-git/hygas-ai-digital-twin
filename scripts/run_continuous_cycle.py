@@ -240,9 +240,11 @@ def rehydrate(persisted_entries, now_iso):
     """Existing public write API ONLY (new_writer_handle / begin_cycle /
     set_entry / publish_cycle) -- design doc section 3's own explicit
     constraint: no new method on shared_plant_state.py. If
-    persisted_entries is empty (first-ever run, or the store was
-    unreachable), begin_cycle()/publish_cycle() still run over zero
-    entries -- a real, harmless, empty publish, not a special case."""
+    persisted_entries is empty (first-ever run, or the table does not exist
+    yet), begin_cycle()/publish_cycle() still run over zero entries -- a
+    real, harmless, empty publish, not a special case. An UNREADABLE store
+    never reaches this function in a writing run: main() aborts first
+    (StoreUnreachable), so a read error can no longer masquerade as "empty"."""
     state = sps.SharedPlantState()
     boot_handle = state.new_writer_handle()
     state.begin_cycle(boot_handle, now=now_iso)

@@ -375,6 +375,45 @@ of continuous operation," not `SharedPlantState`'s own per-process
 counter. Keeping these two concerns separate is exactly why no change to
 `shared_plant_state.py` is needed at all.
 
+### Reading the store safely: three outcomes, one abort rule (added 2026-10-28)
+
+Rehydration is only as good as the read behind it. The first implementation swallowed
+every read error and returned "no rows", so one transient Supabase/network error made a
+*writing* run bootstrap from an empty plant and overwrite the accumulated state
+(HB-013 storage, EU-010 SOC, FE-001 level, damped temperatures, the cycle counter) --
+the audit's caveat (c). `scripts/run_continuous_cycle.py` now reads with
+`read_store()`:
+
+| Outcome of the read | What it means | What a run does |
+|---|---|---|
+| **ok** | rows came back | rehydrate and continue |
+| **empty** | table exists, zero rows | bootstrap (first-ever run) |
+| **table_missing** | PostgREST `PGRST205` ("Could not find the table 'public.x' in the schema cache") or Postgres `42P01` / "relation ... does not exist" | bootstrap, with a printed note; not retried |
+| **unreachable** | anything else after the retries: auth, timeout, 5xx, DNS, malformed response | **abort** (below) |
+
+* **Retries:** 3 attempts, 2 s then 4 s apart; every failed attempt is printed with the error
+  text scrubbed of URLs and key-like tokens.
+* **Abort rule:** writes allowed (`HYGAS_ALLOW_DB_WRITES=1`) + store unreachable -> one-line
+  `ERROR`, exit status 2, **before** the state is rehydrated, the engine built or anything
+  persisted. The stored state is untouched and the GitHub run turns red (which is the alert).
+  A dry run (no flag) keeps the old behaviour -- continue from an empty snapshot, read-only --
+  so local development still works.
+* **Shrink guard:** if the store held N >= 20 keys and the new snapshot has fewer than 90 % of
+  N, the run prints both counts and the first 20 missing keys and exits with status 3 **without
+  persisting**. `HYGAS_ALLOW_SHRINK=1` overrides it for one run (an intentional model change);
+  the workflow never sets it. Not applied to a bootstrap (empty / missing table) or a store of
+  fewer than 20 keys.
+* **Setpoint ordering:** pending operator setpoints are applied in memory first, but are marked
+  "applied" in `plant_operator_setpoints` only **after** `persist_snapshot()` returned
+  successfully. If the save fails, or the shrink guard / unreachable-store abort stops the run,
+  none is marked and they stay pending for the next run (previously they were marked before
+  the cycle ran, so a failed save lost them).
+* **Visibility:** every run (success, dry run, abort, exception) appends a markdown block to
+  `$GITHUB_STEP_SUMMARY`: UTC time, elapsed hours used and whether clamped, previous
+  `published_at`, `RUNTIME/CycleCounter`, keys read / rows upserted, setpoints applied/marked,
+  and the reason on abort. No secrets or URLs. Actions provides the variable itself, so the
+  workflow file needed no change.
+
 ---
 
 ## 4. The dashboard as a pure observer
