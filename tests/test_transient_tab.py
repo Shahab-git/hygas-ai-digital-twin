@@ -662,3 +662,15 @@ def test_ui_choosing_another_quantity_moves_the_markers_without_a_new_run(runs):
     finally:
         at.selectbox(key="wi_marker").set_value("ga001_dry_flow_nm3_h").run()
     assert not at.exception and len(fake.calls) == before
+
+
+def test_ui_the_table_is_right_aligned_with_units_and_the_csv_is_unchanged(runs):
+    at, payload = runs["er"]
+    frame = next(d.value for d in at.dataframe if "t63 [s]" in list(d.value.columns))
+    assert list(frame.columns)[0] == "Quantity [unit]" and "GA-001 dry gas flow [Nm³/h]" in set(frame["Quantity [unit]"])
+    columns = tab._table_columns(frame)
+    if not columns:
+        pytest.skip("this Streamlit has no column alignment")
+    assert set(columns) == set(frame.columns[1:]) and all(c["alignment"] == "right" for c in columns.values())
+    header = [line for line in sim.build_response_csv(payload).splitlines() if not line.startswith("#")][0]
+    assert header == "quantity,unit,before_step,end_of_run,final_steady_state,change,t63_s,t95_s,peak_pct_of_change,meaningful_change"

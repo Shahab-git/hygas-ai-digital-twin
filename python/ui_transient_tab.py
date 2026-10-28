@@ -139,8 +139,8 @@ def _controls():
              help="Each step runs the full steady-state engine once (~0.1 s). A smaller dt resolves faster lags but allows a shorter run "
                   "(240 steps at most).")
     chosen = sim.SCENARIO_DEFAULTS[s[_K + "scenario"]]
-    st.caption(f"At dt = {s[_K + 'dt_s']} s the longest run is **{top_min} min** ({sim.MAX_STEPS} steps; hard cap {sim.MAX_DURATION_S // 3600} h). "
-               f"Defaults for this step type are dt = {chosen['dt_s']} s and {chosen['duration_min']} min: {chosen['why']}.")
+    st.caption(f"At dt = {s[_K + 'dt_s']} s the longest run is **{top_min} min** ({sim.MAX_STEPS} steps; hard cap {sim.MAX_DURATION_S // 3600} h).")
+    st.caption(f"Defaults for this step type are dt = {chosen['dt_s']} s and {chosen['duration_min']} min: {chosen['why']}.")
     if notice:
         st.warning(notice)
 
@@ -178,17 +178,22 @@ def _fmt(value, digits=4):
 def _response_frame(payload):
     rows = []
     for r in payload["response"]:
-        if not r["meaningful"]:
-            t63 = t95 = "n/a (change < 0.01 %)"
-            peak = "—"
-        else:
-            t63 = (sim.UNRESOLVED_LABEL if r["t63_unresolved"] else f"{r['t63']:.0f}") if r["t63"] is not None else "not reached in this run"
-            t95 = (sim.UNRESOLVED_LABEL if r["t95_unresolved"] else f"{r['t95']:.0f}") if r["t95"] is not None else "not reached in this run"
-            peak = f"{r['peak_pct']:.0f}"
-        rows.append({"Quantity": _pretty(r["label"]), "Unit": _pretty(r["unit"]), "Before step": _fmt(r["before"]), "End of run": _fmt(r["end_of_run"]),
-                     "Final steady state": _fmt(r["final"]), "Change": _fmt(r["change"]) if r["meaningful"] else "≈ 0", "t63 [s]": t63, "t95 [s]": t95,
-                     "Peak [% of change]": peak})
+        peak = f"{r['peak_pct']:.0f}" if r["meaningful"] else "—"
+        rows.append({"Quantity [unit]": f"{_pretty(r['label'])} [{_pretty(r['unit'])}]", "Before step": _fmt(r["before"]), "End of run": _fmt(r["end_of_run"]),
+                     "Final steady state": _fmt(r["final"]), "Change": _fmt(r["change"]) if r["meaningful"] else "≈ 0",
+                     "t63 [s]": ch.time_cell(r, "t63")[0], "t95 [s]": ch.time_cell(r, "t95")[0], "Peak [% of change]": peak})
     return pd.DataFrame(rows)
+
+
+def _table_columns(frame):
+    """Every column but the first is right-aligned (numbers and the "not resolved" label alike). `alignment` needs a recent Streamlit; an older
+    one simply shows the default alignment."""
+    unit_note = "In the unit shown in the first column."
+    try:
+        return {name: st.column_config.TextColumn(name, alignment="right", help=unit_note if name in ("Before step", "End of run", "Final steady state", "Change") else None)
+                for name in frame.columns[1:]}
+    except TypeError:
+        return {}
 
 
 def _show_chart(chart):
@@ -234,7 +239,7 @@ def _render_results(payload):
                 "(first crossing, linearly interpolated: the same definitions as `scripts/run_transient_demo.py`). A response that overshoots "
                 "crosses 95 % before it has settled — read the peak column.")
     frame = _response_frame(payload)
-    st.dataframe(frame, hide_index=True, use_container_width=True)
+    st.dataframe(frame, hide_index=True, use_container_width=True, column_config=_table_columns(frame))
 
     absolute, normalised, step_min, duration_min = ch.long_frames(payload)
     st.markdown("**Normalised** — 0 % = old steady state, 100 % = new steady state (quantities whose change is below 0.01 % are left out). "

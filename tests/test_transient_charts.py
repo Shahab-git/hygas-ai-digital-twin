@@ -221,3 +221,13 @@ def test_guide_lines_sit_at_63_2_and_95_percent_and_are_labelled():
     assert {0.0, 63.2, 95.0, 100.0} <= set(values)
     texts = [r["text"] for d in spec["datasets"].values() for r in d if "text" in r]
     assert "63.2 %" in texts and "95 %" in texts
+
+
+# ------------------------------------------------------------------------------------------------------ the table (F)
+def test_the_response_table_has_units_in_its_headers_and_the_unresolved_label_visible():
+    payload = _payload(dt=30, taus={"ga001_dry_flow_nm3_h": 20.0})
+    table = tab._response_frame(payload)
+    assert list(table.columns) == ["Quantity [unit]", "Before step", "End of run", "Final steady state", "Change", "t63 [s]", "t95 [s]",
+                                   "Peak [% of change]"]
+    assert table.iloc[0]["Quantity [unit]"] == "GA-001 dry gas flow [Nm³/h]"
+    assert sim.UNRESOLVED_LABEL in set(table["t63 [s]"])
