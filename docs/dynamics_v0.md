@@ -228,7 +228,58 @@ damping, not a plant lag.
 * **`EU008_cooling_water`:** cooling-tower basin water volume and circulation rate.
 * Also: the Simulink thermal-lag model's real parameters (if DOK-ING can supply the files); start-up and setpoint-step curves; bed thermal mass.
 
-## 9. Not in v0.1
+## 9. Using the what-if tab (Tab 11, "Transient What-If")
 
-Wiring into the Streamlit tabs, an always-on process, sensor ingestion, calibration against plant data, lags in GC/HB/EU/SA models,
+A throw-away simulation in the Streamlit app (`python/ui_transient_tab.py`, logic in `python/ui_transient_sim.py`). It is the 11th and last tab;
+Tabs 1–10, the header and the runtime status line are unchanged. **It is not the live plant:** an always-visible red banner says so, it never
+reads or changes the plant state published by the hourly runtime, opens no database client and makes no network call. The only things it keeps
+are the last result in the viewer's session and `st.cache_data` entries keyed on all parameters.
+
+**Controls** (nothing runs until **Run what-if simulation** is pressed; moving a slider never starts a run):
+
+| control | range | note |
+|---|---|---|
+| Step type | feed / ER / gasifier T setpoint | one step per run |
+| Feed-rate change | −30 … +30 % | limit of the tab, not a validated range (base 41.67 kg/h as received) |
+| New ER | 0.2125 … 0.2875 | the declared Assumed bounds of `air_equivalence_ratio` (`python/uncertainty.py`); base 0.25 |
+| New T setpoint | 850 … 1000 °C | limit of the tab: below the Confirmed 1050 °C design temperature; 850 °C is the low end of section 7; base 950 °C |
+| Step time, duration | duration 10 … 240 min | the step is snapped to a sub-step boundary |
+| dt | 30 / 60 / 120 s | see the dt rule below |
+| the five time constants | each limited to its range in section 3 | each shows an `Assumed` tag, the reasoning (tooltip) and the question for DOK-ING |
+
+**dt rule.** A time constant shorter than 2·dt gets a visible warning (poorly resolved). A time constant shorter than dt **blocks** the run (the
+Run button is disabled and the message says which tau and what to change): its response would fit inside one step and t63/t95 could not be read.
+Measured in `tests/test_dynamics.py`: with tau = dt/2 the t95 spread across dt was 24 %, with tau = dt it was 0.3 %. Blocking at tau < 2·dt would
+leave **no** runnable combination at the Assumed defaults (`tau_gas` = 30 s), which is why the default dt is 30 s; at dt = 60 s raise `tau_gas` to ≥ 60 s
+and `tau_rec` to ≥ 120 s.
+
+**Caps** (protect the Streamlit server): at most **240 steps** per run (duration ÷ dt) and **4 h**; either one shows a "Cap hit" message and
+disables Run. Each step is one full engine cycle (~0.1 s on the development machine) plus a fixed ~6 s (24 warm-up cycles, the independent
+steady-state engine for the final values, process start). One run at a time per server process; a second press meanwhile says "another run is in progress".
+The worker is killed after 300 s. Measured on the development machine through the tab: default (feed +10 %, dt 30 s, 2 h, 240 steps) **29.9 s**;
+dt 60 s, 2 h (120 steps) **17.9 s**; the same parameters again **0.05 s** (cache). Streamlit Community Cloud timings are not measured.
+
+**Why a child process.** `run_transient` has to move two module-level globals while it runs (`cycle_clock`'s elapsed-hours override and
+`EU008_DAMPING`). The server runs every viewer in one process and `app.py`'s own cached engine runs read the same globals, so a run inside the server
+process could leak a 30 s clock into other viewers' cached numbers for up to 300 s. The run therefore happens in `python -m python.ui_transient_sim`:
+the server's globals are never touched, the child gets no credentials (`child_env`: no variable whose name contains SUPABASE, SECRET, TOKEN, KEY,
+PASSWORD, AUTH, …; `HYGAS_ALLOW_DB_WRITES` forced to 0), its database clients and socket connections raise, and a crash is a one-line message, not a traceback.
+
+**What is shown.** Absolute charts with the step marker and the old/new steady-state values, a normalised chart (0 % = old, 100 % = new steady state),
+the response-time table (before / end of run / final steady state, t63, t95, peak % of the change; same definitions as the demo script, final = the
+independent steady-state engine at the final inputs; a change below 0.01 % is shown as "≈ 0, not meaningful"), the three findings, the Assumed
+parameters with the question each becomes, and two CSV downloads (the series carries the banner and the Assumed time constants as `#` header rows).
+
+**Not valid in transients** (red box, never plotted or exported; the worker does not even send them): HB-013 storage, HB-018 dispensing, EU-010 and what
+derives from them (EU-006, EU-009 grid balance, AI-004 states). Reason: the dispensing demand is Missing and the stock is drained each step (section 4).
+In a quiet run the plotted quantities are flat to 1e-14 while HB-013 swings, which is why the split is safe. Ask DOK-ING for the real dispensing profile.
+
+**Reading ER-step results.** An ER step overshoots (section 6): "t95" is the first crossing and happens within one step; use the peak column.
+
+**Not in the tab:** a "Replay" animation (optional; not built — a client-side animation could not be verified headlessly here), connecting a transient to
+live shared state, sensor ingestion, calibration, any change to the hourly runtime.
+
+## 10. Not in v0.1
+
+An always-on process, sensor ingestion, calibration against plant data, lags in GC/HB/EU/SA models,
 a GA-001 energy balance or temperature-dependent conversion, conversion of the remaining per-cycle couplings, and any change to the hourly runtime.
