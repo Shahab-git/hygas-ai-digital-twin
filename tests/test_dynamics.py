@@ -229,3 +229,164 @@ def test_steps_at_t_zero_are_initial_conditions():
     assert result.series[0]["T_gasifier_C"] == 900.0 and result.series[0]["T_setpoint_C"] == 900.0
     assert result.series[1]["T_setpoint_C"] == 900.0                       # step at t = 60 acts from the next sub-step
     assert result.series[2]["T_gasifier_C"] == pytest.approx(930.0 - 30.0 * math.exp(-0.5))
+
+
+# =========================================================================== v0.1 : split lags, recycle delay
+from scipy.integrate import solve_ivp  # noqa: E402  (scipy is a project requirement)
+from scipy.interpolate import CubicSpline  # noqa: E402
+from scipy.optimize import brentq  # noqa: E402
+
+LAGS_OFF = {"T_gasifier": 0, "tau_conv": 0, "tau_gas": 0, "tau_rec": 0, "EU008_cooling_water": 0}
+
+
+def test_v01_defaults_lie_strictly_inside_their_ranges():
+    for name, spec in dy.TAU_SPECS.items():
+        lo, hi = spec.range_s
+        assert lo < spec.default_s < hi, f"{name}: default {spec.default_s} must be strictly inside ({lo}, {hi})"
+        assert spec.status == ps.STATUS_ASSUMED and spec.reasoning.strip() and spec.question_for_doking.strip()
+    assert "GasHoldup" not in dy.TAU_SPECS and {"tau_conv", "tau_gas", "tau_rec"} <= set(dy.TAU_SPECS)
+
+
+# ---- each lag separately and the cascade: the lag probe uses the very same update functions as the plant
+@pytest.mark.parametrize("tau_conv,tau_gas", [(90.0, 30.0), (60.0, 60.0)], ids=["distinct taus", "equal taus (limit branch)"])
+def test_v01_probe_matches_the_exact_analytic_lag_and_cascade_responses(tau_conv, tau_gas):
+    taus = {**LAGS_OFF, "tau_conv": tau_conv, "tau_gas": tau_gas}
+    result = dy.run_transient([{"t_s": 60, "ER": 0.30}], dt_s=30, duration_s=600, taus=taus, warmup_cycles=2)
+    for row in result.series:
+        t = row["t_s"] - 60.0
+        if t < 30:
+            assert row["probe_conv"] == row["probe_gas"] == row["probe_cascade"] == 0.0
+            continue
+        assert row["probe_conv"] == pytest.approx(1 - math.exp(-t / tau_conv), abs=1e-12)
+        assert row["probe_gas"] == pytest.approx(1 - math.exp(-t / tau_gas), abs=1e-12)
+        assert row["probe_cascade"] == pytest.approx(dy.cascade_step_response(t, tau_conv, tau_gas), abs=1e-12)
+    # the 63.2 % / 95 % points of a single lag at t = tau and 3 tau
+    assert 1 - math.exp(-1) == pytest.approx(0.632, abs=0.001) and 1 - math.exp(-3) == pytest.approx(0.950, abs=0.001)
+    assert dy.cascade_step_response(0.0, tau_conv, tau_gas) == 0.0
+
+
+def test_v01_cascade_psi_is_between_zero_and_the_single_lag_gain():
+    for tc, tg, dt in [(1200.0, 30.0, 60.0), (30.0, 1200.0, 60.0), (60.0, 60.0, 60.0), (5.0, 3.0, 60.0)]:
+        psi = dy.cascade_psi(dt, tc, tg)
+        assert 0.0 < psi < 1.0 - math.exp(-dt / tg), (tc, tg, psi)
+
+
+@pytest.fixture(scope="module")
+def routing_run():
+    taus = {**LAGS_OFF, "T_gasifier": 120, "tau_conv": 240, "tau_gas": 60, "tau_rec": 240}
+    scenario = [{"t_s": 120, "T_setpoint_C": 930.0}, {"t_s": 360, "ER": 0.30}, {"t_s": 600, "feed_rel": 0.10}]
+    with patched_supabase(FakeSupabase()):
+        return dy.run_transient(scenario, dt_s=60, duration_s=1200, taus=taus, warmup_cycles=6)
+
+
+def test_v01_er_effective_follows_tau_conv_exactly(routing_run):
+    rows = {r["t_s"]: r for r in routing_run.series}
+    e0 = rows[360]["ga001_ER_effective"]
+    for t, row in rows.items():
+        if t >= 420:
+            expected = 0.30 + (e0 - 0.30) * math.exp(-(t - 360) / 240.0)
+            assert row["ga001_ER_effective"] == pytest.approx(expected, abs=1e-12), t
+
+
+def test_v01_routing_t_skips_tau_conv_er_and_feed_use_it(routing_run):
+    rows = {r["t_s"]: r for r in routing_run.series}
+    # T step (t = 120): T_gasifier moves, the conv-lagged inputs do not
+    assert rows[240]["T_gasifier_C"] < 950.0
+    assert rows[360]["ga001_ER_effective"] == rows[60]["ga001_ER_effective"] == pytest.approx(0.25)
+    assert rows[360]["ga001_dry_feed_effective_kg_h"] == pytest.approx(rows[60]["ga001_dry_feed_effective_kg_h"], rel=1e-12)
+    # ER step (t = 360): ER_effective moves (through tau_conv), the effective feed does not
+    assert rows[480]["ga001_ER_effective"] > 0.25
+    assert rows[540]["ga001_dry_feed_effective_kg_h"] == pytest.approx(rows[60]["ga001_dry_feed_effective_kg_h"], rel=1e-12)
+    # feed step (t = 600): the effective feed moves; ER_effective just keeps relaxing toward 0.30
+    assert rows[900]["ga001_dry_feed_effective_kg_h"] > rows[540]["ga001_dry_feed_effective_kg_h"] * 1.001
+    expected = 0.30 + (rows[360]["ga001_ER_effective"] - 0.30) * math.exp(-840 / 240.0)
+    assert rows[1200]["ga001_ER_effective"] == pytest.approx(expected, abs=1e-12)
+
+
+def test_v01_the_feed_seen_by_ga001_is_exactly_one_sub_step_late(routing_run):
+    """The residual dt-dependence of a FEED step: GA-001 reads FE-005 through the engine's one-cycle lag
+    (ga001_gasifier_model.py:1137,1148)."""
+    rows = {r["t_s"]: r for r in routing_run.series}
+    old = rows[600]["ga001_dry_feed_raw_kg_h"]
+    assert rows[660]["ga001_dry_feed_raw_kg_h"] == pytest.approx(old, rel=1e-12)     # the step acted in the sub-step 600-660 ...
+    assert rows[720]["ga001_dry_feed_raw_kg_h"] > old * 1.09                          # ... but GA-001 sees it one sub-step later
+
+
+def test_v01_gas_stage_matches_an_independent_numerical_integration_of_the_ode(routing_run):
+    """Each recorded gas-state step is compared with scipy's DOP853 integration of dx/ds = (y(s) - x)/tau_gas, y(s) along the
+    exponential the inputs moved on (tau_conv, or tau_T when only the temperature moved; a ramp when only the delayed recycle
+    moved) -- independent of the closed-form psi."""
+    rows, dt, tau_gas, tau_conv, tau_T = routing_run.series, 60.0, 60.0, 240.0, 120.0
+    checked = 0
+    for prev, row in zip(rows[2:], rows[3:]):
+        y0, y1 = row["ga001_dry_flow_y0_nm3_h"], row["ga001_dry_flow_y1_nm3_h"]
+        eff = lambda r: (r["ga001_ER_effective"], r["ga001_dry_feed_effective_kg_h"])
+        conv_moved = eff(row) != eff(prev)
+        t_moved = row["T_gasifier_C"] != prev["T_gasifier_C"]
+        if y1 == y0:
+            phi = lambda s: 0.0
+        elif conv_moved:                                         # inputs moved on the tau_conv exponential
+            phi = lambda s: (1 - math.exp(-s / tau_conv)) / (1 - math.exp(-dt / tau_conv))
+        elif t_moved:                                            # only the temperature moved: the tau_T exponential
+            phi = lambda s: (1 - math.exp(-s / tau_T)) / (1 - math.exp(-dt / tau_T))
+        else:                                                    # only the delayed recycle moved: a ramp
+            phi = lambda s: s / dt
+        sol = solve_ivp(lambda s, x: [(y0 + (y1 - y0) * phi(s) - x[0]) / tau_gas], (0.0, dt), [prev["ga001_dry_flow_nm3_h"]],
+                        method="DOP853", rtol=1e-12, atol=1e-12)
+        assert row["ga001_dry_flow_nm3_h"] == pytest.approx(sol.y[0][-1], rel=1e-9), row["t_s"]
+        checked += 1
+    assert checked >= 10
+
+
+def test_v01_the_lagged_flow_never_exceeds_the_steady_state_target_after_an_er_step(routing_run):
+    rows = [r for r in routing_run.series if 360 <= r["t_s"] <= 600]
+    assert max(r["ga001_dry_flow_nm3_h"] for r in rows) <= max(r["ga001_dry_flow_target_nm3_h"] for r in rows)
+
+
+# --------------------------------------------------------------------------- C: recycle delay
+def test_v01_recycle_delay_of_one_cycle_at_one_hour_is_bit_identical():
+    n = 5
+    result = dy.run_transient([], dt_s=3600, duration_s=n * 3600, taus={**LAGS_OFF, "tau_rec": 3600.0}, warmup_cycles=0)
+    reference, _s, _e = tab1_integration.build_live_snapshot(n_cycles=n)
+    a, b = _dump(result.final_snapshot), _dump(reference)
+    assert len(a) == len(b) == 116 and [k for k in a if a[k] != b[k]] == []
+    # the default 60 s delay clamps to one cycle at dt = 1 h and is identical too
+    result2 = dy.run_transient([], dt_s=3600, duration_s=n * 3600, taus={**LAGS_OFF, "tau_rec": 60.0}, warmup_cycles=0)
+    c = _dump(result2.final_snapshot)
+    assert [k for k in c if c[k] != b[k]] == []
+
+
+def test_v01_delayed_entry_node_interpolation_and_clamping():
+    def e(x):
+        return {"status": ps.STATUS_CALCULATED, "value": {"species_nm3_h": {"H2": x, "CO": 2 * x}, "tail_flow_nm3_h": 10 * x, "flag": True}}
+
+    buf = [(0.0, e(1.0)), (60.0, e(2.0)), (120.0, e(4.0))]
+    tol = 1e-9
+    entry, interpolated = dy.delayed_entry(buf, 60.0, tol)
+    assert entry is buf[1][1] and not interpolated                      # on a node: the entry object itself, untouched
+    entry, interpolated = dy.delayed_entry(buf, 90.0, tol)
+    assert interpolated and entry["value"]["species_nm3_h"]["H2"] == pytest.approx(3.0) and entry["value"]["flag"] is True
+    assert entry["value"]["tail_flow_nm3_h"] == pytest.approx(30.0)
+    assert dy.delayed_entry(buf, -5.0, tol)[0] is buf[0][1]            # before the first node
+    assert dy.delayed_entry(buf, 500.0, tol)[0] is buf[-1][1]          # after the last: the delay clamps to one sub-step
+    assert dy.delayed_entry([], 10.0, tol) == (None, False)
+
+
+def _t95_spline(series, column, t_step):
+    first, last = series[0][column], series[-1][column]
+    ts = [r["t_s"] for r in series]
+    fr = [(r[column] - first) / (last - first) for r in series]
+    spline = CubicSpline(ts, fr)
+    i = next(k for k in range(1, len(fr)) if fr[k] >= 0.95 > fr[k - 1])
+    return brentq(lambda t: float(spline(t)) - 0.95, ts[i - 1], ts[i]) - t_step
+
+
+def test_v01_time_to_95_percent_of_ga001_flow_agrees_across_dt_for_t_and_er_steps():
+    """dt = 30 / 60 / 120 s with tau_rec = 240 s (>= 2 dt_max, so the delay is resolved) and every other tau >= 2 dt_max.
+    Measured spreads 0.30 % (T) and 0.72 % (ER); with the engine's one-cycle lag they were 3.8 % and 6.1 %."""
+    taus = {**LAGS_OFF, "T_gasifier": 120, "tau_conv": 240, "tau_gas": 60, "tau_rec": 240}
+    for name, step in (("T", {"T_setpoint_C": 930.0}), ("ER", {"ER": 0.30})):
+        t95 = {dt: _t95_spline(dy.run_transient([{"t_s": 240, **step}], dt_s=dt, duration_s=1200, taus=taus, warmup_cycles=6).series,
+                               "ga001_dry_flow_nm3_h", 240) for dt in (30, 60, 120)}
+        values = list(t95.values())
+        assert (max(values) - min(values)) / (sum(values) / len(values)) < 0.01, (name, t95)
