@@ -565,6 +565,9 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
   N2 +296 %, LHV -36 %, flow +105 %. Several places still use the registry basis
   (HB-006's 55 % target, HB-010's 55 % design feed and 50 Nm3/h, Tab 1's original
   0.28 CO / 0.35 CO2 sections). See `docs/master_open_questions.md` items 3, 5, 6.
+- **The hourly runtime is still quasi-steady.** A separate what-if layer (`python/dynamics.py`, `docs/dynamics_v0.md`) adds
+  two Assumed first-order lags (gasifier temperature, GA-001 gas hold-up) for transient studies; it is not wired into the runtime
+  or the app, GC/HB/EU/SA stay algebraic, and its time constants are not validated against plant data.
 - **No whole-plant energy balance.** The only efficiency figure is the partial
   H2-energy / feed-LHV ratio (52-69 % over DOK-ING's 15-20 MJ/kg range). The GA-001
   mass balance closes (0.001 %) only when ash and unconverted carbon are added;
