@@ -72,6 +72,9 @@ class _Query:
     def execute(self):
         c = self._c
         c.calls.append((self._op, self._name))
+        queued = c.failures.get((self._name, self._op))
+        if queued:
+            raise queued.pop(0)          # injected failure: consumed one per execute()
         if self._name in c.missing_tables:
             raise Exception(MISSING_TABLE_MESSAGE % self._name)
         rows = c.tables.setdefault(self._name, [])
@@ -116,9 +119,12 @@ class _Query:
 
 
 class FakeSupabase:
-    def __init__(self, tables=None, missing_tables=()):
+    def __init__(self, tables=None, missing_tables=(), failures=None):
         self.tables = copy.deepcopy(tables) if tables else {}
         self.missing_tables = set(missing_tables)
+        # failures: {(table, op): [exception, ...]} -- the next execute() of that (table, op)
+        # raises the first queued exception (and records the call). Used by the store-read tests.
+        self.failures = {k: list(v) for k, v in (failures or {}).items()}
         self.calls = []
 
     def table(self, name):
