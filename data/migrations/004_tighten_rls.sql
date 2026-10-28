@@ -20,6 +20,8 @@
 --   2. GitHub repo -> Settings -> Secrets and variables -> Actions: add a secret
 --      named SUPABASE_SERVICE_KEY. (.github/workflows/continuous_cycle.yml already
 --      prefers it and falls back to SUPABASE_KEY while it is empty.)
+--   NOTE: service_role bypasses RLS but still needs table grants (select/insert/update on the tables it uses); they are in
+--   data/migrations/005_service_role_grants.sql (already run by the owner on 2026-10-28).
 --   3. Run the workflow once (workflow_dispatch); confirm it succeeds and its log
 --      shows "N row(s) upserted". The service role bypasses RLS, so it needs no
 --      policy of its own.

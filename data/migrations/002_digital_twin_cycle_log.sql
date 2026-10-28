@@ -12,6 +12,8 @@
 -- which to switch the CI key. Until CI uses a service-role key, AI-011's
 -- insert will be rejected by RLS and shown as "logged: False, error ..."; that
 -- is honest, not silent.
+-- NOTE: service_role bypasses RLS but still needs table grants; they are in data/migrations/005_service_role_grants.sql
+-- (already run by the owner on 2026-10-28).
 -- (Temporary shortcut, NOT recommended: to log before the key is switched, run
 --   create policy "digital_twin_cycle_log_insert_anon_TEMP" on digital_twin_cycle_log
 --     for insert to anon with check (true);
