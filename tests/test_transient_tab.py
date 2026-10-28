@@ -24,7 +24,8 @@ import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from _fakes import FakeSupabase, patched_supabase
-from python import cycle_clock, dynamics as dy, ui_transient_sim as sim
+from python import cycle_clock, dynamics as dy, ui_transient_charts as ch, ui_transient_sim as sim
+from python import ui_transient_tab as tab
 from python import eu_utilities_chp as eu
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -169,7 +170,7 @@ def test_pressing_run_completes_for_each_scenario_with_series_and_charts(runs, n
     assert payload and len(payload["series"]) == 21 and payload["n_steps"] == 20
     assert payload["series"][0]["t_s"] == 0 and payload["series"][-1]["t_s"] == 600
     assert all(math.isfinite(v) for row in payload["series"] for v in row.values())
-    assert len(at.get("vega_lite_chart")) == 2                                    # absolute + normalised
+    assert len(at.get("vega_lite_chart")) == 1 + len(sim.PLOT_QUANTITIES)         # the normalised chart + one absolute panel per quantity
     assert {"wi_dl_series", "wi_dl_response"} <= {d.key for d in at.get("download_button")}
     # the response table has one row per plotted quantity and carries before / end / final values
     assert [r["key"] for r in payload["response"]] == [q[0] for q in sim.PLOT_QUANTITIES]
@@ -609,3 +610,55 @@ def test_the_socket_guard_refuses_external_addresses_and_allows_loopback():
     assert socket.socket.connect is connect_before and socket.socket.connect_ex is connect_ex_before      # the real methods are back
     assert _is_loopback(("127.0.0.1", 1)) and _is_loopback(("::1", 1, 0, 0)) and _is_loopback("/tmp/x.sock")
     assert not _is_loopback(("10.0.0.5", 1)) and not _is_loopback(("example.com", 1))
+
+
+# ------------------------------------------------------------------------- chart conventions (visual polish; presentation only)
+@pytest.mark.parametrize("name", ["feed", "er", "T"])
+def test_ui_charts_are_full_width_one_per_row_and_tall_enough(runs, name):
+    at, _payload = runs[name]
+    charts = at.get("vega_lite_chart")
+    specs = [json.loads(c.proto.spec) for c in charts]
+    assert len(charts) == 1 + len(sim.PLOT_QUANTITIES)
+    assert all(c.proto.use_container_width for c in charts) and all(spec["width"] == "container" for spec in specs)
+    assert all(not ({"facet", "hconcat", "vconcat", "columns"} & set(spec)) for spec in specs)                  # one chart per row
+    assert specs[0]["height"] >= 360                                                                              # the normalised chart
+    assert sum(spec["height"] for spec in specs[1:]) >= 320 and all(spec["height"] >= 150 for spec in specs[1:])  # the absolute panels
+
+
+def test_ui_markers_follow_the_table_for_the_selected_quantity_and_unresolved_ones_say_so(runs):
+    drawn = withheld = 0
+    for name in ("feed", "er", "T"):
+        at, payload = runs[name]
+        assert at.selectbox(key="wi_marker").value == "ga001_dry_flow_nm3_h"                       # the default
+        flow = payload["response"][0]
+        spec_text = at.get("vega_lite_chart")[0].proto.spec
+        caption = " ".join(c.value for c in at.caption)
+        for which in ("t63", "t95"):
+            text, seconds = ch.time_cell(flow, which)
+            assert (f'"{which}_marker"' in spec_text) == (seconds is not None), (name, which)
+            if seconds is None:
+                withheld += 1
+                assert f"{which}: {text} (no marker drawn)" in caption, (name, which, text)
+            else:
+                drawn += 1
+                assert f"{which} = {text} s" in caption, (name, which)
+        assert f"Sampling interval dt = {payload['params']['dt_s']} s." in caption
+        assert "63.2 %" in caption and "95 %" in caption
+    assert drawn >= 2 and withheld >= 1                      # both cases occurred, so the test is not vacuous
+
+
+def test_ui_choosing_another_quantity_moves_the_markers_without_a_new_run(runs):
+    at, payload = runs["feed"]
+    fake, before = runs["fake"], len(runs["fake"].calls)
+    options = at.selectbox(key="wi_marker").options
+    assert "H₂ production" in options                                         # the options are shown with their labels
+    try:
+        at.selectbox(key="wi_marker").set_value("h2_production_kg_h").run()
+        row = next(r for r in payload["response"] if r["key"] == "h2_production_kg_h")
+        caption = " ".join(c.value for c in at.caption)
+        text63, _s = ch.time_cell(row, "t63")
+        assert f"{sim.PLOT_QUANTITIES[7][1].replace('H2', 'H₂')}: " in caption and (f"t63 = {text63} s" in caption or f"t63: {text63}" in caption)
+        assert at.session_state["wi_payload"] is payload or at.session_state["wi_payload"] == payload          # no new simulation
+    finally:
+        at.selectbox(key="wi_marker").set_value("ga001_dry_flow_nm3_h").run()
+    assert not at.exception and len(fake.calls) == before
