@@ -1,47 +1,58 @@
 """
-Dynamics layer v0 -- a transient WHAT-IF simulation on top of the steady-state engine.
+Dynamics layer v0.1 -- a transient WHAT-IF simulation on top of the steady-state engine.
 
 WHAT THIS IS: a thin wrapper that calls the existing steady-state engine as a black box once
-per sub-step (dt of seconds/minutes instead of one hour) and adds exactly TWO first-order
-states between the engine's steady-state answer and what the rest of the plant sees:
+per sub-step (dt of seconds/minutes instead of one hour) and adds first-order states between
+the engine's steady-state answer and what the rest of the plant sees:
 
   T_gasifier  -- lag from the temperature SETPOINT to the temperature GA-001 actually uses.
-  GasHoldup   -- lag of GA-001's outlet flow and composition behind GA-001's own steady-state
-                 result (a well-mixed-bed / residence-time effect).
+  tau_conv    -- fuel conversion / bed inventory lag (minutes): acts on the INPUTS of the
+                 reaction zone, the dry feed rate and the equivalence ratio ER.
+  tau_gas     -- gas-phase transport and mixing lag (tens of seconds): acts on GA-001's
+                 OUTPUT flow and composition, whatever caused the change.
+
+Which input change goes through which lag (v0.1):
+  feed step -> tau_conv (fuel inventory) then tau_gas (gas transport)   [both]
+  ER step   -> tau_conv then tau_gas                                    [both, see below]
+  T step    -> T_gasifier, then tau_gas                                 [no tau_conv]
+ER goes through tau_conv because the oxidant changes the char burn-out and the bed's carbon
+inventory; this is a STRUCTURAL choice -- the steady-state model itself has no ER-dependent
+conversion (carbon conversion is a fixed 0.90), so the model cannot confirm it. Temperature
+acts on the gas through the water-gas-shift equilibrium, a gas-phase effect, so it skips tau_conv.
 
 WHAT THIS IS NOT:
   * GC, HB, EU and SA models are NOT given any inertia. They follow the (lagged) GA-001
-    output algebraically, exactly as they do in the hourly runtime. Only T_gasifier and
-    GasHoldup have inertia in v0 -- anything else you see changing slowly is an existing
-    per-cycle lag or an inventory (see docs/dynamics_v0.md).
+    output algebraically, exactly as they do in the hourly runtime.
   * No physics equation, Confirmed value, SharedPlantState, simulation_engine API or the
     hourly runtime (scripts/run_continuous_cycle.py) is modified. GA-001's own equations are
     called unchanged (ga001_gasifier_model.ga001_model); inputs are replaced through the
-    engine's existing public promote_to_measurement().
-  * Nothing here is Measured or Confirmed. Every time constant is tagged ASSUMED (see
-    TAU_SPECS: value, range, reasoning, and the question that would replace it). Results are
-    "what-if" curves, not validated against plant data.
-  * No database, no network, no credentials: everything runs in-process with synthetic
-    timestamps.
+    engine's public promote_to_measurement() and through a wrapped get_input handed to ga001_model.
+  * Nothing here is Measured or Confirmed. Every time constant is ASSUMED (see TAU_SPECS: value,
+    range, reasoning, and the question that would replace it).
+  * No database, no network, no credentials: everything runs in-process.
 
-EQUATIONS (exact exponential update, stable at any dt; a state moves toward its target):
+EQUATIONS (all exact, stable at any dt):
 
-    dx/dt = (x_target - x) / tau        ->        x <- x_target + (x - x_target) * exp(-dt / tau)
+  one lag             x <- target + (x - target) * exp(-dt / tau)
+  cascade (conv->gas) The conversion state x1 follows its input exactly. Inside a sub-step every
+                      conv-lagged input moves along the SAME exponential, so GA-001's response
+                      y(s) to them is y0 + (y1 - y0) * phi(s), phi(s) = (1 - exp(-s/tau_c)) / (1 - exp(-dt/tau_c)),
+                      with y0 / y1 = the steady-state model evaluated at the sub-step's start / end
+                      conversion state. The gas state then solves  dx/dt = (y(s) - x) / tau_g  exactly:
+                          x(dt) = y0 + (x0 - y0) e^(-dt/tau_g) + (y1 - y0) * psi
+                          psi   = [ (1 - e^(-dt/tau_g)) - (e^(-dt/tau_c) - e^(-dt/tau_g)) / (1 - tau_g/tau_c) ] / (1 - e^(-dt/tau_c))
+                      (limit dt*e^(-dt/tau)/tau when tau_g = tau_c). This is the exact two-lag cascade for a
+                      response that is linear in the conv-lagged inputs; the model's non-linearity inside one
+                      sub-step is neglected (second order in the sub-step's input change).
+  EU-008 damping      damping(dt) = exp(-dt/tau_e) = 0.5 ** (dt / 1 h), tau_e = 1 h / ln 2; exactly 0.5 at 1 h.
 
-tau <= 0 means "no lag" (x <- x_target), which is how the layer is switched off. Per sub-step
-the order is: (1) scenario inputs for the step are fixed, (2) T_gasifier is relaxed toward the
-setpoint, (3) the cycle clock is set to dt (cycle_clock.set_elapsed_hours, always reset in a
-finally), (4) the engine runs ONE cycle with the lagged T_gasifier, (5) inside that cycle the
-GasHoldup wrapper relaxes GA-001's outputs toward the steady-state target it just computed,
-(6) the row is recorded at the END of the sub-step. Everything in a row therefore belongs to the
-same instant.
+Per sub-step order: (1) scenario inputs fixed; (2) T_gasifier relaxed toward the setpoint; (3)
+cycle clock set to dt (always reset in a finally); (4) the engine runs ONE cycle; inside it the
+GA-001 wrapper advances tau_conv on the inputs and tau_gas on the outputs; (5) the row is recorded
+at the END of the sub-step, so everything in a row belongs to the same instant.
 
-PER-CYCLE LAGS THAT CHANGE MEANING AT A SHORT STEP (reported, NOT fixed -- see docs/dynamics_v0.md):
-the engine's lagged_depends_on couplings are one CYCLE long, not one second long. At dt = 60 s
-the FE-005 -> GA-001 feed read, the GA-001 <-> HB-009 recycle, the HB-013 / HB-018 / EU-006 loop
-and the EU-008 pair each become a 60 s delay (or a 60 s loop gain). Only EU008_DAMPING is
-converted here, by the identity-preserving rule  damping(dt) = exp(-dt / tau_e) = 2**(-dt/1h),
-tau_e = 1 h / ln 2, which is exactly 0.5 at dt = 1 h.
+PER-CYCLE LAGS THAT CHANGE MEANING AT A SHORT STEP (reported, NOT fixed, see docs/dynamics_v0.md):
+the engine's lagged_depends_on couplings are one CYCLE long. At dt = 60 s they become 60 s delays.
 """
 import copy
 import math
@@ -64,10 +75,10 @@ from . import ai_automation_layer as ai
 RESULT_STATUS = ("What-if simulation with ASSUMED time constants -- not Measured, not Confirmed, "
                  "not validated against plant data.")
 LIMITS = (
-    "Only T_gasifier and GasHoldup have inertia. GC, HB, EU and SA models are algebraic and follow the "
+    "Only T_gasifier, tau_conv and tau_gas have inertia. GC, HB, EU and SA models are algebraic and follow the "
     "lagged GA-001 output with no lag of their own.",
-    "The engine's one-cycle lagged couplings (FE-005->GA-001, GA-001<->HB-009 recycle, HB-013/HB-018/EU-006, "
-    "EU-008 pair) are per-CYCLE: at a short dt they become dt-long delays. They are not fixed in v0.",
+    "The engine's one-cycle lagged couplings (FE-005->GA-001 feed read, HB-013/HB-018/EU-006, EU-008 pair, ...) are "
+    "per-CYCLE: at a short dt they become dt-long delays. They are not fixed in v0.1.",
     "Feed and ER steps act instantly on the plant inputs; no actuator or conveyor dynamics.",
     "Gasifier temperature enters GA-001 only through the water-gas-shift equilibrium constant (no energy "
     "balance, no T-dependent carbon conversion or tar), so T steps move the outputs only weakly.",
@@ -79,7 +90,7 @@ class TauSpec:
     name: str
     default_s: float
     range_s: tuple
-    status: str            # always "Assumed" in v0
+    status: str            # always "Assumed" in v0.x
     what: str
     reasoning: str
     question_for_doking: str
@@ -97,26 +108,37 @@ TAU_SPECS = {
         "this single lag does not represent.",
         "What is the real step response of the bed/outlet temperature to a setpoint or air-flow change (time to 63 % "
         "and 95 %), and what is the heating actuator (burner, preheated air, electric)?"),
-    "GasHoldup": TauSpec(
-        "GasHoldup", 1200.0, (8.0, 1200.0), ps.STATUS_ASSUMED,
-        "lag of GA-001's outlet flow and composition behind its steady-state result",
-        "Residence-time argument, ASSUMED mapping. Registry geometry (GA-001: ID 600 mm, height 4000 mm incl. bed and "
-        "freeboard) gives a vessel volume of 1.131 m3, i.e. a whole-vessel GAS residence time of only ~8 s at the "
-        "audited flow (513 m3/h actual at 950 degC, 1.11 bar) -- the lower end of the range, negligible next to a 60 s "
-        "step. A bubbling bed is well mixed in its SOLIDS, and the registry's 'Residence time (design)' = 20 min is "
-        "the solids residence time; a well-mixed (CSTR) inventory responds to a change in fuel input with a first-order "
-        "lag equal to its residence time, so the default is 1200 s. That is the UPPER end: it is physically right for "
-        "FEED steps (fuel inventory turnover) and too slow for ER/air steps (gas-phase, seconds). v0 has one tau for "
-        "all causes. The 20 min value is a DOK-ING datasheet design figure ('typical ... at this scale'); the CSTR "
-        "mapping itself is the assumption.",
-        "Bed solids inventory (kg) and fuel feed rate to give the real solids turnover time, plus any measured "
-        "outlet-gas response to a feed step; separately, the freeboard gas residence time."),
+    "tau_conv": TauSpec(
+        "tau_conv", 1200.0, (600.0, 2400.0), ps.STATUS_ASSUMED,
+        "fuel conversion / bed inventory lag acting on the dry feed rate and the ER entering the reaction zone",
+        "Mapping ASSUMED: data/equipment_registry.json (GA-001) gives 'Residence time (design)' = 20 min, described as "
+        "the SOLIDS residence time in the bed ('typical for MSW/biomass gasification conversion at this scale'). A "
+        "bubbling bed is well mixed in its solids, so it behaves like a CSTR, and a CSTR's inventory answers a change in "
+        "its input with a first-order lag equal to its mean residence time: 20 min = 1200 s. The 20 min is a datasheet "
+        "design figure; the CSTR mapping is the assumption. Range = a factor of 2 either side (600-2400 s) because "
+        "real beds have dead zones and plug-flow regions that shorten the effective time and a carbon inventory that can "
+        "lengthen it. ER is routed through this lag as a structural choice (see module docstring); the steady model has "
+        "no ER-dependent conversion.",
+        "Bed solids inventory (kg) and fuel feed rate (to give the real solids turnover time), and the measured "
+        "response of the gas composition to a feed-rate step."),
+    "tau_gas": TauSpec(
+        "tau_gas", 30.0, (8.0, 120.0), ps.STATUS_ASSUMED,
+        "gas-phase transport and mixing lag of GA-001's outlet flow and composition",
+        "Lower bound DERIVED from the registry geometry (GA-001: ID 600 mm, total height 4000 mm incl. bed and "
+        "freeboard -> 1.131 m3; audited flow 125.9 Nm3/h wet = 513 m3/h actual at 950 degC and 1.11 bar -> 0.1426 m3/s): a "
+        "whole-vessel plug-flow gas residence time of 7.9 s (superficial velocity 0.50 m/s, consistent with the "
+        "registry's 0.5-1.5 m/s remark). That ignores solids volume, so it is a minimum. Mixing allowance, ENGINEERING "
+        "PLACEHOLDER (no source): gas back-mixing in a bubbling bed (bubble/emulsion exchange), freeboard recirculation "
+        "and the outlet duct to GC-001 (its volume is Missing) are taken as a factor ~4 on the plug-flow time -> 30 s; "
+        "the range runs from no allowance (8 s) to a factor ~15 (120 s). Applies to every cause of a change.",
+        "Freeboard and outlet-duct volumes (to give the real gas residence time), and the measured outlet-gas response "
+        "to a feed or ER step."),
     "EU008_cooling_water": TauSpec(
         "EU008_cooling_water", 3600.0 / math.log(2.0), (1800.0, 14400.0), ps.STATUS_ASSUMED,
         "EU-008 tower-water relaxation, the per-cycle damping EU008_DAMPING = 0.5 converted to continuous time",
         "Derived, not new: the existing model relaxes the supply temperature by a factor 0.5 per 1 h cycle "
         "(EU008_DAMPING, itself Assumed, 'represents the tower water's own thermal mass'). tau_e = 1 h / ln 2 = "
-        "5193 s makes exp(-dt/tau_e) equal 0.5 exactly at dt = 1 h, so hourly numbers are unchanged. The range is an "
+        "5193.7 s makes exp(-dt/tau_e) equal 0.5 exactly at dt = 1 h, so hourly numbers are unchanged. The range is an "
         "ENGINEERING PLACEHOLDER (no source) for the basin thermal mass. 0 disables the conversion (damping stays "
         "0.5 per sub-step).",
         "Cooling-tower basin water volume and circulation rate (to compute the real thermal time constant)."),
@@ -124,14 +146,23 @@ TAU_SPECS = {
 
 _GA_LAGGED_KEYS = ("dry_flow_nm3_h", "wet_flow_nm3_h", "H2_mol_pct_dry", "CO_mol_pct_dry", "CO2_mol_pct_dry",
                    "CH4_mol_pct_dry", "N2_mol_pct_dry", "H2O_mol_pct_wet")
+_FEED_KEY = ("GA-001-INPUT", "dry_feed_rate_kg_h")
+_ER_KEY = ("GA-001-INPUT", "equivalence_ratio")
+_T_KEY = ("GA-001-INPUT", "operating_temperature_C")
+_MOISTURE_KEY = ("FE-005", "MoistureBalance")
 
 SERIES_UNITS = {
     "t_s": "s", "T_setpoint_C": "degC", "T_gasifier_C": "degC", "feed_kg_h": "kg/h (as received)", "ER": "-",
-    "ga001_dry_flow_nm3_h": "Nm3/h", "ga001_dry_flow_target_nm3_h": "Nm3/h (steady-state target)",
+    "ga001_dry_feed_raw_kg_h": "kg/h dry (what GA-001's feed input reads)", "ga001_dry_feed_effective_kg_h": "kg/h dry (after tau_conv)",
+    "ga001_ER_effective": "- (after tau_conv)",
+    "ga001_dry_flow_nm3_h": "Nm3/h", "ga001_dry_flow_target_nm3_h": "Nm3/h (steady-state target at the raw inputs)",
+    "ga001_dry_flow_y0_nm3_h": "Nm3/h (model at the sub-step's start state)", "ga001_dry_flow_y1_nm3_h": "Nm3/h (model at the sub-step's end state)",
     "H2_pct_dry": "mol% dry", "CO_pct_dry": "mol% dry", "CO2_pct_dry": "mol% dry", "CH4_pct_dry": "mol% dry",
     "N2_pct_dry": "mol% dry", "lhv_mj_nm3": "MJ/Nm3", "h2_production_kg_h": "kg/h",
     "hb013_storage_kg": "kg", "hb013_inflow_kg_h": "kg/h", "hb013_outflow_kg_h": "kg/h",
     "eu008_demand_kw": "kW", "eu008_supply_temp_c": "degC", "eu010_soc_kwh": "kWh", "ai004_eu009_state": "state",
+    "probe_conv": "fraction (unit step through tau_conv)", "probe_gas": "fraction (unit step through tau_gas)",
+    "probe_cascade": "fraction (unit step through tau_conv then tau_gas)",
 }
 
 
@@ -140,6 +171,36 @@ def relax(x, target, dt_s, tau_s):
     if tau_s <= 0.0:
         return target
     return target + (x - target) * math.exp(-dt_s / tau_s)
+
+
+def cascade_psi(dt_s, tau_conv_s, tau_gas_s):
+    """psi of the exact cascade update (module docstring). 0 < psi < 1 - exp(-dt/tau_gas)."""
+    e_c = math.exp(-dt_s / tau_conv_s)
+    e_g = math.exp(-dt_s / tau_gas_s)
+    if abs(tau_gas_s - tau_conv_s) <= 1e-9 * max(tau_gas_s, tau_conv_s):
+        cross = dt_s * e_c / tau_conv_s
+    else:
+        cross = (e_c - e_g) / (1.0 - tau_gas_s / tau_conv_s)
+    return ((1.0 - e_g) - cross) / (-math.expm1(-dt_s / tau_conv_s))
+
+
+def gas_stage(x0, y0, y1, dt_s, tau_gas_s, tau_shape_s=None):
+    """Advance the gas-phase lag one sub-step. x0 = gas state at the start, y0 / y1 = the steady-state model's
+    answer at the start / end conv state, tau_shape_s = the time constant of the exponential along which the
+    inputs moved this sub-step (None or <= 0, or y1 == y0: the input is constant over the sub-step)."""
+    if tau_gas_s <= 0.0:
+        return y1
+    if y1 == y0 or tau_shape_s is None or tau_shape_s <= 0.0:
+        return relax(x0, y1, dt_s, tau_gas_s)
+    return y0 + (x0 - y0) * math.exp(-dt_s / tau_gas_s) + (y1 - y0) * cascade_psi(dt_s, tau_shape_s, tau_gas_s)
+
+
+def cascade_step_response(t_s, tau_conv_s, tau_gas_s):
+    """Exact analytic response of two first-order lags in series to a unit step at t = 0:
+    1 - (tau1 e^(-t/tau1) - tau2 e^(-t/tau2)) / (tau1 - tau2); the equal-tau limit is 1 - (1 + t/tau) e^(-t/tau)."""
+    if abs(tau_conv_s - tau_gas_s) <= 1e-9 * max(tau_conv_s, tau_gas_s):
+        return 1.0 - (1.0 + t_s / tau_conv_s) * math.exp(-t_s / tau_conv_s)
+    return 1.0 - (tau_conv_s * math.exp(-t_s / tau_conv_s) - tau_gas_s * math.exp(-t_s / tau_gas_s)) / (tau_conv_s - tau_gas_s)
 
 
 def eu008_damping_for_dt(dt_s, tau_e_s):
@@ -228,9 +289,18 @@ class _Context:
         self.er = uncertainty.ASSUMPTIONS["air_equivalence_ratio"]["point"]
         self.t_setpoint_c = ga001.GA001_OPERATING_TEMPERATURE_C
         self.t_state_c = ga001.GA001_OPERATING_TEMPERATURE_C
+        self.t_prev_c = self.t_state_c
+        self.t_override_active = False
+        # warm-up bookkeeping (initial conditions of the lags)
+        self.warm_feed = None
+        self.warm_er = None
+        self.warm_out = None
+        # conv / gas states
+        self.feed_eff = None
+        self.er_eff = None
         self.ga_state = None
-        self.ga_last_target = None
-        self.ga_target_now = None
+        # per-sub-step diagnostics for the series
+        self.diag = {}
         self.used_taus = set()
 
     def relax(self, name, x, target):
@@ -243,32 +313,104 @@ class _Context:
 def _input_reader(ctx, attr, note):
     def reader(get_input):
         return {"value": getattr(ctx, attr), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
-                "confidence_note": f"dynamics-v0 scenario input: {note} (Assumed what-if value, not Measured)."}
+                "confidence_note": f"dynamics-v0.1 scenario input: {note} (Assumed what-if value, not Measured)."}
     return reader
 
 
-def _ga001_holdup_model(ctx):
-    def ga001_with_holdup(get_input):
-        result = ga001.ga001_model(get_input)          # GA-001's own equations, unchanged: the steady-state TARGET
-        target = result["value"]
-        ctx.ga_target_now = target
-        if not ctx.dynamics_on or ctx.taus["GasHoldup"] <= 0.0:
-            ctx.ga_last_target = {k: target[k] for k in _GA_LAGGED_KEYS}
+def _substituted(get_input, ctx, feed, er, t_c, raw_feed):
+    """A get_input for ga001_model with the conv-lagged feed/ER and the given temperature substituted."""
+    ratio = (feed / raw_feed) if raw_feed else 1.0
+
+    def gi(key):
+        if key == _FEED_KEY:
+            entry = dict(get_input(key))
+            entry["value"] = feed
+            return entry
+        if key == _ER_KEY:
+            entry = dict(get_input(key))
+            entry["value"] = er
+            return entry
+        if key == _T_KEY:
+            entry = dict(get_input(key))
+            entry["value"] = t_c
+            return entry
+        if key == _MOISTURE_KEY:
+            entry = get_input(key)
+            if entry["status"] != ps.STATUS_MISSING and ratio != 1.0:
+                entry = dict(entry)
+                value = dict(entry["value"])
+                value["residual_water_kg_h"] = value["residual_water_kg_h"] * ratio   # feed-linked: scales with the fuel
+                entry["value"] = value
+            return entry
+        return get_input(key)
+    return gi
+
+
+def _ga001_dynamic_model(ctx):
+    def ga001_dynamic(get_input):
+        tau = ctx.taus
+        if not ctx.dynamics_on:
+            result = ga001.ga001_model(get_input)
+            ctx.warm_feed = get_input(_FEED_KEY)["value"]
+            ctx.warm_er = get_input(_ER_KEY)["value"]
+            ctx.warm_out = {k: result["value"][k] for k in _GA_LAGGED_KEYS}
             return result
-        if ctx.ga_state is None:                        # first dynamic sub-step starts from the steady state
-            ctx.ga_state = dict(ctx.ga_last_target)
+
+        feed_raw = get_input(_FEED_KEY)["value"]
+        er_raw = get_input(_ER_KEY)["value"]
+        t_end = get_input(_T_KEY)["value"]            # the T_gasifier-lagged value (the engine override)
+        t_start = ctx.t_prev_c if ctx.t_override_active else t_end
+
+        # --- conversion / bed-inventory lag on the INPUTS of the reaction zone ------------------------------
+        if tau["tau_conv"] > 0.0:
+            if ctx.feed_eff is None:
+                ctx.feed_eff, ctx.er_eff = ctx.warm_feed, ctx.warm_er
+            f0, e0 = ctx.feed_eff, ctx.er_eff
+            f1 = ctx.relax("tau_conv", f0, feed_raw)
+            e1 = ctx.relax("tau_conv", e0, er_raw)
+            ctx.feed_eff, ctx.er_eff = f1, e1
+        else:
+            f0 = f1 = feed_raw
+            e0 = e1 = er_raw
+
+        # --- steady-state model at the sub-step's end state (the published answer's target) and start state ----
+        y1_value = ga001.ga001_model(_substituted(get_input, ctx, f1, e1, t_end, feed_raw))
+        if (f0, e0, t_start) == (f1, e1, t_end):
+            y0_value = y1_value
+        else:
+            y0_value = ga001.ga001_model(_substituted(get_input, ctx, f0, e0, t_start, feed_raw))
+        y1, y0 = y1_value["value"], y0_value["value"]
+
+        # --- gas-phase lag on the OUTPUTS: exact cascade along the exponential the inputs moved on ----------
+        conv_moved = tau["tau_conv"] > 0.0 and (f0, e0) != (f1, e1)
+        if conv_moved:
+            shape = tau["tau_conv"]
+        elif ctx.t_override_active and tau["T_gasifier"] > 0.0 and t_start != t_end:
+            shape = tau["T_gasifier"]
+        else:
+            shape = None
+        if ctx.ga_state is None:
+            ctx.ga_state = dict(ctx.warm_out)
+        if tau["tau_gas"] > 0.0:
+            ctx.used_taus.add("tau_gas")
         for key in _GA_LAGGED_KEYS:
-            ctx.ga_state[key] = ctx.relax("GasHoldup", ctx.ga_state[key], target[key])
-        lagged = dict(target)
+            ctx.ga_state[key] = gas_stage(ctx.ga_state[key], y0[key], y1[key], ctx.dt_s, tau["tau_gas"], shape)
+
+        # unlagged steady-state target at the RAW inputs (what a steady-state run would give right now)
+        raw_target = ga001.ga001_model(_substituted(get_input, ctx, feed_raw, er_raw, ctx.t_setpoint_c, feed_raw))["value"]
+        ctx.diag = {"feed_raw": feed_raw, "feed_eff": f1, "er_eff": e1, "y0": y0["dry_flow_nm3_h"], "y1": y1["dry_flow_nm3_h"],
+                    "target": raw_target["dry_flow_nm3_h"]}
+
+        lagged = dict(y1)
         lagged.update(ctx.ga_state)
-        out = dict(result)
+        out = dict(y1_value)
         out["value"] = lagged
         out["confidence_note"] = (
-            result.get("confidence_note", "") +
-            f" [dynamics-v0 GasHoldup: outputs lagged behind this steady-state target with tau_g = {ctx.taus['GasHoldup']:g} s "
-            f"(Assumed); target dry flow {target['dry_flow_nm3_h']:.4f} Nm3/h.]")
+            y1_value.get("confidence_note", "") +
+            f" [dynamics-v0.1: tau_conv={tau['tau_conv']:g} s on feed/ER inputs, tau_gas={tau['tau_gas']:g} s on outputs "
+            f"(both Assumed); steady-state target dry flow {raw_target['dry_flow_nm3_h']:.4f} Nm3/h.]")
         return out
-    return ga001_with_holdup
+    return ga001_dynamic
 
 
 def _register_all(engine):
@@ -280,11 +422,15 @@ def _register_all(engine):
 def _row(ctx, t_s, snap):
     o = snap[("GA-001", "Outputs")]["value"]
     hb013 = snap[("HB-013", "Storage")]["value"]
-    target = ctx.ga_target_now or o
+    d = ctx.diag
     return {
         "t_s": t_s, "T_setpoint_C": ctx.t_setpoint_c, "T_gasifier_C": ctx.t_state_c,
         "feed_kg_h": ctx.feed_kg_h, "ER": ctx.er,
-        "ga001_dry_flow_nm3_h": float(o["dry_flow_nm3_h"]), "ga001_dry_flow_target_nm3_h": float(target["dry_flow_nm3_h"]),
+        "ga001_dry_feed_raw_kg_h": d.get("feed_raw"), "ga001_dry_feed_effective_kg_h": d.get("feed_eff"),
+        "ga001_ER_effective": d.get("er_eff"),
+        "ga001_dry_flow_nm3_h": float(o["dry_flow_nm3_h"]),
+        "ga001_dry_flow_target_nm3_h": float(d.get("target", o["dry_flow_nm3_h"])),
+        "ga001_dry_flow_y0_nm3_h": d.get("y0"), "ga001_dry_flow_y1_nm3_h": d.get("y1"),
         "H2_pct_dry": float(o["H2_mol_pct_dry"]), "CO_pct_dry": float(o["CO_mol_pct_dry"]),
         "CO2_pct_dry": float(o["CO2_mol_pct_dry"]), "CH4_pct_dry": float(o["CH4_mol_pct_dry"]),
         "N2_pct_dry": float(o["N2_mol_pct_dry"]),
@@ -296,6 +442,7 @@ def _row(ctx, t_s, snap):
         "eu008_supply_temp_c": float(snap[("EU-008", "CoolingSupply")]["value"]["supply_temp_c"]),
         "eu010_soc_kwh": float(snap[("EU-010", "UPS")]["value"]["soc_kwh"]),
         "ai004_eu009_state": snap[("AI-004", "EU-009-State")]["value"],
+        "probe_conv": ctx.probe["conv"], "probe_gas": ctx.probe["gas"], "probe_cascade": ctx.probe["cascade"],
     }
 
 
@@ -309,7 +456,10 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
     dt_s / duration_s: sub-step and total length in seconds. taus: {name: seconds} overrides of TAU_SPECS (0 = off).
     warmup_cycles: engine cycles of 1 h with dynamics off, run first so every recycle/damped state starts from the
       steady state of the initial inputs (0 = no warm-up; used by the dt = 1 h identity test).
-    Row 0 is that steady state at t = 0; each further row is the END of a sub-step."""
+    Row 0 is that steady state at t = 0; each further row is the END of a sub-step.
+    The series also carries a LAG PROBE: a unit step at the first scenario step after t = 0 pushed through tau_conv,
+    tau_gas and the cascade with the very same update functions, so the time constants can be read (and tested)
+    without the plant's own feedback loops."""
     taus = resolve_taus(taus)
     steps = _normalise_scenario(scenario)
     if dt_s <= 0 or duration_s <= 0:
@@ -320,16 +470,20 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
     engine = se.SimulationEngine(state)
     _register_all(engine)
     ctx = _Context(taus, dt_s)
+    ctx.probe = {"conv": 0.0, "gas": 0.0, "cascade": 0.0}
+    probe_state = {"conv": 0.0, "gas": 0.0, "cascade": 0.0}
+    probe_t_step = next((s["t_s"] for s in steps if s["t_s"] > 0.0), None)
 
     touched = {k for s in steps for k in s if k != "t_s"}
     if touched & {"feed_kg_h", "feed_rel"}:
         engine.promote_to_measurement(("FE-001-INPUT", "msw_delivery_rate_kg_h"), _input_reader(ctx, "feed_kg_h", "MSW delivery rate (kg/h as received)"))
     if "ER" in touched:
-        engine.promote_to_measurement(("GA-001-INPUT", "equivalence_ratio"), _input_reader(ctx, "er", "air equivalence ratio"))
+        engine.promote_to_measurement(_ER_KEY, _input_reader(ctx, "er", "air equivalence ratio"))
     if "T_setpoint_C" in touched:
-        engine.promote_to_measurement(("GA-001-INPUT", "operating_temperature_C"), _input_reader(ctx, "t_state_c", "gasifier temperature after the T_gasifier lag"))
-    if taus["GasHoldup"] > 0.0:
-        engine.promote_to_measurement(("GA-001", "Outputs"), _ga001_holdup_model(ctx))
+        ctx.t_override_active = True
+        engine.promote_to_measurement(_T_KEY, _input_reader(ctx, "t_state_c", "gasifier temperature after the T_gasifier lag"))
+    if taus["tau_conv"] > 0.0 or taus["tau_gas"] > 0.0:
+        engine.promote_to_measurement(("GA-001", "Outputs"), _ga001_dynamic_model(ctx))
 
     base_feed = ctx.feed_kg_h
     saved_damping = eu.EU008_DAMPING
@@ -350,7 +504,7 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
     while applied < len(steps) and steps[applied]["t_s"] <= 0.0:      # initial conditions
         apply_step(steps[applied])
         applied += 1
-    ctx.t_state_c = ctx.t_setpoint_c
+    ctx.t_state_c = ctx.t_prev_c = ctx.t_setpoint_c
     try:
         # ---- warm-up: 1 h cycles, dynamics off, initial inputs --------------------------------------
         cycle_clock.set_elapsed_hours(1.0)
@@ -367,7 +521,17 @@ def run_transient(scenario=None, dt_s=60.0, duration_s=7200.0, taus=None, warmup
             while applied < len(steps) and steps[applied]["t_s"] <= t_start + 1e-9:
                 apply_step(steps[applied])
                 applied += 1
+            ctx.t_prev_c = ctx.t_state_c
             ctx.t_state_c = ctx.relax("T_gasifier", ctx.t_state_c, ctx.t_setpoint_c)
+            # lag probe: unit step from the first scenario step on (the same update functions as the plant)
+            if probe_t_step is not None and t_start + 1e-9 >= probe_t_step:
+                c0 = probe_state["conv"]
+                c1 = relax(c0, 1.0, dt_s, taus["tau_conv"])
+                probe_state["conv"] = c1
+                probe_state["gas"] = relax(probe_state["gas"], 1.0, dt_s, taus["tau_gas"])
+                probe_state["cascade"] = gas_stage(probe_state["cascade"], c0, c1, dt_s, taus["tau_gas"],
+                                                    taus["tau_conv"] if taus["tau_conv"] > 0.0 and c1 != c0 else None)
+                ctx.probe = dict(probe_state)
             cycle_clock.set_elapsed_hours(dt_s / 3600.0)
             if taus["EU008_cooling_water"] > 0.0:
                 ctx.used_taus.add("EU008_cooling_water")

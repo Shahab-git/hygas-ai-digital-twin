@@ -13,7 +13,7 @@ from _fakes import FakeSupabase, patched_supabase
 from python import cycle_clock, dynamics as dy, plant_status as ps, tab1_integration
 from python import eu_utilities_chp as eu
 
-OFF = {"T_gasifier": 0, "GasHoldup": 0, "EU008_cooling_water": 0}
+OFF = {"T_gasifier": 0, "tau_conv": 0, "tau_gas": 0, "EU008_cooling_water": 0}
 
 
 @pytest.fixture(autouse=True)
@@ -39,7 +39,7 @@ def _override(value):
 # --------------------------------------------------------------------------- C1 identity at 1 h
 @pytest.mark.parametrize("taus,label", [
     (OFF, "all lags off"),
-    ({"T_gasifier": 0, "GasHoldup": 0}, "EU008 conversion ON (default) -- must still be exactly 0.5 at dt = 1 h"),
+    ({"T_gasifier": 0, "tau_conv": 0, "tau_gas": 0}, "EU008 conversion ON (default) -- must still be exactly 0.5 at dt = 1 h"),
 ])
 def test_c1_identity_with_build_live_snapshot_at_one_hour(taus, label):
     n = 5
@@ -62,7 +62,7 @@ def test_c1_eu008_damping_identity_is_exact_and_scales_with_dt():
 
 # --------------------------------------------------------------------------- C2 convergence to steady state
 def test_c2_long_run_converges_to_the_steady_state_engine_at_the_final_inputs():
-    taus = {"T_gasifier": 30, "GasHoldup": 60, "EU008_cooling_water": 120}
+    taus = {"T_gasifier": 30, "tau_conv": 60, "tau_gas": 30, "EU008_cooling_water": 120}
     final = {"feed_rel": 0.10, "ER": 0.28, "T_setpoint_C": 930.0}
     result = dy.run_transient([{"t_s": 120, **final}], dt_s=60, duration_s=2400, taus=taus, warmup_cycles=24)   # 2400 s = 20 x max tau
     base_feed = 41.67
@@ -95,7 +95,7 @@ def test_c3_t_gasifier_is_first_order_63_and_95_percent():
     tau = 120.0
     t_step = 60.0
     result = dy.run_transient([{"t_s": t_step, "T_setpoint_C": 930.0}], dt_s=60, duration_s=720,
-                              taus={"T_gasifier": tau, "GasHoldup": 0, "EU008_cooling_water": 0}, warmup_cycles=2)
+                              taus={"T_gasifier": tau, "tau_conv": 0, "tau_gas": 0, "EU008_cooling_water": 0}, warmup_cycles=2)
     t0 = result.series[0]["T_gasifier_C"]
     assert t0 == 950.0
     delta = 930.0 - t0
@@ -122,7 +122,7 @@ def _t95(series, column, t_step):
 
 
 def test_c4_results_converge_as_dt_changes():
-    taus = {"T_gasifier": 120, "GasHoldup": 120, "EU008_cooling_water": 0}
+    taus = {"T_gasifier": 120, "tau_conv": 0, "tau_gas": 120, "EU008_cooling_water": 0}
     runs = {dt: dy.run_transient([{"t_s": 240, "T_setpoint_C": 930.0}], dt_s=dt, duration_s=1200, taus=taus, warmup_cycles=8)
             for dt in (30, 60, 120)}
 
@@ -212,9 +212,9 @@ def test_c7_every_tau_used_is_listed_and_tagged_assumed(quiet_result):
 
 
 def test_c7_an_unlisted_tau_is_caught_and_unknown_names_are_rejected(quiet_result):
-    broken = dy.TransientResult(quiet_result.series, [a for a in quiet_result.assumptions if a["name"] != "GasHoldup"],
+    broken = dy.TransientResult(quiet_result.series, [a for a in quiet_result.assumptions if a["name"] != "tau_gas"],
                                 quiet_result.used_taus, quiet_result.meta, quiet_result.final_snapshot)
-    with pytest.raises(AssertionError, match="GasHoldup"):
+    with pytest.raises(AssertionError, match="tau_gas"):
         broken.verify_honesty()
     with pytest.raises(ValueError, match="unknown time constant"):
         dy.run_transient([], dt_s=60, duration_s=60, taus={"Surprise": 5.0}, warmup_cycles=0)
@@ -225,7 +225,7 @@ def test_c7_an_unlisted_tau_is_caught_and_unknown_names_are_rejected(quiet_resul
 def test_steps_at_t_zero_are_initial_conditions():
     """{"t_s": 0, ...} defines the starting steady state (used by the T 900 -> 930 demo): row 0 already has it."""
     result = dy.run_transient([{"t_s": 0, "T_setpoint_C": 900.0}, {"t_s": 60, "T_setpoint_C": 930.0}], dt_s=60,
-                              duration_s=120, taus={"T_gasifier": 120, "GasHoldup": 0, "EU008_cooling_water": 0}, warmup_cycles=2)
+                              duration_s=120, taus={"T_gasifier": 120, "tau_conv": 0, "tau_gas": 0, "EU008_cooling_water": 0}, warmup_cycles=2)
     assert result.series[0]["T_gasifier_C"] == 900.0 and result.series[0]["T_setpoint_C"] == 900.0
     assert result.series[1]["T_setpoint_C"] == 900.0                       # step at t = 60 acts from the next sub-step
     assert result.series[2]["T_gasifier_C"] == pytest.approx(930.0 - 30.0 * math.exp(-0.5))
