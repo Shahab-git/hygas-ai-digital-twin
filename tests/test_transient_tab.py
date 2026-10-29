@@ -674,3 +674,21 @@ def test_ui_the_table_is_right_aligned_with_units_and_the_csv_is_unchanged(runs)
     assert set(columns) == set(frame.columns[1:]) and all(c["alignment"] == "right" for c in columns.values())
     header = [line for line in sim.build_response_csv(payload).splitlines() if not line.startswith("#")][0]
     assert header == "quantity,unit,before_step,end_of_run,final_steady_state,change,t63_s,t95_s,peak_pct_of_change,meaningful_change"
+
+
+def test_ui_the_zoom_note_follows_the_span_and_the_axis_radio_changes_the_domain(runs):
+    at, payload = runs["feed"]
+    absolute, _n, step_min, duration_min = ch.long_frames(payload)
+    expected = [ch.zoom_note(absolute[absolute["key"] == key]) for key in dict.fromkeys(absolute["key"])]
+    assert at.radio(key="wi_axis").value == "zoomed"
+    specs = [json.loads(c.proto.spec) for c in at.get("vega_lite_chart")[1:]]
+    assert [spec["title"].get("subtitle") for spec in specs] == expected
+    assert any(expected) and not all(expected)                                  # notes on some panels, none on the others
+    try:
+        at.radio(key="wi_axis").set_value("from zero").run()
+        flat = [json.loads(c.proto.spec) for c in at.get("vega_lite_chart")[1:]]
+        assert not any(spec["title"].get("subtitle") for spec in flat)
+        assert all(next(l["encoding"]["y"]["scale"] for l in spec["layer"] if l["mark"]["type"] == "line") == {"zero": True} for spec in flat)
+    finally:
+        at.radio(key="wi_axis").set_value("zoomed").run()
+    assert not at.exception

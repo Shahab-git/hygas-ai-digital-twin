@@ -61,7 +61,7 @@ def _not_valid_box():
 def _defaults():
     d = {_K + "scenario": sim.DEFAULTS["scenario"], _K + "feed_pct": sim.DEFAULTS["feed_pct"], _K + "er_new": sim.DEFAULTS["er_new"],
          _K + "T_new": sim.DEFAULTS["T_new"], _K + "step_min": sim.DEFAULTS["step_min"],
-         _K + "duration_min": sim.DEFAULTS["duration_min"], _K + "dt_s": sim.DEFAULTS["dt_s"]}
+         _K + "duration_min": sim.DEFAULTS["duration_min"], _K + "dt_s": sim.DEFAULTS["dt_s"], _K + "axis": "zoomed"}
     d.update({_K + "tau_" + n: t for n, t in sim.default_taus().items()})
     return d
 
@@ -253,7 +253,10 @@ def _render_results(payload):
     st.markdown("**Absolute values** — one panel per quantity, each with its own y scale (the quantities differ too much in size for a shared "
                 "axis); the time axis is the same in every panel. Each quantity keeps the colour, dash and point shape it has in the normalised chart · "
                 "grey dashed: old steady state · red dashed: new steady state · black: the step")
-    for panel in ch.absolute_panels(absolute, step_min, duration_min):
+    st.radio("Axis", ["zoomed", "from zero"], key=_K + "axis", horizontal=True, format_func=lambda v: "zoomed (default)" if v == "zoomed" else v,
+             help="Zoomed: every panel fits its own data, so a tiny change can look large (a panel says so under its title). "
+                  "From zero: every panel's y axis starts at 0.")
+    for panel in ch.absolute_panels(absolute, step_min, duration_min, from_zero=st.session_state[_K + "axis"] == "from zero"):
         _show_chart(panel)
 
     st.download_button("Download the series (CSV, with the banner and the Assumed time constants as header rows)", sim.build_csv(payload),
