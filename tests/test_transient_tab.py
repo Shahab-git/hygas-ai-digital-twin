@@ -692,3 +692,22 @@ def test_ui_the_zoom_note_follows_the_span_and_the_axis_radio_changes_the_domain
     finally:
         at.radio(key="wi_axis").set_value("zoomed").run()
     assert not at.exception
+
+
+def test_ui_the_tau_sliders_show_whole_seconds_but_pass_the_exact_stored_default_to_the_worker(runs):
+    at = runs["default"]
+    exact = dy.TAU_SPECS["EU008_cooling_water"].default_s
+    assert exact != round(exact)                                                  # the default really is a long fraction (5193.70...)
+    slider = at.slider(key="wi_tau_EU008_cooling_water")
+    assert slider.value.hex() == exact.hex()                                      # the widget holds the exact stored number ...
+    assert slider.proto.format == "%.0f s"                                        # ... and only the label is rounded (about 5194 s)
+    for name in dy.TAU_SPECS:
+        assert at.slider(key=f"wi_tau_{name}").proto.format == "%.0f s"
+    # the numbers sent to the worker: bit-identical defaults, and the same cache key as the engine-side defaults give
+    _at, payload = runs["feed"]
+    sent = payload["params"]["taus"]
+    assert {n: v.hex() for n, v in sent.items()} == {n: s_.default_s.hex() for n, s_ in dy.TAU_SPECS.items()}
+    again = sim.normalise_params({"scenario": "feed", "step_min": 3, "duration_min": 10, "dt_s": 30,
+                                  "taus": {n: s_.default_s for n, s_ in dy.TAU_SPECS.items()}})
+    assert json.dumps(payload["params"], sort_keys=True) == json.dumps(again, sort_keys=True)
+    assert next(a["value_s"] for a in payload["assumptions"] if a["name"] == "EU008_cooling_water").hex() == exact.hex()

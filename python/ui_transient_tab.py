@@ -153,7 +153,7 @@ def _controls():
         with left:
             st.markdown(f"**{name}** {_tag('Assumed')} <span style='font-size:0.8rem;color:#4B5563;'>{html.escape(spec.what)}</span>",
                         unsafe_allow_html=True)
-            st.slider(name, float(lo), float(hi), step=_TAU_STEP[name], format="%g s", key=_K + "tau_" + name, label_visibility="collapsed",
+            st.slider(name, float(lo), float(hi), step=_TAU_STEP[name], format="%.0f s", key=_K + "tau_" + name, label_visibility="collapsed",
                       help=f"{spec.reasoning}\n\nQuestion for DOK-ING: {spec.question_for_doking}")
         with right:
             st.caption(f"Range {lo:g}–{hi:g} s · default {spec.default_s:g} s. **Ask DOK-ING:** {spec.question_for_doking}")
@@ -274,7 +274,7 @@ def _render_findings(payload):
     frame = pd.DataFrame([{"Time constant": n, "Status": s.status, "Value [s]": values.get(n, s.default_s),
                            "Declared range [s]": f"{s.range_s[0]:g}–{s.range_s[1]:g}", "Question for DOK-ING": s.question_for_doking}
                           for n, s in dy.TAU_SPECS.items()])
-    st.dataframe(frame, hide_index=True, use_container_width=True)
+    st.dataframe(frame, hide_index=True, use_container_width=True, column_config={"Value [s]": st.column_config.NumberColumn(format="%.1f")})
     st.markdown(f"**Also ask DOK-ING:** {sim.ENVELOPE_QUESTION}")
     with st.expander("Reasoning behind each Assumed value"):
         for n, s in dy.TAU_SPECS.items():
