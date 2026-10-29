@@ -25,6 +25,15 @@ from . import ui_transient_charts as ch
 from . import ui_transient_sim as sim
 
 _K = "wi_"       # session-state prefix of this tab
+_CLOUD_RUN_NOTE = "on Streamlit Community Cloud one run of 240 steps (2 h at dt = 30 s) took about 78 s"       # an observed run, not a promise
+
+
+def _expected_seconds(steps):
+    """Rough wall time of a run on a fast machine: about 0.1 s per engine step plus about 6 s of start-up and warm-up (the three default
+    scenarios measured 29.6 s for 240 steps, 23.2 s for 180 and 17.5 s for 120)."""
+    return 0.1 * steps + 6
+
+
 _MARKER_DEFAULT = "ga001_dry_flow_nm3_h"       # the quantity whose t63 / t95 are marked on the normalised chart
 _TAU_STEP = {"T_gasifier": 5.0, "tau_conv": 30.0, "tau_gas": 1.0, "tau_rec": 5.0, "EU008_cooling_water": 1.0}
 _TAG = {"Assumed": ("#FEF3C7", "#B45309"), "Missing": ("#F3F4F6", "#6B7280"), "Calculated": ("#DBEAFE", "#1D4ED8")}
@@ -61,7 +70,7 @@ def _not_valid_box():
 def _defaults():
     d = {_K + "scenario": sim.DEFAULTS["scenario"], _K + "feed_pct": sim.DEFAULTS["feed_pct"], _K + "er_new": sim.DEFAULTS["er_new"],
          _K + "T_new": sim.DEFAULTS["T_new"], _K + "step_min": sim.DEFAULTS["step_min"],
-         _K + "duration_min": sim.DEFAULTS["duration_min"], _K + "dt_s": sim.DEFAULTS["dt_s"]}
+         _K + "duration_min": sim.DEFAULTS["duration_min"], _K + "dt_s": sim.DEFAULTS["dt_s"], _K + "axis": "zoomed"}
     d.update({_K + "tau_" + n: t for n, t in sim.default_taus().items()})
     return d
 
@@ -153,7 +162,7 @@ def _controls():
         with left:
             st.markdown(f"**{name}** {_tag('Assumed')} <span style='font-size:0.8rem;color:#4B5563;'>{html.escape(spec.what)}</span>",
                         unsafe_allow_html=True)
-            st.slider(name, float(lo), float(hi), step=_TAU_STEP[name], format="%g s", key=_K + "tau_" + name, label_visibility="collapsed",
+            st.slider(name, float(lo), float(hi), step=_TAU_STEP[name], format="%.0f s", key=_K + "tau_" + name, label_visibility="collapsed",
                       help=f"{spec.reasoning}\n\nQuestion for DOK-ING: {spec.question_for_doking}")
         with right:
             st.caption(f"Range {lo:g}–{hi:g} s · default {spec.default_s:g} s. **Ask DOK-ING:** {spec.question_for_doking}")
@@ -250,16 +259,29 @@ def _render_results(payload):
         row = _marker_choice(payload)
         _show_chart(ch.normalised_chart(normalised, step_min, duration_min, row))
         _marker_caption(row, dt)
+        overlap = ch.overlap_caption(normalised)
+        if overlap:
+            st.caption(overlap)
     st.markdown("**Absolute values** — one panel per quantity, each with its own y scale (the quantities differ too much in size for a shared "
                 "axis); the time axis is the same in every panel. Each quantity keeps the colour, dash and point shape it has in the normalised chart · "
                 "grey dashed: old steady state · red dashed: new steady state · black: the step")
-    for panel in ch.absolute_panels(absolute, step_min, duration_min):
+    st.radio("Axis", ["zoomed", "from zero"], key=_K + "axis", horizontal=True, format_func=lambda v: "zoomed (default)" if v == "zoomed" else v,
+             help="Zoomed: every panel fits its own data, so a tiny change can look large (a panel says so under its title). "
+                  "From zero: every panel's y axis starts at 0.")
+    for panel in ch.absolute_panels(absolute, step_min, duration_min, from_zero=st.session_state[_K + "axis"] == "from zero"):
         _show_chart(panel)
 
     st.download_button("Download the series (CSV, with the banner and the Assumed time constants as header rows)", sim.build_csv(payload),
                        file_name="whatif_series.csv", mime="text/csv", key=_K + "dl_series")
     st.download_button("Download the response-time table (CSV)", sim.build_response_csv(payload), file_name="whatif_response_times.csv",
                        mime="text/csv", key=_K + "dl_response")
+
+
+def _assumed_styler(frame):
+    """The Assumed-parameters table as a styled HTML table: st.table rather than st.dataframe because a grid cell cuts a long text off at the
+    column edge while a table cell wraps it. The text is untouched; the number columns are right-aligned, Value [s] to one decimal."""
+    return (frame.style.hide(axis="index").format({"Value [s]": "{:.1f}"})
+            .set_properties(subset=["Value [s]", "Declared range [s]"], **{"text-align": "right"}))
 
 
 def _render_findings(payload):
@@ -271,7 +293,7 @@ def _render_findings(payload):
     frame = pd.DataFrame([{"Time constant": n, "Status": s.status, "Value [s]": values.get(n, s.default_s),
                            "Declared range [s]": f"{s.range_s[0]:g}–{s.range_s[1]:g}", "Question for DOK-ING": s.question_for_doking}
                           for n, s in dy.TAU_SPECS.items()])
-    st.dataframe(frame, hide_index=True, use_container_width=True)
+    st.table(_assumed_styler(frame))
     st.markdown(f"**Also ask DOK-ING:** {sim.ENVELOPE_QUESTION}")
     with st.expander("Reasoning behind each Assumed value"):
         for n, s in dy.TAU_SPECS.items():
@@ -289,13 +311,15 @@ def render():
                "simulation on top of the steady-state engine; it runs only when you press the button.")
     for key, value in _defaults().items():
         st.session_state.setdefault(key, value)
-    _controls()
+    controls, _spare = st.columns([2, 1])               # the controls stay in the left two thirds; the results and charts below are full width
+    with controls:
+        _controls()
     params = _current_params()
     errors = _resolution_messages(params)
     steps = params["duration_s"] // params["dt_s"] if params["dt_s"] in sim.DT_CHOICES_S else 0
     st.caption(f"The step is applied at {params['step_s']} s and the run lasts {params['duration_s']} s: {steps} steps at dt = {params['dt_s']} s "
-               f"(cap {sim.MAX_STEPS} steps / {sim.MAX_DURATION_S // 3600} h). Expect roughly {0.12 * steps + 6:.0f} s on a fast machine, "
-               "longer on shared hosting.")
+               f"(cap {sim.MAX_STEPS} steps / {sim.MAX_DURATION_S // 3600} h). Expect about {_expected_seconds(steps):.0f} s on a fast machine; "
+               f"{_CLOUD_RUN_NOTE}.")
 
     left, right, _ = st.columns([2, 1, 3])
     run = left.button("Run what-if simulation", type="primary", disabled=bool(errors), key=_K + "run")
@@ -303,7 +327,7 @@ def render():
 
     if run and not errors:
         try:
-            with st.spinner(f"Running {steps} engine steps in an isolated worker … (about {0.12 * steps + 6:.0f} s)"):
+            with st.spinner(f"Running {steps} engine steps in an isolated worker … (about {_expected_seconds(steps):.0f} s)"):
                 st.session_state[_K + "payload"] = _cached_run(json.dumps(params, sort_keys=True))
             st.session_state.pop(_K + "error", None)
         except sim.WhatIfError as exc:

@@ -20,18 +20,20 @@ from python import ui_transient_charts as ch, ui_transient_sim as sim, ui_transi
 KEYS = [q[0] for q in sim.PLOT_QUANTITIES]
 
 
-def _payload(dt=30, duration_min=60, step_min=5, tau_s=300.0, taus=None):
-    """A synthetic result: every plotted quantity relaxes exponentially from 10 to 20 (each with its own tau when `taus` is given)."""
+def _payload(dt=30, duration_min=60, step_min=5, tau_s=300.0, taus=None, levels=None):
+    """A synthetic result: every plotted quantity relaxes exponentially from 10 to 20 (each with its own tau when `taus` is given, and its
+    own (before, final) pair when `levels` is given)."""
     step_s, duration_s = step_min * 60, duration_min * 60
-    taus = taus or {}
+    taus, levels = taus or {}, levels or {}
     series = []
     for t in range(0, duration_s + 1, dt):
         row = {"t_s": t}
         for key in KEYS:
             lag = taus.get(key, tau_s)
-            row[key] = 10.0 if t < step_s else 20.0 - 10.0 * math.exp(-(t - step_s) / lag)
+            x0, xf = levels.get(key, (10.0, 20.0))
+            row[key] = x0 if t < step_s else xf - (xf - x0) * math.exp(-(t - step_s) / lag)
         series.append(row)
-    final = {key: 20.0 for key in KEYS}
+    final = {key: levels.get(key, (10.0, 20.0))[1] for key in KEYS}
     return {"params": {"step_s": step_s, "duration_s": duration_s, "dt_s": dt}, "series": series,
             "response": sim.response_table(series, step_s, final, dt)}
 
@@ -231,3 +233,98 @@ def test_the_response_table_has_units_in_its_headers_and_the_unresolved_label_vi
                                    "Peak [% of change]"]
     assert table.iloc[0]["Quantity [unit]"] == "GA-001 dry gas flow [Nm³/h]"
     assert sim.UNRESOLVED_LABEL in set(table["t63 [s]"])
+
+
+# ------------------------------------------------------------------------------------------------- zoomed axes (round 2, item A)
+def _expected_span_pct(payload, key):
+    row = next(r for r in payload["response"] if r["key"] == key)
+    values = [r[key] for r in payload["series"]] + [row["before"], row["final"]]
+    return (max(values) - min(values)) / abs(row["final"]) * 100.0
+
+
+def _subtitles(panels):
+    return [p.to_dict()["title"].get("subtitle") for p in panels]
+
+
+def test_the_zoom_note_appears_exactly_when_the_span_is_below_the_threshold_and_shows_the_computed_x():
+    levels = {"H2_pct_dry": (1000.0, 1000.2),          # 0.02 %  -> note
+              "CO_pct_dry": (1000.0, 1000.9),          # 0.09 %  -> note
+              "CO2_pct_dry": (1000.0, 1001.3),         # 0.13 %  -> no note
+              "CH4_pct_dry": (1000.0, 1050.0),         # 4.8 %   -> no note
+              "N2_pct_dry": (1000.0, 1000.01)}         # 0.001 % -> note, shown positionally
+    payload = _payload(levels=levels)
+    absolute, _n, step_min, duration_min = ch.long_frames(payload)
+    notes = dict(zip(KEYS, _subtitles(ch.absolute_panels(absolute, step_min, duration_min))))
+    for key in KEYS:
+        span = _expected_span_pct(payload, key)
+        if span < 0.1:
+            x = f"{span:.2g}" if "e" not in f"{span:.2g}" else f"{span:.12f}".rstrip("0")
+            assert notes[key] == f"axis zoomed: total change is {x} % of the value", (key, span, notes[key])
+        else:
+            assert notes[key] is None, (key, span, notes[key])
+    assert {k for k, v in notes.items() if v} == {"H2_pct_dry", "CO_pct_dry", "N2_pct_dry"}          # both outcomes occurred
+    assert notes["N2_pct_dry"].endswith("0.001 % of the value")
+    assert "e-" not in " ".join(v for v in notes.values() if v)
+
+
+def test_the_span_includes_the_steady_state_lines_and_an_overshoot():
+    import pandas as pd
+    frame = pd.DataFrame({"value": [10.0, 10.02, 10.04], "old_steady": 10.0, "new_steady": 10.5, "key": "x"})
+    assert ch.panel_span_pct(frame) == pytest.approx((10.5 - 10.0) / 10.5 * 100.0)                  # the new steady line is part of the span
+    over = pd.DataFrame({"value": [10.0, 10.9, 10.4], "old_steady": 10.0, "new_steady": 10.4, "key": "x"})
+    assert ch.panel_span_pct(over) == pytest.approx(0.9 / 10.4 * 100.0)                              # so is an overshoot
+    zero = pd.DataFrame({"value": [0.0, 0.0], "old_steady": 0.0, "new_steady": 0.0, "key": "x"})
+    assert ch.panel_span_pct(zero) is None and ch.zoom_note(zero) is None                            # no percentage of zero
+
+
+def test_from_zero_starts_every_axis_at_zero_and_drops_the_zoom_note():
+    payload = _payload(levels={"H2_pct_dry": (1000.0, 1000.2)})
+    absolute, _n, step_min, duration_min = ch.long_frames(payload)
+    zoomed = [p.to_dict() for p in ch.absolute_panels(absolute, step_min, duration_min)]
+    zero = [p.to_dict() for p in ch.absolute_panels(absolute, step_min, duration_min, from_zero=True)]
+
+    def y_scale(spec):
+        return next(layer["encoding"]["y"]["scale"] for layer in spec["layer"] if _mark(layer)["type"] == "line")
+
+    assert all(y_scale(spec) == {"zero": False} for spec in zoomed) and all(y_scale(spec) == {"zero": True} for spec in zero)
+    assert zoomed[1]["title"].get("subtitle") and not any(spec["title"].get("subtitle") for spec in zero)
+    assert [spec["datasets"] for spec in zoomed] == [spec["datasets"] for spec in zero]               # the data is the same either way
+
+
+# ------------------------------------------------------------------------------------------------ overlapping curves (round 2, item E)
+def _curves(**offsets):
+    import pandas as pd
+    rows = []
+    for key, off in offsets.items():
+        for i in range(21):
+            rows.append({"key": key, "quantity": key, "minute": float(i), "pct": min(100.0, 5.0 * i) + off, "is_marker": False})
+    return pd.DataFrame(rows)
+
+
+def test_overlap_is_decided_from_the_data_with_a_two_point_tolerance():
+    near = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=1.9, eu008_demand_kw=40.0)       # 1.9 pp apart at every time: overlap; 40 pp: not
+    assert ch.overlapping_curves(near) == ["ga001_dry_flow_nm3_h", "h2_production_kg_h"]
+    far = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=2.1)                                  # 2.1 pp: not overlapping
+    assert ch.overlapping_curves(far) == [] and ch.overlap_caption(far) is None
+    once = _curves(ga001_dry_flow_nm3_h=0.0)
+    assert ch.overlap_caption(once) is None                                                          # a single curve cannot overlap
+    # "at all sampled times": one wide gap at one time is enough to say no
+    wide = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=1.0)
+    wide.loc[(wide["key"] == "h2_production_kg_h") & (wide["minute"] == 7.0), "pct"] += 5.0
+    assert ch.overlapping_curves(wide) == []
+
+
+def test_the_overlap_caption_names_the_overlapping_curves_and_is_absent_when_the_curves_differ():
+    same = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=0.4, eu008_demand_kw=0.0)
+    assert ch.overlap_caption(same) == ("GA-001 flow, H₂ production and EU-008 demand follow the same lag in this scenario, so their curves overlap; "
+                                        "click a legend entry to highlight one.")
+    # a constructed case where every curve has its own lag: nothing overlaps, so no caption
+    taus = {key: 60.0 * 1.8 ** i for i, key in enumerate(KEYS)}                                    # 60 s ... ~20 000 s
+    spread = _payload(dt=30, duration_min=120, taus=taus)
+    _a, normalised, _s, _d = ch.long_frames(spread)
+    assert ch.overlapping_curves(normalised) == [] and ch.overlap_caption(normalised) is None
+    # the same payload with every curve on one lag: they all overlap
+    one = _payload(dt=30, duration_min=120, tau_s=300.0)
+    _a, normalised, _s, _d = ch.long_frames(one)
+    caption = ch.overlap_caption(normalised)
+    assert caption and caption.startswith(f"{len(KEYS)} of the {len(KEYS)} curves follow nearly the same lag")

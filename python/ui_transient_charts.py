@@ -12,6 +12,8 @@ Conventions (docs/dynamics_v0.md, "Using the what-if tab"):
   * the time axis starts at 0, is titled with its unit and its ticks follow the duration (tick_step_min);
   * the step is a thin black rule labelled with its time; the old / new steady states are grey / red dashed rules.
 """
+import itertools
+
 import altair as alt
 import pandas as pd
 
@@ -19,6 +21,8 @@ from . import ui_transient_sim as sim
 
 ABS_PANEL_HEIGHT = 170          # plot height of ONE absolute-unit panel [px]; the 11 panels together are far above the 320 px minimum
 NORM_HEIGHT = 360               # plot height of the normalised chart [px]
+OVERLAP_PP = 2.0                # two normalised curves closer than this (percentage points, at every sampled time) are called overlapping
+ZOOM_NOTE_BELOW_PCT = 0.1       # an absolute panel whose whole excursion is under this % of the quantity's value says that its axis is zoomed
 TIME_TITLE = "time since start, min"
 STEP_COLOR, OLD_COLOR, NEW_COLOR, GUIDE_COLOR = "#111827", "#6B7280", "#B91C1C", "#9CA3AF"
 
@@ -115,6 +119,35 @@ def long_frames(payload):
     return pd.DataFrame(absolute), pd.DataFrame(normalised), step_min, duration_min
 
 
+_SHORT_NAME = {"ga001_dry_flow_nm3_h": "GA-001 flow", "h2_production_kg_h": "H₂ production", "eu008_demand_kw": "EU-008 demand"}
+_MAX_NAMED = 4
+
+
+def overlapping_curves(normalised, tolerance_pp=OVERLAP_PP):
+    """Keys (in plot order) of the normalised curves that lie within `tolerance_pp` percentage points of at least one other curve at EVERY
+    sampled time. Computed from the plotted data, never assumed."""
+    wide = normalised.pivot(index="minute", columns="key", values="pct")
+    keys = [q[0] for q in sim.PLOT_QUANTITIES if q[0] in wide.columns]
+    close = set()
+    for a, b in itertools.combinations(keys, 2):
+        if float((wide[a] - wide[b]).abs().max()) <= tolerance_pp:
+            close.update((a, b))
+    return [k for k in keys if k in close]
+
+
+def overlap_caption(normalised):
+    """The one-line caption under the normalised chart when two or more curves overlap (None otherwise)."""
+    keys = overlapping_curves(normalised)
+    if len(keys) < 2:
+        return None
+    names = [_SHORT_NAME.get(k, pretty(next(q[1] for q in sim.PLOT_QUANTITIES if q[0] == k))) for k in keys]
+    if len(names) <= _MAX_NAMED:
+        who = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        return f"{who} follow the same lag in this scenario, so their curves overlap; click a legend entry to highlight one."
+    return (f"{len(names)} of the {normalised['key'].nunique()} curves follow nearly the same lag in this scenario, so they overlap; "
+            f"click a legend entry to highlight one.")
+
+
 def marker_frame(row, step_min):
     """The t63 / t95 vertical markers of ONE response row: only the resolved ones (see time_cell). Empty when none is."""
     items = []
@@ -126,25 +159,52 @@ def marker_frame(row, step_min):
 
 
 # ------------------------------------------------------------------------------------------------------ absolute panels
-def absolute_panel(frame, step_min, duration_min, last=False):
+def panel_span_pct(frame):
+    """Total span of one absolute panel (max - min over the plotted series AND the old / new steady-state lines) as a percentage of the
+    quantity's final steady value. None when that value is zero (a percentage of zero is undefined)."""
+    final = float(frame["new_steady"].iloc[0])
+    if final == 0.0:
+        return None
+    values = list(frame["value"]) + [float(frame["old_steady"].iloc[0]), final]
+    return (max(values) - min(values)) / abs(final) * 100.0
+
+
+def _two_significant(value):
+    text = f"{value:.2g}"
+    return f"{value:.12f}".rstrip("0") if "e" in text else text            # 1.2e-05 is shown as 0.000012
+
+
+def zoom_note(frame):
+    """The one-line note printed under a panel's title when the axis is zoomed onto a tiny excursion (span below ZOOM_NOTE_BELOW_PCT of the
+    value); None otherwise. The data and the zoom are untouched: the note only says how small the excursion is."""
+    span = panel_span_pct(frame)
+    if span is None or span >= ZOOM_NOTE_BELOW_PCT:
+        return None
+    return f"axis zoomed: total change is {_two_significant(span)} % of the value"
+
+
+def absolute_panel(frame, step_min, duration_min, last=False, from_zero=False):
     """One small multiple: ONE quantity, its own y scale (the quantities differ by up to three orders of magnitude, so no shared or dual
-    axis), the time axis shared with every other panel (same domain, same ticks, same left margin)."""
+    axis), the time axis shared with every other panel (same domain, same ticks, same left margin). `from_zero` starts the y axis at 0
+    instead of zooming onto the data (no zoom note then: the axis is not zoomed)."""
     style = SERIES_STYLE[frame["key"].iloc[0]]
     x = _x(duration_min, title=last)
-    y = alt.Y("value:Q", title=None, scale=alt.Scale(zero=False), axis=alt.Axis(format=".6~g", tickCount=5, minExtent=64))
+    y = alt.Y("value:Q", title=None, scale=alt.Scale(zero=from_zero), axis=alt.Axis(format=".6~g", tickCount=5, minExtent=64))
     line = alt.Chart(frame).mark_line(color=style["color"], strokeWidth=2.2, strokeDash=style["dash"]).encode(x=x, y=y)
     points = alt.Chart(frame[frame["is_marker"]]).mark_point(color=style["color"], shape=style["shape"], filled=True, size=40, opacity=1).encode(x=x, y=y)
     old = alt.Chart(frame.iloc[[0]]).mark_rule(color=OLD_COLOR, strokeDash=[4, 3]).encode(y="old_steady:Q")
     new = alt.Chart(frame.iloc[[0]]).mark_rule(color=NEW_COLOR, strokeDash=[4, 3]).encode(y="new_steady:Q")
-    title = alt.TitleParams(frame["quantity"].iloc[0], anchor="start", fontSize=13, fontWeight="bold")
+    note = None if from_zero else zoom_note(frame)
+    extra = {"subtitle": note, "subtitleFontSize": 11, "subtitleColor": NEW_COLOR, "subtitlePadding": 4} if note else {}
+    title = alt.TitleParams(frame["quantity"].iloc[0], anchor="start", fontSize=13, fontWeight="bold", **extra)
     return alt.layer(old, new, *_step_layers(step_min, x), line, points).properties(height=ABS_PANEL_HEIGHT, width="container", title=title)
 
 
-def absolute_panels(absolute, step_min, duration_min):
+def absolute_panels(absolute, step_min, duration_min, from_zero=False):
     """The absolute-unit figure: one panel per plotted quantity, in the order of sim.PLOT_QUANTITIES, one panel per row."""
     keys = list(dict.fromkeys(absolute["key"]))
     panels = [absolute[absolute["key"] == key] for key in keys]
-    return [absolute_panel(frame, step_min, duration_min, last=(i == len(panels) - 1)) for i, frame in enumerate(panels)]
+    return [absolute_panel(frame, step_min, duration_min, last=(i == len(panels) - 1), from_zero=from_zero) for i, frame in enumerate(panels)]
 
 
 # ----------------------------------------------------------------------------------------------------- normalised chart

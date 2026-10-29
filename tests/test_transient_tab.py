@@ -8,6 +8,7 @@ Real simulations run in the tab's child process (that is the production path); e
 done once, in one module-scoped fixture, and shared between the tests.
 """
 import contextlib
+import html
 import ipaddress
 import json
 import math
@@ -674,3 +675,116 @@ def test_ui_the_table_is_right_aligned_with_units_and_the_csv_is_unchanged(runs)
     assert set(columns) == set(frame.columns[1:]) and all(c["alignment"] == "right" for c in columns.values())
     header = [line for line in sim.build_response_csv(payload).splitlines() if not line.startswith("#")][0]
     assert header == "quantity,unit,before_step,end_of_run,final_steady_state,change,t63_s,t95_s,peak_pct_of_change,meaningful_change"
+
+
+def test_ui_the_zoom_note_follows_the_span_and_the_axis_radio_changes_the_domain(runs):
+    at, payload = runs["feed"]
+    absolute, _n, step_min, duration_min = ch.long_frames(payload)
+    expected = [ch.zoom_note(absolute[absolute["key"] == key]) for key in dict.fromkeys(absolute["key"])]
+    assert at.radio(key="wi_axis").value == "zoomed"
+    specs = [json.loads(c.proto.spec) for c in at.get("vega_lite_chart")[1:]]
+    assert [spec["title"].get("subtitle") for spec in specs] == expected
+    assert any(expected) and not all(expected)                                  # notes on some panels, none on the others
+    try:
+        at.radio(key="wi_axis").set_value("from zero").run()
+        flat = [json.loads(c.proto.spec) for c in at.get("vega_lite_chart")[1:]]
+        assert not any(spec["title"].get("subtitle") for spec in flat)
+        assert all(next(l["encoding"]["y"]["scale"] for l in spec["layer"] if l["mark"]["type"] == "line") == {"zero": True} for spec in flat)
+    finally:
+        at.radio(key="wi_axis").set_value("zoomed").run()
+    assert not at.exception
+
+
+def test_ui_the_tau_sliders_show_whole_seconds_but_pass_the_exact_stored_default_to_the_worker(runs):
+    at = runs["default"]
+    exact = dy.TAU_SPECS["EU008_cooling_water"].default_s
+    assert exact != round(exact)                                                  # the default really is a long fraction (5193.70...)
+    slider = at.slider(key="wi_tau_EU008_cooling_water")
+    assert slider.value.hex() == exact.hex()                                      # the widget holds the exact stored number ...
+    assert slider.proto.format == "%.0f s"                                        # ... and only the label is rounded (about 5194 s)
+    for name in dy.TAU_SPECS:
+        assert at.slider(key=f"wi_tau_{name}").proto.format == "%.0f s"
+    # the numbers sent to the worker: bit-identical defaults, and the same cache key as the engine-side defaults give
+    _at, payload = runs["feed"]
+    sent = payload["params"]["taus"]
+    assert {n: v.hex() for n, v in sent.items()} == {n: s_.default_s.hex() for n, s_ in dy.TAU_SPECS.items()}
+    again = sim.normalise_params({"scenario": "feed", "step_min": 3, "duration_min": 10, "dt_s": 30,
+                                  "taus": {n: s_.default_s for n, s_ in dy.TAU_SPECS.items()}})
+    assert json.dumps(payload["params"], sort_keys=True) == json.dumps(again, sort_keys=True)
+    assert next(a["value_s"] for a in payload["assumptions"] if a["name"] == "EU008_cooling_water").hex() == exact.hex()
+
+
+# the order of the controls on origin/main 28bd143 (before the width cap); the cap must not reorder anything
+_CONTROL_ORDER = [("radio", "wi_scenario"), ("number_input", "wi_feed_pct"), ("number_input", "wi_step_min"), ("number_input", "wi_duration_min"),
+                  ("radio", "wi_dt_s"), ("slider", "wi_tau_T_gasifier"), ("slider", "wi_tau_tau_conv"), ("slider", "wi_tau_tau_gas"),
+                  ("slider", "wi_tau_tau_rec"), ("slider", "wi_tau_EU008_cooling_water"), ("button", "wi_run"), ("button", "wi_reset")]
+
+
+def _walk(node, under=(), out=None):
+    """(element, chain of ancestor block types / weights) for every element below `node`, in page order."""
+    out = [] if out is None else out
+    for child in getattr(node, "children", {}).values():
+        weight = round(child.proto.weight, 3) if child.type == "column" else None
+        out.append((child, under))
+        _walk(child, under + ((child.type, weight),), out)
+    return out
+
+
+def test_ui_the_controls_are_capped_to_two_thirds_in_the_same_order_and_the_charts_stay_full_width(runs):
+    at = runs["default"]
+    elements = _walk(at.main)
+    order = [(e.type, e.key) for e, _under in elements if e.type in ("radio", "number_input", "slider", "button")]
+    assert order == _CONTROL_ORDER                                                    # same controls, same order, Run button after the sliders
+    controls = [under for e, under in elements if e.type in ("radio", "number_input", "slider") and e.key != "wi_axis"]
+    assert controls and all(under[:2] == (("flex_container", None), ("column", 0.667)) for under in controls)        # the left 2/3 column
+    runs_row = next(under for e, under in elements if e.type == "button" and e.key == "wi_run")
+    assert ("column", 0.333) in runs_row and ("column", 0.667) not in runs_row                                    # the Run row is outside the cap
+    charts_at, _payload = runs["feed"]
+    assert all(not under for e, under in _walk(charts_at.main) if e.type == "vega_lite_chart")                      # charts: directly in the page
+
+
+def test_ui_the_assumed_table_wraps_the_questions_unchanged_and_keeps_numbers_right_aligned(runs):
+    for name in ("default", "feed"):
+        at = runs[name] if name == "default" else runs[name][0]
+        assert len(at.table) == 1                                                       # the Assumed table is an HTML table now ...
+        assert any("t63 [s]" in list(d.value.columns) for d in at.dataframe) == (name == "feed")          # ... the response table stays a grid
+        frame = at.table[0].value
+        assert list(frame.columns) == ["Time constant", "Status", "Value [s]", "Declared range [s]", "Question for DOK-ING"]
+        assert list(frame["Question for DOK-ING"]) == [s_.question_for_doking for s_ in dy.TAU_SPECS.values()]       # full text, nothing cut
+        assert set(frame["Status"]) == {"Assumed"}
+    html_text = tab._assumed_styler(frame).to_html()
+    for s_ in dy.TAU_SPECS.values():
+        assert s_.question_for_doking in html.unescape(html_text)
+    import re
+    rule = re.search(r"((?:#T_\w+_row\d+_col\d+,?\s*)+)\{\s*text-align: right", html_text)                  # Styler groups the cells into one CSS rule
+    assert rule, html_text[:400]
+    aligned = {(int(r), int(c)) for r, c in re.findall(r"_row(\d+)_col(\d+)", rule.group(1))}
+    assert aligned == {(r, c) for r in range(len(dy.TAU_SPECS)) for c in (2, 3)}        # Value [s] and the declared range, every row, nothing else
+    assert ">5193.7<" in html_text and "5193.702" not in html_text                         # one decimal, as the caption beside the slider
+
+
+def test_ui_the_overlap_caption_appears_in_the_feed_scenario_exactly_when_the_curves_overlap(runs):
+    seen_shown = seen_absent = 0
+    for name in ("feed", "er", "T"):
+        at, payload = runs[name]
+        _a, normalised, _s, _d = ch.long_frames(payload)
+        expected = ch.overlap_caption(normalised)
+        captions = [c.value for c in at.caption]
+        assert (expected in captions) == bool(expected), (name, expected)
+        assert sum("so their curves overlap" in c or "so they overlap" in c for c in captions) == (1 if expected else 0), name
+        seen_shown += bool(expected)
+        seen_absent += not expected
+        if name == "feed":
+            assert expected and expected.startswith("GA-001 flow, H₂ production and EU-008 demand follow the same lag")
+    assert seen_shown >= 1 and seen_absent >= 1               # both outcomes occurred in the real runs, so the test is not vacuous
+
+
+def test_ui_the_pre_run_estimate_says_what_a_fast_machine_and_the_cloud_took():
+    cloud = "on Streamlit Community Cloud one run of 240 steps (2 h at dt = 30 s) took about 78 s."
+    at = _tab().run()
+    captions = [c.value for c in at.caption]
+    assert any("240 steps at dt = 30 s" in c and "Expect about 30 s on a fast machine; " + cloud in c for c in captions), captions
+    assert not any("Expect roughly" in c or "longer on shared hosting" in c for c in captions)                 # the old wording is gone
+    at.number_input(key="wi_duration_min").set_value(60).run()                                                # 120 steps: the estimate follows the run
+    assert any("120 steps at dt = 30 s" in c and "Expect about 18 s on a fast machine; " + cloud in c for c in [c.value for c in at.caption])
+    assert tab._expected_seconds(240) == 30.0 and not at.exception
