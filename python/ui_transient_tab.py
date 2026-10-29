@@ -250,6 +250,9 @@ def _render_results(payload):
         row = _marker_choice(payload)
         _show_chart(ch.normalised_chart(normalised, step_min, duration_min, row))
         _marker_caption(row, dt)
+        overlap = ch.overlap_caption(normalised)
+        if overlap:
+            st.caption(overlap)
     st.markdown("**Absolute values** — one panel per quantity, each with its own y scale (the quantities differ too much in size for a shared "
                 "axis); the time axis is the same in every panel. Each quantity keeps the colour, dash and point shape it has in the normalised chart · "
                 "grey dashed: old steady state · red dashed: new steady state · black: the step")

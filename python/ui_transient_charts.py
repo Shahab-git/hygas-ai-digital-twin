@@ -12,6 +12,8 @@ Conventions (docs/dynamics_v0.md, "Using the what-if tab"):
   * the time axis starts at 0, is titled with its unit and its ticks follow the duration (tick_step_min);
   * the step is a thin black rule labelled with its time; the old / new steady states are grey / red dashed rules.
 """
+import itertools
+
 import altair as alt
 import pandas as pd
 
@@ -19,6 +21,7 @@ from . import ui_transient_sim as sim
 
 ABS_PANEL_HEIGHT = 170          # plot height of ONE absolute-unit panel [px]; the 11 panels together are far above the 320 px minimum
 NORM_HEIGHT = 360               # plot height of the normalised chart [px]
+OVERLAP_PP = 2.0                # two normalised curves closer than this (percentage points, at every sampled time) are called overlapping
 ZOOM_NOTE_BELOW_PCT = 0.1       # an absolute panel whose whole excursion is under this % of the quantity's value says that its axis is zoomed
 TIME_TITLE = "time since start, min"
 STEP_COLOR, OLD_COLOR, NEW_COLOR, GUIDE_COLOR = "#111827", "#6B7280", "#B91C1C", "#9CA3AF"
@@ -114,6 +117,35 @@ def long_frames(payload):
                 normalised.append({"key": r["key"], "quantity": pretty(r["label"]), "minute": minute,
                                    "pct": (row[r["key"]] - r["before"]) / r["change"] * 100.0, "is_marker": marker})
     return pd.DataFrame(absolute), pd.DataFrame(normalised), step_min, duration_min
+
+
+_SHORT_NAME = {"ga001_dry_flow_nm3_h": "GA-001 flow", "h2_production_kg_h": "H₂ production", "eu008_demand_kw": "EU-008 demand"}
+_MAX_NAMED = 4
+
+
+def overlapping_curves(normalised, tolerance_pp=OVERLAP_PP):
+    """Keys (in plot order) of the normalised curves that lie within `tolerance_pp` percentage points of at least one other curve at EVERY
+    sampled time. Computed from the plotted data, never assumed."""
+    wide = normalised.pivot(index="minute", columns="key", values="pct")
+    keys = [q[0] for q in sim.PLOT_QUANTITIES if q[0] in wide.columns]
+    close = set()
+    for a, b in itertools.combinations(keys, 2):
+        if float((wide[a] - wide[b]).abs().max()) <= tolerance_pp:
+            close.update((a, b))
+    return [k for k in keys if k in close]
+
+
+def overlap_caption(normalised):
+    """The one-line caption under the normalised chart when two or more curves overlap (None otherwise)."""
+    keys = overlapping_curves(normalised)
+    if len(keys) < 2:
+        return None
+    names = [_SHORT_NAME.get(k, pretty(next(q[1] for q in sim.PLOT_QUANTITIES if q[0] == k))) for k in keys]
+    if len(names) <= _MAX_NAMED:
+        who = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        return f"{who} follow the same lag in this scenario, so their curves overlap; click a legend entry to highlight one."
+    return (f"{len(names)} of the {normalised['key'].nunique()} curves follow nearly the same lag in this scenario, so they overlap; "
+            f"click a legend entry to highlight one.")
 
 
 def marker_frame(row, step_min):

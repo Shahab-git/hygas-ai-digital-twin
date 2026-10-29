@@ -289,3 +289,42 @@ def test_from_zero_starts_every_axis_at_zero_and_drops_the_zoom_note():
     assert all(y_scale(spec) == {"zero": False} for spec in zoomed) and all(y_scale(spec) == {"zero": True} for spec in zero)
     assert zoomed[1]["title"].get("subtitle") and not any(spec["title"].get("subtitle") for spec in zero)
     assert [spec["datasets"] for spec in zoomed] == [spec["datasets"] for spec in zero]               # the data is the same either way
+
+
+# ------------------------------------------------------------------------------------------------ overlapping curves (round 2, item E)
+def _curves(**offsets):
+    import pandas as pd
+    rows = []
+    for key, off in offsets.items():
+        for i in range(21):
+            rows.append({"key": key, "quantity": key, "minute": float(i), "pct": min(100.0, 5.0 * i) + off, "is_marker": False})
+    return pd.DataFrame(rows)
+
+
+def test_overlap_is_decided_from_the_data_with_a_two_point_tolerance():
+    near = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=1.9, eu008_demand_kw=40.0)       # 1.9 pp apart at every time: overlap; 40 pp: not
+    assert ch.overlapping_curves(near) == ["ga001_dry_flow_nm3_h", "h2_production_kg_h"]
+    far = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=2.1)                                  # 2.1 pp: not overlapping
+    assert ch.overlapping_curves(far) == [] and ch.overlap_caption(far) is None
+    once = _curves(ga001_dry_flow_nm3_h=0.0)
+    assert ch.overlap_caption(once) is None                                                          # a single curve cannot overlap
+    # "at all sampled times": one wide gap at one time is enough to say no
+    wide = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=1.0)
+    wide.loc[(wide["key"] == "h2_production_kg_h") & (wide["minute"] == 7.0), "pct"] += 5.0
+    assert ch.overlapping_curves(wide) == []
+
+
+def test_the_overlap_caption_names_the_overlapping_curves_and_is_absent_when_the_curves_differ():
+    same = _curves(ga001_dry_flow_nm3_h=0.0, h2_production_kg_h=0.4, eu008_demand_kw=0.0)
+    assert ch.overlap_caption(same) == ("GA-001 flow, H₂ production and EU-008 demand follow the same lag in this scenario, so their curves overlap; "
+                                        "click a legend entry to highlight one.")
+    # a constructed case where every curve has its own lag: nothing overlaps, so no caption
+    taus = {key: 60.0 * 1.8 ** i for i, key in enumerate(KEYS)}                                    # 60 s ... ~20 000 s
+    spread = _payload(dt=30, duration_min=120, taus=taus)
+    _a, normalised, _s, _d = ch.long_frames(spread)
+    assert ch.overlapping_curves(normalised) == [] and ch.overlap_caption(normalised) is None
+    # the same payload with every curve on one lag: they all overlap
+    one = _payload(dt=30, duration_min=120, tau_s=300.0)
+    _a, normalised, _s, _d = ch.long_frames(one)
+    caption = ch.overlap_caption(normalised)
+    assert caption and caption.startswith(f"{len(KEYS)} of the {len(KEYS)} curves follow nearly the same lag")

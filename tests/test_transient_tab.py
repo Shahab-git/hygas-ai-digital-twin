@@ -761,3 +761,19 @@ def test_ui_the_assumed_table_wraps_the_questions_unchanged_and_keeps_numbers_ri
     aligned = {(int(r), int(c)) for r, c in re.findall(r"_row(\d+)_col(\d+)", rule.group(1))}
     assert aligned == {(r, c) for r in range(len(dy.TAU_SPECS)) for c in (2, 3)}        # Value [s] and the declared range, every row, nothing else
     assert ">5193.7<" in html_text and "5193.702" not in html_text                         # one decimal, as the caption beside the slider
+
+
+def test_ui_the_overlap_caption_appears_in_the_feed_scenario_exactly_when_the_curves_overlap(runs):
+    seen_shown = seen_absent = 0
+    for name in ("feed", "er", "T"):
+        at, payload = runs[name]
+        _a, normalised, _s, _d = ch.long_frames(payload)
+        expected = ch.overlap_caption(normalised)
+        captions = [c.value for c in at.caption]
+        assert (expected in captions) == bool(expected), (name, expected)
+        assert sum("so their curves overlap" in c or "so they overlap" in c for c in captions) == (1 if expected else 0), name
+        seen_shown += bool(expected)
+        seen_absent += not expected
+        if name == "feed":
+            assert expected and expected.startswith("GA-001 flow, H₂ production and EU-008 demand follow the same lag")
+    assert seen_shown >= 1 and seen_absent >= 1               # both outcomes occurred in the real runs, so the test is not vacuous
