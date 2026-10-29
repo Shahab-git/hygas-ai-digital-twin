@@ -711,3 +711,32 @@ def test_ui_the_tau_sliders_show_whole_seconds_but_pass_the_exact_stored_default
                                   "taus": {n: s_.default_s for n, s_ in dy.TAU_SPECS.items()}})
     assert json.dumps(payload["params"], sort_keys=True) == json.dumps(again, sort_keys=True)
     assert next(a["value_s"] for a in payload["assumptions"] if a["name"] == "EU008_cooling_water").hex() == exact.hex()
+
+
+# the order of the controls on origin/main 28bd143 (before the width cap); the cap must not reorder anything
+_CONTROL_ORDER = [("radio", "wi_scenario"), ("number_input", "wi_feed_pct"), ("number_input", "wi_step_min"), ("number_input", "wi_duration_min"),
+                  ("radio", "wi_dt_s"), ("slider", "wi_tau_T_gasifier"), ("slider", "wi_tau_tau_conv"), ("slider", "wi_tau_tau_gas"),
+                  ("slider", "wi_tau_tau_rec"), ("slider", "wi_tau_EU008_cooling_water"), ("button", "wi_run"), ("button", "wi_reset")]
+
+
+def _walk(node, under=(), out=None):
+    """(element, chain of ancestor block types / weights) for every element below `node`, in page order."""
+    out = [] if out is None else out
+    for child in getattr(node, "children", {}).values():
+        weight = round(child.proto.weight, 3) if child.type == "column" else None
+        out.append((child, under))
+        _walk(child, under + ((child.type, weight),), out)
+    return out
+
+
+def test_ui_the_controls_are_capped_to_two_thirds_in_the_same_order_and_the_charts_stay_full_width(runs):
+    at = runs["default"]
+    elements = _walk(at.main)
+    order = [(e.type, e.key) for e, _under in elements if e.type in ("radio", "number_input", "slider", "button")]
+    assert order == _CONTROL_ORDER                                                    # same controls, same order, Run button after the sliders
+    controls = [under for e, under in elements if e.type in ("radio", "number_input", "slider") and e.key != "wi_axis"]
+    assert controls and all(under[:2] == (("flex_container", None), ("column", 0.667)) for under in controls)        # the left 2/3 column
+    runs_row = next(under for e, under in elements if e.type == "button" and e.key == "wi_run")
+    assert ("column", 0.333) in runs_row and ("column", 0.667) not in runs_row                                    # the Run row is outside the cap
+    charts_at, _payload = runs["feed"]
+    assert all(not under for e, under in _walk(charts_at.main) if e.type == "vega_lite_chart")                      # charts: directly in the page

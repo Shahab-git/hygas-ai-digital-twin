@@ -292,7 +292,9 @@ def render():
                "simulation on top of the steady-state engine; it runs only when you press the button.")
     for key, value in _defaults().items():
         st.session_state.setdefault(key, value)
-    _controls()
+    controls, _spare = st.columns([2, 1])               # the controls stay in the left two thirds; the results and charts below are full width
+    with controls:
+        _controls()
     params = _current_params()
     errors = _resolution_messages(params)
     steps = params["duration_s"] // params["dt_s"] if params["dt_s"] in sim.DT_CHOICES_S else 0
