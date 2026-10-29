@@ -4,7 +4,7 @@ Mass and energy closure audit (step 1 of the validation plan) -- READ-ONLY.
 Pure functions that take a PUBLISHED snapshot (the {key: entry} dict that
 tab1_integration.build_live_snapshot() returns and the UI reads) and measure how
 well the twin closes its own balances: C, H, O, N and total mass across GA-001
-and across the whole plant (the energy balances follow in the next commit).
+and across the whole plant, and energy across GA-001 and the whole plant.
 
 Ground rules this module keeps (task "Mass and energy closure audit"):
   * It MEASURES. It never changes a model equation, adds a balancing term, a
@@ -31,6 +31,7 @@ publishes a mass, which is then used as published.
 import math
 
 from . import cycle_clock
+from . import design_basis
 from . import ga001_gasifier_model as ga001
 from . import gasifier_mass_balance as gmb
 from . import gc_gas_cleaning_chain as gc
@@ -529,11 +530,267 @@ def explain_plant_mass_residual(snapshot, previous_snapshot=None):
 
 
 # =============================================================================
+# energy
+# =============================================================================
+# Every enthalpy below is on ONE basis: lower heating value + sensible heat above 25 degC, with water VAPOUR at 25 degC as the
+# zero for H2O (so liquid water at 25 degC is -DH_VAP). Species LHVs come from the standard enthalpies of formation above;
+# sensible heat uses the repo's own mean heat capacities (gc_gas_cleaning_chain.py:106) and liquid-water cp
+# (hb_wgs_psa_storage_chain.py:94). All terms in kW. Nothing here enters the engine.
+
+def _sens_kw(species, t_c):
+    """Sensible heat (kW) of a {species: mol/h} gas stream from 25 degC to t_c, mean cp."""
+    return sum(n * CP_J_MOLK[sp] * (t_c - T_REF_C) for sp, n in species.items()) / 1000.0 * KW_PER_KJ_H
+
+
+def _lhv_kw(species):
+    return sum(n * LHV_KJ_MOL.get(sp, 0.0) for sp, n in species.items()) * KW_PER_KJ_H
+
+
+def _liquid_water_kw(n_mol_h, t_c=T_REF_C):
+    """Liquid water at t_c on the vapour-at-25-degC zero: -DH_VAP + cp_liq x (t - 25)."""
+    return n_mol_h * (-DH_VAP_KJ_MOL + CP_LIQUID_WATER_J_MOLK * (t_c - T_REF_C) / 1000.0) * KW_PER_KJ_H
+
+
+def _vapour_water_kw(n_mol_h, t_c):
+    return n_mol_h * CP_J_MOLK["H2O"] * (t_c - T_REF_C) / 1000.0 * KW_PER_KJ_H
+
+
+def feedstock_lhv_estimates(composition=None):
+    """Dry-basis LHV (MJ/kg dry feed incl. ash) of the model's own C/H/O/N + ash composition from two published
+    ultimate-analysis correlations (S = 0):
+        Channiwala & Parikh (2002), Fuel 81: HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH
+        Dulong:                              HHV = 0.3383 C + 1.443 (H - O/8)
+    (C, H, O, N, ASH as wt % of the DRY feed, HHV in MJ/kg). LHV = HHV - 2.442 MJ/kg x (water formed = 9 H / 100), with the
+    latent heat from DH_VAP above. Status Estimated: correlations applied to an Assumed composition; the two disagree, which is
+    the stated range."""
+    comp = composition or {"C": ga001.FEEDSTOCK_C_FRACTION, "H": ga001.FEEDSTOCK_H_FRACTION, "O": ga001.FEEDSTOCK_O_FRACTION, "N": ga001.FEEDSTOCK_N_FRACTION}
+    a = ga001.ASH_FRACTION
+    c, h, o, n = ((1.0 - a) * comp[k] * 100.0 for k in ("C", "H", "O", "N"))
+    ash = a * 100.0
+    hhv_cp = 0.3491 * c + 1.1783 * h - 0.1034 * o - 0.0151 * n - 0.0211 * ash
+    hhv_du = 0.3383 * c + 1.443 * (h - o / 8.0)
+    latent = DH_VAP_KJ_MOL / M_H2O_ENGINE                        # MJ/kg
+    lhv_cp = hhv_cp - latent * 9.0 * h / 100.0
+    lhv_du = hhv_du - latent * 9.0 * h / 100.0
+    return {"dry_wt_pct": {"C": c, "H": h, "O": o, "N": n, "ash": ash}, "HHV_channiwala_parikh_MJ_kg": hhv_cp, "HHV_dulong_MJ_kg": hhv_du,
+            "LHV_channiwala_parikh_MJ_kg": lhv_cp, "LHV_dulong_MJ_kg": lhv_du, "range_MJ_kg": (min(lhv_cp, lhv_du), max(lhv_cp, lhv_du)),
+            "status": ps.STATUS_ESTIMATED}
+
+
+def dokink_lhv_range():
+    """DOK-ING's Confirmed dry LHV range, read live (design_basis.py; RFI #2). None if not confirmed."""
+    r = design_basis.get_feedstock_composition_ranges()
+    return None if r is None else tuple(r["lhv_mj_per_kg"])
+
+
+def lhv_cases():
+    """The feed-LHV values every energy balance is evaluated at: DOK-ING's Confirmed range ends (15, 20 MJ/kg dry), the midpoint
+    (Assumed 17.5), and the model composition's own correlation estimate (midpoint of the two correlations)."""
+    lo, hi = dokink_lhv_range()
+    est = feedstock_lhv_estimates()["range_MJ_kg"]
+    return {"DOK-ING low (Confirmed range end)": lo, "DOK-ING midpoint (Assumed point)": 0.5 * (lo + hi), "DOK-ING high (Confirmed range end)": hi,
+            "model composition (Estimated, correlation midpoint)": 0.5 * (est[0] + est[1])}
+
+
+def _en(name, kw, status, source, note=""):
+    return {"name": name, "kw": float(kw), "status": status, "source": source, "note": note}
+
+
+def gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg):
+    """GA-001 energy balance, recycle as an external feed. GA-001 computes NO heat duty (temperature enters only the WGS
+    equilibrium constant, ga001_gasifier_model.py:314, and the registry value is read at :230): so the heat the gasifier
+    would have to add (+) or remove (-) to leave at its stated temperature is IMPLIED here from the enthalpies below.
+    Status: Calculated, not part of the engine."""
+    ga = ga001_terms(snapshot, previous_snapshot)
+    if ga["recycle"] is None:
+        raise AuditInputMissing(("HB-009", "TailGas (previous cycle)"))
+    inp = ga["inputs"]
+    f = inp["dry_feed_rate_kg_h"]
+    t_gas = float(inp["operating_temperature_C"])
+    by = {t["name"]: t for t in ga["terms"]}
+    gas = by["product gas (wet)"]["species"]
+    c_not_gas = ga["feed_atoms"]["C"] + ga["recycle_atoms"]["C"] - (gas["CO"] + gas["CO2"] + gas["CH4"])      # mol/h solid carbon
+    kg_c_not_gas = c_not_gas * ATOMIC_MASS["C"] / 1000.0
+    ash_kg = ga001.ASH_FRACTION * f
+    cp_s = SOLIDS_CP_KJ_KGK[0]
+    feed_chem = f * lhv_mj_kg / 3.6
+    ins = [
+        _en("dry feed chemical energy (dry mass x LHV)", feed_chem, ps.STATUS_ASSUMED, "FE-005 dry solids x LHV; LHV in DOK-ING's Confirmed 15-20 MJ/kg dry range, point is a case",
+            "feed taken at 25 degC: its temperature after the dryer is not stated (cp of the feed is Missing)"),
+        _en("residual moisture (liquid water, 25 degC)", _liquid_water_kw(by["residual moisture in dry feed"]["species"]["H2O"]), ps.STATUS_CALCULATED, "FE-005 residual_water_kg_h"),
+        _en("air sensible heat (preheated to 200 degC)", _sens_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, GA004_AIR_PREHEAT_C), ps.STATUS_ESTIMATED,
+            "GA-004 air preheat 200 degC (registry); cp O2 = cp N2 (Estimated)"),
+        _en("gasifier steam sensible heat (350 degC vapour)", _sens_kw({"H2O": by["gasifier steam"]["species"]["H2O"]}, GA004_STEAM_C), ps.STATUS_ESTIMATED,
+            "GA-004 steam 350 degC (registry); mean cp 300-1200 K applied from 25 degC"),
+        _en("tail-gas recycle chemical energy (H2, CO, CH4)", _lhv_kw(ga["recycle"]), ps.STATUS_CALCULATED, "previous cycle HB-009 tail gas x species LHV",
+            "recycle gas taken at 25 degC (temperature not stated: Assumed)"),
+    ]
+    outs = [
+        _en("product gas chemical energy (H2, CO, CH4)", _lhv_kw(gas), ps.STATUS_CALCULATED, "GA-001 Outputs x species LHV"),
+        _en("product gas sensible heat (at operating temperature, wet)", _sens_kw(gas, t_gas), ps.STATUS_ESTIMATED, f"GA-001 {t_gas:.0f} degC (ga001:230); repo mean cp"),
+        _en("carbon not in the gas: chemical energy (graphite LHV)", c_not_gas * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_CALCULATED,
+            "total C - C in gas (the model's implied unconverted carbon, ga001:303)"),
+        _en("char + ash sensible heat at bed temperature", (kg_c_not_gas + ash_kg) * cp_s * (t_gas - T_REF_C) * KW_PER_KJ_H, ps.STATUS_ASSUMED,
+            f"cp {SOLIDS_CP_KJ_KGK[0]} kJ/kg.K, range {SOLIDS_CP_KJ_KGK[1]}-{SOLIDS_CP_KJ_KGK[2]} (Assumed; no solids cp in the repo)"),
+    ]
+    missing = ["tar chemical and sensible energy (GA-001 tar Missing)", "heat loss through the 150 mm refractory and shell (no loss model; GA-001 registry gives geometry only)",
+               "feed and recycle sensible heat (feed/recycle temperatures not stated)"]
+    sum_in, sum_out = sum(t["kw"] for t in ins), sum(t["kw"] for t in outs)
+    q = sum_out - sum_in
+    heat_cap_kw_per_k = (sum(n * CP_J_MOLK[sp] for sp, n in gas.items()) / 1000.0 + (kg_c_not_gas + ash_kg) * cp_s) * KW_PER_KJ_H
+    chem_out = outs[0]["kw"] + outs[2]["kw"]
+    t_ad = T_REF_C + (sum_in - chem_out) / heat_cap_kw_per_k      # sensible terms are linear in (T - 25) at fixed composition
+    return {"lhv_mj_kg": lhv_mj_kg, "in": ins, "out": outs, "sum_in_kw": sum_in, "sum_out_kw": sum_out, "implied_heat_duty_kw": q,
+            "implied_heat_duty_pct_of_feed": 100.0 * q / feed_chem, "reading": ("the gasifier would need to ADD heat" if q > 0 else "the gasifier would have to REMOVE heat"),
+            "adiabatic_temperature_c_fixed_composition": t_ad, "missing_terms": missing, "status": "Calculated, not part of the engine",
+            "cold_gas_efficiency_incl_recycle": _lhv_kw(gas) / (feed_chem + ins[4]["kw"]), "cold_gas_efficiency_net_of_recycle": (_lhv_kw(gas) - ins[4]["kw"]) / feed_chem,
+            "cold_gas_efficiency_formula": "gas LHV (H2+CO+CH4) / (feed LHV + recycle LHV); net of recycle: (gas LHV - recycle LHV) / feed LHV"}
+
+
+def plant_energy(snapshot, previous_snapshot, lhv_mj_kg, vent_temp_c=40.0, knockout_temp_c=40.0):
+    """Whole-plant energy balance, steady state, kW, boundary crossings only (internal heat recovery cancels).
+
+    The unknown on the output side is the heat leaving to cooling water, stack and environment. The audit therefore reports the heat
+    the balance IMPLIES must be rejected (energy in - known energy out) and compares it with the heat rejection the engine itself reports."""
+    ga = ga001_terms(snapshot, previous_snapshot)
+    inp = ga["inputs"]
+    f = inp["dry_feed_rate_kg_h"]
+    fe5 = _val(snapshot, ("FE-005", "MoistureBalance"))
+    wet = float(_val(snapshot, ("FE-003", "Weighing"))["confirmed_wet_feed_kg_h"])
+    dry = float(fe5["dry_solids_kg_h"])
+    grid = _val(snapshot, ("EU-009", "GridBalance"))
+    fe4 = _val(snapshot, ("FE-004", "ShredderPower"))
+    hb005 = _val(snapshot, ("HB-005", "Steam"))
+    hb011 = _val(snapshot, ("HB-011", "Electrolyser"))
+    hb012 = _val(snapshot, ("HB-012", "Compressor"))
+    wgs = _val(snapshot, ("WGS", "Composition"))
+    gc013 = _val(snapshot, ("GC-013", "Gas"))
+    tail = _val(snapshot, ("HB-009", "TailGas"))
+    cond_kg = float(_val(snapshot, ("GC-004", "Condensed water"))) * 1000.0
+    by = {t["name"]: t for t in ga["terms"]}
+    cb_kg = gmb.byproduct_mass_flows(f)["carbon_black_kg_h"]
+    cd = ga001_carbon_detail(snapshot, previous_snapshot)
+    n_h2_psa = float(hb012["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
+    n_h2_el = float(hb011["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
+    sp = tail["species_nm3_h"]
+    n_vent = {"CO2": float(sp["CO2"]) / NM3_PER_MOL, "N2": float(sp["N2"]) / NM3_PER_MOL}
+    n_ko = float(wgs["H2O"]) * float(gc013["dry_flow_nm3_h"]) / NM3_PER_MOL
+    elec_load = float(grid["consumption_kw"])
+    chp_generation = float(grid["generation_kw"])
+
+    ins = [
+        _en("dry feed chemical energy (dry mass x LHV)", dry * lhv_mj_kg / 3.6, ps.STATUS_ASSUMED, "FE-005 dry solids x LHV (DOK-ING Confirmed 15-20 MJ/kg dry; point is a case)"),
+        _en("feed moisture (liquid water, 25 degC)", _liquid_water_kw((wet - dry) * 1000.0 / M_H2O_ENGINE), ps.STATUS_CALCULATED, "FE-003 wet - FE-005 dry"),
+        _en("make-up water for gasifier steam (liquid, 25 degC)", _liquid_water_kw(by["gasifier steam"]["species"]["H2O"]), ps.STATUS_ASSUMED, "ratio 0.4 kg/kg x dry feed"),
+        _en("make-up water for WGS steam (liquid, 25 degC)", _liquid_water_kw(hb005["steam_kg_h"] * 1000.0 / M_H2O_ENGINE), ps.STATUS_CALCULATED, "HB-005 steam_kg_h"),
+        _en("electrolyser feed water (liquid, 25 degC)", _liquid_water_kw(float(hb011["water_l_h"]) * 1000.0 / M_H2O_ENGINE), ps.STATUS_CALCULATED, "HB-011 water_l_h"),
+        _en("electricity consumed, as summed by EU-009", elec_load, ps.STATUS_CALCULATED, "EU-009 consumption_kw = HB-012 + HB-011 + GC-013 fan + EU-008 fan",
+            f"CHP/fuel-cell generation this cycle ({chp_generation:.3f} kW) is NOT subtracted: it burns hydrogen already counted as product"),
+        _en("shredder FE-004 electricity (computed by the engine, NOT in EU-009)", float(fe4["power_kw"]), ps.STATUS_CALCULATED, "FE-004 ShredderPower.power_kw (fe_feed_handling.py:243)"),
+    ]
+    outs = [
+        _en("PSA hydrogen product, LHV", _lhv_kw({"H2": n_h2_psa}), ps.STATUS_CALCULATED, "HB-012 h2_kg_h x LHV(H2)"),
+        _en("electrolyser hydrogen, LHV", _lhv_kw({"H2": n_h2_el}), ps.STATUS_CALCULATED, "HB-011 h2_kg_h x LHV(H2)"),
+        _en("carbon black, chemical energy (taken as pure carbon)", cb_kg * 1000.0 / ATOMIC_MASS["C"] * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_ASSUMED, "5 % of dry feed (gasifier_mass_balance.py:62), graphite LHV"),
+        _en("carbon black, sensible heat at 180 degC", cb_kg * SOLIDS_CP_KJ_KGK[0] * (GA008_OPERATING_C - T_REF_C) * KW_PER_KJ_H, ps.STATUS_ASSUMED, "GA-008 operating 180 degC (registry); cp Assumed"),
+        _en("model-implied carbon beyond the carbon-black stream (chemical)", cd["unassigned_C_mol_h"] * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_CALCULATED,
+            "(1 - 0.90) x total C minus carbon black; signed (see the GA-001 carbon finding)"),
+        _en("vent gas CO2 + N2 sensible heat", _sens_kw(n_vent, vent_temp_c), ps.STATUS_ASSUMED, f"vent at {vent_temp_c:.0f} degC (Assumed 25-65); no combustibles leave (EU-007)"),
+        _en("quench condensate (liquid, 65 degC)", _liquid_water_kw(cond_kg * 1000.0 / M_H2O_ENGINE, GC004_QUENCH_OUT_C), ps.STATUS_CALCULATED, "GC-004 condensed water at the 65 degC quench outlet"),
+        _en("WGS knocked-out water (liquid)", _liquid_water_kw(n_ko, knockout_temp_c), ps.STATUS_ASSUMED, f"WGS unreacted steam at {knockout_temp_c:.0f} degC (Assumed 25-65)"),
+        _en("dryer vapour (100 degC)", _vapour_water_kw(float(fe5["water_evaporated_kg_h"]) * 1000.0 / M_H2O_ENGINE, FE005_DRYER_OPERATING_C), ps.STATUS_CALCULATED, "FE-005 water_evaporated_kg_h at 100 degC"),
+    ]
+    sum_in, sum_out = sum(t["kw"] for t in ins), sum(t["kw"] for t in outs)
+    implied_reject = sum_in - sum_out
+
+    quench_sens = float(_val(snapshot, ("GC-004", "Cooling duty")))
+    eu008 = _val(snapshot, ("EU-008", "CoolingSupply"))
+    hb003 = _val(snapshot, ("HB-003", "HeatExchanger"))
+    reported = [
+        _en("GC-004 quench, sensible heat of the dry gas only", quench_sens, ps.STATUS_CALCULATED, "GC-004 Cooling duty (gc_gas_cleaning_chain.py:296; latent heat excluded by the model's own docstring)"),
+        _en("HB-012 compressor shaft power (rejected at the intercoolers)", float(hb012["power_kW"]), ps.STATUS_CALCULATED, "HB-012 power_kW"),
+    ]
+    reported_sum = sum(t["kw"] for t in reported)
+    # heat rejection the engine does not compute, from the same constants (Calculated, not part of the engine)
+    n_cond = cond_kg * 1000.0 / M_H2O_ENGINE
+    h_in_vapour = _vapour_water_kw(n_cond, 860.0)
+    h_out_liquid = _liquid_water_kw(n_cond, GC004_QUENCH_OUT_C)
+    quench_water = h_in_vapour - h_out_liquid
+    ko_in = _vapour_water_kw(n_ko, 220.0)       # unreacted steam leaves the LTS at >= its 220 degC inlet (HB-003 outlet); LTS outlet temperature is not stated
+    ko_out = _liquid_water_kw(n_ko, knockout_temp_c)
+    candidates = [
+        _en("WGS knock-out: cool and condense the unreacted steam (from 220 degC, Assumed)", ko_in - ko_out, ps.STATUS_ESTIMATED,
+            "n_H2O x [cp_vap (220-25) + DH_VAP - cp_liq (T-25)]; no unit in the engine rejects this heat"),
+        _en("quench: water vapour sensible + condensation (not in GC-004 duty)", quench_water, ps.STATUS_CALCULATED, "n_H2O x [cp_vap (860-25) + DH_VAP - cp_liq (65-25)]; GC-004 docstring says it is omitted"),
+        _en("electrolyser: electricity not converted to hydrogen LHV", float(hb011["power_kw"]) - _lhv_kw({"H2": n_h2_el}), ps.STATUS_CALCULATED, "HB-011 power_kw - H2 LHV; no heat-rejection stream exists"),
+        _en("shredder FE-004 electricity becomes heat", float(fe4["power_kw"]), ps.STATUS_CALCULATED, "FE-004 power_kw; not in EU-009 nor EU-008"),
+    ]
+    # internal heat demands the engine does not source (steam raising to the GA-004 / HB-005 conditions)
+    n_gs = by["gasifier steam"]["species"]["H2O"]
+    n_ws = hb005["steam_kg_h"] * 1000.0 / M_H2O_ENGINE
+    steam_raise = lambda n, t_c: n * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (t_c - T_REF_C) / 1000.0) * KW_PER_KJ_H
+    internal = [
+        _en("raise gasifier steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_gs, GA004_STEAM_C), ps.STATUS_ESTIMATED, "DH_VAP + mean cp x (350-25); source of this heat is not in the engine"),
+        _en("raise WGS steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_ws, GA004_STEAM_C), ps.STATUS_ESTIMATED, "HB-005 conditions 350 degC / 5 bar(g); the engine counts only HB-003's 20->150 degC sensible duty"),
+        _en("preheat air to 200 degC", _sens_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, GA004_AIR_PREHEAT_C), ps.STATUS_ESTIMATED, "GA-004 'recovered process heat'"),
+        _en("evaporate feed moisture in the dryer", float(fe5["water_evaporated_kg_h"]) * 1000.0 / M_H2O_ENGINE * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (FE005_DRYER_OPERATING_C - T_REF_C) / 1000.0) * KW_PER_KJ_H,
+            ps.STATUS_ESTIMATED, "FE-005 heat source 'recovered process heat ... electric/gas trim backup'"),
+    ]
+    return {"lhv_mj_kg": lhv_mj_kg, "in": ins, "out": outs, "sum_in_kw": sum_in, "sum_out_known_kw": sum_out, "implied_heat_rejected_kw": implied_reject,
+            "engine_reported_rejection": reported, "engine_reported_rejection_kw": reported_sum,
+            "eu008_cooling_demand_kw": float(eu008["demand_kw"]), "eu008_includes_hb003_cold_side_kw": float(hb003["Q_cold_side_kW"]),
+            "closure_residual_kw": implied_reject - reported_sum, "closure_residual_pct_of_input": 100.0 * (implied_reject - reported_sum) / sum_in,
+            "residual_candidates_not_in_engine": candidates, "candidates_sum_kw": sum(t["kw"] for t in candidates),
+            "unexplained_after_candidates_kw": implied_reject - reported_sum - sum(t["kw"] for t in candidates),
+            "internal_heat_demands_not_sourced_in_engine": internal, "internal_heat_demand_sum_kw": sum(t["kw"] for t in internal),
+            "missing_terms": ["heat loss from vessels and piping (no model)", "tar and dust energy (Missing)", "ash sensible heat (discharge temperature not stated)",
+                              "nameplate loads outside EU-009 and FE-004: FE-003 0.37, FE-005 5, FE-007 5.5, FE-008 0.75, GA-005 1.1, GA-006 0.55, HB-009 blower 0.5 kW (utilisation not stated)",
+                              "boiler / trim fuel for steam raising and drying (not modelled)", "make-up water and cooling-tower evaporation energy"],
+            "status": "Calculated from engine outputs + named constants; the balance itself is not part of the engine"}
+
+
+def efficiency_check(snapshot, previous_snapshot, kpis, lhv_range=None):
+    """The efficiencies the Integrated Plant Status reports (tab1_integration.py:173-269), re-derived from their formulas, against what
+    the balance implies. `kpis` is tab1_integration.compute_tab1_kpis(snapshot), passed in so this module stays Streamlit-free."""
+    lhv_range = lhv_range or dokink_lhv_range()
+    fe5 = _val(snapshot, ("FE-005", "MoistureBalance"))
+    dry = float(fe5["dry_solids_kg_h"])
+    h2_kg_h = float(_val(snapshot, ("HB-012", "Compressor"))["h2_kg_h"])
+    n_h2 = h2_kg_h * 1000.0 / M_H2_ENGINE
+    h2_kw_balance = _lhv_kw({"H2": n_h2})
+    h2_kw_engine = n_h2 * NM3_PER_MOL * 10.8 / 3.6                    # EU-006 10.8 MJ/Nm3 (eu_utilities_chp.py:167), as tab1_integration.py:213
+    feed_lo, feed_hi = dry * lhv_range[0] / 3.6, dry * lhv_range[1] / 3.6
+    ov = kpis["overall_efficiency"]["value"]
+    el_total = float(_val(snapshot, ("EU-009", "GridBalance"))["consumption_kw"]) + float(_val(snapshot, ("FE-004", "ShredderPower"))["power_kw"])
+    ga = ga001_terms(snapshot, previous_snapshot)
+    c_feed_mol = ga["feed_atoms"]["C"]
+    x = ga["feed_atoms"]["H"] / c_feed_mol
+    y = ga["feed_atoms"]["O"] / c_feed_mol
+    h2_max_mol = c_feed_mol * (2.0 + x / 2.0 - y)                     # CHxOy + (2-y) H2O -> CO2 + (2 + x/2 - y) H2, complete conversion, unlimited steam
+    h2_max_kg_h = h2_max_mol * M_H2_ENGINE / 1000.0
+    return {
+        "reported_overall_efficiency_pct_range": tuple(ov["h2_conversion_efficiency_range_pct"]),
+        "reported_formula": "100 x H2 LHV (HB-012 h2_kg_h at 10.8 MJ/Nm3) / (FE-005 dry feed x 15..20 MJ/kg); feed energy is the ONLY denominator term (tab1_integration.py:213-233)",
+        "re_derived_pct_range": (100.0 * h2_kw_engine / feed_hi, 100.0 * h2_kw_engine / feed_lo),
+        "h2_kw_engine_basis": h2_kw_engine, "h2_kw_balance_basis": h2_kw_balance,
+        "h2_lhv_basis_difference_pct": 100.0 * (h2_kw_engine - h2_kw_balance) / h2_kw_balance,
+        "balance_implied_pct_range_feed_only": (100.0 * h2_kw_balance / feed_hi, 100.0 * h2_kw_balance / feed_lo),
+        "balance_implied_pct_range_incl_electricity": (100.0 * h2_kw_balance / (feed_hi + el_total), 100.0 * h2_kw_balance / (feed_lo + el_total)),
+        "electricity_counted_kw": el_total,
+        "reported_h2_yield_kg_per_kg_dry": float(kpis["h2_yield_per_feed_mass"]["value"]),
+        "h2_yield_formula": "HB-012 h2_kg_h / FE-005 dry_solids_kg_h (tab1_integration.py:266)",
+        "h2_yield_stoichiometric_maximum_kg_per_kg_dry": h2_max_kg_h / dry,
+        "h2_yield_fraction_of_maximum": h2_kg_h / h2_max_kg_h,
+        "h2_yield_maximum_formula": "feed C x (2 + H/C/2 - O/C) mol H2 (complete steam reforming to CO2, unlimited steam), x 2.016 g/mol; N and ash ignored",
+    }
+
+
+# =============================================================================
 # one call for everything
 # =============================================================================
 
 def audit_snapshot(snapshot, previous_snapshot=None, kpis=None):
-    """All mass balances and the storage check for one published snapshot (the energy balances are added with the energy section; `kpis` is unused here).
+    """All mass balances, the storage check and (when `kpis` is given) the energy balances for one published snapshot.
     `previous_snapshot` is the snapshot of the cycle before (needed for the lagged recycle; build_live_snapshot(n_cycles=N-1))."""
     out = {"missing_inputs": []}
     try:
@@ -548,4 +805,11 @@ def audit_snapshot(snapshot, previous_snapshot=None, kpis=None):
         out["storage"] = storage_inventory_check(snapshot, previous_snapshot)
     except AuditInputMissing as exc:
         out["missing_inputs"].append(exc.args[0])
+    if kpis is not None and previous_snapshot is not None and not out["missing_inputs"]:
+        try:
+            out["energy_gasifier"] = {k: gasifier_energy(snapshot, previous_snapshot, v) for k, v in lhv_cases().items()}
+            out["energy_plant"] = {k: plant_energy(snapshot, previous_snapshot, v) for k, v in lhv_cases().items()}
+            out["efficiencies"] = efficiency_check(snapshot, previous_snapshot, kpis)
+        except AuditInputMissing as exc:
+            out["missing_inputs"].append(exc.args[0])
     return out
