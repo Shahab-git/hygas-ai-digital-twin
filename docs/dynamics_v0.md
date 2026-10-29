@@ -310,7 +310,8 @@ orders of magnitude (flow ~100 Nm³/h, CH₄ ~1.6 mol %, T_gasifier 950 °C), so
 "time since start, min" and its ticks follow the duration: every 1 min up to 30 min, every 5 min up to 60 min, every 10 min up to 2 h, every 15 min up to 3 h, every 30 min above.
 The step is a thin black rule labelled "step at … min"; old / new steady states are grey / red dashed rules. On the normalised chart, horizontal guides mark 63.2 % and 95 %, and a
 selectbox (default GA-001 dry flow) chooses the quantity whose **t63 / t95** are drawn as dotted verticals at the step time plus the value in the response table; a time the table shows
-as "not resolved (< 2 steps)" (or "not reached in this run") gets no marker, and the caption under the chart prints that text and the sampling interval.
+as "not resolved (< 2 steps)" (or "not reached in this run") gets no marker, and the caption under the chart prints that text and the sampling interval. An absolute panel whose whole excursion (steady-state lines included) is under 0.1 % of the quantity's value prints
+"axis zoomed: total change is X % of the value" under its title (the Axis radio offers "from zero"), and a caption under the normalised chart appears when two or more curves stay within 2 percentage points of each other at every sampled time.
 
 **Not valid in transients** (red box, never plotted or exported; the worker does not even send them): HB-013 storage, HB-018 dispensing, EU-010 and what
 derives from them (EU-006, EU-009 grid balance, AI-004 states). Reason: the dispensing demand is Missing and the stock is drained each step (section 4).
