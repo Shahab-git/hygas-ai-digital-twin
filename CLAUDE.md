@@ -582,6 +582,7 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
   H2-energy / feed-LHV ratio (52-69 % over DOK-ING's 15-20 MJ/kg range). The GA-001
   mass balance closes (0.001 %) only when ash and unconverted carbon are added;
   those are not published streams, so on published streams the residual is 4.56 %.
+- **Closure audit measured (`docs/balance_closure_audit.md`, 2026-10-29):** H, O and N close to < 5e-16, carbon does not (+0.138 kg/h, 0.69 %: 10 % unconverted C vs an independent 5 % carbon black), and whole-plant energy does not (+23.7 kW = 16.5 % of input at 17.5 MJ/kg, -2 to +50 kW over 15-20): ~77 kW of heat rejection is omitted and ~81 kW of steam raising has no source; GA-001's implied heat duty is +23 to -29 kW. `python scripts/run_balance_audit.py` reproduces it.
 
 ## Not yet built (the actual current state)
 

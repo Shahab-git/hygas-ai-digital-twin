@@ -1,0 +1,1607 @@
+{
+ "date": "2026-10-29",
+ "commit": "c9bb3d3a3296f5279bd3003e95ae32ab4e6916af",
+ "note": "Measured residuals, NOT a CI gate: a later task decides the tolerances. Regenerate with scripts/run_balance_audit.py --write-baseline.",
+ "tolerances_used_for_verdicts": {
+  "numerical": 1e-06,
+  "stated": 0.001
+ },
+ "cases": {
+  "default": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.1380411397495692,
+      "rel": 0.0068568322711146535,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 3.722481986126342e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 7.275957614183426e-15,
+      "rel": 1.5593731670294738e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.2511564186173646e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.13804113974957488,
+      "rel": 0.0010922931615355092,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.1380411397495692,
+      "rel": 0.008179561323957443,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.56980020828066e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 1.4551915228366852e-14,
+      "rel": 1.3664253359069841e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.2511564186173646e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.13513962471736818,
+      "rel": 0.0007123517838847713,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.1380411397495692,
+      "rel": 0.008179561323957443,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0014850986717431806,
+      "rel": 0.00012261804315528174,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394772597,
+      "rel": 0.00010722722074194775,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.2511564186173646e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.14838643940646534,
+      "rel": 0.0007665978998222405,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.1380411397495661,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -2.3861729697901666,
+     "DOK-ING midpoint (Assumed point)": 23.657577030209836,
+     "DOK-ING high (Confirmed range end)": 49.7013270302098,
+     "model composition (Estimated, correlation midpoint)": 5.463934317847773
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 22.784127537280085,
+     "DOK-ING midpoint (Assumed point)": -3.259622462719932,
+     "DOK-ING high (Confirmed range end)": -29.30337246271992,
+     "model composition (Estimated, correlation midpoint)": 14.934020249642145
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.13771381275421085,
+      "rel": 0.006841685556747952,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.8616524821448552e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 7.275957614183426e-15,
+      "rel": 1.5596032182636785e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.251439186633941e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1377138127542139,
+      "rel": 0.0010898992672880592,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.1377138127542081,
+      "rel": 0.008160165720325076,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.5700149691820607e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -1.910893843160011e-14,
+      "rel": -3.754317559901823e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.13481292796112143,
+      "rel": 0.000710739362805084,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.1377138127542081,
+      "rel": 0.008160165720325076,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0014850986717395134,
+      "rel": 0.00012263422054627343,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394772597,
+      "rel": 0.00010724299992372684,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -1.910893843160011e-14,
+      "rel": -3.754317559901823e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1480597426502186,
+      "rel": 0.0007650258078038681,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.13771381275420844,
+    "storage_h2_created_by_clamp_kg": 0.13274462717818114,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -2.3476008801675405,
+     "DOK-ING midpoint (Assumed point)": 23.696149119832477,
+     "DOK-ING high (Confirmed range end)": 49.73989911983244,
+     "model composition (Estimated, correlation midpoint)": 5.502506407470399
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 22.788507419602354,
+     "DOK-ING midpoint (Assumed point)": -3.2552425803976632,
+     "DOK-ING high (Confirmed range end)": -29.298992580397652,
+     "model composition (Estimated, correlation midpoint)": 14.938400131964414
+    }
+   }
+  },
+  "ER 0.2125": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.1304509097415009,
+      "rel": 0.006504330403316102,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -9.167706593871117e-16,
+      "rel": -1.829030462902567e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -7.275957614183426e-15,
+      "rel": -1.6393434920835492e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.4565172658957072e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.13045090974148366,
+      "rel": 0.0011155940078556787,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.1304509097415009,
+      "rel": 0.007729805896506109,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -1.4551915228366852e-14,
+      "rel": -1.35412968109045e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -1.910893843160011e-14,
+      "rel": -4.3695517976871213e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.12727044627990836,
+      "rel": 0.0006920846090962246,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.1304509097415009,
+      "rel": 0.007729805896506109,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.00148509867173768,
+      "rel": 0.00011873140840999111,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394758044,
+      "rel": 0.00010629214431512943,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -1.910893843160011e-14,
+      "rel": -4.3695517976871213e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1405172609689771,
+      "rel": 0.0007484269913921643,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.13045090974150225,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -12.038429573435721,
+     "DOK-ING midpoint (Assumed point)": 14.005320426564282,
+     "DOK-ING high (Confirmed range end)": 40.04907042656424,
+     "model composition (Estimated, correlation midpoint)": -4.188322285797781
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 30.931758443701284,
+     "DOK-ING midpoint (Assumed point)": 4.888008443701267,
+     "DOK-ING high (Confirmed range end)": -21.155741556298665,
+     "model composition (Estimated, correlation midpoint)": 23.081651156063344
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.13011100638017242,
+      "rel": 0.006488482345499971,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 7.275957614183426e-15,
+      "rel": 1.6395931432134864e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -1.2739292287733406e-14,
+      "rel": -2.913743325467791e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1301110063801758,
+      "rel": 0.001112896726365374,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.13011100638016698,
+      "rel": 0.007709665086358541,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -1.2739292287733406e-14,
+      "rel": -2.913743325467791e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.12693125310300957,
+      "rel": 0.0006903506613267602,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.13011100638016698,
+      "rel": 0.007709665086358541,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0014850986717395134,
+      "rel": 0.00011874796113878681,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394743491,
+      "rel": 0.00010630850737574562,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -1.2739292287733406e-14,
+      "rel": -2.913743325467791e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.14017806779210673,
+      "rel": 0.0007467374976188523,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.1301110063801704,
+    "storage_h2_created_by_clamp_kg": 0.02493701457639741,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -11.994211572551883,
+     "DOK-ING midpoint (Assumed point)": 14.049538427448134,
+     "DOK-ING high (Confirmed range end)": 40.093288427448094,
+     "model composition (Estimated, correlation midpoint)": -4.144104284913944
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 30.934570405789543,
+     "DOK-ING midpoint (Assumed point)": 4.890820405789526,
+     "DOK-ING high (Confirmed range end)": -21.152929594210434,
+     "model composition (Estimated, correlation midpoint)": 23.084463118151604
+    }
+   }
+  },
+  "ER 0.2875": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.1450109466118561,
+      "rel": 0.007178187800089071,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.893133178419014e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.14501094661187608,
+      "rel": 0.001069016350428009,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.14501094661186154,
+      "rel": 0.008592553876392794,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 3.667082637548447e-15,
+      "rel": 3.25558485808494e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 1.4551915228366852e-14,
+      "rel": 1.381480078602742e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -1.2739292287733406e-14,
+      "rel": -2.1977832059682596e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1423937301843523,
+      "rel": 0.0007295251734745869,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.14501094661186154,
+      "rel": 0.008592553876392794,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.001485098671741347,
+      "rel": 0.0001269807288049419,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394787147,
+      "rel": 0.00010837141027564756,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -1.2739292287733406e-14,
+      "rel": -2.1977832059682596e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.15564054487344947,
+      "rel": 0.0007819457334006781,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.1450109466118547,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 7.069002690007615,
+     "DOK-ING midpoint (Assumed point)": 33.112752690007646,
+     "DOK-ING high (Confirmed range end)": 59.156502690007606,
+     "model composition (Estimated, correlation midpoint)": 14.919109977645554
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 14.756398037145516,
+     "DOK-ING midpoint (Assumed point)": -11.287351962854501,
+     "DOK-ING high (Confirmed range end)": -37.33110196285446,
+     "model composition (Estimated, correlation midpoint)": 6.906290749507576
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.1446962185212697,
+      "rel": 0.007163724505086419,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.8935121113502955e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -2.5478584575466812e-14,
+      "rel": -4.3964874712898963e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.14469621852126124,
+      "rel": 0.0010668786378697389,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.144696218521267,
+      "rel": 0.008573904814801006,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -1.4551915228366852e-14,
+      "rel": -1.3816797377226738e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -2.5478584575466812e-14,
+      "rel": -4.3964874712898963e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1420795571907547,
+      "rel": 0.0007280230582252795,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.144696218521267,
+      "rel": 0.008573904814801006,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.00148509867173768,
+      "rel": 0.00012699650970740778,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394743491,
+      "rel": 0.00010838657947828972,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -2.5478584575466812e-14,
+      "rel": -4.3964874712898963e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.15532637187985188,
+      "rel": 0.0007804803113607652,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.14469621852127107,
+    "storage_h2_created_by_clamp_kg": 0.23249200267398784,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 7.102529207540911,
+     "DOK-ING midpoint (Assumed point)": 33.14627920754093,
+     "DOK-ING high (Confirmed range end)": 59.19002920754089,
+     "model composition (Estimated, correlation midpoint)": 14.95263649517885
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 14.762074384916133,
+     "DOK-ING midpoint (Assumed point)": -11.281675615083884,
+     "DOK-ING high (Confirmed range end)": -37.32542561508387,
+     "model composition (Estimated, correlation midpoint)": 6.911967097278193
+    }
+   }
+  },
+  "feed -30 % at FE-001": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.0966287978246957,
+      "rel": 0.00685683227111446,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -4.583853296935558e-16,
+      "rel": -1.329457852187979e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 6.369646143866703e-15,
+      "rel": 1.7873663123105204e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09662879782470668,
+      "rel": 0.0010922931615355573,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.09662879782469706,
+      "rel": 0.008179561323957326,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -9.167706593871117e-16,
+      "rel": -1.1212858630576141e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -1.4551915228366852e-14,
+      "rel": -1.9520361941528344e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 6.369646143866703e-15,
+      "rel": 1.7873663123105204e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09459773730213783,
+      "rel": 0.0007123517838846214,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.09662879782469706,
+      "rel": 0.008179561323957326,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0014850986717395134,
+      "rel": 0.0001751217427720005,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394758044,
+      "rel": 0.00015314588484858875,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": 6.369646143866703e-15,
+      "rel": 1.7873663123105204e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1078508603706041,
+      "rel": 0.0007958550389029268,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.09662879782469604,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 0.2801201783817646,
+     "DOK-ING midpoint (Assumed point)": 18.510745178381768,
+     "DOK-ING high (Confirmed range end)": 36.74137017838176,
+     "model composition (Estimated, correlation midpoint)": 5.775195279728322
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 15.948889276096054,
+     "DOK-ING midpoint (Assumed point)": -2.2817357239039495,
+     "DOK-ING high (Confirmed range end)": -20.512360723903953,
+     "model composition (Estimated, correlation midpoint)": 10.453814174749482
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.09715238917397044,
+      "rel": 0.006891426136159179,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 4.583853296935558e-16,
+      "rel": 1.3287896151976076e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 3.637978807091713e-15,
+      "rel": 1.1134627515170451e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7864470713533474e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09715238917397073,
+      "rel": 0.0010977612205378307,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.09715238917397044,
+      "rel": 0.008223882971814778,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7864470713533474e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09512032199884857,
+      "rel": 0.0007160351910254132,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.09715238917397044,
+      "rel": 0.008223882971814778,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0014850986717395134,
+      "rel": 0.00017506907436505348,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394743491,
+      "rel": 0.0001530945309183761,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7864470713533474e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.10837344506734325,
+      "rel": 0.0007994357898424936,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.09715238917397215,
+    "storage_h2_created_by_clamp_kg": 0.7542988873689467,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 0.21865765585176078,
+     "DOK-ING midpoint (Assumed point)": 18.449282655851764,
+     "DOK-ING high (Confirmed range end)": 36.679907655851764,
+     "model composition (Estimated, correlation midpoint)": 5.7137327571983185
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 15.941857438999222,
+     "DOK-ING midpoint (Assumed point)": -2.288767561000782,
+     "DOK-ING high (Confirmed range end)": -20.519392561000757,
+     "model composition (Estimated, correlation midpoint)": 10.446782337652678
+    }
+   }
+  },
+  "feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %)": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.165636116810129,
+      "rel": 0.006856832271114273,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.5511582436188463e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 1.4551915228366852e-14,
+      "rel": 2.599163194804727e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.16563611681016255,
+      "rel": 0.0010922931615356248,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.16563611681013174,
+      "rel": 0.008179561323957123,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.3082714935811016e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 2.9103830456733704e-14,
+      "rel": 2.27755774988976e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.16215457729464333,
+      "rel": 0.0007123517838847057,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.16563611681013174,
+      "rel": 0.008179561323957123,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.001485098671741347,
+      "rel": 0.00010220051486864611,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394787147,
+      "rel": 8.937130050369969e-05,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1753971884160137,
+      "rel": 0.0007552223098537714,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.16563611681013446,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -4.162848589682383,
+     "DOK-ING midpoint (Assumed point)": 27.087151410317617,
+     "DOK-ING high (Confirmed range end)": 58.33715141031762,
+     "model composition (Estimated, correlation midpoint)": 5.256526605467528
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 27.3387659434606,
+     "DOK-ING midpoint (Assumed point)": -3.9112340565393993,
+     "DOK-ING high (Confirmed range end)": -35.1612340565394,
+     "model composition (Estimated, correlation midpoint)": 17.91939074831066
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.16474088441692913,
+      "rel": 0.00682230070646723,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.5519389537210966e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 1.2739292287733406e-14,
+      "rel": 2.0865008320766706e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.16474088441694335,
+      "rel": 0.0010868351160794655,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.16474088441693188,
+      "rel": 0.008135352316885525,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.3086792829895665e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 1.4551915228366852e-14,
+      "rel": 1.1391729191774305e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 1.2739292287733406e-14,
+      "rel": 2.0865008320766706e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.16126106770599336,
+      "rel": 0.0007086755877730162,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 0.16474088441693188,
+      "rel": 0.008135352316885525,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.001485098671741347,
+      "rel": 0.00010223123881049942,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "O": {
+      "residual_kg_h": 0.011786497394758044,
+      "rel": 8.94012640385372e-05,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     },
+     "N": {
+      "residual_kg_h": 1.2739292287733406e-14,
+      "rel": 2.0865008320766706e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1745036788273353,
+      "rel": 0.0007516339289513884,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.16474088441692777,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -4.057496797525054,
+     "DOK-ING midpoint (Assumed point)": 27.192503202474946,
+     "DOK-ING high (Confirmed range end)": 58.442503202474946,
+     "model composition (Estimated, correlation midpoint)": 5.3618783976248565
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 27.350761483357246,
+     "DOK-ING midpoint (Assumed point)": -3.899238516642754,
+     "DOK-ING high (Confirmed range end)": -35.149238516642754,
+     "model composition (Estimated, correlation midpoint)": 17.931386288207307
+    }
+   }
+  },
+  "dry feed -30 % at GA-001": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.09669668264861378,
+      "rel": 0.006861318895673494,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 4.583853296935558e-16,
+      "rel": 1.3245770895588908e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -7.275957614183426e-15,
+      "rel": -2.220740177748662e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7873315278526674e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09669668264859865,
+      "rel": 0.001091628063917208,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.09669668264861378,
+      "rel": 0.00818530772764539,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09467546127930859,
+      "rel": 0.0007127812105186961,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 5.159601682648615,
+      "rel": 0.30572971540935184,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.6090336986717407,
+      "rel": 0.06606824333785906,
+      "verdict": "does not close"
+     },
+     "O": {
+      "residual_kg_h": 4.36588479739477,
+      "rel": 0.05301545034322546,
+      "verdict": "does not close"
+     },
+     "N": {
+      "residual_kg_h": 0.10125810000000504,
+      "rel": 0.002833266101769524,
+      "verdict": "does not close"
+     },
+     "ash": {
+      "residual_kg_h": 1.1250900000000001,
+      "rel": 0.30000000000000004,
+      "verdict": "does not close"
+     },
+     "mass": {
+      "residual_kg_h": 11.358822275968407,
+      "rel": 0.07678402861385034,
+      "verdict": "does not close"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.09669668264861259,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 48.199228057380985,
+     "DOK-ING midpoint (Assumed point)": 74.24297805738101,
+     "DOK-ING high (Confirmed range end)": 100.28672805738097,
+     "model composition (Estimated, correlation midpoint)": 56.049335345018925
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 16.074580324387227,
+     "DOK-ING midpoint (Assumed point)": -2.156044675612776,
+     "DOK-ING high (Confirmed range end)": -20.38666967561275,
+     "model composition (Estimated, correlation midpoint)": 10.579505223040655
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.0962913767032889,
+      "rel": 0.0068345251145157685,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 3.637978807091713e-15,
+      "rel": 1.1106589751496124e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7880455506817463e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09629137670327736,
+      "rel": 0.0010873980853693187,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.09629137670329027,
+      "rel": 0.008150998857936045,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -9.167706593871117e-16,
+      "rel": -1.1211254196646714e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -1.4551915228366852e-14,
+      "rel": -1.9519006794129415e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -6.369646143866703e-15,
+      "rel": -1.7880455506817463e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.09427093545167509,
+      "rel": 0.0007099292774861062,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": 5.159196376703291,
+      "rel": 0.3057056992005553,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 0.609033698671739,
+      "rel": 0.0660824199215796,
+      "verdict": "does not close"
+     },
+     "O": {
+      "residual_kg_h": 4.365884797394756,
+      "rel": 0.05302833945721775,
+      "verdict": "does not close"
+     },
+     "N": {
+      "residual_kg_h": 0.10125809999999867,
+      "rel": 0.0028343947578794272,
+      "verdict": "does not close"
+     },
+     "ash": {
+      "residual_kg_h": 1.1250900000000001,
+      "rel": 0.30000000000000004,
+      "verdict": "does not close"
+     },
+     "mass": {
+      "residual_kg_h": 11.358417750140774,
+      "rel": 0.07680010016260892,
+      "verdict": "does not close"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.09629137670328754,
+    "storage_h2_created_by_clamp_kg": 0.12458244383998363,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": 48.246941931690145,
+     "DOK-ING midpoint (Assumed point)": 74.29069193169016,
+     "DOK-ING high (Confirmed range end)": 100.33444193169012,
+     "model composition (Estimated, correlation midpoint)": 56.097049219328085
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 16.080009417300488,
+     "DOK-ING midpoint (Assumed point)": -2.1506155826995155,
+     "DOK-ING high (Confirmed range end)": -20.38124058269949,
+     "model composition (Estimated, correlation midpoint)": 10.584934315953944
+    }
+   }
+  },
+  "dry feed +30 % at GA-001": {
+   "40": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.17938511580975822,
+      "rel": 0.006854399096385865,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 9.167706593871117e-16,
+      "rel": 1.4345701611875293e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": -7.275957614183426e-15,
+      "rel": -1.2015386149520645e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 1.2739292287733406e-14,
+      "rel": 1.9248763429653805e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.17938511580973682,
+      "rel": 0.001092649199218919,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.17938511580976094,
+      "rel": 0.008176445180556992,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.2077867131964908e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": 2.5478584575466812e-14,
+      "rel": 3.849752685930761e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.17560329665383279,
+      "rel": 0.0007121177615488183,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": -4.883519884190243,
+      "rel": -0.28937062126527613,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -0.6060635013282599,
+      "rel": -0.04039092056345304,
+      "verdict": "does not close"
+     },
+     "O": {
+      "residual_kg_h": -4.342311802605255,
+      "rel": -0.03158261680066555,
+      "verdict": "does not close"
+     },
+     "N": {
+      "residual_kg_h": -0.10125809999997319,
+      "rel": -0.00153232991439439,
+      "verdict": "does not close"
+     },
+     "ash": {
+      "residual_kg_h": -1.1250900000000001,
+      "rel": -0.30000000000000004,
+      "verdict": "does not close"
+     },
+     "mass": {
+      "residual_kg_h": -11.062049888657072,
+      "rel": -0.04624642674689653,
+      "verdict": "does not close"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.17938511580975752,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -52.97154879602259,
+     "DOK-ING midpoint (Assumed point)": -26.927798796022557,
+     "DOK-ING high (Confirmed range end)": -0.8840487960225971,
+     "model composition (Estimated, correlation midpoint)": -45.12144150838465
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 29.493715459645443,
+     "DOK-ING midpoint (Assumed point)": -4.363159540354559,
+     "DOK-ING high (Confirmed range end)": -38.220034540354504,
+     "model composition (Estimated, correlation midpoint)": 19.288575985716136
+    }
+   },
+   "5": {
+    "missing_inputs": [],
+    "ga001": {
+     "C": {
+      "residual_kg_h": 0.17863316554495623,
+      "rel": 0.006827628425876321,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 2.870262271729465e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -2.5478584575466812e-14,
+      "rel": -3.8512889724261195e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.17863316554493736,
+      "rel": 0.0010884152598637086,
+      "verdict": "does not close"
+     }
+    },
+    "loop": {
+     "C": {
+      "residual_kg_h": 0.17863316554495895,
+      "rel": 0.008142170987344781,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": 1.8335413187742233e-15,
+      "rel": 1.208078641775975e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "O": {
+      "residual_kg_h": 2.9103830456733704e-14,
+      "rel": 2.1031361441040797e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "N": {
+      "residual_kg_h": -2.5478584575466812e-14,
+      "rel": -3.8512889724261195e-16,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "ash": {
+      "residual_kg_h": 0.0,
+      "rel": 0.0,
+      "verdict": "closes to numerical precision (< 1e-6 relative)"
+     },
+     "mass": {
+      "residual_kg_h": 0.1748527935625077,
+      "rel": 0.0007092675522709629,
+      "verdict": "closes to a stated tolerance (< 0.1 % of inflow)"
+     }
+    },
+    "plant": {
+     "C": {
+      "residual_kg_h": -4.8842718344550455,
+      "rel": -0.28941517771645203,
+      "verdict": "does not close"
+     },
+     "H": {
+      "residual_kg_h": -0.606063501328258,
+      "rel": -0.04040079784478849,
+      "verdict": "does not close"
+     },
+     "O": {
+      "residual_kg_h": -4.342311802605255,
+      "rel": -0.03159114836634545,
+      "verdict": "does not close"
+     },
+     "N": {
+      "residual_kg_h": -0.10125810000002414,
+      "rel": -0.0015329423450218523,
+      "verdict": "does not close"
+     },
+     "ash": {
+      "residual_kg_h": -1.1250900000000001,
+      "rel": -0.30000000000000004,
+      "verdict": "does not close"
+     },
+     "mass": {
+      "residual_kg_h": -11.062800391748397,
+      "rel": -0.04626256086866118,
+      "verdict": "does not close"
+     }
+    },
+    "ga001_unassigned_carbon_kg_h": 0.17863316554495998,
+    "storage_h2_created_by_clamp_kg": 0.0,
+    "plant_energy_closure_residual_kw": {
+     "DOK-ING low (Confirmed range end)": -52.88303622712289,
+     "DOK-ING midpoint (Assumed point)": -26.83928622712289,
+     "DOK-ING high (Confirmed range end)": -0.7955362271229305,
+     "model composition (Estimated, correlation midpoint)": -45.032928939484954
+    },
+    "ga001_implied_heat_duty_kw": {
+     "DOK-ING low (Confirmed range end)": 29.503788082533674,
+     "DOK-ING midpoint (Assumed point)": -4.353086917466385,
+     "DOK-ING high (Confirmed range end)": -38.20996191746633,
+     "model composition (Estimated, correlation midpoint)": 19.29864860860431
+    }
+   }
+  }
+ }
+}
