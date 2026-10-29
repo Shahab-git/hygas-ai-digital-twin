@@ -265,6 +265,13 @@ def _render_results(payload):
                        mime="text/csv", key=_K + "dl_response")
 
 
+def _assumed_styler(frame):
+    """The Assumed-parameters table as a styled HTML table: st.table rather than st.dataframe because a grid cell cuts a long text off at the
+    column edge while a table cell wraps it. The text is untouched; the number columns are right-aligned, Value [s] to one decimal."""
+    return (frame.style.hide(axis="index").format({"Value [s]": "{:.1f}"})
+            .set_properties(subset=["Value [s]", "Declared range [s]"], **{"text-align": "right"}))
+
+
 def _render_findings(payload):
     st.markdown("### What this tab shows")
     for title, text in (sim.findings(payload) if payload else sim.FINDINGS_STATIC):
@@ -274,7 +281,7 @@ def _render_findings(payload):
     frame = pd.DataFrame([{"Time constant": n, "Status": s.status, "Value [s]": values.get(n, s.default_s),
                            "Declared range [s]": f"{s.range_s[0]:g}–{s.range_s[1]:g}", "Question for DOK-ING": s.question_for_doking}
                           for n, s in dy.TAU_SPECS.items()])
-    st.dataframe(frame, hide_index=True, use_container_width=True, column_config={"Value [s]": st.column_config.NumberColumn(format="%.1f")})
+    st.table(_assumed_styler(frame))
     st.markdown(f"**Also ask DOK-ING:** {sim.ENVELOPE_QUESTION}")
     with st.expander("Reasoning behind each Assumed value"):
         for n, s in dy.TAU_SPECS.items():

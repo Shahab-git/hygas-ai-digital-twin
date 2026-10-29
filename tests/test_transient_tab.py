@@ -8,6 +8,7 @@ Real simulations run in the tab's child process (that is the production path); e
 done once, in one module-scoped fixture, and shared between the tests.
 """
 import contextlib
+import html
 import ipaddress
 import json
 import math
@@ -740,3 +741,23 @@ def test_ui_the_controls_are_capped_to_two_thirds_in_the_same_order_and_the_char
     assert ("column", 0.333) in runs_row and ("column", 0.667) not in runs_row                                    # the Run row is outside the cap
     charts_at, _payload = runs["feed"]
     assert all(not under for e, under in _walk(charts_at.main) if e.type == "vega_lite_chart")                      # charts: directly in the page
+
+
+def test_ui_the_assumed_table_wraps_the_questions_unchanged_and_keeps_numbers_right_aligned(runs):
+    for name in ("default", "feed"):
+        at = runs[name] if name == "default" else runs[name][0]
+        assert len(at.table) == 1                                                       # the Assumed table is an HTML table now ...
+        assert any("t63 [s]" in list(d.value.columns) for d in at.dataframe) == (name == "feed")          # ... the response table stays a grid
+        frame = at.table[0].value
+        assert list(frame.columns) == ["Time constant", "Status", "Value [s]", "Declared range [s]", "Question for DOK-ING"]
+        assert list(frame["Question for DOK-ING"]) == [s_.question_for_doking for s_ in dy.TAU_SPECS.values()]       # full text, nothing cut
+        assert set(frame["Status"]) == {"Assumed"}
+    html_text = tab._assumed_styler(frame).to_html()
+    for s_ in dy.TAU_SPECS.values():
+        assert s_.question_for_doking in html.unescape(html_text)
+    import re
+    rule = re.search(r"((?:#T_\w+_row\d+_col\d+,?\s*)+)\{\s*text-align: right", html_text)                  # Styler groups the cells into one CSS rule
+    assert rule, html_text[:400]
+    aligned = {(int(r), int(c)) for r, c in re.findall(r"_row(\d+)_col(\d+)", rule.group(1))}
+    assert aligned == {(r, c) for r in range(len(dy.TAU_SPECS)) for c in (2, 3)}        # Value [s] and the declared range, every row, nothing else
+    assert ">5193.7<" in html_text and "5193.702" not in html_text                         # one decimal, as the caption beside the slider
