@@ -25,6 +25,15 @@ from . import ui_transient_charts as ch
 from . import ui_transient_sim as sim
 
 _K = "wi_"       # session-state prefix of this tab
+_CLOUD_RUN_NOTE = "on Streamlit Community Cloud one run of 240 steps (2 h at dt = 30 s) took about 78 s"       # an observed run, not a promise
+
+
+def _expected_seconds(steps):
+    """Rough wall time of a run on a fast machine: about 0.1 s per engine step plus about 6 s of start-up and warm-up (the three default
+    scenarios measured 29.6 s for 240 steps, 23.2 s for 180 and 17.5 s for 120)."""
+    return 0.1 * steps + 6
+
+
 _MARKER_DEFAULT = "ga001_dry_flow_nm3_h"       # the quantity whose t63 / t95 are marked on the normalised chart
 _TAU_STEP = {"T_gasifier": 5.0, "tau_conv": 30.0, "tau_gas": 1.0, "tau_rec": 5.0, "EU008_cooling_water": 1.0}
 _TAG = {"Assumed": ("#FEF3C7", "#B45309"), "Missing": ("#F3F4F6", "#6B7280"), "Calculated": ("#DBEAFE", "#1D4ED8")}
@@ -309,8 +318,8 @@ def render():
     errors = _resolution_messages(params)
     steps = params["duration_s"] // params["dt_s"] if params["dt_s"] in sim.DT_CHOICES_S else 0
     st.caption(f"The step is applied at {params['step_s']} s and the run lasts {params['duration_s']} s: {steps} steps at dt = {params['dt_s']} s "
-               f"(cap {sim.MAX_STEPS} steps / {sim.MAX_DURATION_S // 3600} h). Expect roughly {0.12 * steps + 6:.0f} s on a fast machine, "
-               "longer on shared hosting.")
+               f"(cap {sim.MAX_STEPS} steps / {sim.MAX_DURATION_S // 3600} h). Expect about {_expected_seconds(steps):.0f} s on a fast machine; "
+               f"{_CLOUD_RUN_NOTE}.")
 
     left, right, _ = st.columns([2, 1, 3])
     run = left.button("Run what-if simulation", type="primary", disabled=bool(errors), key=_K + "run")
@@ -318,7 +327,7 @@ def render():
 
     if run and not errors:
         try:
-            with st.spinner(f"Running {steps} engine steps in an isolated worker … (about {0.12 * steps + 6:.0f} s)"):
+            with st.spinner(f"Running {steps} engine steps in an isolated worker … (about {_expected_seconds(steps):.0f} s)"):
                 st.session_state[_K + "payload"] = _cached_run(json.dumps(params, sort_keys=True))
             st.session_state.pop(_K + "error", None)
         except sim.WhatIfError as exc:

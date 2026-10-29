@@ -777,3 +777,14 @@ def test_ui_the_overlap_caption_appears_in_the_feed_scenario_exactly_when_the_cu
         if name == "feed":
             assert expected and expected.startswith("GA-001 flow, H₂ production and EU-008 demand follow the same lag")
     assert seen_shown >= 1 and seen_absent >= 1               # both outcomes occurred in the real runs, so the test is not vacuous
+
+
+def test_ui_the_pre_run_estimate_says_what_a_fast_machine_and_the_cloud_took():
+    cloud = "on Streamlit Community Cloud one run of 240 steps (2 h at dt = 30 s) took about 78 s."
+    at = _tab().run()
+    captions = [c.value for c in at.caption]
+    assert any("240 steps at dt = 30 s" in c and "Expect about 30 s on a fast machine; " + cloud in c for c in captions), captions
+    assert not any("Expect roughly" in c or "longer on shared hosting" in c for c in captions)                 # the old wording is gone
+    at.number_input(key="wi_duration_min").set_value(60).run()                                                # 120 steps: the estimate follows the run
+    assert any("120 steps at dt = 30 s" in c and "Expect about 18 s on a fast machine; " + cloud in c for c in [c.value for c in at.caption])
+    assert tab._expected_seconds(240) == 30.0 and not at.exception
