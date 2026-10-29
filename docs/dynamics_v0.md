@@ -296,10 +296,21 @@ process could leak a 30 s clock into other viewers' cached numbers for up to 300
 the server's globals are never touched, the child gets no credentials (`child_env`: no variable whose name contains SUPABASE, SECRET, TOKEN, KEY,
 PASSWORD, AUTH, …; `HYGAS_ALLOW_DB_WRITES` forced to 0), its database clients and socket connections raise, and a crash is a one-line message, not a traceback.
 
-**What is shown.** Absolute charts with the step marker and the old/new steady-state values, a normalised chart (0 % = old, 100 % = new steady state),
+**What is shown.** A normalised chart (0 % = old, 100 % = new steady state) with the t63 / t95 markers, absolute charts (one panel per quantity) with the step
+marker and the old/new steady-state values,
 the response-time table (before / end of run / final steady state, t63, t95, peak % of the change; same definitions as the demo script, final = the
 independent steady-state engine at the final inputs; a change below 0.01 % is shown as "≈ 0, not meaningful"), the three findings, the Assumed
 parameters with the question each becomes, and two CSV downloads (the series carries the banner and the Assumed time constants as `#` header rows).
+
+**Chart conventions** (presentation only; `python/ui_transient_charts.py`). Every plotted quantity has one fixed **colour, dash and point shape**, the same in the normalised chart,
+its legend and its absolute panel: 11 colours with a single blue and a CIE-Lab distance of at least 25 between any two (checked by a test), so the chart also reads for colour-blind
+viewers and in greyscale print through the dash and the shape. The legend sits at the right, outside the plot; clicking an entry highlights that curve. Charts use the full container width,
+one per row: the normalised chart is 360 px high; the absolute figure is one panel per quantity (170 px each), each with its own y scale because the quantities differ by up to three
+orders of magnitude (flow ~100 Nm³/h, CH₄ ~1.6 mol %, T_gasifier 950 °C), so there is no shared or dual axis, and the time axis is identical in every panel. The time axis is titled
+"time since start, min" and its ticks follow the duration: every 1 min up to 30 min, every 5 min up to 60 min, every 10 min up to 2 h, every 15 min up to 3 h, every 30 min above.
+The step is a thin black rule labelled "step at … min"; old / new steady states are grey / red dashed rules. On the normalised chart, horizontal guides mark 63.2 % and 95 %, and a
+selectbox (default GA-001 dry flow) chooses the quantity whose **t63 / t95** are drawn as dotted verticals at the step time plus the value in the response table; a time the table shows
+as "not resolved (< 2 steps)" (or "not reached in this run") gets no marker, and the caption under the chart prints that text and the sampling interval.
 
 **Not valid in transients** (red box, never plotted or exported; the worker does not even send them): HB-013 storage, HB-018 dispensing, EU-010 and what
 derives from them (EU-006, EU-009 grid balance, AI-004 states). Reason: the dispensing demand is Missing and the stock is drained each step (section 4).

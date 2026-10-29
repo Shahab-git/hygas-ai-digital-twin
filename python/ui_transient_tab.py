@@ -17,22 +17,20 @@ the worker does not even send them (ui_transient_sim.NOT_VALID_SERIES).
 import html
 import json
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
 from . import dynamics as dy
+from . import ui_transient_charts as ch
 from . import ui_transient_sim as sim
 
 _K = "wi_"       # session-state prefix of this tab
+_MARKER_DEFAULT = "ga001_dry_flow_nm3_h"       # the quantity whose t63 / t95 are marked on the normalised chart
 _TAU_STEP = {"T_gasifier": 5.0, "tau_conv": 30.0, "tau_gas": 1.0, "tau_rec": 5.0, "EU008_cooling_water": 1.0}
 _TAG = {"Assumed": ("#FEF3C7", "#B45309"), "Missing": ("#F3F4F6", "#6B7280"), "Calculated": ("#DBEAFE", "#1D4ED8")}
 
 
-def _pretty(text):
-    for a, b in (("CO2", "CO₂"), ("CH4", "CH₄"), ("H2", "H₂"), ("N2", "N₂"), ("Nm3", "Nm³")):
-        text = text.replace(a, b)
-    return text
+_pretty = ch.pretty
 
 
 def _tag(status):
@@ -141,8 +139,8 @@ def _controls():
              help="Each step runs the full steady-state engine once (~0.1 s). A smaller dt resolves faster lags but allows a shorter run "
                   "(240 steps at most).")
     chosen = sim.SCENARIO_DEFAULTS[s[_K + "scenario"]]
-    st.caption(f"At dt = {s[_K + 'dt_s']} s the longest run is **{top_min} min** ({sim.MAX_STEPS} steps; hard cap {sim.MAX_DURATION_S // 3600} h). "
-               f"Defaults for this step type are dt = {chosen['dt_s']} s and {chosen['duration_min']} min: {chosen['why']}.")
+    st.caption(f"At dt = {s[_K + 'dt_s']} s the longest run is **{top_min} min** ({sim.MAX_STEPS} steps; hard cap {sim.MAX_DURATION_S // 3600} h).")
+    st.caption(f"Defaults for this step type are dt = {chosen['dt_s']} s and {chosen['duration_min']} min: {chosen['why']}.")
     if notice:
         st.warning(notice)
 
@@ -180,49 +178,48 @@ def _fmt(value, digits=4):
 def _response_frame(payload):
     rows = []
     for r in payload["response"]:
-        if not r["meaningful"]:
-            t63 = t95 = "n/a (change < 0.01 %)"
-            peak = "—"
-        else:
-            t63 = (sim.UNRESOLVED_LABEL if r["t63_unresolved"] else f"{r['t63']:.0f}") if r["t63"] is not None else "not reached in this run"
-            t95 = (sim.UNRESOLVED_LABEL if r["t95_unresolved"] else f"{r['t95']:.0f}") if r["t95"] is not None else "not reached in this run"
-            peak = f"{r['peak_pct']:.0f}"
-        rows.append({"Quantity": _pretty(r["label"]), "Unit": _pretty(r["unit"]), "Before step": _fmt(r["before"]), "End of run": _fmt(r["end_of_run"]),
-                     "Final steady state": _fmt(r["final"]), "Change": _fmt(r["change"]) if r["meaningful"] else "≈ 0", "t63 [s]": t63, "t95 [s]": t95,
-                     "Peak [% of change]": peak})
+        peak = f"{r['peak_pct']:.0f}" if r["meaningful"] else "—"
+        rows.append({"Quantity [unit]": f"{_pretty(r['label'])} [{_pretty(r['unit'])}]", "Before step": _fmt(r["before"]), "End of run": _fmt(r["end_of_run"]),
+                     "Final steady state": _fmt(r["final"]), "Change": _fmt(r["change"]) if r["meaningful"] else "≈ 0",
+                     "t63 [s]": ch.time_cell(r, "t63")[0], "t95 [s]": ch.time_cell(r, "t95")[0], "Peak [% of change]": peak})
     return pd.DataFrame(rows)
 
 
-def _long_frames(payload):
-    step_min = payload["params"]["step_s"] / 60.0
-    absolute, normalised = [], []
-    for r in payload["response"]:
-        label = f"{_pretty(r['label'])} [{_pretty(r['unit'])}]"
-        for row in payload["series"]:
-            minute = row["t_s"] / 60.0
-            absolute.append({"quantity": label, "minute": minute, "value": row[r["key"]], "old_steady": r["before"], "new_steady": r["final"],
-                             "step_min": step_min})
-            if r["meaningful"]:
-                normalised.append({"quantity": _pretty(r["label"]), "minute": minute, "pct": (row[r["key"]] - r["before"]) / r["change"] * 100.0})
-    return pd.DataFrame(absolute), pd.DataFrame(normalised), step_min
+def _table_columns(frame):
+    """Every column but the first is right-aligned (numbers and the "not resolved" label alike). `alignment` needs a recent Streamlit; an older
+    one simply shows the default alignment."""
+    unit_note = "In the unit shown in the first column."
+    try:
+        return {name: st.column_config.TextColumn(name, alignment="right", help=unit_note if name in ("Before step", "End of run", "Final steady state", "Change") else None)
+                for name in frame.columns[1:]}
+    except TypeError:
+        return {}
 
 
-def _absolute_chart(df, labels):
-    x = alt.X("minute:Q", title="time [min]")
-    line = alt.Chart().mark_line(color="#1D4ED8").encode(x=x, y=alt.Y("value:Q", title=None, scale=alt.Scale(zero=False), axis=alt.Axis(format=".6~g")))
-    old = alt.Chart().mark_rule(color="#6B7280", strokeDash=[4, 3]).encode(y="old_steady:Q")
-    new = alt.Chart().mark_rule(color="#B91C1C", strokeDash=[4, 3]).encode(y="new_steady:Q")
-    step = alt.Chart().mark_rule(color="#111827", strokeWidth=1).encode(x="step_min:Q")
-    layered = alt.layer(line, old, new, step, data=df).properties(width=230, height=120)
-    return layered.facet(facet=alt.Facet("quantity:N", sort=labels, title=None), columns=3).resolve_scale(y="independent")
+def _show_chart(chart):
+    st.altair_chart(chart, use_container_width=True)
 
 
-def _normalised_chart(df, step_min):
-    lines = alt.Chart(df).mark_line().encode(x=alt.X("minute:Q", title="time [min]"), y=alt.Y("pct:Q", title="% of the change to the new steady state"),
-                                               color=alt.Color("quantity:N", title=None), tooltip=["quantity:N", "minute:Q", alt.Tooltip("pct:Q", format=".1f")])
-    guides = alt.Chart(pd.DataFrame({"pct": [0.0, 63.2, 95.0, 100.0]})).mark_rule(color="#9CA3AF", strokeDash=[3, 3]).encode(y="pct:Q")
-    step = alt.Chart(pd.DataFrame({"minute": [step_min]})).mark_rule(color="#111827").encode(x="minute:Q")
-    return (guides + step + lines).properties(height=320)
+def _marker_choice(payload):
+    """The quantity whose t63 / t95 are marked on the normalised chart: a selectbox over the quantities that change meaningfully (default
+    GA-001 dry flow). A choice that is no longer available (another run) falls back to the default."""
+    options = [r["key"] for r in payload["response"] if r["meaningful"]]
+    if st.session_state.get(_K + "marker") not in options:
+        st.session_state[_K + "marker"] = _MARKER_DEFAULT if _MARKER_DEFAULT in options else options[0]
+    names = {r["key"]: _pretty(r["label"]) for r in payload["response"]}
+    key = st.selectbox("Mark t63 and t95 of", options, key=_K + "marker", format_func=lambda k: names[k],
+                       help="The markers use the same t63 / t95 values as the response table.")
+    return next(r for r in payload["response"] if r["key"] == key)
+
+
+def _marker_caption(row, dt):
+    parts = []
+    for which in ("t63", "t95"):
+        text, seconds = ch.time_cell(row, which)
+        parts.append(f"{which} = {text} s" if seconds is not None else f"{which}: {text} (no marker drawn)")
+    st.caption(f"**t63** and **t95** (dotted verticals, labelled) are the times after the step at which the response first reaches 63.2 % and 95 % of "
+               f"the change to the new steady state (the two horizontal guide lines); the marker sits at the step time plus t. "
+               f"{_pretty(row['label'])}: {'; '.join(parts)}. Sampling interval dt = {dt} s.")
 
 
 def _render_results(payload):
@@ -241,17 +238,23 @@ def _render_results(payload):
     st.markdown("**Response times** — seconds after the step to reach 63.2 % and 95 % of the change to the new steady state "
                 "(first crossing, linearly interpolated: the same definitions as `scripts/run_transient_demo.py`). A response that overshoots "
                 "crosses 95 % before it has settled — read the peak column.")
-    st.dataframe(_response_frame(payload), hide_index=True, use_container_width=True)
+    frame = _response_frame(payload)
+    st.dataframe(frame, hide_index=True, use_container_width=True, column_config=_table_columns(frame))
 
-    absolute, normalised, step_min = _long_frames(payload)
-    labels = list(dict.fromkeys(absolute["quantity"]))
-    st.markdown("**Absolute values** — blue: what-if response · grey dashed: old steady state · red dashed: new steady state · black: the step")
-    st.altair_chart(_absolute_chart(absolute, labels))
-    st.markdown("**Normalised** — 0 % = old steady state, 100 % = new steady state (quantities whose change is below 0.01 % are left out)")
+    absolute, normalised, step_min, duration_min = ch.long_frames(payload)
+    st.markdown("**Normalised** — 0 % = old steady state, 100 % = new steady state (quantities whose change is below 0.01 % are left out). "
+                "Click a legend entry to highlight that curve.")
     if normalised.empty:
         st.caption("No quantity changes by more than 0.01 % in this run.")
     else:
-        st.altair_chart(_normalised_chart(normalised, step_min), use_container_width=True)
+        row = _marker_choice(payload)
+        _show_chart(ch.normalised_chart(normalised, step_min, duration_min, row))
+        _marker_caption(row, dt)
+    st.markdown("**Absolute values** — one panel per quantity, each with its own y scale (the quantities differ too much in size for a shared "
+                "axis); the time axis is the same in every panel. Each quantity keeps the colour, dash and point shape it has in the normalised chart · "
+                "grey dashed: old steady state · red dashed: new steady state · black: the step")
+    for panel in ch.absolute_panels(absolute, step_min, duration_min):
+        _show_chart(panel)
 
     st.download_button("Download the series (CSV, with the banner and the Assumed time constants as header rows)", sim.build_csv(payload),
                        file_name="whatif_series.csv", mime="text/csv", key=_K + "dl_series")
