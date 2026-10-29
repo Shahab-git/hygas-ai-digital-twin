@@ -1,0 +1,551 @@
+"""
+Mass and energy closure audit (step 1 of the validation plan) -- READ-ONLY.
+
+Pure functions that take a PUBLISHED snapshot (the {key: entry} dict that
+tab1_integration.build_live_snapshot() returns and the UI reads) and measure how
+well the twin closes its own balances: C, H, O, N and total mass across GA-001
+and across the whole plant (the energy balances follow in the next commit).
+
+Ground rules this module keeps (task "Mass and energy closure audit"):
+  * It MEASURES. It never changes a model equation, adds a balancing term, a
+    closing factor or an unexplained constant. A residual is a finding.
+  * No Streamlit, no database, no network, no engine edit. It only reads the
+    snapshot (and, for the lagged recycle, the PREVIOUS cycle's snapshot) and
+    calls public, side-effect-free helpers of the existing models.
+  * Every number is read from the snapshot, read from the repo (file:line in the
+    term's `source`), derived from the standard constants named below, or marked
+    Assumed with a range. Whatever cannot be determined is a Missing term: it is
+    LISTED, never treated as zero.
+
+A "term" is a dict:
+    name, direction ("in"/"out"), species ({species: mol/h} or None when Missing),
+    ash_kg_h, mass_kg_h, status (one of plant_status' five tags), source, note,
+    affects (elements a Missing term would change), blocking (a Missing term the
+    model's own arithmetic needs, so no residual can be computed at all).
+Species may be molecules (H2, CO, CO2, CH4, N2, O2, H2O) or the atomic
+pseudo-species C/H/O/N used for the elemental feed. Moles are the primary unit
+(the engine publishes Nm3/h and mol%); mass is derived with ONE self-consistent
+atomic-mass table (ga001_gasifier_model.M_C/M_H/M_O/M_N) unless the engine itself
+publishes a mass, which is then used as published.
+"""
+import math
+
+from . import cycle_clock
+from . import ga001_gasifier_model as ga001
+from . import gasifier_mass_balance as gmb
+from . import gc_gas_cleaning_chain as gc
+from . import hb_wgs_psa_storage_chain as hbchain
+from . import plant_status as ps
+
+# --- tolerances (audit choices, NOT project specifications) -------------------
+TOL_NUMERICAL = 1e-6    # same order as verify_atom_balance's 1e-8 plus margin: "numerical precision"
+TOL_STATED = 1e-3       # 0.1 % of inflow: "closes to a stated tolerance"
+
+VERDICT_NUMERICAL = "closes to numerical precision (< 1e-6 relative)"
+VERDICT_STATED = "closes to a stated tolerance (< 0.1 % of inflow)"
+VERDICT_NO = "does not close"
+VERDICT_NA = "cannot be evaluated (Missing term)"
+
+ELEMENTS = ("C", "H", "O", "N")
+
+# --- atomic / molecular masses: ONE table, the repo's own atomic masses --------
+ATOMIC_MASS = {"C": ga001.M_C, "H": ga001.M_H, "O": ga001.M_O, "N": ga001.M_N}   # ga001_gasifier_model.py:161-164
+FORMULA = {
+    "C": {"C": 1}, "H": {"H": 1}, "O": {"O": 1}, "N": {"N": 1},
+    "H2": {"H": 2}, "O2": {"O": 2}, "N2": {"N": 2}, "CO": {"C": 1, "O": 1}, "CO2": {"C": 1, "O": 2},
+    "CH4": {"C": 1, "H": 4}, "H2O": {"H": 2, "O": 1},
+}
+M_H2O_ENGINE = ga001.M_H2O      # 18.015 (ga001_gasifier_model.py:165); atomic sum is 18.016 -- see audit finding F-M1
+M_H2_ENGINE = hbchain.M_H2      # 2.016 (hb_wgs_psa_storage_chain.py:93)
+NM3_PER_MOL = ga001.NM3_PER_MOL  # 0.022414 (ga001_gasifier_model.py:172)
+
+
+def molar_mass(species):
+    """g/mol from the single atomic-mass table above."""
+    return sum(ATOMIC_MASS[e] * n for e, n in FORMULA[species].items())
+
+
+# --- standard thermochemical constants (named; 25 degC, 1 bar, ideal gas) ------
+# Standard enthalpies of formation, kJ/mol (NIST-JANAF / CRC standard values).
+HF_KJ_MOL = {"H2": 0.0, "N2": 0.0, "O2": 0.0, "C": 0.0,           # elements in their standard state (C = graphite)
+             "CO": -110.525, "CO2": -393.509, "CH4": -74.873,
+             "H2O_g": -241.826, "H2O_l": -285.830}
+# Lower heating values derived from them (products CO2(g) + H2O(g)): kJ/mol
+LHV_KJ_MOL = {
+    "H2": -HF_KJ_MOL["H2O_g"],
+    "CO": HF_KJ_MOL["CO"] - HF_KJ_MOL["CO2"],
+    "CH4": HF_KJ_MOL["CH4"] - (HF_KJ_MOL["CO2"] + 2.0 * HF_KJ_MOL["H2O_g"]),
+    "C": -HF_KJ_MOL["CO2"],
+}
+DH_VAP_KJ_MOL = HF_KJ_MOL["H2O_g"] - HF_KJ_MOL["H2O_l"]    # 44.004 kJ/mol at 25 degC
+T_REF_C = 25.0
+CP_J_MOLK = dict(gc.CP_MEAN_J_MOLK)                          # gc_gas_cleaning_chain.py:106 (mean 300-1200 K)
+CP_J_MOLK_O2_NOTE = "O2 uses the N2 mean cp (same diatomic, within a few %): Estimated"
+CP_J_MOLK["O2"] = CP_J_MOLK["N2"]
+CP_LIQUID_WATER_J_MOLK = hbchain.CP_WATER_KJ_KGK * M_H2O_ENGINE   # hb_wgs_psa_storage_chain.py:94 x 18.015 g/mol
+KW_PER_KJ_H = 1.0 / 3600.0
+
+# --- registry static values used as stream temperatures (data/equipment_registry.json) ---
+GA004_AIR_PREHEAT_C = 200.0          # GA-004 "Air preheat temperature" (registry, Confirmed static design value)
+GA004_STEAM_C = 350.0                # GA-004 "Steam temperature (design)"
+FE005_DRYER_OPERATING_C = 100.0      # FE-005 "Operating temperature"
+GC004_QUENCH_OUT_C = 65.0            # gc_gas_cleaning_chain.py:295
+GA008_OPERATING_C = 180.0            # GA-008 "Operating temperature"
+
+# Solids sensible heat: no cp for ash/char exists anywhere in the repo -> Assumed with a range.
+SOLIDS_CP_KJ_KGK = (1.0, 0.8, 1.4)   # (point, low, high) Assumed, ash/char mean cp; NOT from the repo
+
+
+class AuditInputMissing(Exception):
+    """A snapshot entry the audit needs is absent or Missing."""
+
+
+# =============================================================================
+# snapshot access
+# =============================================================================
+
+def _entry(snapshot, key):
+    e = snapshot.get(key)
+    if e is None or e["status"] == ps.STATUS_MISSING:
+        return None
+    return e
+
+
+def _val(snapshot, key, required=True):
+    e = _entry(snapshot, key)
+    if e is None:
+        if required:
+            raise AuditInputMissing(key)
+        return None
+    return e["value"]
+
+
+# =============================================================================
+# terms and the generic closure
+# =============================================================================
+
+def make_term(name, direction, species=None, ash_kg_h=0.0, mass_kg_h=None, status=ps.STATUS_CALCULATED,
+              source="", note="", affects=ELEMENTS, blocking=False):
+    """One stream. species=None => a Missing term (value unknown, never zero)."""
+    if direction not in ("in", "out"):
+        raise ValueError(direction)
+    if species is not None:
+        species = {sp: float(n) for sp, n in species.items()}
+    t = {"name": name, "direction": direction, "species": species, "ash_kg_h": float(ash_kg_h),
+         "status": status, "source": source, "note": note, "affects": tuple(affects), "blocking": bool(blocking),
+         "mass_published": mass_kg_h is not None}
+    if species is None:
+        t["mass_kg_h"] = None
+        t["status"] = ps.STATUS_MISSING
+    elif mass_kg_h is not None:
+        t["mass_kg_h"] = float(mass_kg_h)
+    else:
+        t["mass_kg_h"] = sum(n * molar_mass(sp) for sp, n in species.items()) / 1000.0 + float(ash_kg_h)
+    return t
+
+
+def element_moles(term, element):
+    if term["species"] is None:
+        return 0.0
+    return sum(n * FORMULA[sp].get(element, 0) for sp, n in term["species"].items())
+
+
+def classify(rel):
+    """rel = |residual| / inflow."""
+    r = abs(rel)
+    if r < TOL_NUMERICAL:
+        return VERDICT_NUMERICAL
+    if r < TOL_STATED:
+        return VERDICT_STATED
+    return VERDICT_NO
+
+
+def closure(terms, elements=ELEMENTS):
+    """Element balances (mol/h and kg/h), ash, and total mass for a list of terms.
+
+    Missing terms are never summed: they are returned in `missing_terms`, and an element/mass row they affect is flagged
+    `complete=False`. A BLOCKING Missing term makes the affected rows `cannot be evaluated`."""
+    missing = [t for t in terms if t["species"] is None]
+    blocking = [t for t in missing if t["blocking"]]
+    rows = {}
+    for el in elements:
+        i = sum(element_moles(t, el) for t in terms if t["direction"] == "in")
+        o = sum(element_moles(t, el) for t in terms if t["direction"] == "out")
+        m = ATOMIC_MASS[el] / 1000.0
+        res = i - o
+        rel = res / i if i else float("nan")
+        aff = [t["name"] for t in missing if el in t["affects"]]
+        blk = [t["name"] for t in blocking if el in t["affects"]]
+        rows[el] = {"in_mol_h": i, "out_mol_h": o, "residual_mol_h": res, "in_kg_h": i * m, "out_kg_h": o * m, "residual_kg_h": res * m,
+                    "rel": rel, "rel_pct": 100.0 * rel, "missing_terms": aff, "complete": not aff,
+                    "verdict": VERDICT_NA if blk or not i else classify(rel)}
+    ash_in = sum(t["ash_kg_h"] for t in terms if t["direction"] == "in")
+    ash_out = sum(t["ash_kg_h"] for t in terms if t["direction"] == "out")
+    rows["ash"] = {"in_kg_h": ash_in, "out_kg_h": ash_out, "residual_kg_h": ash_in - ash_out,
+                   "rel": (ash_in - ash_out) / ash_in if ash_in else float("nan"), "missing_terms": [], "complete": True,
+                   "verdict": classify((ash_in - ash_out) / ash_in) if ash_in else VERDICT_NA}
+    rows["ash"]["rel_pct"] = 100.0 * rows["ash"]["rel"]
+    m_in = sum(t["mass_kg_h"] for t in terms if t["direction"] == "in" and t["species"] is not None)
+    m_out = sum(t["mass_kg_h"] for t in terms if t["direction"] == "out" and t["species"] is not None)
+    res = m_in - m_out
+    rel = res / m_in if m_in else float("nan")
+    rows["mass"] = {"in_kg_h": m_in, "out_kg_h": m_out, "residual_kg_h": res, "rel": rel, "rel_pct": 100.0 * rel,
+                    "missing_terms": [t["name"] for t in missing], "complete": not missing,
+                    "verdict": VERDICT_NA if blocking or not m_in else classify(rel)}
+    return {"rows": rows, "missing_terms": [t["name"] for t in missing], "terms": terms}
+
+
+# =============================================================================
+# GA-001 control volume
+# =============================================================================
+
+def _recycle(snapshot, previous_snapshot):
+    """The tail-gas atoms GA-001 actually used THIS cycle: the PREVIOUS cycle's HB-009 TailGas H2/CO/CH4
+    (ga001_gasifier_model.py:660-694, lagged read). Returns (species_mol_h | None, label, status)."""
+    out = _val(snapshot, ("GA-001", "Outputs"))
+    if not out["recycle_active"]:
+        return {}, "none (first cycle: no previous tail gas)", ps.STATUS_CALCULATED
+    if previous_snapshot is None:
+        return None, "recycle is active but the previous cycle's snapshot was not supplied", ps.STATUS_MISSING
+    tail = _val(previous_snapshot, ("HB-009", "TailGas"))
+    sp = {s: float(tail["species_nm3_h"][s]) / NM3_PER_MOL for s in ("H2", "CO", "CH4")}
+    return sp, "previous cycle's HB-009 tail gas (H2, CO, CH4; CO2 and N2 are not recycled, ga001_gasifier_model.py:654-657)", ps.STATUS_CALCULATED
+
+
+def ga001_inputs(snapshot, previous_snapshot=None):
+    """Every GA-001 input from the snapshot (ga001_gasifier_model.py:740-746) plus FE-005's residual moisture (:711-715).
+
+    GA-001 reads FE-005 LAGGED (one cycle old) and only adds the moisture when FE-005 already existed: the published
+    GA-001 'inputs' list names FE-005 exactly when it did (ga001:820). On cycle 1 it did not, and the dry feed rate is the
+    41.67 kg/h placeholder (ga001:418-435), so the audit reads no moisture there."""
+    g = {k: _val(snapshot, ("GA-001-INPUT", k)) for k in ("dry_feed_rate_kg_h", "equivalence_ratio", "steam_to_feed_ratio",
+                                                          "carbon_conversion_efficiency", "ch4_carbon_fraction",
+                                                          "feedstock_composition", "operating_temperature_C")}
+    g["dry_feed_rate_kg_h"] = float(g["dry_feed_rate_kg_h"])
+    used = ("FE-005", "MoistureBalance") in [tuple(k) for k in snapshot[("GA-001", "Outputs")]["source"]["inputs"]]
+    g["moisture_lag_note"] = "none (FE-005 did not exist when GA-001 ran)"
+    g["residual_water_kg_h"] = 0.0
+    if used:
+        src = previous_snapshot if previous_snapshot is not None else snapshot
+        g["residual_water_kg_h"] = float(_val(src, ("FE-005", "MoistureBalance"))["residual_water_kg_h"])
+        g["moisture_lag_note"] = ("previous cycle's FE-005 (lagged, as GA-001 read it)" if previous_snapshot is not None
+                                  else "current-cycle FE-005 (previous snapshot not supplied; identical unless the feed changed)")
+    return g
+
+
+def feed_atoms_mol_h(inp):
+    """Elemental feed, re-derived from the mass fractions (independent of ga001.elemental_atomic_ratios)."""
+    a = ga001.ASH_FRACTION
+    comp, f = inp["feedstock_composition"], inp["dry_feed_rate_kg_h"]
+    return {el: (1.0 - a) * comp[el] * f * 1000.0 / ATOMIC_MASS[el] for el in ELEMENTS}
+
+
+def gas_species_mol_h(out):
+    """GA-001 Outputs -> mol/h per species (wet): dry species from dry_flow x mol%, H2O from wet - dry."""
+    dry, wet = out["dry_flow_nm3_h"], out["wet_flow_nm3_h"]
+    sp = {s: float(dry * out[f"{s}_mol_pct_dry"] / 100.0 / NM3_PER_MOL) for s in ("H2", "CO", "CO2", "CH4", "N2")}
+    sp["H2O"] = float((wet - dry) / NM3_PER_MOL)
+    return sp
+
+
+def ga001_terms(snapshot, previous_snapshot=None):
+    """Terms for the GA-001 control volume with the recycle counted as an EXTERNAL feed."""
+    inp = ga001_inputs(snapshot, previous_snapshot)
+    out = _val(snapshot, ("GA-001", "Outputs"))
+    f = inp["dry_feed_rate_kg_h"]
+    feed = feed_atoms_mol_h(inp)
+    rec, rec_label, rec_status = _recycle(snapshot, previous_snapshot)
+    rec_atoms = {el: 0.0 for el in ELEMENTS}
+    if rec:
+        for s, n in rec.items():
+            for el, k in FORMULA[s].items():
+                rec_atoms[el] += n * k
+    c_tot, h_tot, o_tot = feed["C"] + rec_atoms["C"], feed["H"] + rec_atoms["H"], feed["O"] + rec_atoms["O"]
+    o2_air = inp["equivalence_ratio"] * (c_tot + h_tot / 4.0 - o_tot / 2.0)    # er x (1 + x/4 - y/2) x C_total, ga001:253-258,299-300
+    n2_air = o2_air * (0.79 / 0.21)                                              # ga001_gasifier_model.py:301
+    steam = inp["steam_to_feed_ratio"] * f * 1000.0 / M_H2O_ENGINE               # ga001_gasifier_model.py:752
+    moist = inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE                   # ga001_gasifier_model.py:715
+    byp = gmb.byproduct_mass_flows(f)                                            # gasifier_mass_balance.py:65-71
+
+    terms = [
+        make_term("dry feed (C,H,O,N + ash)", "in", feed, ash_kg_h=ga001.ASH_FRACTION * f, status=ps.STATUS_ASSUMED,
+                  source="GA-001-INPUT dry_feed_rate_kg_h (Calculated, FE-005) x feedstock_composition (Assumed, ga001:193-196); ash 10 % (gasifier_mass_balance.py:61, GA-005)",
+                  note="composition is the literature stand-in, not DOK-ING data"),
+        make_term("residual moisture in dry feed", "in", {"H2O": moist}, status=ps.STATUS_CALCULATED,
+                  source="FE-005 MoistureBalance.residual_water_kg_h (fe_feed_handling.py:290), folded in at ga001:761-763"),
+        make_term("air O2", "in", {"O2": o2_air}, status=ps.STATUS_CALCULATED,
+                  source="ER x stoichiometric O2 on the recycle-augmented fuel (ga001:299-300, :776-778); ER Assumed 0.25",
+                  note="not a published stream: re-derived with the model's own formula"),
+        make_term("air N2", "in", {"N2": n2_air}, status=ps.STATUS_CALCULATED,
+                  source="O2 x 0.79/0.21 (ga001:301); argon and CO2 in air ignored by the model"),
+        make_term("gasifier steam", "in", {"H2O": steam}, status=ps.STATUS_ASSUMED,
+                  source="steam_to_feed_ratio 0.4 kg/kg (Assumed, ga001:458-480) x dry feed; GA-003 registry 15 kg/h"),
+    ]
+    if rec is None:
+        terms.append(make_term("tail-gas recycle (HB-009)", "in", None, status=ps.STATUS_MISSING, source=rec_label,
+                               affects=("C", "H", "O"), blocking=True))
+    else:
+        terms.append(make_term("tail-gas recycle (HB-009)", "in", rec, status=rec_status, source=rec_label, note="external feed to this control volume"))
+    terms += [
+        make_term("product gas (wet)", "out", gas_species_mol_h(out), status=ps.STATUS_CALCULATED,
+                  source="GA-001 Outputs dry_flow_nm3_h x mol% and (wet - dry) water (ga001:793-803)"),
+        make_term("ash", "out", {}, ash_kg_h=byp["ash_kg_h"], mass_kg_h=byp["ash_kg_h"], status=ps.STATUS_ASSUMED,
+                  source="ASH_FRACTION x dry feed, gasifier_mass_balance.py:65-71 (GA-005 'Ash discharge rate 10 % of feed')"),
+        make_term("carbon black (taken as pure C)", "out", {"C": byp["carbon_black_kg_h"] * 1000.0 / ATOMIC_MASS["C"]}, status=ps.STATUS_ASSUMED,
+                  source="CARBON_BLACK_FRACTION 5 % x dry feed (gasifier_mass_balance.py:62, derived from GA-008 1.88 kg/h / 37.5 kg/h); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%')"),
+        make_term("tar", "out", None, affects=("C", "H", "O"), source="GA-001 'Tar content' is permanently Missing (ga001_gasifier_model.py:842-857)"),
+        make_term("sulfur, chlorine, argon and trace species", "out", None, affects=(), source="no S/Cl/Ar in the feed composition (ga001:193-196); GC-008/GC-009 inlets are fixed ppm (Assumed), not tied to the feed"),
+    ]
+    return {"terms": terms, "inputs": inp, "recycle": rec, "recycle_label": rec_label, "feed_atoms": feed,
+            "recycle_atoms": rec_atoms, "air_o2_mol_h": o2_air, "air_n2_mol_h": n2_air}
+
+
+def ga001_carbon_detail(snapshot, previous_snapshot=None):
+    """Where the carbon that does not leave in the gas goes: the model's implied unconverted carbon, (1 - conversion) x total C
+    (ga001_gasifier_model.py:303), against the carbon-black stream the byproduct module reports (5 % of dry feed)."""
+    d = ga001_terms(snapshot, previous_snapshot)
+    inp, rec = d["inputs"], d["recycle_atoms"]
+    c_tot = d["feed_atoms"]["C"] + rec["C"]
+    conv = inp["carbon_conversion_efficiency"]
+    out = _val(snapshot, ("GA-001", "Outputs"))
+    gas = gas_species_mol_h(out)
+    c_gas = gas["CO"] + gas["CO2"] + gas["CH4"]
+    implied_unconverted = (1.0 - conv) * c_tot
+    cb = gmb.byproduct_mass_flows(inp["dry_feed_rate_kg_h"])["carbon_black_kg_h"] * 1000.0 / ATOMIC_MASS["C"]
+    k = ATOMIC_MASS["C"] / 1000.0
+    return {"C_total_mol_h": c_tot, "C_in_gas_mol_h": c_gas, "C_not_in_gas_mol_h": c_tot - c_gas,
+            "implied_unconverted_C_mol_h": implied_unconverted, "carbon_black_C_mol_h": cb,
+            "unassigned_C_mol_h": implied_unconverted - cb,
+            "C_total_kg_h": c_tot * k, "C_in_gas_kg_h": c_gas * k, "C_not_in_gas_kg_h": (c_tot - c_gas) * k,
+            "implied_unconverted_C_kg_h": implied_unconverted * k, "carbon_black_C_kg_h": cb * k,
+            "unassigned_C_kg_h": (implied_unconverted - cb) * k,
+            "unconverted_share_of_recycle_C_kg_h": (1.0 - conv) * rec["C"] * k}
+
+
+def ga001_recycle_cross_check(snapshot, previous_snapshot=None):
+    """Independent check of the recycle the audit read from the previous cycle: back out the total carbon GA-001 must have
+    seen from its OWN published gas (C_gas / conversion) and compare. Differences point at a publication/lag problem."""
+    d = ga001_terms(snapshot, previous_snapshot)
+    if d["recycle"] is None:
+        return None
+    conv = d["inputs"]["carbon_conversion_efficiency"]
+    gas = gas_species_mol_h(_val(snapshot, ("GA-001", "Outputs")))
+    c_tot_implied = (gas["CO"] + gas["CO2"] + gas["CH4"]) / conv
+    c_tot_read = d["feed_atoms"]["C"] + d["recycle_atoms"]["C"]
+    return {"C_total_implied_by_published_gas_mol_h": c_tot_implied, "C_total_from_feed_plus_read_recycle_mol_h": c_tot_read,
+            "rel_diff": (c_tot_implied - c_tot_read) / c_tot_read if c_tot_read else float("nan")}
+
+
+def ga001_balance(snapshot, previous_snapshot=None):
+    return closure(ga001_terms(snapshot, previous_snapshot)["terms"])
+
+
+def atom_balance_like_verify(snapshot, previous_snapshot=None):
+    """The GA-001 H and O residuals expressed the way ga001.verify_atom_balance reports them (per mol of total fuel C,
+    tolerance 1e-8 x max(1, target)), so D1(a) uses the SAME tolerance rule. Returns (ok, detail)."""
+    d = ga001_terms(snapshot, previous_snapshot)
+    inp = d["inputs"]
+    out = _val(snapshot, ("GA-001", "Outputs"))
+    c_tot = d["feed_atoms"]["C"] + d["recycle_atoms"]["C"]
+    h_f, o_f = d["feed_atoms"]["H"] + d["recycle_atoms"]["H"], d["feed_atoms"]["O"] + d["recycle_atoms"]["O"]
+    x, y, z = h_f / c_tot, o_f / c_tot, d["feed_atoms"]["N"] / c_tot
+    steam_per_c = (inp["steam_to_feed_ratio"] * inp["dry_feed_rate_kg_h"] * 1000.0 / M_H2O_ENGINE + inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE) / c_tot
+    gas = {s: n / c_tot for s, n in gas_species_mol_h(out).items()}
+    return ga001.verify_atom_balance(x, y, z, inp["equivalence_ratio"], steam_per_c, gas)
+
+
+# =============================================================================
+# whole plant / gasification-loop control volumes
+# =============================================================================
+
+def _kg_to_mol_water(kg_h):
+    return kg_h * 1000.0 / M_H2O_ENGINE
+
+
+def plant_terms(snapshot, previous_snapshot=None, scope="plant"):
+    """Terms for the whole-plant control volume (scope='plant': wet MSW in, dryer, electrolyser included) or for the
+    gasification loop (scope='loop': dry feed in; GA-001 + gas cleaning + WGS + PSA + HB-009 tail-gas recycle, with the
+    recycle INSIDE the volume, so it is neither an input nor an output).
+
+    The recycle is lagged one cycle (ga001:660-694), so the loop holds a small inventory in transit: this cycle's HB-009 tail
+    gas minus the tail gas GA-001 read. It appears as an explicit `accumulation` OUT term (zero once the loop has converged)."""
+    ga = ga001_terms(snapshot, previous_snapshot)
+    inp = ga["inputs"]
+    f = inp["dry_feed_rate_kg_h"]
+    a = ga001.ASH_FRACTION
+    byp = gmb.byproduct_mass_flows(f)
+    wgs = _val(snapshot, ("WGS", "Composition"))
+    gc013 = _val(snapshot, ("GC-013", "Gas"))
+    tail = _val(snapshot, ("HB-009", "TailGas"))
+    hb005 = _val(snapshot, ("HB-005", "Steam"))
+    comp = inp["feedstock_composition"]
+    terms = []
+
+    if scope == "plant":
+        wet = float(_val(snapshot, ("FE-003", "Weighing"))["confirmed_wet_feed_kg_h"])
+        fe5 = _val(snapshot, ("FE-005", "MoistureBalance"))
+        dry_fe = float(fe5["dry_solids_kg_h"])
+        atoms = {el: (1.0 - a) * comp[el] * dry_fe * 1000.0 / ATOMIC_MASS[el] for el in ELEMENTS}
+        terms.append(make_term("MSW dry solids (FE-005 outlet)", "in", atoms, ash_kg_h=a * dry_fe, mass_kg_h=dry_fe, status=ps.STATUS_ASSUMED,
+                               source="FE-003 confirmed wet feed x (1 - 10 % moisture) (fe_feed_handling.py:288); composition Assumed (ga001:193-196)"))
+        terms.append(make_term("MSW moisture (10 % of wet feed)", "in", {"H2O": _kg_to_mol_water(wet - dry_fe)}, mass_kg_h=wet - dry_fe,
+                               status=ps.STATUS_CALCULATED, source="FE-003 wet feed - FE-005 dry solids (fe_feed_handling.py:288); 10 % is FE-005's design inlet moisture"))
+        terms.append(make_term("dryer vapour (FE-005)", "out", {"H2O": _kg_to_mol_water(float(fe5["water_evaporated_kg_h"]))},
+                               mass_kg_h=float(fe5["water_evaporated_kg_h"]), source="FE-005 water_evaporated_kg_h (fe_feed_handling.py:291)"))
+    else:
+        terms.append(ga["terms"][0])                       # dry feed as GA-001 receives it
+        terms.append(ga["terms"][1])                       # residual moisture
+
+    by_name = {t["name"]: t for t in ga["terms"]}
+    terms.append(by_name["air O2"])
+    terms.append(by_name["air N2"])
+    terms.append(by_name["gasifier steam"])
+    terms.append(make_term("WGS steam (HB-005)", "in", {"H2O": _kg_to_mol_water(float(hb005["steam_kg_h"]))}, mass_kg_h=float(hb005["steam_kg_h"]),
+                           status=ps.STATUS_CALCULATED, source="HB-005 Steam.steam_kg_h = 4 x CO mol/h (hb_wgs_psa_storage_chain.py:187-189)",
+                           note="where this steam comes from (boiler fuel, feedwater make-up) is not modelled"))
+    if scope == "plant":
+        hb011 = _val(snapshot, ("HB-011", "Electrolyser"))
+        water_kg = float(hb011["water_l_h"])            # 1 L/Nm3 (hb_remaining_chain.py:170,307), 1 kg/L Assumed
+        n_h2 = float(hb011["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
+        terms.append(make_term("electrolyser feed water (HB-011)", "in", {"H2O": _kg_to_mol_water(water_kg)}, mass_kg_h=water_kg, status=ps.STATUS_CALCULATED,
+                               source="HB-011 water_l_h (hb_remaining_chain.py:307), 1 kg/L assumed"))
+        terms.append(make_term("electrolyser H2 (HB-011)", "out", {"H2": n_h2}, mass_kg_h=float(hb011["h2_kg_h"]), source="HB-011 h2_kg_h"))
+        terms.append(make_term("electrolyser O2 (stoichiometric, not published)", "out", {"O2": n_h2 / 2.0}, status=ps.STATUS_CALCULATED,
+                               source="audit: 2 H2O -> 2 H2 + O2; the engine publishes no O2 stream"))
+
+    terms.append(make_term("ash", "out", {}, ash_kg_h=byp["ash_kg_h"], mass_kg_h=byp["ash_kg_h"], status=ps.STATUS_ASSUMED, source=by_name["ash"]["source"]))
+    terms.append(by_name["carbon black (taken as pure C)"])
+    cond_kg = float(_val(snapshot, ("GC-004", "Condensed water"))) * 1000.0
+    terms.append(make_term("quench condensate (GC-004)", "out", {"H2O": _kg_to_mol_water(cond_kg)}, mass_kg_h=cond_kg, source="GC-004 'Condensed water' m3/h x 1000 kg/m3 (gc_gas_cleaning_chain.py:265-268)"))
+    n_wgs_h2o = float(wgs["H2O"]) * float(gc013["dry_flow_nm3_h"]) / NM3_PER_MOL
+    terms.append(make_term("WGS unreacted steam (knocked out, no equipment)", "out", {"H2O": n_wgs_h2o}, status=ps.STATUS_CALCULATED,
+                           source="WGS Composition.H2O x GC-013 dry flow (hb_wgs_psa_storage_chain.py:262-270)",
+                           note="the engine has no condensate stream or unit for this water"))
+    sp = tail["species_nm3_h"]
+    terms.append(make_term("tail-gas CO2 + N2 to flare/vent (HB-009 -> EU-007)", "out", {"CO2": float(sp["CO2"]) / NM3_PER_MOL, "N2": float(sp["N2"]) / NM3_PER_MOL},
+                           source="HB-009 TailGas.species_nm3_h; EU-007 inert_in (eu_utilities_chp.py:485)"))
+    h2_prod = float(_val(snapshot, ("HB-012", "Compressor"))["h2_kg_h"])
+    terms.append(make_term("H2 product to storage (HB-012)", "out", {"H2": h2_prod * 1000.0 / M_H2_ENGINE}, mass_kg_h=h2_prod,
+                           source="HB-012 h2_kg_h (hb_wgs_psa_storage_chain.py:467); PSA product taken as 100 % H2 (HB-009 docstring)"))
+
+    # recycle inside the volume: the tail-gas H2/CO/CH4 produced this cycle minus what GA-001 read (one cycle old) = inventory in transit
+    if ga["recycle"] is None:
+        terms.append(make_term("recycle inventory in transit (lag)", "out", None, affects=("C", "H", "O"), blocking=True, source=ga["recycle_label"]))
+    else:
+        now = {s: float(sp[s]) / NM3_PER_MOL for s in ("H2", "CO", "CH4")}
+        used = {s: ga["recycle"].get(s, 0.0) for s in now}
+        terms.append(make_term("recycle inventory in transit (lag)", "out", {s: now[s] - used[s] for s in now}, status=ps.STATUS_CALCULATED,
+                               source="HB-009 tail gas this cycle - tail gas GA-001 read (lagged, ga001:660-694); zero when the loop has converged",
+                               note="stored, not lost: the recycle is read one cycle late"))
+    terms.append(make_term("tar", "out", None, affects=("C", "H", "O"), source="GA-001 'Tar content' Missing (ga001_gasifier_model.py:842-857)"))
+    terms.append(make_term("dust / fly ash, S and Cl species, argon", "out", None, affects=(),
+                           source="GC-001 Dust Missing; GC-003 2 g/Nm3 and GC-008/009 ppm are fixed registry values, not tied to the feed"))
+    terms.append(make_term("quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation)", "out", None, affects=(),
+                           source="GC-005/007/008/009 blowdowns (Assumed m3/h) have no make-up stream; EU-008 evaporation not modelled"))
+    terms.append(make_term("PSA product impurities (purity 99.97 % taken as 100 %)", "out", None, affects=("C", "H", "O", "N"),
+                           source="HB-006 purity is a design target only (tab1_integration.py:159-165)"))
+    terms.append(make_term("FE-002 tramp metal reject", "out", None, affects=(), source="FE-002 TrampMetalReject Missing (fe_feed_handling.py:194)"))
+    terms.append(make_term("membrane (HB-010) and LOHC (HB-014..017) branches", "out", None, affects=(),
+                           source="HB-010 separation, HB-014/016/017 mass balances and HB-015 inventory are Missing"))
+    return {"terms": terms, "ga001": ga}
+
+
+def plant_balance(snapshot, previous_snapshot=None, scope="plant"):
+    return closure(plant_terms(snapshot, previous_snapshot, scope)["terms"])
+
+
+def fe_clipped_surplus_kg_h(snapshot):
+    """Mass delivered by FE-001/002 but not accepted by FE-003's 29-50 kg/h window (fe_feed_handling.py:221-224: 'this simplified chain does not model where the surplus goes')."""
+    delivered = float(_val(snapshot, ("FE-002", "MassBalance"))["outlet_kg_h"])
+    accepted = float(_val(snapshot, ("FE-003", "Weighing"))["confirmed_wet_feed_kg_h"])
+    return delivered - accepted
+
+
+def storage_inventory_check(snapshot, previous_snapshot):
+    """HB-013 H2 inventory: level(n) should be level(n-1) + (inflow - outflow) x dt. The clamp to [0, 50] kg
+    (hb_wgs_psa_storage_chain.py:537) creates H2 when the store would go below zero and destroys it above capacity."""
+    st = _val(snapshot, ("HB-013", "Storage"))
+    prev = _val(previous_snapshot, ("HB-013", "Storage"))["level_kg"] if previous_snapshot is not None else 0.0
+    dt = cycle_clock.hours_per_cycle()
+    expected = prev + (st["inflow_kg_h"] - st["outflow_kg_h"]) * dt
+    created = st["level_kg"] - expected
+    inflow = st["inflow_kg_h"] * dt
+    return {"previous_level_kg": float(prev), "inflow_kg": float(inflow), "outflow_kg": float(st["outflow_kg_h"] * dt), "level_kg": float(st["level_kg"]),
+            "expected_level_without_clamp_kg": float(expected), "h2_created_by_clamp_kg": float(created),
+            "rel_of_inflow": float(created / inflow) if inflow else float("nan"),
+            "verdict": classify(created / inflow) if inflow else VERDICT_NA}
+
+
+# =============================================================================
+# explaining the residuals from the code (an identity, not a gate)
+# =============================================================================
+
+def explain_carbon_residual(snapshot, previous_snapshot=None):
+    """The GA-001 carbon residual is exactly  (1 - conversion) x (C_feed + C_recycle)  -  carbon_black,  because
+    ga001_gasifier_model.py:303 sends only `conversion` of the carbon to the gas (the rest has no stream) while the carbon-black
+    stream is an independent 5 % of dry feed (gasifier_mass_balance.py:62). Returns the identity's two sides (kg/h)."""
+    d = ga001_terms(snapshot, previous_snapshot)
+    inp = d["inputs"]
+    k = ATOMIC_MASS["C"] / 1000.0
+    conv = inp["carbon_conversion_efficiency"]
+    c_feed, c_rec = d["feed_atoms"]["C"], d["recycle_atoms"]["C"]
+    cb_kg = gmb.byproduct_mass_flows(inp["dry_feed_rate_kg_h"])["carbon_black_kg_h"]
+    predicted = (1.0 - conv) * (c_feed + c_rec) * k - cb_kg
+    measured = closure(d["terms"])["rows"]["C"]["residual_kg_h"]
+    # the conversion at which a FEED-ONLY (no recycle) carbon balance would match the carbon-black stream exactly
+    conv_matching_cb = 1.0 - cb_kg / (c_feed * k) if c_feed else float("nan")
+    return {"measured_kg_h": measured, "predicted_kg_h": predicted, "difference_kg_h": measured - predicted,
+            "unconverted_from_feed_kg_h": (1.0 - conv) * c_feed * k, "unconverted_from_recycle_kg_h": (1.0 - conv) * c_rec * k,
+            "carbon_black_kg_h": cb_kg, "conversion_used": conv, "conversion_that_would_match_carbon_black_feed_only": conv_matching_cb}
+
+
+def explain_plant_mass_residual(snapshot, previous_snapshot=None):
+    """Decomposes the whole-plant total-mass residual into causes that can be read from the code:
+       mass residual = (C + H + O + N residuals in kg, from the exact mole balances) + (published-mass basis effect)
+       1. carbon: see explain_carbon_residual;
+       2. the electrolyser's water: HB-011 draws 1 L/Nm3 (hb_remaining_chain.py:170,307) but 2 H2O -> 2 H2 + O2 needs 0.80 L/Nm3, and the
+          engine publishes no stream for the excess (H residual 2e, O residual e, with e = water mol/h - H2 mol/h);
+       3. the water molar-mass basis: the engine converts water with 18.015 (ga001_gasifier_model.py:165) while the atomic masses give 18.016, so a
+          term whose mass is the engine's published kg differs from its mole-based mass by ~5.5e-5 of the water (signed sum over such terms)."""
+    pt = plant_terms(snapshot, previous_snapshot, "plant")
+    bal = closure(pt["terms"])
+    r = bal["rows"]
+    hb011 = _val(snapshot, ("HB-011", "Electrolyser"))
+    n_w = float(hb011["water_l_h"]) * 1000.0 / M_H2O_ENGINE
+    n_h2 = float(hb011["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
+    e = n_w - n_h2
+    carbon = explain_carbon_residual(snapshot, previous_snapshot)["predicted_kg_h"]
+    electrolyser_kg = (2.0 * e * ATOMIC_MASS["H"] + e * ATOMIC_MASS["O"]) / 1000.0
+    basis = 0.0
+    for t in pt["terms"]:
+        if t["species"] is not None and t["mass_published"]:
+            mol_based = sum(n * molar_mass(sp) for sp, n in t["species"].items()) / 1000.0 + t["ash_kg_h"]
+            basis += (1.0 if t["direction"] == "in" else -1.0) * (t["mass_kg_h"] - mol_based)
+    measured = r["mass"]["residual_kg_h"]
+    return {"electrolyser_excess_water_mol_h": e, "H_residual_expected_kg_h": 2.0 * e * ATOMIC_MASS["H"] / 1000.0, "H_residual_measured_kg_h": r["H"]["residual_kg_h"],
+            "O_residual_expected_kg_h": e * ATOMIC_MASS["O"] / 1000.0, "O_residual_measured_kg_h": r["O"]["residual_kg_h"],
+            "mass_residual_measured_kg_h": measured, "carbon_part_kg_h": carbon, "electrolyser_part_kg_h": electrolyser_kg,
+            "water_molar_mass_basis_kg_h": basis, "mass_unexplained_kg_h": measured - carbon - electrolyser_kg - basis}
+
+
+# =============================================================================
+# one call for everything
+# =============================================================================
+
+def audit_snapshot(snapshot, previous_snapshot=None, kpis=None):
+    """All mass balances and the storage check for one published snapshot (the energy balances are added with the energy section; `kpis` is unused here).
+    `previous_snapshot` is the snapshot of the cycle before (needed for the lagged recycle; build_live_snapshot(n_cycles=N-1))."""
+    out = {"missing_inputs": []}
+    try:
+        out["ga001"] = ga001_balance(snapshot, previous_snapshot)
+        out["ga001_carbon"] = ga001_carbon_detail(snapshot, previous_snapshot)
+        out["explain_carbon"] = explain_carbon_residual(snapshot, previous_snapshot)
+        out["explain_plant_mass"] = explain_plant_mass_residual(snapshot, previous_snapshot)
+        out["ga001_recycle_cross_check"] = ga001_recycle_cross_check(snapshot, previous_snapshot)
+        out["loop"] = plant_balance(snapshot, previous_snapshot, "loop")
+        out["plant"] = plant_balance(snapshot, previous_snapshot, "plant")
+        out["clipped_surplus_kg_h"] = fe_clipped_surplus_kg_h(snapshot)
+        out["storage"] = storage_inventory_check(snapshot, previous_snapshot)
+    except AuditInputMissing as exc:
+        out["missing_inputs"].append(exc.args[0])
+    return out
