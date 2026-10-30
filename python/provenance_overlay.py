@@ -20,6 +20,8 @@ Python 3.11-compatible.
 """
 import copy
 import csv
+import datetime
+import hashlib
 import json
 import os
 
@@ -176,10 +178,28 @@ def to_overlay(valid_rows):
     return out
 
 
-def write_overlay(overlay, path=DEFAULT_OVERLAY_PATH):
-    """Writes the overlay JSON. Called only by `check_provenance_worksheet.py --write` (not used in phase 1)."""
+OVERLAY_FORMAT = 1
+
+
+def sha256_lf(path):
+    """SHA-256 of a text file with CRLF read as LF, so the value is the same on Windows (autocrlf working tree) and on a Linux checkout of the same commit."""
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def overlay_header(source_path, entries, generated_at=None):
+    """The header kept in data/registry_status_overlay.json: when it was generated, from which file, and that file's SHA-256."""
+    digest = sha256_lf(source_path)
+    stamp = generated_at or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {"format": OVERLAY_FORMAT, "generated_at": stamp, "source_file": os.path.basename(str(source_path)), "source_sha256": digest, "sha256_basis": "file content with LF line endings", "n_entries": len(entries),
+            "meaning": "row_id -> resolved status; DOK-ING->Confirmed (source cited), SIMILAR_PLANT->Estimated (literature-informed), ASSUMED->Assumed, CALCULATED->Calculated; "
+                       "rows absent here are 'Unverified (registry)'"}
+
+
+def write_overlay(overlay, path=DEFAULT_OVERLAY_PATH, header=None):
+    """Writes the overlay JSON ({"header": ..., "entries": {row_id: {...}}}). Called only by `check_provenance_worksheet.py --write`."""
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(overlay, f, ensure_ascii=False, indent=1, sort_keys=True)
+        json.dump({"header": header or {"format": OVERLAY_FORMAT}, "entries": dict(sorted(overlay.items()))}, f, ensure_ascii=False, indent=1)
         f.write("\n")
 
 

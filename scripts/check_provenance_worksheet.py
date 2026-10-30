@@ -61,7 +61,7 @@ def main(argv=None):
             print("NOT written: the worksheet has errors or value conflicts.")
             return 1
         out = argv[argv.index("--out") + 1] if "--out" in argv else po.DEFAULT_OVERLAY_PATH
-        po.write_overlay(overlay, out)
+        po.write_overlay(overlay, out, po.overlay_header(path, overlay))
         print(f"overlay written to {out} ({len(overlay)} entries)")
     return 0 if ok else 1
 
