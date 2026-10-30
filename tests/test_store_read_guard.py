@@ -213,7 +213,7 @@ def test_6_shrink_guard_aborts_and_override_proceeds(driver, seeded_rows, monkey
     code, out = _run(driver, fake, T2)
     assert code == driver.EXIT_SHRINK_GUARD, out
     assert _upserts(fake) == 0 and _writes(fake) == []
-    assert f"store holds {stored} key(s)" in out and "would persist only 80" in out and "First 20 missing" in out
+    assert f"store holds {stored} key(s)" in out and f"would persist only {stored - 38}" in out and "First 20 missing" in out
     assert len(fake.tables[STATE]) == stored
 
     monkeypatch.setenv("HYGAS_ALLOW_SHRINK", "1")
