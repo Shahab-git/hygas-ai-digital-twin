@@ -257,7 +257,18 @@ def gas_species_mol_h(out):
     return sp
 
 
-def ga001_terms(snapshot, previous_snapshot=None):
+def carbon_black_flows(snapshot, dry_feed_kg_h, derived=True):
+    """(carbon black kg/h, remainder kg/h, source text). With the carbon-bookkeeping accounting the carbon black is the DERIVED flow published in
+    ("GA-001","CarbonAccounting") (unconverted carbon x split) and the remainder is the unconverted carbon not taken as carbon black (destination
+    Missing). Without that entry (older snapshots) or with derived=False it is the old 5 % datasheet rule and no remainder."""
+    e = snapshot.get(("GA-001", "CarbonAccounting")) if derived else None
+    if e is not None and e["status"] != ps.STATUS_MISSING:
+        v = e["value"]
+        return float(v["carbon_black_kg_h"]), float(v["remainder_kg_h"]), "derived: unconverted carbon x split, (GA-001, CarbonAccounting)"
+    return float(gmb.byproduct_mass_flows(dry_feed_kg_h)["carbon_black_kg_h"]), 0.0, "5 % datasheet rule (gasifier_mass_balance.py:62)"
+
+
+def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
     """Terms for the GA-001 control volume with the recycle counted as an EXTERNAL feed."""
     inp = ga001_inputs(snapshot, previous_snapshot)
     out = _val(snapshot, ("GA-001", "Outputs"))
@@ -275,6 +286,7 @@ def ga001_terms(snapshot, previous_snapshot=None):
     steam = inp["steam_to_feed_ratio"] * f * 1000.0 / M_H2O_ENGINE               # ga001_gasifier_model.py:752
     moist = inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE                   # ga001_gasifier_model.py:715
     byp = gmb.byproduct_mass_flows(f)                                            # gasifier_mass_balance.py:65-71
+    cb_kg, cb_remainder_kg, cb_source = carbon_black_flows(snapshot, f, derived_carbon_black)
 
     terms = [
         make_term("dry feed (C,H,O,N + ash)", "in", feed, ash_kg_h=ga001.ASH_FRACTION * f, status=ps.STATUS_ASSUMED,
@@ -300,11 +312,14 @@ def ga001_terms(snapshot, previous_snapshot=None):
                   source="GA-001 Outputs dry_flow_nm3_h x mol% and (wet - dry) water (ga001:793-803)"),
         make_term("ash", "out", {}, ash_kg_h=byp["ash_kg_h"], mass_kg_h=byp["ash_kg_h"], status=ps.STATUS_ASSUMED,
                   source="ASH_FRACTION x dry feed, gasifier_mass_balance.py:65-71 (GA-005 'Ash discharge rate 10 % of feed')"),
-        make_term("carbon black (taken as pure C)", "out", {"C": byp["carbon_black_kg_h"] * 1000.0 / ATOMIC_MASS["C"]}, status=ps.STATUS_ASSUMED,
-                  source="CARBON_BLACK_FRACTION 5 % x dry feed (gasifier_mass_balance.py:62, derived from GA-008 1.88 kg/h / 37.5 kg/h); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%')"),
+        make_term("carbon black (taken as pure C)", "out", {"C": cb_kg * 1000.0 / ATOMIC_MASS["C"]}, status=ps.STATUS_ASSUMED,
+                  source=cb_source + "; pure carbon is an audit assumption (GA-008 'product ash < 1 wt%')"),
         make_term("tar", "out", None, affects=("C", "H", "O"), source="GA-001 'Tar content' is permanently Missing (ga001_gasifier_model.py:842-857)"),
         make_term("sulfur, chlorine, argon and trace species", "out", None, affects=(), source="no S/Cl/Ar in the feed composition (ga001:193-196); GC-008/GC-009 inlets are fixed ppm (Assumed), not tied to the feed"),
     ]
+    if cb_remainder_kg:
+        terms.append(make_term("unconverted carbon not taken as carbon black (destination Missing)", "out", {"C": cb_remainder_kg * 1000.0 / ATOMIC_MASS["C"]}, status=ps.STATUS_CALCULATED,
+                               source="(GA-001, CarbonAccounting).remainder_kg_h: unconverted carbon x (1 - split); the bed-drain / cyclone / fly-ash split is Missing"))
     return {"terms": terms, "inputs": inp, "recycle": rec, "recycle_label": rec_label, "feed_atoms": feed,
             "recycle_atoms": rec_atoms, "air_o2_mol_h": o2_air, "air_n2_mol_h": n2_air}
 
@@ -319,8 +334,9 @@ def ga001_carbon_detail(snapshot, previous_snapshot=None):
     out = _val(snapshot, ("GA-001", "Outputs"))
     gas = gas_species_mol_h(out)
     c_gas = gas["CO"] + gas["CO2"] + gas["CH4"]
-    implied_unconverted = (1.0 - conv) * c_tot
-    cb = gmb.byproduct_mass_flows(inp["dry_feed_rate_kg_h"])["carbon_black_kg_h"] * 1000.0 / ATOMIC_MASS["C"]
+    implied_unconverted = ga001.unconverted_carbon_fraction(conv) * c_tot
+    cb_kg_h, rem_kg_h, _src = carbon_black_flows(snapshot, inp["dry_feed_rate_kg_h"])
+    cb = (cb_kg_h + rem_kg_h) * 1000.0 / ATOMIC_MASS["C"]           # every unconverted-carbon stream the engine publishes (derived: all of it)
     k = ATOMIC_MASS["C"] / 1000.0
     return {"C_total_mol_h": c_tot, "C_in_gas_mol_h": c_gas, "C_not_in_gas_mol_h": c_tot - c_gas,
             "implied_unconverted_C_mol_h": implied_unconverted, "carbon_black_C_mol_h": cb,
@@ -360,7 +376,7 @@ def atom_balance_like_verify(snapshot, previous_snapshot=None):
     x, y, z = h_f / c_tot, o_f / c_tot, d["feed_atoms"]["N"] / c_tot
     steam_per_c = (inp["steam_to_feed_ratio"] * inp["dry_feed_rate_kg_h"] * 1000.0 / M_H2O_ENGINE + inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE) / c_tot
     gas = {s: n / c_tot for s, n in gas_species_mol_h(out).items()}
-    return ga001.verify_atom_balance(x, y, z, inp["equivalence_ratio"], steam_per_c, gas)
+    return ga001.verify_atom_balance(x, y, z, inp["equivalence_ratio"], steam_per_c, gas, inp["carbon_conversion_efficiency"])
 
 
 # =============================================================================
@@ -424,6 +440,8 @@ def plant_terms(snapshot, previous_snapshot=None, scope="plant"):
 
     terms.append(make_term("ash", "out", {}, ash_kg_h=byp["ash_kg_h"], mass_kg_h=byp["ash_kg_h"], status=ps.STATUS_ASSUMED, source=by_name["ash"]["source"]))
     terms.append(by_name["carbon black (taken as pure C)"])
+    if "unconverted carbon not taken as carbon black (destination Missing)" in by_name:
+        terms.append(by_name["unconverted carbon not taken as carbon black (destination Missing)"])
     cond_kg = float(_val(snapshot, ("GC-004", "Condensed water"))) * 1000.0
     terms.append(make_term("quench condensate (GC-004)", "out", {"H2O": _kg_to_mol_water(cond_kg)}, mass_kg_h=cond_kg, source="GC-004 'Condensed water' m3/h x 1000 kg/m3 (gc_gas_cleaning_chain.py:265-268)"))
     n_wgs_h2o = float(wgs["H2O"]) * float(gc013["dry_flow_nm3_h"]) / NM3_PER_MOL
@@ -498,22 +516,29 @@ def storage_inventory_check(snapshot, previous_snapshot):
 # =============================================================================
 
 def explain_carbon_residual(snapshot, previous_snapshot=None):
-    """The GA-001 carbon residual is exactly  (1 - conversion) x (C_feed + C_recycle)  -  carbon_black,  because
-    ga001_gasifier_model.py:303 sends only `conversion` of the carbon to the gas (the rest has no stream) while the carbon-black
-    stream is an independent 5 % of dry feed (gasifier_mass_balance.py:62). Returns the identity's two sides (kg/h)."""
+    """The GA-001 carbon residual is exactly  (1 - conversion) x (C_feed + C_recycle)  -  (every unconverted-carbon stream the engine publishes),  because
+    ga001_gasifier_model.py:303 sends only `conversion` of the carbon to the gas. With the carbon-bookkeeping accounting the published streams are the
+    derived carbon black and its remainder, so the identity gives ~0; for snapshots without (GA-001, CarbonAccounting) they are the old 5 % datasheet
+    rule and the identity gives the old +0.138 kg/h. `datasheet_*` is the cross-check against the 5 % rule (it feeds nothing). Returns kg/h."""
     d = ga001_terms(snapshot, previous_snapshot)
     inp = d["inputs"]
     k = ATOMIC_MASS["C"] / 1000.0
     conv = inp["carbon_conversion_efficiency"]
     c_feed, c_rec = d["feed_atoms"]["C"], d["recycle_atoms"]["C"]
-    cb_kg = gmb.byproduct_mass_flows(inp["dry_feed_rate_kg_h"])["carbon_black_kg_h"]
-    predicted = (1.0 - conv) * (c_feed + c_rec) * k - cb_kg
+    cb_kg, rem_kg, source = carbon_black_flows(snapshot, inp["dry_feed_rate_kg_h"])
+    datasheet_kg = float(gmb.byproduct_mass_flows(inp["dry_feed_rate_kg_h"])["carbon_black_kg_h"])
+    frac = ga001.unconverted_carbon_fraction(conv)
+    unconv = frac * (c_feed + c_rec) * k
+    predicted = unconv - cb_kg - rem_kg
     measured = closure(d["terms"])["rows"]["C"]["residual_kg_h"]
-    # the conversion at which a FEED-ONLY (no recycle) carbon balance would match the carbon-black stream exactly
-    conv_matching_cb = 1.0 - cb_kg / (c_feed * k) if c_feed else float("nan")
+    # the conversion at which a FEED-ONLY (no recycle) carbon balance would match the 5 % datasheet rule exactly
+    conv_matching_datasheet = 1.0 - datasheet_kg / (c_feed * k) if c_feed else float("nan")
     return {"measured_kg_h": measured, "predicted_kg_h": predicted, "difference_kg_h": measured - predicted,
-            "unconverted_from_feed_kg_h": (1.0 - conv) * c_feed * k, "unconverted_from_recycle_kg_h": (1.0 - conv) * c_rec * k,
-            "carbon_black_kg_h": cb_kg, "conversion_used": conv, "conversion_that_would_match_carbon_black_feed_only": conv_matching_cb}
+            "unconverted_from_feed_kg_h": frac * c_feed * k, "unconverted_from_recycle_kg_h": frac * c_rec * k,
+            "carbon_black_kg_h": cb_kg, "remainder_kg_h": rem_kg, "carbon_black_source": source, "conversion_used": conv,
+            "datasheet_carbon_black_kg_h": datasheet_kg, "datasheet_minus_derived_kg_h": datasheet_kg - cb_kg,
+            "conversion_that_would_match_the_datasheet_rule_feed_only": conv_matching_datasheet,
+            "conversion_that_would_match_carbon_black_feed_only": conv_matching_datasheet}
 
 
 def explain_plant_mass_residual(snapshot, previous_snapshot=None):
@@ -699,7 +724,7 @@ def plant_energy(snapshot, previous_snapshot, lhv_mj_kg, vent_temp_c=40.0, knock
     tail = _val(snapshot, ("HB-009", "TailGas"))
     cond_kg = float(_val(snapshot, ("GC-004", "Condensed water"))) * 1000.0
     by = {t["name"]: t for t in ga["terms"]}
-    cb_kg = gmb.byproduct_mass_flows(f)["carbon_black_kg_h"]
+    cb_kg, _cb_remainder, cb_src = carbon_black_flows(snapshot, f)
     cd = ga001_carbon_detail(snapshot, previous_snapshot)
     n_h2_psa = float(hb012["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
     n_h2_el = float(hb011["h2_kg_h"]) * 1000.0 / M_H2_ENGINE
@@ -722,7 +747,7 @@ def plant_energy(snapshot, previous_snapshot, lhv_mj_kg, vent_temp_c=40.0, knock
     outs = [
         _en("PSA hydrogen product, LHV", _lhv_kw({"H2": n_h2_psa}), ps.STATUS_CALCULATED, "HB-012 h2_kg_h x LHV(H2)"),
         _en("electrolyser hydrogen, LHV", _lhv_kw({"H2": n_h2_el}), ps.STATUS_CALCULATED, "HB-011 h2_kg_h x LHV(H2)"),
-        _en("carbon black, chemical energy (taken as pure carbon)", cb_kg * 1000.0 / ATOMIC_MASS["C"] * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_ASSUMED, "5 % of dry feed (gasifier_mass_balance.py:62), graphite LHV"),
+        _en("carbon black, chemical energy (taken as pure carbon)", cb_kg * 1000.0 / ATOMIC_MASS["C"] * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_ASSUMED, cb_src + ", graphite LHV"),
         _en("carbon black, sensible heat at 180 degC", cb_kg * SOLIDS_CP_KJ_KGK[0] * (GA008_OPERATING_C - T_REF_C) * KW_PER_KJ_H, ps.STATUS_ASSUMED, "GA-008 operating 180 degC (registry); cp Assumed"),
         _en("model-implied carbon beyond the carbon-black stream (chemical)", cd["unassigned_C_mol_h"] * LHV_KJ_MOL["C"] * KW_PER_KJ_H, ps.STATUS_CALCULATED,
             "(1 - 0.90) x total C minus carbon black; signed (see the GA-001 carbon finding)"),

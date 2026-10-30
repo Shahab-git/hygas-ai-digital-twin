@@ -1,5 +1,7 @@
 # Tail gas as heat: a switch and a read-only energy key
 
+> Update 2026-10-30: the carbon residuals quoted below (+0.138 / -0.1875 kg/h) are from before the carbon-bookkeeping change; carbon now closes to numerical precision in both modes (`docs/carbon_bookkeeping.md`). Nothing gas-side in this document changed.
+
 Written 2026-10-30 on `origin/main` 71e92cc (branch `tail-gas-heat`). The twin makes 78.0 kg/day of hydrogen against DOK-ING's "about 50 kg/day" (RFI #6, plastic waste) and the registry's
 44.4 kg/day. The biggest identified driver is that the PSA tail gas is re-gasified and re-shifted in GA-001 while the registry says it returns "as supplemental fuel", i.e. heat. The owner decided to treat the
 tail gas as heat (option A), **behind a switch that defaults to today's behaviour**.

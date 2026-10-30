@@ -330,24 +330,46 @@ def solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_carb
     return {k: max(v, 0.0) for k, v in result.items()}
 
 
-def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, tol=1e-8):
-    """Independent, exact re-check that a solve_product_gas() result
-    actually conserves C, H, O atoms and satisfies the WGS equilibrium --
-    plugging the result BACK into the four original governing equations,
-    not re-deriving them. Returns (ok: bool, detail: dict)."""
+# Air composition used by solve_product_gas (line `n2_from_air = o2_actual * (0.79 / 0.21)`); the guard below re-states it on purpose, as an independent check.
+AIR_N2_PER_O2 = 0.79 / 0.21
+
+
+def unconverted_carbon_fraction(carbon_conv_eff):
+    """Carbon that does NOT reach the gas, per mol of fuel carbon fed: 1 - carbon conversion efficiency. The ONE definition of the unconverted
+    carbon (carbon-bookkeeping task): the carbon-black flow in ("GA-001","CarbonAccounting") and the C check in verify_atom_balance both use it.
+    Applied to ALL carbon in the fuel atoms, recycled CO/CH4 carbon included (solve_product_gas works per mol of the COMBINED fuel carbon)."""
+    if not 0.0 <= carbon_conv_eff <= 1.0:
+        raise ValueError(f"carbon conversion efficiency {carbon_conv_eff!r} is outside [0, 1]")
+    return 1.0 - carbon_conv_eff
+
+
+def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, carbon_conv_eff, tol=1e-8):
+    """Independent, exact re-check that a solve_product_gas() result actually conserves C, H, O and N atoms -- plugging the result BACK into the
+    original governing equations, not re-deriving them. Per mol of (combined) fuel carbon fed:
+      C: the carbon in CO + CO2 + CH4 equals the conversion, and gas carbon + unconverted carbon (unconverted_carbon_fraction) is the 1 mol fed;
+      H, O: as before (the steam, air O2 and fuel H, O targets);
+      N: 2 N2 in the product equals the fuel N (z) plus the N2 that comes with the air O2 (AIR_N2_PER_O2).
+    Returns (ok: bool, detail: dict); never raises on an imbalance (callers assert, as the self-test does)."""
     o2_stoich = stoichiometric_o2_per_molc(x, y)
     o2_actual = er * o2_stoich
     c_check = product["CO"] + product["CO2"] + product["CH4"]
+    unconverted = unconverted_carbon_fraction(carbon_conv_eff)
     h_check = 2 * product["H2"] + 2 * product["H2O"] + 4 * product["CH4"]
     o_check = product["CO"] + 2 * product["CO2"] + product["H2O"]
+    n_check = 2.0 * product["N2"]
     h_target = x + 2.0 * steam_mol_per_molc
     o_target = y + steam_mol_per_molc + 2.0 * o2_actual
+    n_target = z + 2.0 * o2_actual * AIR_N2_PER_O2
     detail = {
-        "carbon_gas_target_vs_actual": (product["CO"] + product["CO2"] + product["CH4"], c_check),
+        "C_gas_target_vs_actual": (carbon_conv_eff, c_check),
+        "C_gas_plus_unconverted_vs_fed": (1.0, c_check + unconverted),
         "H_target_vs_actual": (h_target, h_check),
         "O_target_vs_actual": (o_target, o_check),
+        "N_target_vs_actual": (n_target, n_check),
     }
-    ok = abs(h_check - h_target) < tol * max(1, h_target) and abs(o_check - o_target) < tol * max(1, o_target)
+    ok = (abs(c_check - carbon_conv_eff) < tol * max(1, carbon_conv_eff) and abs(c_check + unconverted - 1.0) < tol
+          and abs(h_check - h_target) < tol * max(1, h_target) and abs(o_check - o_target) < tol * max(1, o_target)
+          and abs(n_check - n_target) < tol * max(1, n_target))
     return ok, detail
 
 
@@ -1143,6 +1165,7 @@ def register_ga001(engine):
     engine.register_model(("GA-001-INPUT", "feedstock_composition"), _input_feedstock_composition, unit="mass fraction dict")
     engine.register_model(("GA-001-INPUT", "operating_temperature_C"), _input_operating_temperature_c, unit="degC")
     engine.register_model(TAIL_GAS_MODE_KEY, _input_tail_gas_mode, unit="mode")
+    engine.register_model(CARBON_BLACK_SPLIT_KEY, _input_carbon_black_split, unit="fraction")
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
         depends_on=list(_GA001_INPUT_KEYS) + [TAIL_GAS_MODE_KEY],      # the switch is read same-cycle but is NOT in the published 'inputs' list
@@ -1158,6 +1181,8 @@ def register_ga001(engine):
     # Read-only energy report (a leaf: nothing depends on it, it feeds nothing back). Imported here to keep the module graph acyclic.
     from . import ga001_energy_balance
     ga001_energy_balance.register(engine)
+    from . import ga001_carbon_accounting
+    ga001_carbon_accounting.register(engine)
 
 
 # --- Uncertainty propagation: the seventh uncertainty class ---------------
@@ -1254,10 +1279,10 @@ if __name__ == "__main__":
                                  CH4_CARBON_FRACTION, T_K)
     print(f"  Product gas (mol per mol fuel-C fed): {product}")
 
-    ok, detail = verify_atom_balance(x, y, z, er, steam_mol_per_molc, product)
+    ok, detail = verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, CARBON_CONVERSION_EFFICIENCY)
     print(f"  Atom-balance re-check: {detail}")
     assert ok, f"REGRESSION: solve_product_gas() output does not conserve atoms: {detail}"
-    print("PASSED -- H and O atom balances close exactly on independent re-check.")
+    print("PASSED -- C, H, O and N atom balances close exactly on independent re-check.")
 
     dry_species = {sp: product[sp] for sp in ("H2", "CO", "CO2", "CH4", "N2")}
     dry_total = sum(dry_species.values())
@@ -1576,3 +1601,29 @@ def _tail_gas_entry(get_input):
     if _tail_gas_mode(get_input) == "heat_only":
         return {"value": None, "unit": None, "status": ps.STATUS_MISSING, "missing_reason": "tail_gas_mode = heat_only: the tail gas is heat, not gasifier feed"}
     return get_input(("HB-009", "TailGas"))
+
+
+# --- Carbon-black split (carbon-bookkeeping task) ---------------------------------------------------------------------------
+# The unconverted carbon (unconverted_carbon_fraction x all fuel-carbon atoms) is the ONE governing quantity; ("GA-001","CarbonAccounting")
+# derives the carbon-black flow from it. What share of it leaves as carbon black (the rest being bed-drain carry-over, cyclone catch, fly ash)
+# is not known: Assumed 1.0, range 0.5-1.0; the split of the remainder is Missing.
+CARBON_BLACK_SPLIT_DEFAULT = 1.0
+CARBON_BLACK_SPLIT_RANGE = (0.5, 1.0)
+CARBON_BLACK_SPLIT_KEY = ("GA-001-INPUT", "unconverted_carbon_to_carbon_black")
+
+
+def check_carbon_black_split(value):
+    lo, hi = CARBON_BLACK_SPLIT_RANGE
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not lo <= value <= hi:
+        raise ValueError(f"unconverted_carbon_to_carbon_black {value!r} is outside the Assumed range {CARBON_BLACK_SPLIT_RANGE}; refusing to guess")
+    return float(value)
+
+
+def _input_carbon_black_split(get_input):
+    return {
+        "value": check_carbon_black_split(CARBON_BLACK_SPLIT_DEFAULT), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            f"Share of the unconverted carbon that leaves as carbon black: Assumed {CARBON_BLACK_SPLIT_DEFAULT}, range {CARBON_BLACK_SPLIT_RANGE}. The split between carbon black, "
+            "bed-drain carry-over and fly ash is Missing (no DOK-ING data); the remainder, if the share is below 1, is published as a labelled Missing-split term."
+        ),
+    }

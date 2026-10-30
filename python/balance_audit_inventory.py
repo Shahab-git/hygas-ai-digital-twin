@@ -24,36 +24,38 @@ TI = "tab1_integration.py"
 GA001_STREAMS = [
     # (stream, direction, what the model uses, status, ref, closed by construction?)
     ("dry feed rate", "in", "GA-001-INPUT dry_feed_rate_kg_h = FE-005 dry solids (37.503 kg/h at 41.67 wet); on cycle 1 the 41.67 kg/h placeholder (a WET figure used as dry)",
-     "Calculated (cycle 1: Assumed)", (G, 384, "def _input_dry_feed_rate"), "input"),
+     "Calculated (cycle 1: Assumed)", (G, 406, "def _input_dry_feed_rate"), "input"),
     ("feed C/H/O/N (dry, ash-free: 0.50/0.06/0.43/0.01)", "in", "literature stand-in (Tchobanoglous et al.), cross-checked against DOK-ING floors only",
      "Assumed", (G, 193, "FEEDSTOCK_C_FRACTION = 0.50"), "input"),
     ("feed ash (10 % of dry feed)", "in", "ASH_FRACTION, GA-005 registry 'Ash discharge rate 10 % of feed'", "Confirmed registry value (tag Assumed in the engine)",
      (MB, 61, "ASH_FRACTION = 0.10"), "not used by the gas closure; carried by the byproduct module only"),
     ("feed S, Cl, trace", "in", "no S/Cl in the composition; GC-008/GC-009 inlets are fixed 200 / 150 ppm", "Missing", (GC, 413, "def gc008_h2s"), "no"),
     ("residual moisture in the dry feed", "in", "FE-005 residual_water_kg_h (0.379 kg/h), read one cycle late, added to the steam pool", "Calculated",
-     (G, 697, "def _moisture_water_moles"), "Y (H, O)"),
+     (G, 719, "def _moisture_water_moles"), "Y (H, O)"),
     ("gasifying air", "in", "not a stream: O2 = ER x (1 + x/4 - y/2) per mol C, N2 = O2 x 0.79/0.21 (no argon); ER 0.25", "Assumed (ER)", (G, 301, "n2_from_air = o2_actual"), "Y (O, N)"),
-    ("gasifier steam", "in", "steam_to_feed_ratio 0.4 kg/kg dry feed = 15.0 kg/h; GA-003 registry 15 kg/h at 37.5 kg/h", "Assumed", (G, 752, "steam_mol_per_molc = (steam_ratio"), "Y (H, O)"),
+    ("gasifier steam", "in", "steam_to_feed_ratio 0.4 kg/kg dry feed = 15.0 kg/h; GA-003 registry 15 kg/h at 37.5 kg/h", "Assumed", (G, 774, "steam_mol_per_molc = (steam_ratio"), "Y (H, O)"),
     ("oxygen-carrier (Fe2O3/Fe3O4) oxygen", "in", "NOT in the model: the circulation estimate is standalone and 'does NOT feed back into ga001_model()'", "Missing (as a stream)",
-     (G, 962, "def oxygen_carrier_circulation_estimate"), "n/a"),
-    ("bed material / carrier inventory, make-up, attrition", "in/out", "not modelled", "Missing", (G, 962, "def oxygen_carrier_circulation_estimate"), "n/a"),
+     (G, 984, "def oxygen_carrier_circulation_estimate"), "n/a"),
+    ("bed material / carrier inventory, make-up, attrition", "in/out", "not modelled", "Missing", (G, 984, "def oxygen_carrier_circulation_estimate"), "n/a"),
     ("tail-gas recycle (HB-009 H2, CO, CH4)", "in", "previous cycle's tail gas atoms added to the fuel atoms; CO2 and N2 deliberately not recycled", "Calculated",
-     (G, 660, "def _recycle_atom_moles"), "Y (H, O); C only at the 0.90 conversion"),
-    ("product gas, dry flow + composition (H2, CO, CO2, CH4, N2)", "out", "dry_flow_nm3_h and mol % from the WGS-equilibrium closure", "Calculated", (G, 793, "result_value = {"), "Y (H, O, N)"),
-    ("product gas, water", "out", "wet_flow_nm3_h and H2O_mol_pct_wet", "Calculated", (G, 795, "\"wet_flow_nm3_h\""), "Y (H, O)"),
-    ("unconverted carbon / char", "out", "NOT a stream: (1 - 0.90) x total C simply does not appear in the gas (also applied to the recycled CO and CH4 carbon)",
-     "Assumed (0.90)", (G, 303, "carbon_gas = carbon_conv_eff"), "no stream"),
+     (G, 682, "def _recycle_atom_moles"), "Y (H, O); C only at the 0.90 conversion"),
+    ("product gas, dry flow + composition (H2, CO, CO2, CH4, N2)", "out", "dry_flow_nm3_h and mol % from the WGS-equilibrium closure", "Calculated", (G, 815, "result_value = {"), "Y (H, O, N)"),
+    ("product gas, water", "out", "wet_flow_nm3_h and H2O_mol_pct_wet", "Calculated", (G, 817, "\"wet_flow_nm3_h\""), "Y (H, O)"),
+    ("unconverted carbon / char", "out", "(1 - 0.90) x total C does not appear in the gas (also applied to the recycled CO and CH4 carbon); since the carbon-bookkeeping task it is "
+     "published as (GA-001, CarbonAccounting).unconverted_carbon_kg_h", "Calculated (conversion 0.90 Assumed)", (G, 303, "carbon_gas = carbon_conv_eff"), "Y (published, carbon closes)"),
     ("ash", "out", "10 % of dry feed from the byproduct module, independent of the gas closure", "Assumed", (MB, 65, "def byproduct_mass_flows"), "by an independent constant"),
-    ("carbon black", "out", "5 % of dry feed from the byproduct module, independent of the 0.90 carbon conversion", "Assumed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "N (not tied to the gas closure)"),
-    ("tar", "out", "permanently Missing", "Missing", (G, 842, "def ga001_tar_content"), "N"),
+    ("carbon black", "out", "DERIVED: unconverted carbon x the Assumed split (1.0) in (GA-001, CarbonAccounting); the old 5 % of dry feed (CARBON_BLACK_FRACTION) and GA-008's 1.88 kg/h "
+     "are a cross-check only; the static byproduct_mass_flows() used by the app cards and circularity still uses the 5 % rule", "Calculated (split Assumed)", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"),
+     "Y (tied to the gas closure)"),
+    ("tar", "out", "permanently Missing", "Missing", (G, 864, "def ga001_tar_content"), "N"),
     ("fly ash / dust leaving with the gas", "out", "GC-001 Dust Missing; GC-003 inlet fixed 2 g/Nm3", "Missing", (GC, 132, "def gc001_particulate"), "N"),
 ]
 
 GA001_CLOSURE_NOTES = [
     "solve_product_gas conserves H, O and N exactly by construction (ga001_gasifier_model.py:299-330). Carbon is conserved only on the gas side: "
     "0.90 of the carbon (including the recycled carbon) goes to CO + CO2 + CH4 and the other 10 % has no stream.",
-    "verify_atom_balance (ga001_gasifier_model.py:333) tests H and O only: `ok` uses h_check and o_check; the carbon check is returned in `detail` "
-    "but never compared, and nitrogen is not tested at all.",
+    "verify_atom_balance (ga001_gasifier_model.py) used to test H and O only (the carbon check was returned in `detail` but never compared, nitrogen not tested at all). "
+    "Since the carbon-bookkeeping task it tests C (gas carbon equals the conversion and gas carbon + unconverted_carbon_fraction is the 1 mol fed), H, O and N.",
 ]
 
 # --- A2: every other unit ----------------------------------------------------------------------------------------------
@@ -66,7 +68,7 @@ UNIT_TABLE = [
     ("FE-005 dryer", "wet feed (10 % water)", "dry solids + 1 % residual water to GA-001; evaporated water 3.79 kg/h", "Y (mass, explicit)", (FE, 275, "def fe005_moisture_balance"),
      "no dryer heat duty; evaporated water has no destination"),
     ("FE-006 / FE-007 / FE-008", "FE-005 outlet", "pass-through 37.88 kg/h", "Y (pass-through)", (FE, 331, "def fe007_ram_feeder"), "GA-001 takes the dry mass and the water separately"),
-    ("GA-001 gasifier", "see A1", "see A1", "H, O, N Y; C partly; ash by constant; energy N", (G, 718, "def ga001_model"), "no heat duty computed"),
+    ("GA-001 gasifier", "see A1", "see A1", "H, O, N Y; C partly; ash by constant; energy N", (G, 740, "def ga001_model"), "no heat duty computed"),
     ("GC-001 / GC-003 cyclones", "GA-001 gas", "same gas (copied)", "Y (copy)", (GC, 152, "def gc001_gas_passthrough"), "dust: GC-001 Missing, GC-003 fixed 2 g/Nm3 and 95 %"),
     ("GC-004 quench", "GA-001 wet gas", "dry gas + condensate (wet - dry)", "Y (water, by construction)", (GC, 256, "def gc004_condensed_water"), "duty = sensible heat of the dry gas only"),
     ("GC-005 quench water", "-", "blowdown 0.05 m3/h (fixed)", "N", (GC, 312, "def gc005_blowdown"), "no make-up stream, no circulation balance"),
@@ -91,7 +93,7 @@ UNIT_TABLE = [
     ("EU-009 electrical metering", "HB-012 + HB-011 + GC-013 fan + EU-008 fan", "consumption kW", "N (a sum)", (EU, 733, "def eu009_grid_balance"), "omits FE-004 and all other nameplate loads"),
     ("EU-010 UPS", "EU-009 net", "state of charge", "explicit (Coulomb counting)", (EU, 775, "def eu010_ups_battery"), ""),
     ("EU-011..013 heat recovery", "EU-005 exhaust, EU-004", "kWth", "Y (sums)", (EU, 813, "def eu011_heat_recovery"), "zero while the CHP units idle"),
-    ("oxygen carrier (chemical looping)", "-", "-", "n/a (standalone estimate)", (G, 962, "def oxygen_carrier_circulation_estimate"), "no stream enters or leaves the balance"),
+    ("oxygen carrier (chemical looping)", "-", "-", "n/a (standalone estimate)", (G, 984, "def oxygen_carrier_circulation_estimate"), "no stream enters or leaves the balance"),
 ]
 
 REGISTRY_HARD_CODES = [
@@ -99,7 +101,7 @@ REGISTRY_HARD_CODES = [
     ("carbon conversion efficiency", "0.90 (range 0.85-0.98), Assumed", (G, 217, "CARBON_CONVERSION_EFFICIENCY = 0.90"), "sets the unconverted carbon; independent of temperature"),
     ("CH4 carbon fraction", "0.05, Assumed", (G, 224, "CH4_CARBON_FRACTION = 0.05"), "CH4 is not an equilibrium result"),
     ("ash fraction", "0.10 of dry feed, Confirmed registry value", (MB, 61, "ASH_FRACTION = 0.10"), "a constant, not tied to the composition"),
-    ("carbon-black fraction", "0.05 of dry feed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "not tied to the 0.90 conversion"),
+    ("carbon-black fraction", "0.05 of dry feed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "cross-check only since the carbon-bookkeeping task; still drives the static byproduct_mass_flows()"),
     ("gasifier operating temperature", "950 degC, registry value", (G, 230, "GA001_OPERATING_TEMPERATURE_C = 950.0"), "enters only the WGS Keq"),
     ("steam-to-CO ratio in the WGS", "4.0 mol/mol", (HB, 98, "STEAM_TO_CO_MOLAR_RATIO = 4.0"), "sets the steam raised and the water knocked out"),
     ("quench inlet / outlet temperature", "860 / 65 degC", (GC, 295, "T_in, T_out = 860.0, 65.0"), "duty excludes latent heat"),
@@ -111,7 +113,7 @@ REGISTRY_HARD_CODES = [
     ("UPS round-trip efficiency", "0.94", (EU, 207, "EU010_ROUNDTRIP_EFFICIENCY = 0.94"), "charge side only"),
     ("WGS/PSA claim on syngas", "1.0", (EU, 231, "WGS_PSA_SYNGAS_CLAIM_FRACTION = 1.0"), "CHP fuel budget is 0"),
     ("gas-train fan power", "hydraulic power only (efficiency not applied)", (GC, 594, "def gc013_fan_power"), "lower bound of electrical load"),
-    ("heat loss from any vessel or pipe", "none anywhere", (G, 718, "def ga001_model"), "no heat-loss term exists in the repo"),
+    ("heat loss from any vessel or pipe", "none anywhere", (G, 740, "def ga001_model"), "no heat-loss term exists in the repo"),
 ]
 
 
@@ -149,7 +151,11 @@ def unaccounted_items(snapshot):
     rows = []
     rows.append(("ash leaving as bottom ash (10 % of dry feed)", 0.10 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 61, "ASH_FRACTION = 0.10"), "carries no C/H/O/N; closed by an independent constant"))
     rows.append(("fly ash implied by GC-003's fixed 2 g/Nm3 inlet", 2.0 * dry_nm3 / 1000.0, "kg/h", "Assumed", (GC, 206, "inlet_mg_nm3 = 2000.0"), "not subtracted from the 10 % bottom ash"))
-    rows.append(("carbon black (5 % of dry feed)", 0.05 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "not tied to the unconverted carbon"))
+    cb_entry = snapshot.get(("GA-001", "CarbonAccounting"))
+    if cb_entry is not None and cb_entry["status"] != ps.STATUS_MISSING:
+        rows.append(("carbon black, derived from the unconverted carbon", cb_entry["value"]["carbon_black_kg_h"], "kg/h", "Calculated", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"),
+                     "the 5 % datasheet rule is now a cross-check; the app cards and circularity still show the 5 % rule"))
+    rows.append(("carbon black by the 5 % datasheet rule (cross-check)", 0.05 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "not used by the gas closure"))
     rows.append(("tar mass removed by GC-006/GC-007 (500 -> 50 mg/Nm3)", (500.0 - 50.0) * dry_nm3 / 1.0e6, "kg/h", "Assumed", (GC, 364, "def gc007_tar"), "tar that GA-001 does not produce (Missing) is removed here"))
     rows.append(("H2S entering GC-008 (200 ppm of the dry gas), as sulfur", 200e-6 * dry_nm3 / 0.022414 * 32.06 / 1000.0, "kg S/h", "Assumed", (GC, 413, "def gc008_h2s"), "no sulfur in the feed composition: S appears from nowhere"))
     rows.append(("HCl entering GC-009 (150 ppm of the dry gas), as chlorine", 150e-6 * dry_nm3 / 0.022414 * 35.45 / 1000.0, "kg Cl/h", "Assumed", (GC, 463, "def gc009_hcl"), "no chlorine in the feed composition"))
@@ -157,7 +163,7 @@ def unaccounted_items(snapshot):
     rows.append(("GC-007/008/009 blowdowns (scaled to gas flow)", 1000.0 * (v(("GC-007", "Blowdown")) + v(("GC-008", "Blowdown")) + v(("GC-009", "Blowdown"))), "kg/h", "Assumed", (GC, 389, "def gc007_blowdown"), "no make-up stream"))
     rows.append(("WGS unreacted steam knocked out", wgs["H2O"] * dry_nm3 / 0.022414 * 18.015 / 1000.0, "kg/h", "Calculated", (HB, 270, "\"H2O\": max(y_H2O_in"), "no condensate stream, no unit, no heat rejection"))
     rows.append(("WGS steam raised (HB-005)", v(("HB-005", "Steam"), "steam_kg_h"), "kg/h", "Calculated", (HB, 189, "steam_kg_h = steam_mol_h"), "feedwater source and boiler energy not modelled"))
-    rows.append(("gasifier steam (GA-003 / GA-004)", 0.4 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (G, 752, "steam_mol_per_molc = (steam_ratio"), "source and energy of this steam not modelled"))
+    rows.append(("gasifier steam (GA-003 / GA-004)", 0.4 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (G, 774, "steam_mol_per_molc = (steam_ratio"), "source and energy of this steam not modelled"))
     rows.append(("dryer vapour (FE-005)", fe5["water_evaporated_kg_h"], "kg/h", "Calculated", (FE, 291, "water_evaporated_kg_h = wet_inlet"), "no destination, no heat duty"))
     rows.append(("tail-gas CO2 + N2 vented", (hb009["species_nm3_h"]["CO2"] * 44.0095 + hb009["species_nm3_h"]["N2"] * 28.0134) / 22.414, "kg/h", "Calculated", (EU, 485, "inert_nm3_h = species.get"), "a real exit stream (EU-007)"))
     rows.append(("HB-013 clamp at 0 kg (storage would go negative)", None, "kg per cycle", "Calculated", (HB, 537, "new_level = min(max(prev_level"), "creates H2; see storage_inventory_check"))

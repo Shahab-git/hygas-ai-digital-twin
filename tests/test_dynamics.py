@@ -46,7 +46,7 @@ def test_c1_identity_with_build_live_snapshot_at_one_hour(taus, label):
     result = dy.run_transient([], dt_s=3600, duration_s=n * 3600, taus=taus, warmup_cycles=0)
     reference, _state, _engine = tab1_integration.build_live_snapshot(n_cycles=n)
     a, b = _dump(result.final_snapshot), _dump(reference)
-    assert set(a) == set(b) and len(a) == 118
+    assert set(a) == set(b) and len(a) == 120
     assert [k for k in a if a[k] != b[k]] == [], label
     assert eu.EU008_DAMPING == 0.5, "the module constant must be restored"
 
@@ -365,7 +365,7 @@ def test_v01_recycle_delay_of_one_cycle_at_one_hour_is_bit_identical():
     result = dy.run_transient([], dt_s=3600, duration_s=n * 3600, taus={**LAGS_OFF, "tau_rec": 3600.0}, warmup_cycles=0)
     reference, _s, _e = tab1_integration.build_live_snapshot(n_cycles=n)
     a, b = _dump(result.final_snapshot), _dump(reference)
-    assert len(a) == len(b) == 118 and [k for k in a if a[k] != b[k]] == []
+    assert len(a) == len(b) == 120 and [k for k in a if a[k] != b[k]] == []
     # the default 60 s delay clamps to one cycle at dt = 1 h and is identical too
     result2 = dy.run_transient([], dt_s=3600, duration_s=n * 3600, taus={**LAGS_OFF, "tau_rec": 60.0}, warmup_cycles=0)
     c = _dump(result2.final_snapshot)

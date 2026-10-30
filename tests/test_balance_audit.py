@@ -170,7 +170,10 @@ def test_the_carbon_residual_is_exactly_the_conversion_versus_carbon_black_ident
     assert x["unconverted_from_recycle_kg_h"] > 0.0                               # the recycled CO/CH4 carbon is also cut by 10 %
     assert x["conversion_that_would_match_carbon_black_feed_only"] == pytest.approx(1.0 - 0.05 / 0.45)
     cycle_one = ba.explain_carbon_residual(snaps[1], None)
-    assert abs(cycle_one["difference_kg_h"]) < 1e-9 and cycle_one["measured_kg_h"] < 0.0     # sign flips without recycle
+    # carbon-bookkeeping task: the carbon black is derived from the unconverted carbon, so the carbon now closes (it was -0.208 kg/h on cycle 1);
+    # the old 5 % rule survives as a cross-check, and its sign still flips without the recycle
+    assert abs(cycle_one["difference_kg_h"]) < 1e-9 and abs(cycle_one["measured_kg_h"]) < 1e-9
+    assert cycle_one["datasheet_minus_derived_kg_h"] > 0.0 > x["datasheet_minus_derived_kg_h"]
 
 
 @pytest.mark.parametrize("n", [5, N_CONV])
