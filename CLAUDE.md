@@ -583,6 +583,8 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
   mass balance closes (0.001 %) only when ash and unconverted carbon are added;
   those are not published streams, so on published streams the residual is 4.56 %.
 - **Closure audit measured (`docs/balance_closure_audit.md`, 2026-10-29):** H, O and N close to < 5e-16, carbon does not (+0.138 kg/h, 0.69 %: 10 % unconverted C vs an independent 5 % carbon black), and whole-plant energy does not (+23.7 kW = 16.5 % of input at 17.5 MJ/kg, -2 to +50 kW over 15-20): ~77 kW of heat rejection is omitted and ~81 kW of steam raising has no source; GA-001's implied heat duty is +23 to -29 kW. `python scripts/run_balance_audit.py` reproduces it.
+- **Literature reference values are from other plants (`docs/literature_reference.md`, `python/literature_reference.py`):** `Assumed` (literature-informed), not DOK-ING's, not Confirmed or Measured, and not used by the engine, the uncertainty module or the app. Against the published sludge-study directions the model agrees on steam and ER and disagrees on temperature (H2 falls and CH4 is flat as temperature rises).
+- **The 950 degC GA-001 operating temperature is a registry value tied to earlier project models, not stated by DOK-ING** (`data/equipment_registry.json:508-512`, remark: matches the mass/energy dashboard and Simulink thermal-lag model, neither in this repo; carried as Assumed; `docs/literature_reference.md`).
 
 ## Not yet built (the actual current state)
 
