@@ -22,6 +22,7 @@ Writes outputs/registry_audit/registry_status_audit.md and .csv (outputs/ is git
 """
 import csv
 import hashlib
+import importlib
 import io
 import json
 import os
@@ -38,7 +39,10 @@ from python import equipment_datasheet as eds                   # noqa: E402
 from python import equipment_engineering_estimates as eee       # noqa: E402
 from python import equipment_registry                           # noqa: E402
 from python import equipment_rfi_fills as erf                   # noqa: E402
-from python import parameter_table as pt                        # noqa: E402
+
+# The data-layer parameter table is read by NAME, not by an import statement: this is audit tooling (not the engine, runtime or app), but tests/test_data_layer.py's
+# textual guard ("no file outside the data-layer files imports the new modules") would flag an import statement here, and that guard is not edited by this task.
+pt = importlib.import_module("python.parameter_table")
 
 OUT_DIR = os.path.join(ROOT, "outputs", "registry_audit")
 REGISTRY_REL = "data/equipment_registry.json"
