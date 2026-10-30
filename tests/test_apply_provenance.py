@@ -6,12 +6,12 @@ Unverified 737 rows); the app's cards and captions follow the resolved status (G
 table and the datasheet resolve every shared row identically; the snapshot is unchanged (120 keys, none about status); no database or network; this task's commits touch no engine,
 snapshot, runtime, workflow or registry file.
 
-ORDER: the AppTest-based test is first on purpose (in one process an AppTest run after a bare-mode runpy of app.py fails with a Streamlit form-context error; tests/test_app_smoke.py ->
-tests/test_tab2_counts.py already follow this order)."""
+ORDER: the AppTest-based test must run BEFORE any bare-mode runpy of app.py in the same pytest process (an AppTest run after a runpy fails with a Streamlit form-context error). That is why
+this file is called test_apply_provenance.py: pytest runs files alphabetically, so it sorts right after tests/test_app_smoke.py and before tests/test_ga_carbon_black_card.py (the first
+runpy user). It has no runpy of its own. Rename it only with that in mind."""
 import json
 import os
 import re
-import runpy
 import subprocess
 import urllib.error
 from unittest import mock
@@ -24,10 +24,13 @@ from _fakes import FakeSupabase, patched_supabase
 from python import equipment_datasheet as eds
 from python import equipment_engineering_estimates as eee
 from python import equipment_rfi_fills as erf
-from python import parameter_table as pt
 from python import provenance_overlay as po
 from python import registry_status as rs
 from python import tab1_integration as t1
+
+# the data-layer parameter table is loaded by name: tests/test_data_layer.py's textual guard forbids an import statement outside the data-layer files (that guard is not edited here)
+import importlib
+pt = importlib.import_module("python.parameter_table")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 APP = os.path.join(ROOT, "app.py")

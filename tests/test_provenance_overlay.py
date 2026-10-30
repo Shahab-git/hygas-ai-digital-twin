@@ -28,7 +28,8 @@ OVERLAY_DEFAULT = os.path.join(ROOT, "data", "registry_status_overlay.json")
 GEN = os.path.join(ROOT, "scripts", "make_provenance_worksheet.py")
 CHK = os.path.join(ROOT, "scripts", "check_provenance_worksheet.py")
 # PROVENANCE PHASE 2 (deliberate edit): scripts/export_provenance_csv.py is a new member of this family (it loads the module by name), so the "nobody else imports it" scan must allow it.
-OWN = {"python/provenance_overlay.py", "scripts/make_provenance_worksheet.py", "scripts/check_provenance_worksheet.py", "scripts/export_provenance_csv.py", "tests/test_provenance_overlay.py"}
+OWN = {"python/provenance_overlay.py", "scripts/make_provenance_worksheet.py", "scripts/check_provenance_worksheet.py", "scripts/export_provenance_csv.py", "tests/test_provenance_overlay.py",
+       "tests/test_apply_provenance.py"}      # the phase 2 tests belong to the family too (deliberate edit: they import the module to check the committed overlay)
 
 
 def _sha(path):
