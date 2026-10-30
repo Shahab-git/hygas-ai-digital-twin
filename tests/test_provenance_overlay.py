@@ -301,7 +301,8 @@ def test_no_database_or_network_call_was_made(fake):
 
 
 def test_the_new_files_contain_no_database_network_or_scada_code():
-    for rel in sorted(OWN - {"tests/test_provenance_overlay.py"}):
+    # PROVENANCE PHASE 2 (deliberate edit): the check is about the module and scripts; test files (this one and the phase 2 one) legitimately name urllib to block the network.
+    for rel in sorted(p for p in OWN if not p.startswith("tests/")):
         with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
             code = "\n".join(line for line in f.read().splitlines() if not line.lstrip().startswith("#"))
         for forbidden in (r"\bimport requests\b", r"\burllib\b", r"\bimport supabase\b", r"\bcreate_client\b", r"\.upsert\(", r"\.table\(", r"\.execute\("):
