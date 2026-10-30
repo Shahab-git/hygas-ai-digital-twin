@@ -2049,32 +2049,48 @@ with tab10:
 # equipment section: its own dedicated tab, not appended to an existing
 # one.
 # ---------------------------------------------------------------------
-_eq_datasheets = equipment_engineering_estimates.apply_estimates(
-    equipment_rfi_fills.apply_rfi_fills(equipment_datasheet.build_all_datasheets())
+_eq_datasheets = equipment_datasheet.resolve_datasheets(
+    equipment_engineering_estimates.apply_estimates(
+        equipment_rfi_fills.apply_rfi_fills(equipment_datasheet.build_all_datasheets())
+    )
 )
+
+
+_EVIDENCE_COUNT_CAPTION = "Confirmed means a DOK-ING source is cited; unverified rows have no stated origin yet."
+
+
+def _render_evidence_breakdown(summary):
+    """The not-confirmed slots by the evidence label of their strongest row (display only; the Confirmed / not-confirmed / Missing split above is equipment_datasheet.summarize)."""
+    ev = summary["evidence_label_slots"]
+    eng = equipment_datasheet.STATUS_ESTIMATE
+    cols = st.columns(5)
+    for col, (label, key) in zip(cols, (("Calculated", "Calculated"), ("Estimated (literature-informed)", "Estimated (literature-informed)"),
+                                         ("Engineering Estimate (existing fills)", eng), ("Assumed", "Assumed"), ("Unverified (registry)", "Unverified (registry)"))):
+        col.metric(label, ev.get(key, 0))
+    st.caption(_EVIDENCE_COUNT_CAPTION)
 
 
 def _render_equipment_honest_count(summary, n_items):
     st.subheader("Honest count: how complete is this section, really?")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Real data points", summary["total_real_data_points"])
-    c2.metric("Confirmed", summary["confirmed_category_slots"])
-    c3.metric("Engineering Estimate", summary["estimated_category_slots"])
+    c2.metric("Confirmed (DOK-ING-sourced)", summary["confirmed_category_slots"])
+    c3.metric("Not confirmed", summary["estimated_category_slots"])
     c4.metric("Missing Data — Required", summary["missing_category_slots"],
                delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
                delta_color="inverse")
+    _render_evidence_breakdown(summary)
     st.caption(
         f"{summary['total_real_data_points']} real parameter values are on file across these "
         f"{n_items} items, across {summary['total_category_slots']} possible (item × category) "
-        f"slots: **{summary['confirmed_category_slots']} Confirmed** (real vendor-datasheet or "
-        f"DOK-ING RFI data), **{summary['estimated_category_slots']} Engineering Estimate** "
-        f"(correlation/literature/comparable-system basis, explicitly NOT vendor/DOK-ING "
-        f"confirmed — DOK-ING has authorized this FEED-stage practice, to be calibrated once the "
-        f"real plant exists), and **{summary['missing_category_slots']} Missing Data — "
-        f"Required** — reported as three separate, honest numbers, never blended into one "
-        f"\"populated\" figure that would overstate how solid an estimated value actually is. "
-        f"Each row's **Source** column names exactly where it came from — \"Equipment Datasheet\" "
-        f"(vendor), \"DOK-ING RFI (design_basis.py Q#)\", or \"Engineering estimate (FE-001..FE-008 "
+        f"slots: **{summary['confirmed_category_slots']} Confirmed** (at least one row cites a DOK-ING source), "
+        f"**{summary['estimated_category_slots']} not confirmed** (broken down above by the strongest evidence in the slot: Calculated, "
+        f"Estimated from similar plants, the existing Engineering Estimate fills, Assumed, or Unverified — no stated origin yet), and "
+        f"**{summary['missing_category_slots']} Missing Data — Required** — reported as separate, honest numbers, never blended into one "
+        f"\"populated\" figure that would overstate how solid a value actually is. "
+        f"Each row's status comes from `python/registry_status.py` (the owner's worksheet answers in `data/registry_status_overlay.json`). "
+        f"Each row's **Source** column names where it came from — \"Equipment Datasheet\" "
+        f"(the registry), \"DOK-ING RFI (design_basis.py Q#)\", or \"Engineering estimate (FE-001..FE-008 "
         f"pilot) — ...\" naming its actual basis (see python/equipment_rfi_fills.py and "
         f"python/equipment_engineering_estimates.py)."
     )
@@ -2096,9 +2112,9 @@ def _render_equipment_items(ids, per_item_stats):
                     st.error(f"**{_cat}:** Missing Data — Required")
                     continue
                 if _status == equipment_datasheet.STATUS_ESTIMATE:
-                    st.warning(f"**{_cat}** — Engineering Estimate (Not Vendor/DOK-ING Confirmed)")
+                    st.warning(f"**{_cat}** — {equipment_datasheet.slot_evidence_label(_rows)} (no DOK-ING source cited in this slot)")
                 else:
-                    st.markdown(f"**{_cat}**")
+                    st.markdown(f"**{_cat}** — Confirmed (DOK-ING source cited)")
                 _cat_df = pd.DataFrame([
                     {
                         "Parameter": p["parameter"], "Value": p["value"], "Unit": p["unit"],
@@ -2120,8 +2136,9 @@ def _render_equipment_items(ids, per_item_stats):
 # =============================================================================
 _FE_DATA_TYPE_TAGS = {
     "live":      {"bg": "#DBEAFE", "fg": "#1D4ED8", "label": "Live simulation value"},
-    "confirmed": {"bg": "#DCFCE7", "fg": "#15803D", "label": "Confirmed registry data"},
+    "confirmed": {"bg": "#DCFCE7", "fg": "#15803D", "label": "Confirmed (DOK-ING source cited)"},
     "estimate":  {"bg": "#FEF3C7", "fg": "#B45309", "label": "Engineering Estimate"},
+    "unverified": {"bg": "#E5E7EB", "fg": "#374151", "label": "Unverified (registry)"},
     "missing":   {"bg": "#F3F4F6", "fg": "#6B7280", "label": "Missing data"},
 }
 
@@ -2142,6 +2159,28 @@ def _fe_tag_html(kind, text=None):
         f'<span class="fe-tag" style="background:{t["bg"]};color:{t["fg"]};">'
         f'{text or t["label"]}</span>'
     )
+
+
+def _caption_status(item_id, parameter):
+    """The resolved evidence label of one registry row, for captions that used to say 'Confirmed': 'Confirmed' only when a DOK-ING source is cited, otherwise e.g.
+    'Unverified (registry)', 'Assumed', 'Calculated', 'Estimated (literature-informed)'. Never a hard-coded 'Confirmed'."""
+    rows = [r for rows in _eq_datasheets[item_id]["datasheet"].values() for r in rows if r["parameter"] == parameter]
+    if not rows:
+        return "Unverified (registry)"
+    r = rows[0]
+    if r.get("status") == equipment_datasheet.STATUS_CONFIRMED and str(r.get("status_source") or "").strip():
+        return "Confirmed"
+    return r.get("status_label") or "Unverified (registry)"
+
+
+def _fe_registry_tag_html(text, *rows):
+    """The coloured tag for a card that compares a live value with registry row(s): green 'confirmed' only if EVERY row is Confirmed with a DOK-ING source; otherwise the
+    tag shows the resolved label(s)."""
+    labels = [_caption_status(i, p) for i, p in rows]
+    if labels and all(label == "Confirmed" for label in labels):
+        return _fe_tag_html("confirmed", text)
+    kind = "unverified" if any(label == "Unverified (registry)" for label in labels) else "estimate"
+    return _fe_tag_html(kind, f"{text}: " + " / ".join(dict.fromkeys(labels)))
 
 
 def _render_fe_data_type_legend():
@@ -3015,7 +3054,7 @@ def _render_fe_live_results(snap):
         c3.metric("Delivery rate", f"{e['value']['delivery_rate_kg_h']:.2f} kg/h")
         st.markdown(
             _fe_inline_bar_svg(e["value"]["fraction_full"], "#C2680B") +
-            f'&nbsp; vs Confirmed live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t',
+            f'&nbsp; vs {_caption_status("FE-001", "Live capacity (usable)")} live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t',
             unsafe_allow_html=True,
         )
         with st.expander("Full status & traceability"):
@@ -3093,7 +3132,7 @@ def _render_fe_live_results(snap):
         _fe005_target_pos = _fe005_target_frac / _fe005_inlet_frac if _fe005_inlet_frac > 0 else 0.0
         st.markdown(
             _fe_inline_bar_svg(_fe005_bar_frac, "#15803D", target_frac=_fe005_target_pos) +
-            f'&nbsp; moisture vs Confirmed target &lt;{_fe005_target_frac*100:.0f}%',
+            f'&nbsp; moisture vs {_caption_status("FE-005", "Outlet moisture (target)")} target &lt;{_fe005_target_frac*100:.0f}%',
             unsafe_allow_html=True,
         )
         with st.expander("Full status & traceability"):
@@ -3282,7 +3321,7 @@ def _render_fe_live_kpis(snap):
             label="Hopper level", icon="🪣",
             raw=fe001["fraction_full"], text=f"{fe001['fraction_full']*100:.1f}%",
             skey="tab3_kpi_delta__hopper_level", entry=fe001_entry,
-            compare=f"vs Confirmed live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t -- same fraction as Section 1's gauge.",
+            compare=f"vs {_caption_status('FE-001', 'Live capacity (usable)')} live capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t -- same fraction as Section 1's gauge.",
             bar=_fe_inline_bar_svg(fe001["fraction_full"], "#C2680B"),
             delta_fmt=lambda d: f"{d*100:+.1f} pp",
         ),
@@ -3336,7 +3375,7 @@ def _render_fe_gauges(snap):
             _svg_gauge(
                 frac, f"{frac*100:.1f}%", "Hopper level (FE-001)",
                 sublabel=(
-                    f"{fe001['level_t']:.3f} t of {fe.FE001_LIVE_CAPACITY_T:.1f} t Confirmed "
+                    f"{fe001['level_t']:.3f} t of {fe.FE001_LIVE_CAPACITY_T:.1f} t {_caption_status('FE-001', 'Live capacity (usable)')} "
                     f"live capacity"
                 ),
                 color="#C2680B",
@@ -3344,7 +3383,7 @@ def _render_fe_gauges(snap):
             unsafe_allow_html=True,
         )
         st.markdown(
-            _fe_tag_html("live") + _fe_tag_html("confirmed", f"Capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t"),
+            _fe_tag_html("live") + _fe_registry_tag_html(f"Capacity {fe.FE001_LIVE_CAPACITY_T:.1f} t", ("FE-001", "Live capacity (usable)")),
             unsafe_allow_html=True,
         )
 
@@ -3358,15 +3397,15 @@ def _render_fe_gauges(snap):
             _svg_gauge(
                 gauge_pos, f"{moist_frac*100:.2f}%", "Dried output moisture (FE-005)",
                 sublabel=(
-                    f"Scale 0–{inlet_frac*100:.0f}% (Confirmed inlet moisture); marker = "
-                    f"Confirmed target <{target_frac*100:.0f}%"
+                    f"Scale 0–{inlet_frac*100:.0f}% ({_caption_status('FE-005', 'Inlet moisture (design)')} inlet moisture); marker = "
+                    f"{_caption_status('FE-005', 'Outlet moisture (target)')} target <{target_frac*100:.0f}%"
                 ),
                 target_frac=target_pos, color="#15803D",
             ),
             unsafe_allow_html=True,
         )
         st.markdown(
-            _fe_tag_html("live") + _fe_tag_html("confirmed", f"Target <{target_frac*100:.0f}%"),
+            _fe_tag_html("live") + _fe_registry_tag_html(f"Target <{target_frac*100:.0f}%", ("FE-005", "Outlet moisture (target)")),
             unsafe_allow_html=True,
         )
         st.caption(
@@ -4217,9 +4256,9 @@ def _plant_overview_active_findings(snap):
         if v["y_H2"] < hb006_target:
             findings.append({
                 "severity": "shortfall", "tab": "Hydrogen & BoP (Tab 7)", "id": "HB-006",
-                "title": "Live feed H₂ below its own Confirmed target",
+                "title": f"Live feed H₂ below its own {_caption_status('HB-006', 'Feed gas H₂ content')} target",
                 "detail": f"live feed H₂ {v['y_H2']*100:.2f}%, BELOW HB-006's own stated 55% "
-                          f"Confirmed target (the SAME KNOWN SHORTFALL banner Tab 7's own Section 4 "
+                          f"{_caption_status('HB-006', 'Feed gas H₂ content')} target (the SAME KNOWN SHORTFALL banner Tab 7's own Section 4 "
                           f"shows) — root cause: the same registry/live-model composition mismatch "
                           f"as the N₂ finding below.",
                 "banner_html": None,
@@ -5093,14 +5132,16 @@ def _render_ga_live_kpis(snap):
             label="Carbon black recovery (derived)", icon="⚫", raw=flows["carbon_black_kg_h"],
             text=f"{flows['carbon_black_kg_h']:.3f} kg/h",
             skey="tab4_kpi_delta__cb_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": _display_cycle(feed_entry["cycle"])},
-            compare=(_ga_carbon_black_note(flows) + " · " if _ga_carbon_black_note(flows) else "") + f"vs GA-008's Confirmed design capacity {ga008_cap:.0f} kg/h",
+            compare=(_ga_carbon_black_note(flows) + " · " if _ga_carbon_black_note(flows) else "") + f"vs GA-008's {_caption_status('GA-008', 'Design capacity')} design capacity {ga008_cap:.0f} kg/h",
+            registry_rows=(("GA-008", "Design capacity"),),
             bar=_fe_inline_bar_svg(flows["carbon_black_kg_h"] / ga008_cap, "#6D28D9"),
             delta_fmt=lambda d: f"{d:+.3f} kg/h",
         ))
         kpis.append(dict(
             label="Ash discharge (derived)", icon="🪨", raw=flows["ash_kg_h"], text=f"{flows['ash_kg_h']:.3f} kg/h",
             skey="tab4_kpi_delta__ash_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": _display_cycle(feed_entry["cycle"])},
-            compare=f"vs GA-009's Confirmed design capacity {ga009_cap:.0f} kg/h",
+            compare=f"vs GA-009's {_caption_status('GA-009', 'Design capacity')} design capacity {ga009_cap:.0f} kg/h",
+            registry_rows=(("GA-009", "Design capacity"),),
             bar=_fe_inline_bar_svg(flows["ash_kg_h"] / ga009_cap, "#C2680B"),
             delta_fmt=lambda d: f"{d:+.3f} kg/h",
         ))
@@ -5113,7 +5154,7 @@ def _render_ga_live_kpis(snap):
     for col, kpi in zip(cols, kpis):
         with col.container(border=True):
             st.markdown(_fe_tag_html("live") if kpi["compare"] is None else
-                        _fe_tag_html("live") + " " + _fe_tag_html("confirmed", "Registry target"),
+                        _fe_tag_html("live") + " " + _fe_registry_tag_html("Registry target", *kpi["registry_rows"]),
                         unsafe_allow_html=True)
             delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
             delta_arg = kpi["delta_fmt"](delta) if delta is not None else note
@@ -5131,7 +5172,8 @@ def _render_ga_live_kpis(snap):
         "them, since GA-001's own status is Calculated → Literature/Engineering Basis → NO in-project "
         "design-target validation (see Section 4): no real Confirmed target exists to compare against. "
         "The carbon black/ash cards are DERIVED (gasifier_mass_balance.py applied to GA-001's own live "
-        "feed rate), compared against GA-008/GA-009's own real Confirmed registry design capacities."
+        f"feed rate), compared against GA-008/GA-009's registry design capacities (status: GA-008 {_caption_status('GA-008', 'Design capacity')}, "
+        f"GA-009 {_caption_status('GA-009', 'Design capacity')})."
         + (f" The carbon black card is the engine's value, not the 5 % rule: {flows['carbon_black_status_line']}" if flows is not None and flows.get("carbon_black_source") == "engine" else "")
     )
 
@@ -5342,7 +5384,7 @@ def _render_ga_live_results(snap):
 
         st.markdown("**Fe₂O₃/Fe₃O₄ oxygen-carrier circulation — a separate, clearly-labeled estimate**")
         st.caption(
-            "GA-001's own real Confirmed registry technology is Bubbling Fluidized Bed (BFB), "
+            f"GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) is Bubbling Fluidized Bed (BFB), "
             "steam-blown, Fe₂O₃/Fe₃O₄ chemical-looping oxygen carrier — not a conventional simple "
             "air-blown gasifier. The metrics above model only the real, confirmed air/steam "
             "partial-oxidation portion, closed with standard elemental/WGS-equilibrium stoichiometry; "
@@ -5397,7 +5439,7 @@ def _render_ga_live_results(snap):
                     field, cap, color = bar_spec
                     st.markdown(
                         _fe_inline_bar_svg(flows[field] / cap, color) +
-                        f'&nbsp; vs {eq_id}\'s Confirmed registry design capacity {cap:.0f} kg/h',
+                        f'&nbsp; vs {eq_id}\'s {_caption_status(eq_id, "Design capacity")} registry design capacity {cap:.0f} kg/h',
                         unsafe_allow_html=True,
                     )
             with st.expander("Full status & traceability"):
@@ -6117,7 +6159,8 @@ def _render_gc_live_kpis(snap):
         kpis.append(dict(
             label="H₂S removal (GC-008)", icon="🧪", raw=v["efficiency"], text=f"{v['efficiency']*100:.2f}%",
             skey="tab5_kpi_delta__h2s_eff", entry=gc008,
-            compare=f"vs GC-008's own Confirmed target >{target*100:.1f}%",
+            compare=f"vs GC-008's own {_caption_status('GC-008', 'Removal efficiency')} target >{target*100:.1f}%",
+            registry_rows=(("GC-008", "Removal efficiency"),),
             bar=_fe_inline_bar_svg(v["efficiency"] / target, "#15803D", target_frac=1.0),
             delta_fmt=lambda d: f"{d*100:+.2f} pp",
         ))
@@ -6129,10 +6172,11 @@ def _render_gc_live_kpis(snap):
             label="HCl removal (GC-009)", icon="⚗️", raw=v["efficiency"], text=f"{v['efficiency']*100:.2f}%",
             skey="tab5_kpi_delta__hcl_eff", entry=gc009,
             compare=(
-                f"{'⚠️ BELOW' if shortfall else '✓ meets'} GC-009's own Confirmed target >{target*100:.0f}% "
+                f"{'⚠️ BELOW' if shortfall else '✓ meets'} GC-009's own {_caption_status('GC-009', 'Removal efficiency')} target >{target*100:.0f}% "
                 f"-- a real, known, honest shortfall, not hidden" if shortfall else
-                f"vs GC-009's own Confirmed target >{target*100:.0f}%"
+                f"vs GC-009's own {_caption_status('GC-009', 'Removal efficiency')} target >{target*100:.0f}%"
             ),
+            registry_rows=(("GC-009", "Removal efficiency"),),
             bar=_fe_inline_bar_svg(v["efficiency"] / target, "#B91C1C" if shortfall else "#15803D", target_frac=1.0),
             delta_fmt=lambda d: f"{d*100:+.2f} pp",
         ))
@@ -6160,7 +6204,7 @@ def _render_gc_live_kpis(snap):
     for col, kpi in zip(cols, kpis):
         with col.container(border=True):
             st.markdown(
-                _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
+                _fe_tag_html("live") + (" " + _fe_registry_tag_html("Registry target", *kpi["registry_rows"]) if kpi["compare"] else ""),
                 unsafe_allow_html=True,
             )
             delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
@@ -6473,7 +6517,7 @@ def _render_gc_live_results(snap):
                     color = "#B91C1C" if v["efficiency"] < target else "#15803D"
                     st.markdown(
                         _fe_inline_bar_svg(v["efficiency"] / target, color, target_frac=1.0) +
-                        f'&nbsp; vs {eq_id}\'s own Confirmed target &gt;{target*100:.1f}%',
+                        f'&nbsp; vs {eq_id}\'s own {_caption_status(eq_id, "Removal efficiency")} target &gt;{target*100:.1f}%',
                         unsafe_allow_html=True,
                     )
                 with st.expander(f"Full status & traceability — {eq_id}"):
@@ -6672,7 +6716,7 @@ def _render_gc_mass_energy_balance(snap):
     if gc013_fan is not None:
         v = gc013_fan["value"]
         e2.metric("GC-013 fan hydraulic power (live)", f"{v['hydraulic_power_w']:.1f} W")
-        e2.caption("Real, live -- a LOWER BOUND on GC-013's own Confirmed 1.5 kW motor rating (fan/motor inefficiency not modeled).")
+        e2.caption(f"Real, live -- a LOWER BOUND on GC-013's own {_caption_status('GC-013', 'Motor power')} 1.5 kW motor rating (fan/motor inefficiency not modeled).")
     st.info(
         "**Two real, live energy figures exist for this tab** (unlike GA, which had none) -- "
         "GC-004's cooling duty and GC-013's fan hydraulic power. They are shown as separate Notes, "
@@ -7989,7 +8033,8 @@ def _render_hb_live_kpis(snap):
         target = 10.0  # HB-012's own separately-stated Confirmed motor rating
         kpis.append(dict(label="Compressor power (HB-012)", icon="🔧", raw=v["power_kW"],
                           text=f"{v['power_kW']:.2f} kW", skey="tab7_kpi_delta__compressor_kw", entry=hb012,
-                          compare=f"vs HB-012's own Confirmed motor rating {target:.0f} kW",
+                          compare=f"vs HB-012's own {_caption_status('HB-012', 'Drive motor power')} motor rating {target:.0f} kW",
+                          registry_rows=(("HB-012", "Drive motor power"),),
                           bar=_fe_inline_bar_svg(v["power_kW"] / target, "#15803D" if v["power_kW"] < target else "#B91C1C", target_frac=1.0),
                           delta_fmt=lambda d: f"{d:+.3f} kW"))
     if hb013 is not None and hb013.get("status") != ps.STATUS_MISSING:
@@ -8007,7 +8052,7 @@ def _render_hb_live_kpis(snap):
     for col, kpi in zip(cols, kpis):
         with col.container(border=True):
             st.markdown(
-                _fe_tag_html("live") + (" " + _fe_tag_html("confirmed", "Registry target") if kpi["compare"] else ""),
+                _fe_tag_html("live") + (" " + _fe_registry_tag_html("Registry target", *kpi["registry_rows"]) if kpi["compare"] else ""),
                 unsafe_allow_html=True,
             )
             delta, note = _fe_kpi_check_delta(kpi["skey"], kpi["raw"], kpi["entry"]["timestamp"], _display_cycle(kpi["entry"]["cycle"]))
@@ -8223,7 +8268,7 @@ def _render_hb_live_results(snap):
                     '<div style="background:#FEF2F2;border:2px solid #B91C1C;border-radius:8px;'
                     'padding:8px 14px;margin:8px 0;">'
                     f'<span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ KNOWN SHORTFALL — '
-                    f'live feed H₂ {v["y_H2"]*100:.2f}%, BELOW HB-006\'s own stated 55% Confirmed target'
+                    f'live feed H₂ {v["y_H2"]*100:.2f}%, BELOW HB-006\'s own stated 55% {_caption_status("HB-006", "Feed gas H₂ content")} target'
                     '</span></div>',
                     unsafe_allow_html=True,
                 )
@@ -8242,7 +8287,7 @@ def _render_hb_live_results(snap):
             hb006_bar_color = "#B91C1C" if hb006_shortfall else "#15803D"
             st.markdown(
                 _fe_inline_bar_svg(v["y_H2"] / hb006_target, hb006_bar_color, target_frac=1.0) +
-                f'&nbsp; vs HB-006\'s own Confirmed target {hb006_target*100:.0f}%',
+                f'&nbsp; vs HB-006\'s own {_caption_status("HB-006", "Feed gas H₂ content")} target {hb006_target*100:.0f}%',
                 unsafe_allow_html=True,
             )
             _hb_live_expander("HB-006 PSA", hb006)
@@ -8503,7 +8548,7 @@ def _render_hb_mass_energy_balance(snap):
         v = hb012["value"]
         with c2:
             within = v["power_kW"] < 10.0
-            st.metric("HB-012 computed power vs Confirmed 10 kW rating", f"{v['power_kW']:.3f} kW",
+            st.metric(f"HB-012 computed power vs {_caption_status('HB-012', 'Drive motor power')} 10 kW rating", f"{v['power_kW']:.3f} kW",
                        delta=f"{v['power_kW']-10.0:+.3f} kW", delta_color="inverse")
             st.markdown(("✅ within rating" if within else "🔴 EXCEEDS rating — physically implausible, flagged"))
 
@@ -9061,10 +9106,10 @@ def _render_eu_live_kpis(snap):
             v = eu008["value"]
             over = v["utilization"] > 1.0
             st.markdown(
-                _fe_tag_html("live") + " " + _fe_tag_html("confirmed", "Registry rating"),
+                _fe_tag_html("live") + " " + _fe_registry_tag_html("Registry rating", ("EU-008", "Cooling duty")),
                 unsafe_allow_html=True,
             )
-            st.metric("🌡️ Cooling demand vs. Confirmed capacity (EU-008)",
+            st.metric(f"🌡️ Cooling demand vs. {_caption_status('EU-008', 'Cooling duty')} capacity (EU-008)",
                        f"{v['demand_kw']:.1f} kW ({v['utilization']*100:.0f}% of 20 kW)",
                        delta=f"{(v['utilization']-1.0)*100:+.0f} pp vs 100%" if over else None,
                        delta_color="inverse")
@@ -9351,13 +9396,13 @@ def _render_eu_live_results(snap):
                 '<div style="background:#FEF2F2;border:2px solid #B91C1C;border-radius:8px;padding:8px 14px;'
                 'margin:8px 0;"><span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ KNOWN '
                 f'SHORTFALL — computed {v["demand_kw"]:.2f} kW demand ({v["utilization"]*100:.0f}%), '
-                'ABOVE EU-008\'s own Confirmed 20 kW rating</span></div>', unsafe_allow_html=True)
+                f'ABOVE EU-008\'s own {_caption_status("EU-008", "Cooling duty")} 20 kW rating</span></div>', unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             c1.metric("Demand (GC-004+HB-003+HB-012)", f"{v['demand_kw']:.3f} kW")
             c2.metric("Utilization", f"{v['utilization']*100:.1f}% of 20 kW")
             c3.metric("Supply temperature (damped)", f"{v['supply_temp_c']:.2f} °C")
             st.markdown(_fe_inline_bar_svg(min(v["utilization"], 3.0), "#B91C1C", target_frac=1.0) +
-                        "&nbsp; vs EU-008's own Confirmed 20 kW rating", unsafe_allow_html=True)
+                        f"&nbsp; vs EU-008's own {_caption_status('EU-008', 'Cooling duty')} 20 kW rating", unsafe_allow_html=True)
             _eu_live_expander("EU-008 CoolingSupply", eu008)
         eu008_adeq = snap.get(("EU-008", "ConsumerAdequacy"))
         if eu008_adeq is not None:
@@ -9388,7 +9433,7 @@ def _render_eu_live_results(snap):
                 '<div style="background:#FEE2E2;border:2px solid #B91C1C;border-radius:8px;padding:8px 14px;'
                 'margin:8px 0;"><span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ FAULT — '
                 'AI-004\'s own real PLC interlock: EU-008 cooling utilization exceeds 150% of its '
-                'Confirmed rating</span></div>', unsafe_allow_html=True)
+                f'{_caption_status("EU-008", "Cooling duty")} rating</span></div>', unsafe_allow_html=True)
         if eu009 is not None:
             v = eu009["value"]
             c1, c2, c3 = st.columns(3)
@@ -10755,12 +10800,13 @@ with tab9:
     g1, g2, g3, g4, g5 = st.columns(5)
     g1.metric("Registry items covered", f"{len(_all_ids_seen)} / 91")
     g2.metric("Total real data points", _all_summary["total_real_data_points"])
-    g3.metric("Confirmed slots",
+    g3.metric("Confirmed (DOK-ING-sourced) slots",
               f"{_all_summary['confirmed_category_slots']} / {_all_summary['total_category_slots']}")
-    g4.metric("Engineering Estimate slots",
+    g4.metric("Not-confirmed slots",
               f"{_all_summary['estimated_category_slots']} / {_all_summary['total_category_slots']}")
     g5.metric("Missing Data — Required",
               f"{_all_summary['missing_category_slots']} / {_all_summary['total_category_slots']}")
+    _render_evidence_breakdown(_all_summary)
     if _completeness_ok:
         st.success(
             f"Completeness check: all 91 registry items are covered across the nine tabs, with no "
@@ -10770,10 +10816,10 @@ with tab9:
             f"three genuinely distinct numbers, not blended into one \"populated\" figure: "
             f"**{_all_summary['confirmed_category_slots']} Confirmed** "
             f"({_all_summary['confirmed_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
-            f"vendor datasheet or DOK-ING RFI answer), "
-            f"**{_all_summary['estimated_category_slots']} Engineering Estimate** "
+            f"at least one row cites a DOK-ING source), "
+            f"**{_all_summary['estimated_category_slots']} not confirmed** "
             f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
-            f"correlation/literature/comparable-system basis, not vendor- or DOK-ING-confirmed — "
+            f"strongest evidence in the slot is Calculated, Estimated from similar plants, an Engineering Estimate fill, Assumed, or Unverified (no stated origin yet) — "
             f"spanning all 7 sections now that the full registry-wide pass is complete: FE-001 "
             f"through FE-008, GA-001 through GA-010, GC-001 through GC-015, SA-001 through SA-012, "
             f"HB-001 through HB-018, EU-001 through EU-013, and AI-001 through AI-015), and "
