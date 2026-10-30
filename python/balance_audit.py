@@ -376,7 +376,7 @@ def atom_balance_like_verify(snapshot, previous_snapshot=None):
     x, y, z = h_f / c_tot, o_f / c_tot, d["feed_atoms"]["N"] / c_tot
     steam_per_c = (inp["steam_to_feed_ratio"] * inp["dry_feed_rate_kg_h"] * 1000.0 / M_H2O_ENGINE + inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE) / c_tot
     gas = {s: n / c_tot for s, n in gas_species_mol_h(out).items()}
-    return ga001.verify_atom_balance(x, y, z, inp["equivalence_ratio"], steam_per_c, gas)
+    return ga001.verify_atom_balance(x, y, z, inp["equivalence_ratio"], steam_per_c, gas, inp["carbon_conversion_efficiency"])
 
 
 # =============================================================================
