@@ -330,6 +330,15 @@ def solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_carb
     return {k: max(v, 0.0) for k, v in result.items()}
 
 
+def unconverted_carbon_fraction(carbon_conv_eff):
+    """Carbon that does NOT reach the gas, per mol of fuel carbon fed: 1 - carbon conversion efficiency. The ONE definition of the unconverted
+    carbon (carbon-bookkeeping task): the carbon-black flow in ("GA-001","CarbonAccounting") and the C check in verify_atom_balance both use it.
+    Applied to ALL carbon in the fuel atoms, recycled CO/CH4 carbon included (solve_product_gas works per mol of the COMBINED fuel carbon)."""
+    if not 0.0 <= carbon_conv_eff <= 1.0:
+        raise ValueError(f"carbon conversion efficiency {carbon_conv_eff!r} is outside [0, 1]")
+    return 1.0 - carbon_conv_eff
+
+
 def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, tol=1e-8):
     """Independent, exact re-check that a solve_product_gas() result
     actually conserves C, H, O atoms and satisfies the WGS equilibrium --
@@ -1143,6 +1152,7 @@ def register_ga001(engine):
     engine.register_model(("GA-001-INPUT", "feedstock_composition"), _input_feedstock_composition, unit="mass fraction dict")
     engine.register_model(("GA-001-INPUT", "operating_temperature_C"), _input_operating_temperature_c, unit="degC")
     engine.register_model(TAIL_GAS_MODE_KEY, _input_tail_gas_mode, unit="mode")
+    engine.register_model(CARBON_BLACK_SPLIT_KEY, _input_carbon_black_split, unit="fraction")
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
         depends_on=list(_GA001_INPUT_KEYS) + [TAIL_GAS_MODE_KEY],      # the switch is read same-cycle but is NOT in the published 'inputs' list
@@ -1158,6 +1168,8 @@ def register_ga001(engine):
     # Read-only energy report (a leaf: nothing depends on it, it feeds nothing back). Imported here to keep the module graph acyclic.
     from . import ga001_energy_balance
     ga001_energy_balance.register(engine)
+    from . import ga001_carbon_accounting
+    ga001_carbon_accounting.register(engine)
 
 
 # --- Uncertainty propagation: the seventh uncertainty class ---------------
@@ -1576,3 +1588,29 @@ def _tail_gas_entry(get_input):
     if _tail_gas_mode(get_input) == "heat_only":
         return {"value": None, "unit": None, "status": ps.STATUS_MISSING, "missing_reason": "tail_gas_mode = heat_only: the tail gas is heat, not gasifier feed"}
     return get_input(("HB-009", "TailGas"))
+
+
+# --- Carbon-black split (carbon-bookkeeping task) ---------------------------------------------------------------------------
+# The unconverted carbon (unconverted_carbon_fraction x all fuel-carbon atoms) is the ONE governing quantity; ("GA-001","CarbonAccounting")
+# derives the carbon-black flow from it. What share of it leaves as carbon black (the rest being bed-drain carry-over, cyclone catch, fly ash)
+# is not known: Assumed 1.0, range 0.5-1.0; the split of the remainder is Missing.
+CARBON_BLACK_SPLIT_DEFAULT = 1.0
+CARBON_BLACK_SPLIT_RANGE = (0.5, 1.0)
+CARBON_BLACK_SPLIT_KEY = ("GA-001-INPUT", "unconverted_carbon_to_carbon_black")
+
+
+def check_carbon_black_split(value):
+    lo, hi = CARBON_BLACK_SPLIT_RANGE
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not lo <= value <= hi:
+        raise ValueError(f"unconverted_carbon_to_carbon_black {value!r} is outside the Assumed range {CARBON_BLACK_SPLIT_RANGE}; refusing to guess")
+    return float(value)
+
+
+def _input_carbon_black_split(get_input):
+    return {
+        "value": check_carbon_black_split(CARBON_BLACK_SPLIT_DEFAULT), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            f"Share of the unconverted carbon that leaves as carbon black: Assumed {CARBON_BLACK_SPLIT_DEFAULT}, range {CARBON_BLACK_SPLIT_RANGE}. The split between carbon black, "
+            "bed-drain carry-over and fly ash is Missing (no DOK-ING data); the remainder, if the share is below 1, is published as a labelled Missing-split term."
+        ),
+    }

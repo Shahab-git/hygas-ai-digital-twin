@@ -21,7 +21,8 @@ from python import tab1_integration as t1
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_71e92cc.json.gz")
-NEW_KEYS = {"GA-001-INPUT|tail_gas_mode", "GA-001|EnergyBalance"}
+NEW_KEYS = {"GA-001-INPUT|tail_gas_mode", "GA-001|EnergyBalance",
+            "GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting"}      # the last two come from the carbon-bookkeeping task
 N = 20          # the tail-gas recycle has converged by cycle 20
 MID = "DOK-ING midpoint (Assumed point)"
 
@@ -181,7 +182,7 @@ def test_energy_key_is_a_report_nothing_depends_on_it_and_it_feeds_nothing_back(
 
 # ---------------------------------------------------------------- (d) no persisted key is lost
 @pytest.mark.parametrize("mode", ["regasify", "heat_only"])
-def test_no_key_of_main_is_lost_and_exactly_two_are_added(runs, baseline, mode):
+def test_no_key_of_main_is_lost_and_exactly_the_new_keys_are_added(runs, baseline, mode):
     new = {f"{k[0]}|{k[1]}" for k in runs[mode][0]}
     old = set(baseline["30"])
     assert old - new == set(), sorted(old - new)
