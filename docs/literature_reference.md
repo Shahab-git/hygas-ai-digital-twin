@@ -49,6 +49,8 @@ The definition in the code is not ambiguous. What is ambiguous is the basis of t
 | carbon conversion / CH4 fraction | 0.90 / 0.05 of converted carbon | `ga001_gasifier_model.py:217, 224` (Assumed) |
 | feed composition (dry, ash-free) | C 0.50, H 0.06, O 0.43, N 0.01; ash 0.10 of the dry feed | `ga001_gasifier_model.py:193-196, 211`; input function :549-600 (Assumed) |
 
+**Provenance of the 950 °C default.** The value is the GA-001 registry entry `data/equipment_registry.json:508-512`, parameter "Operating temperature (typical)", value `950`, unit `°C`; its remark reads: "Matches the value already used in the mass/energy balance dashboard and Simulink thermal-lag model" (the same entry gives "Design temperature" 1050 degC as a margin above it). The code reads it as `GA001_OPERATING_TEMPERATURE_C = 950.0` (`python/ga001_gasifier_model.py:230`, whose comment calls it a "Confirmed registry value") and carries it as **Assumed**, validation basis N/A (`_input_operating_temperature_c`, `ga001_gasifier_model.py:603-618`). It is not stated in `data/dokink_rfi_answers.md` and not in `python/design_basis.py`. The Simulink thermal-lag model and the mass/energy dashboard named in the remark are not in this repository. Whether the number originates in DOK-ING's spreadsheet (`data/MSW_Equipment_Datasheets_Interactive.xlsx`) or was written by the project: **NOT VERIFIED** (only the JSON extract was read, not the spreadsheet column). Within the model it is used only for the water-gas-shift equilibrium constant.
+
 ### 1.3 What can be varied from outside, without editing GA-001
 
 All of ER, steam ratio, temperature, carbon conversion and CH4 fraction are separate engine input models registered without dependencies (`ga001_gasifier_model.py:1139-1144`):
