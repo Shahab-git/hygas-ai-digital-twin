@@ -42,10 +42,11 @@ def report(path):
     L += ["## Rows per origin", ""] + _table(["origin", "rows"], list(rep["counts_by_origin"].items())) + [""]
     L += ["## Rows per section and origin", ""] + _table(["section"] + list(po.ORIGINS), [[s] + [rep["counts_by_section"][s][o] for o in po.ORIGINS] for s in po.SECTIONS]) + [""]
     keys = list(eff["today"]["rows"])
-    L += ["## Would-be counts, row level (rows with a value)", ""] + _table(["status", "today", "would be"], [[k, eff["today"]["rows"][k], eff["would_be"]["rows"][k]] for k in keys]) + [""]
+    cols = ["before phase 2 (old default)", "today (committed overlay)", "would be (this worksheet)"]
+    L += ["## Counts, row level (rows with a value)", ""] + _table(["status"] + cols, [[k, eff["before_phase2_default"]["rows"][k], eff["today"]["rows"][k], eff["would_be"]["rows"][k]] for k in keys]) + [""]
     skeys = list(eff["today"]["slots"])
-    L += ["## Would-be counts, the app's slot level (equipment_datasheet.summarize)", ""] + _table(["slots", "today", "would be"], [[k, eff["today"]["slots"][k], eff["would_be"]["slots"][k]] for k in skeys]) + [""]
-    L += ["Nothing is applied: this is a report. The overlay is not read by any module in phase 1."]
+    L += ["## Counts, the app's slot level (equipment_datasheet.summarize)", ""] + _table(["slots"] + cols, [[k, eff["before_phase2_default"]["slots"][k], eff["today"]["slots"][k], eff["would_be"]["slots"][k]] for k in skeys]) + [""]
+    L += ["Nothing is applied by this report; `--write` is the only thing that writes (the overlay file), and only for a valid worksheet."]
     return "\n".join(L) + "\n", rep["valid"], overlay
 
 

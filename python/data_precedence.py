@@ -183,7 +183,8 @@ def dry_run(table, measurements):
         model_rows = [r for r in rows if r["overridable_via"] != "registry"]
         model = model_rows[0] if model_rows else None
         ref_unit = normalise_unit((model or rows[0])["unit"])
-        cands = [candidate(r["value"], r["status"], None, f"table: {r['source']}", r["unit"]) for r in rows]
+        # a registry row with no stated origin ("Unverified (registry)", registry_status) is not one of the six rank statuses: it competes as the weakest valued candidate (Assumed)
+        cands = [candidate(r["value"], r["status"] if r["status"] in RANK else ps.STATUS_ASSUMED, None, f"table: {r['source']}", r["unit"]) for r in rows]
         for m in readings[tag]:
             flags = list(m.get("flags", ()))
             if normalise_unit(m.get("unit")) != ref_unit:

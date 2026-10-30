@@ -30,28 +30,18 @@ from . import equipment_engineering_estimates as eee
 from . import equipment_registry
 from . import equipment_rfi_fills as erf
 from . import plant_status as ps
+from . import registry_status as rs
 
-ORIGIN_DOKING, ORIGIN_SIMILAR, ORIGIN_ASSUMED, ORIGIN_CALCULATED, ORIGIN_UNKNOWN = "DOK-ING", "SIMILAR_PLANT", "ASSUMED", "CALCULATED", "UNKNOWN"
-ORIGINS = (ORIGIN_DOKING, ORIGIN_SIMILAR, ORIGIN_ASSUMED, ORIGIN_CALCULATED, ORIGIN_UNKNOWN)
-ORIGIN_TO_STATUS = {ORIGIN_DOKING: eds.STATUS_CONFIRMED, ORIGIN_SIMILAR: ps.STATUS_ESTIMATED,
-                    ORIGIN_ASSUMED: ps.STATUS_ASSUMED, ORIGIN_CALCULATED: ps.STATUS_CALCULATED}
-UNVERIFIED = "Unverified (registry)"
-# which owner column must be non-empty for each origin, and the message when it is not
-REQUIRED_FIELD = {
-    ORIGIN_DOKING: ("source", "Confirmed needs a citable DOK-ING source (document name, date, page/line or e-mail date)"),
-    ORIGIN_SIMILAR: ("source", "SIMILAR_PLANT needs a source (paper, plant, URL or the project's literature reference)"),
-    ORIGIN_ASSUMED: ("note", "ASSUMED needs a reason in `note`"),
-    ORIGIN_CALCULATED: ("source", "CALCULATED needs the formula or script reference in `source`"),
-}
+ORIGIN_DOKING, ORIGIN_SIMILAR, ORIGIN_ASSUMED, ORIGIN_CALCULATED, ORIGIN_UNKNOWN = (rs.ORIGIN_DOKING, rs.ORIGIN_SIMILAR, rs.ORIGIN_ASSUMED, rs.ORIGIN_CALCULATED, rs.ORIGIN_UNKNOWN)
+ORIGINS = rs.ORIGINS
+ORIGIN_TO_STATUS = rs.ORIGIN_TO_STATUS
+UNVERIFIED = rs.STATUS_UNVERIFIED
+REQUIRED_FIELD = rs.REQUIRED_FIELD
 SECTIONS = ("FE", "GA", "GC", "SA", "HB", "EU", "AI")
 DEFAULT_OVERLAY_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "registry_status_overlay.json")
 
-SOURCE_REGISTRY, SOURCE_RFI, SOURCE_ESTIMATE = "registry", "RFI_FILLS", "ESTIMATE_FILLS"
-
-
-def row_id(source, item_id, parameter):
-    """Stable id of one datasheet row: `<source>|<item>|<field>` (the registry and the two fill tables never repeat an (item, field) within a source)."""
-    return f"{source}|{item_id}|{parameter}"
+SOURCE_REGISTRY, SOURCE_RFI, SOURCE_ESTIMATE = rs.SOURCE_REGISTRY, rs.SOURCE_RFI, rs.SOURCE_ESTIMATE
+row_id = rs.row_id
 
 
 # --- the universe (every row the datasheet view can show) -------------------------------------------------------------------------------------
@@ -205,46 +195,49 @@ def write_overlay(overlay, path=DEFAULT_OVERLAY_PATH, header=None):
 
 # --- the would-be effect on the counts --------------------------------------------------------------------------------------------------------------
 
-def _datasheets_with_ids():
-    """The datasheets exactly as the app builds them, with each row's row_id (rows are copies; the registry is not touched)."""
-    ds = eee.apply_estimates(erf.apply_rfi_fills(eds.build_all_datasheets()))
-    for item_id, entry in ds.items():
-        for rows in entry["datasheet"].values():
-            for r in rows:
-                kind = SOURCE_REGISTRY if "source" not in r else (SOURCE_ESTIMATE if r.get("status") == eds.STATUS_ESTIMATE else SOURCE_RFI)
-                r["_row_id"] = row_id(kind, item_id, r["parameter"])
-    return ds
+def _app_datasheets():
+    """The datasheets exactly as the app builds them (registry + RFI fills + estimate fills), unresolved."""
+    return eee.apply_estimates(erf.apply_rfi_fills(eds.build_all_datasheets()))
+
+
+def _counts(resolved):
+    rows = {"Confirmed": 0, "Estimated": 0, "Estimated (existing fills)": 0, "Assumed": 0, "Calculated": 0, UNVERIFIED: 0}
+    for entry in resolved.values():
+        for bucket in entry["datasheet"].values():
+            for r in bucket:
+                st = r["status"]
+                key = "Estimated (existing fills)" if st == eds.STATUS_ESTIMATE else st
+                rows[key] = rows.get(key, 0) + 1
+    s = eds.summarize(resolved)
+    return rows, {"Confirmed": s["confirmed_category_slots"], "Engineering Estimate (non-Confirmed)": s["estimated_category_slots"], "Missing": s["missing_category_slots"],
+                  "total": s["total_category_slots"]}
+
+
+def _legacy_default_counts():
+    """The behaviour BEFORE provenance phase 2, kept only as a documented comparison: a row without a status key counted as Confirmed (equipment_datasheet.py:512 then)."""
+    rows = {"Confirmed": 0, "Estimated": 0, "Estimated (existing fills)": 0, "Assumed": 0, "Calculated": 0, UNVERIFIED: 0}
+    confirmed = estimate = missing = 0
+    for entry in _app_datasheets().values():
+        for bucket in entry["datasheet"].values():
+            if not bucket:
+                missing += 1
+                continue
+            states = [r.get("status", eds.STATUS_CONFIRMED) for r in bucket]
+            for st in states:
+                rows["Estimated (existing fills)" if st == eds.STATUS_ESTIMATE else st] += 1
+            if eds.STATUS_CONFIRMED in states:
+                confirmed += 1
+            else:
+                estimate += 1
+    return rows, {"Confirmed": confirmed, "Engineering Estimate (non-Confirmed)": estimate, "Missing": missing, "total": confirmed + estimate + missing}
 
 
 def effect(overlay):
-    """What the counts WOULD be if `overlay` were applied; nothing is applied. Row level (rows with a value) and the app's slot level (equipment_datasheet.slot_status/summarize,
-    where any non-Confirmed status shows as the single 'Engineering Estimate' badge). `today` is the current behaviour (no overlay, the default counts a status-less row as Confirmed)."""
-    def counts(use_overlay):
-        ds = _datasheets_with_ids()
-        rows = {"Confirmed": 0, "Estimated": 0, "Estimated (existing fills)": 0, "Assumed": 0, "Calculated": 0, UNVERIFIED: 0}
-        for entry in ds.values():
-            for bucket in entry["datasheet"].values():
-                for r in bucket:
-                    explicit = r.get("status")
-                    if not use_overlay:
-                        label = explicit if explicit is not None else "Confirmed"
-                        status = explicit
-                    elif r["_row_id"] in overlay:
-                        label = overlay[r["_row_id"]]["status"]
-                        status = eds.STATUS_CONFIRMED if label == "Confirmed" else eds.STATUS_ESTIMATE
-                        r["status"] = status
-                    elif explicit is not None:
-                        label, status = explicit, explicit
-                    else:
-                        label, status = UNVERIFIED, eds.STATUS_ESTIMATE
-                        r["status"] = status
-                    key = "Estimated (existing fills)" if label == eds.STATUS_ESTIMATE else label
-                    rows[key] = rows.get(key, 0) + 1
-                    if status is None:
-                        r.pop("status", None)
-        s = eds.summarize(ds)
-        return rows, {"Confirmed": s["confirmed_category_slots"], "Engineering Estimate (non-Confirmed)": s["estimated_category_slots"], "Missing": s["missing_category_slots"],
-                      "total": s["total_category_slots"]}
-    today_rows, today_slots = counts(False)
-    new_rows, new_slots = counts(True)
-    return {"today": {"rows": today_rows, "slots": today_slots}, "would_be": {"rows": new_rows, "slots": new_slots}}
+    """What the counts are in three situations; nothing is applied by calling this.
+    before_phase2_default: the old behaviour (a row without a status counted as Confirmed); today: the committed overlay (data/registry_status_overlay.json) resolved by
+    registry_status; would_be: `overlay` resolved the same way. Row level (rows with a value) and the app's slot level (equipment_datasheet.summarize)."""
+    out = {}
+    out["before_phase2_default"] = dict(zip(("rows", "slots"), _legacy_default_counts()))
+    out["today"] = dict(zip(("rows", "slots"), _counts(eds.resolve_datasheets(_app_datasheets()))))
+    out["would_be"] = dict(zip(("rows", "slots"), _counts(eds.resolve_datasheets(_app_datasheets(), overlay))))
+    return out

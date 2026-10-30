@@ -13,9 +13,10 @@ Columns: tag, value, unit, status, source, range_low, range_high, overridable_vi
   * `tag` convention `UNIT.quantity` (unit id of the equipment that owns it, then the quantity with its unit suffix), e.g. `GA-001.T_gasifier_C`.
     A parameter that lives in two places (an engine input AND a registry row, e.g. the gasifier temperature) has two rows with the SAME tag
     and different `source`: those are the candidates data_precedence.resolve() chooses between.
-  * `status`: the project's vocabulary (plant_status.ALL_STATUSES) plus `Confirmed` (equipment_datasheet.STATUS_CONFIRMED, the default of every
-    registry row without a status key). Where the repo carries NO status tag for a constant, the row says so in `note` ("STATUS ASSIGNED BY
-    THIS TABLE") rather than pretending the repo had tagged it.
+  * `status`: the project's vocabulary (plant_status.ALL_STATUSES) plus `Confirmed` and the display label `Unverified (registry)`. A REGISTRY row's status is resolved by
+    registry_status.resolve_row (the owner's worksheet answers in data/registry_status_overlay.json; no stated origin = Unverified; there is no default to Confirmed), the same
+    function the datasheet view uses. Where the repo carries NO status tag for a constant, the row says so in `note` ("STATUS ASSIGNED BY THIS TABLE") rather than pretending
+    the repo had tagged it.
   * `range_low` / `range_high`: from the repo only; None = Missing (no range exists in the repo).
   * `overridable_via`: `engine input` (a registered ("..-INPUT", ..) model: build_live_snapshot(overrides={key: fn})), `registry` (a row of
     data/equipment_registry.json, which the engine does NOT read), `dynamics argument` (dynamics.run_transient(taus=...), not an engine input),
@@ -28,12 +29,14 @@ import re
 from . import (dynamics, equipment_datasheet, equipment_registry, ga001_gasifier_model as ga001, gasifier_mass_balance, plant_status as ps,
                psa, shared_plant_state, simulation_engine, uncertainty)
 from . import design_basis
+from . import registry_status
 
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _REGISTRY_FILE = "data/equipment_registry.json"
 
 STATUS_CONFIRMED = equipment_datasheet.STATUS_CONFIRMED
-TABLE_STATUSES = (STATUS_CONFIRMED,) + ps.ALL_STATUSES
+UNVERIFIED = registry_status.STATUS_UNVERIFIED
+TABLE_STATUSES = (STATUS_CONFIRMED,) + ps.ALL_STATUSES + (UNVERIFIED,)
 
 VIA_ENGINE = "engine input"
 VIA_REGISTRY = "registry"
@@ -134,15 +137,28 @@ def _engine_input_rows(keys):
     return rows
 
 
+def _resolved_registry_status(item_id, parameter):
+    """(status, resolution dict) of one registry row, by the SAME function the datasheet view uses (registry_status.resolve_row on the committed overlay)."""
+    for item in equipment_registry.load_registry():
+        if item["id"] == item_id:
+            for p in item["parameters"]:
+                if p["parameter"] == parameter:
+                    res = registry_status.resolve_row(registry_status.SOURCE_REGISTRY, item_id, p)
+                    return res["status"], res
+    raise LookupError(f"registry {item_id} has no parameter {parameter!r}")
+
+
 def _code_only_rows():
     ash_lo, ash_hi = design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES["ash_pct"]
+    ash_status, ash_res = _resolved_registry_status("GA-005", "Ash discharge rate (design)")
     return [
-        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", STATUS_CONFIRMED,
+        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", ash_status,
              "module constant gasifier_mass_balance.ASH_FRACTION (reused by ga001 as ASH_FRACTION)",
              ash_lo / 100.0, ash_hi / 100.0, VIA_CODE, _loc("python/gasifier_mass_balance.py", r"^ASH_FRACTION\s*="),
-             "Status as the code states it ('GA-005: 10% ash content (dry basis)', ga001_gasifier_model.py comment on ASH_FRACTION). Range = "
-             "DOK-ING's confirmed ash band 5-15 % (design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES). NOT an engine input: a feed with another "
-             "ash content cannot be represented without a code edit."),
+             "Status = the resolved status of its registry counterpart GA-005 'Ash discharge rate (design)' (" + ash_res["reason"] + "); the code comment on ASH_FRACTION calls "
+             "the 10 % 'Confirmed' ('GA-005: 10% ash content'), which the owner's worksheet does not support: only the 5-15 % band is a DOK-ING line (data/dokink_rfi_answers.md:15). "
+             "Range = that DOK-ING ash band (design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES). NOT an engine input: a feed with another ash content cannot be represented "
+             "without a code edit."),
         _row("HB-006.psa_K1", psa.K1, "-", ps.STATUS_ASSUMED, "module constant psa.K1", None, None, VIA_CODE, _loc("python/psa.py", r"^K1\s*="),
              _ASSIGNED + "psa.py calls itself 'a simplified first-pass industrial design heuristic' and K1 'calibrated to the established 75% "
              "design-point recovery'. The HB-006 engine adapter does not pass k1_scale."),
@@ -205,12 +221,13 @@ def _registry_rows():
         p = next((q for q in reg[item_id]["parameters"] if q["parameter"] == parameter), None)
         if p is None:
             raise LookupError(f"registry {item_id} has no parameter {parameter!r}")
-        status = p.get("status", STATUS_CONFIRMED)
+        res = registry_status.resolve_row(registry_status.SOURCE_REGISTRY, item_id, p)
+        status = res["status"]
         remark = p.get("remarks", "") or ""
-        note = ("Registry rows without a status key count as Confirmed (equipment_datasheet.py:%d). The engine does not read this row." %
-                _find_line("python/equipment_datasheet.py", r"^STATUS_CONFIRMED\s*="))
+        note = (f"Status resolved by registry_status.resolve_row: {res['reason']}" + (f"; origin {res['origin']}, citation: {res['citation']}" if res["origin"] else "") +
+                ". The engine does not read this row.")
         if "not DOK-ING-confirmed" in remark or "treat as an estimate" in remark:
-            note += f" CAVEAT, verbatim from the row's own remark: \"{remark}\" (the row still counts as Confirmed by the default)."
+            note += f" The row's own remark, verbatim: \"{remark}\""
         rows.append(_row(tag, _registry_value(p["value"]), p["unit"], status, f"registry {item_id} '{parameter}'", None, None, VIA_REGISTRY,
                          f"{_REGISTRY_FILE}:{_registry_line(item_id, parameter)}", note))
     return rows
