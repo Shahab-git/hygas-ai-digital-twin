@@ -1,0 +1,187 @@
+{
+ "header": {
+  "format": 1,
+  "generated_at": "2026-10-30T16:24:30Z",
+  "source_file": "provenance_worksheet_filled.csv",
+  "source_sha256": "d67c63bf4acf0cca25c98eae0c7ea8e3100e2efd5c4c2a5e105ff0e892c3cf9f",
+  "sha256_basis": "file content with LF line endings",
+  "n_entries": 29,
+  "meaning": "row_id -> resolved status; DOK-ING->Confirmed (source cited), SIMILAR_PLANT->Estimated (literature-informed), ASSUMED->Assumed, CALCULATED->Calculated; rows absent here are 'Unverified (registry)'"
+ },
+ "entries": {
+  "RFI_FILLS|EU-009|Confirmed grid power connection": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:48",
+   "note": ""
+  },
+  "RFI_FILLS|FE-001|Confirmed feed rate": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:11",
+   "note": "exact unit conversion of a stated figure"
+  },
+  "RFI_FILLS|FE-001|Confirmed feedstock form": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:18",
+   "note": ""
+  },
+  "RFI_FILLS|GA-001|Confirmed feed rate": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:11",
+   "note": "exact unit conversion of a stated figure"
+  },
+  "RFI_FILLS|GA-001|Confirmed feedstock form": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:18",
+   "note": ""
+  },
+  "RFI_FILLS|GA-001|Confirmed operational turndown": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:12",
+   "note": ""
+  },
+  "RFI_FILLS|GA-001|Confirmed target feedstock streams (this phase)": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:61",
+   "note": ""
+  },
+  "RFI_FILLS|GA-005|Confirmed feedstock ash content range": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:15",
+   "note": ""
+  },
+  "RFI_FILLS|GA-009|Confirmed ash content of processed material": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:15",
+   "note": ""
+  },
+  "RFI_FILLS|HB-013|Confirmed H2 production rate feeding storage": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:31",
+   "note": ""
+  },
+  "registry|FE-003|Nominal feed rate": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:11",
+   "note": "exact unit conversion of a stated figure"
+  },
+  "registry|FE-004|Output particle size (max)": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:18",
+   "note": ""
+  },
+  "registry|GA-001|Operating temperature (typical)": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Value matches the project's own mass/energy balance dashboard / Simulink model (registry remark); not from DOK-ING"
+  },
+  "registry|GA-003|Air-to-fuel equivalence ratio (ER)": {
+   "status": "Estimated",
+   "origin": "SIMILAR_PLANT",
+   "source": "Parrillo et al., large pilot fluidised bed, ER 0.22-0.25 (SSRN 4737155); Sustainability 2023, 15(9), 7547, lab BFB ER 0.25",
+   "note": "Owner: from similar plants. Registry remark cites a DOK-ING steam-blown spec that conflicts with air at ER 0.25 (gasifying-agent study)"
+  },
+  "registry|GA-003|Primary air flow rate (design)": {
+   "status": "Calculated",
+   "origin": "CALCULATED",
+   "source": "ER 0.25 x stoichiometric air demand for dry feed 37.5 kg/h (registry remark)",
+   "note": "Not DOK-ING-confirmed; depends on Assumed ER"
+  },
+  "registry|GA-003|Steam flow rate (design)": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "0.4 kg steam/kg dry feed x 37.5 kg/h; ratio source undocumented"
+  },
+  "registry|HB-006|H₂ purity (design)": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:33",
+   "note": ""
+  },
+  "registry|HB-007|H₂ recovery rate (design)": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Unconfirmed assumption, pending DOK-ING/vendor confirmation (registry remark)"
+  },
+  "registry|HB-007|Product H₂ flow rate": {
+   "status": "Calculated",
+   "origin": "CALCULATED",
+   "source": "55 % H2 feed content x 50 Nm3/h x 75 % recovery (registry remark)",
+   "note": "Depends on Assumed recovery"
+  },
+  "registry|HB-007|Tail gas disposition": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Design intent per registry remark; not confirmed by DOK-ING"
+  },
+  "registry|HB-008|Adsorption pressure (design)": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Design value chosen inside DOK-ING's stated 3-10 bar PSA discharge range (registry remark; range in dokink_rfi_answers.md)"
+  },
+  "registry|HB-012|Discharge pressure (design)": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:36",
+   "note": ""
+  },
+  "registry|HB-013|Operating pressure range": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:36",
+   "note": ""
+  },
+  "registry|HB-018|Dispensing pressure": {
+   "status": "Confirmed",
+   "origin": "DOK-ING",
+   "source": "DOK-ING RFI response, data/dokink_rfi_answers.md:36",
+   "note": ""
+  },
+  "registry|SA-001|Expected H₂ concentration": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Matches project's mass/energy balance dashboard gas-composition chart (not in repo); not from DOK-ING"
+  },
+  "registry|SA-002|Expected CO concentration": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Matches project's mass/energy balance dashboard gas-composition chart (not in repo); not from DOK-ING"
+  },
+  "registry|SA-003|Expected CO₂ concentration": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Matches project's mass/energy balance dashboard gas-composition chart (not in repo); not from DOK-ING"
+  },
+  "registry|SA-004|Expected CH₄ concentration": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Matches project's mass/energy balance dashboard gas-composition chart (not in repo); not from DOK-ING"
+  },
+  "registry|SA-005|Expected N₂ concentration": {
+   "status": "Assumed",
+   "origin": "ASSUMED",
+   "source": "",
+   "note": "Matches project's mass/energy balance dashboard gas-composition chart (not in repo); not from DOK-ING"
+  }
+ }
+}

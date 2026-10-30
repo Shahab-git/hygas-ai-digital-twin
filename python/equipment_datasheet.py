@@ -403,9 +403,12 @@ console/terminal — an earlier debugging session's mangled-looking output
 was a Windows console codepage display issue, not a defect in the
 committed file itself.)
 """
-from . import equipment_registry
+import copy
 
-FE_IDS = [f"FE-{i:03d}" for i in range(1, 9)]
+from . import equipment_registry
+from . import registry_status
+
+FE_IDS =[f"FE-{i:03d}" for i in range(1, 9)]
 GA_IDS = [f"GA-{i:03d}" for i in range(1, 11)]
 GC_IDS = [f"GC-{i:03d}" for i in range(1, 16)]
 SA_IDS = [f"SA-{i:03d}" for i in range(1, 13)]
@@ -421,14 +424,16 @@ CATEGORIES = [
 
 # Three genuine data-confidence statuses a category SLOT can have --
 # added for the engineering-estimate pilot (python/
-# equipment_engineering_estimates.py). STATUS_CONFIRMED is the default
-# for every parameter row that has no explicit "status" key -- true of
-# every registry row and every python/equipment_rfi_fills.py row ever
-# written, so this is fully backward compatible, not a breaking change.
-# A row instead carrying "status": STATUS_ESTIMATE marks it honestly as
-# a correlation/literature/comparable-system estimate, NOT vendor- or
-# DOK-ING-confirmed data -- see summarize()'s slot-status logic below
-# for exactly how a category's rows roll up into one of these three.
+# equipment_engineering_estimates.py). PROVENANCE PHASE 2: there is NO
+# default to Confirmed any more (it used to be the default for every row
+# without a "status" key, which made 766 registry rows "Confirmed" with 16
+# DOK-ING lines behind them). A row's status is resolved ONCE by
+# registry_status.resolve_row() -- the owner's worksheet answers in
+# data/registry_status_overlay.json, else "Unverified (registry)" -- and
+# resolve_datasheets() below writes it into each row. A slot is Confirmed
+# only if at least one of its rows is Confirmed AND cites its source.
+# A row carrying "status": STATUS_ESTIMATE is a correlation/literature/
+# comparable-system estimate, NOT vendor- or DOK-ING-confirmed data.
 STATUS_CONFIRMED = "Confirmed"
 STATUS_ESTIMATE = "Engineering Estimate (Not Vendor/DOK-ING Confirmed)"
 STATUS_MISSING = "Missing Data — Required"
@@ -496,21 +501,54 @@ def build_all_datasheets(registry=None, ids=None):
     return out
 
 
+def row_source_kind(row):
+    """Which table a datasheet row came from, from its shape: registry rows carry no `source`; ESTIMATE_FILLS rows carry `source` and an explicit estimate `status`;
+    RFI_FILLS rows carry `source` and no status."""
+    if "source" not in row:
+        return registry_status.SOURCE_REGISTRY
+    return registry_status.SOURCE_ESTIMATE if row.get("status") == STATUS_ESTIMATE else registry_status.SOURCE_RFI
+
+
+def resolve_datasheets(datasheets, overlay=None):
+    """A deep copy of `datasheets` (as built by the app: registry + RFI fills + estimate fills) in which every row carries its RESOLVED status (registry_status.resolve_row):
+    `status`, `status_label`, `status_source` (the citation behind it), `status_origin`. The registry is not touched. `overlay` = entries dict (default: the committed overlay)."""
+    out = copy.deepcopy(datasheets)
+    entries = overlay if overlay is not None else registry_status.load_overlay()[0]
+    for item_id, entry in out.items():
+        for rows in entry["datasheet"].values():
+            for r in rows:
+                res = registry_status.resolve_row(row_source_kind(r), item_id, r, entries)
+                r["status"], r["status_label"], r["status_source"], r["status_origin"] = res["status"], res["label"], res["citation"], res["origin"]
+    return out
+
+
 def slot_status(rows):
-    """Classifies ONE category bucket's real status: STATUS_MISSING if
-    empty; STATUS_CONFIRMED if at least one row in it is confirmed data
-    (real vendor-datasheet or DOK-ING-RFI data -- the default for any
-    row without an explicit "status" key, so a slot with a mix of
-    confirmed and estimate rows still counts as genuinely Confirmed,
-    since real confirmed data IS present); STATUS_ESTIMATE only if
-    every row present is an engineering estimate and none is confirmed.
-    Public because app.py's rendering needs the same per-slot
-    classification the honest count uses, not a separate copy of this
-    logic."""
+    """Classifies ONE category bucket: STATUS_MISSING if empty; STATUS_CONFIRMED only if at least one row is Confirmed AND cites its source (`status_source`, the DOK-ING
+    document behind it); otherwise STATUS_ESTIMATE (the single 'not confirmed' badge the layout has). There is NO default: a row without a resolved status is never Confirmed.
+    Public because app.py's rendering needs the same per-slot classification the honest count uses, not a separate copy of this logic."""
     if not rows:
         return STATUS_MISSING
-    statuses = {r.get("status", STATUS_CONFIRMED) for r in rows}
-    return STATUS_CONFIRMED if STATUS_CONFIRMED in statuses else STATUS_ESTIMATE
+    if any(r.get("status") == STATUS_CONFIRMED and str(r.get("status_source") or "").strip() for r in rows):
+        return STATUS_CONFIRMED
+    return STATUS_ESTIMATE
+
+
+def slot_evidence_status(rows):
+    """The strongest status among a slot's rows (Confirmed > Calculated > Estimated / Engineering Estimate > Assumed > Unverified); None for an empty slot. A row that is Confirmed
+    without a cited source counts as Unverified here, consistently with slot_status()."""
+    statuses = []
+    for r in rows:
+        st = r.get("status")
+        if st == STATUS_CONFIRMED and not str(r.get("status_source") or "").strip():
+            st = registry_status.STATUS_UNVERIFIED
+        statuses.append(st or registry_status.STATUS_UNVERIFIED)
+    return registry_status.best_status(statuses)
+
+
+def slot_evidence_label(rows):
+    """Display text of slot_evidence_status(): Confirmed / Calculated / Estimated (literature-informed) / Engineering Estimate / Assumed / Unverified (registry); '' for an empty slot."""
+    best = slot_evidence_status(rows)
+    return "" if best is None else registry_status.label_of(best)
 
 
 def summarize(datasheets=None, ids=None):
@@ -528,7 +566,7 @@ def summarize(datasheets=None, ids=None):
     answers correctly). Pass `ids` to scope to just FE, just GA, or the
     combined set (default: whatever is in `datasheets`, or every
     covered item)."""
-    datasheets = datasheets if datasheets is not None else build_all_datasheets(ids=ids)
+    datasheets = datasheets if datasheets is not None else resolve_datasheets(build_all_datasheets(ids=ids))
     if ids is not None:
         datasheets = {k: v for k, v in datasheets.items() if k in ids}
     total_real_data_points = 0
@@ -536,6 +574,8 @@ def summarize(datasheets=None, ids=None):
     confirmed_category_slots = 0
     estimated_category_slots = 0
     missing_category_slots = 0
+    evidence_slots = {}          # slots by the evidence label of their best row (Missing slots are counted in missing_category_slots)
+    evidence_rows = {}           # rows by their resolved status label
     per_item = {}
     for item_id, entry in datasheets.items():
         sheet = entry["datasheet"]
@@ -543,6 +583,12 @@ def summarize(datasheets=None, ids=None):
         n_confirmed = sum(1 for v in sheet.values() if slot_status(v) == STATUS_CONFIRMED)
         n_estimated = sum(1 for v in sheet.values() if slot_status(v) == STATUS_ESTIMATE)
         n_missing = sum(1 for v in sheet.values() if slot_status(v) == STATUS_MISSING)
+        for v in sheet.values():
+            if v:
+                evidence_slots[slot_evidence_label(v)] = evidence_slots.get(slot_evidence_label(v), 0) + 1
+                for r in v:
+                    label = registry_status.label_of(r.get("status") or registry_status.STATUS_UNVERIFIED)
+                    evidence_rows[label] = evidence_rows.get(label, 0) + 1
         total_real_data_points += n_real
         total_category_slots += len(CATEGORIES)
         confirmed_category_slots += n_confirmed
@@ -560,6 +606,8 @@ def summarize(datasheets=None, ids=None):
         "confirmed_category_slots": confirmed_category_slots,
         "estimated_category_slots": estimated_category_slots,
         "missing_category_slots": missing_category_slots,
+        "evidence_label_slots": evidence_slots,
+        "evidence_label_rows": evidence_rows,
         "per_item": per_item,
     }
 

@@ -27,7 +27,9 @@ REGISTRY = os.path.join(ROOT, "data", "equipment_registry.json")
 OVERLAY_DEFAULT = os.path.join(ROOT, "data", "registry_status_overlay.json")
 GEN = os.path.join(ROOT, "scripts", "make_provenance_worksheet.py")
 CHK = os.path.join(ROOT, "scripts", "check_provenance_worksheet.py")
-OWN = {"python/provenance_overlay.py", "scripts/make_provenance_worksheet.py", "scripts/check_provenance_worksheet.py", "tests/test_provenance_overlay.py"}
+# PROVENANCE PHASE 2 (deliberate edit): scripts/export_provenance_csv.py is a new member of this family (it loads the module by name), so the "nobody else imports it" scan must allow it.
+OWN = {"python/provenance_overlay.py", "scripts/make_provenance_worksheet.py", "scripts/check_provenance_worksheet.py", "scripts/export_provenance_csv.py", "tests/test_provenance_overlay.py",
+       "tests/test_apply_provenance.py"}      # the phase 2 tests belong to the family too (deliberate edit: they import the module to check the committed overlay)
 
 
 def _sha(path):
@@ -116,12 +118,13 @@ def test_the_priority_one_list_has_the_rows_the_task_names(sheet):
     assert 30 <= len(top) <= 70
 
 
-def test_the_generator_leaves_the_registry_byte_identical_and_writes_no_overlay(gen, sheet, tmp_path):
-    before = _sha(REGISTRY)
+def test_the_generator_leaves_the_registry_and_the_committed_overlay_byte_identical(gen, sheet, tmp_path):
+    # PROVENANCE PHASE 2 (deliberate edit; was `..._and_writes_no_overlay`): data/registry_status_overlay.json now exists on purpose, so "does not exist" became "not touched".
+    before, overlay_before = _sha(REGISTRY), _sha(OVERLAY_DEFAULT)
     gen.write_csv(sheet, str(tmp_path / "w.csv"))
     gen.write_xlsx(sheet, str(tmp_path / "w.xlsx"))
     assert _sha(REGISTRY) == before
-    assert not os.path.exists(OVERLAY_DEFAULT)
+    assert _sha(OVERLAY_DEFAULT) == overlay_before
     back = po.load_worksheet(str(tmp_path / "w.csv"))
     assert len(back) == 815 and [r["row_id"] for r in back] == [r["row_id"] for r in sheet]
 
@@ -239,7 +242,9 @@ def test_the_documented_mapping_is_the_codes():
 def test_the_worksheet_as_generated_gives_16_confirmed_and_750_unverified(sheet, universe):
     rep = po.validate(as_sheet(sheet), universe)
     eff = po.effect(po.to_overlay(rep["valid_rows"]))
-    assert eff["today"]["rows"]["Confirmed"] == 766 and eff["today"]["slots"]["Confirmed"] == 262
+    # PROVENANCE PHASE 2 (deliberate edit): `today` now means the committed overlay; the old default's numbers are `before_phase2_default`.
+    assert eff["before_phase2_default"]["rows"]["Confirmed"] == 766 and eff["before_phase2_default"]["slots"]["Confirmed"] == 262
+    assert eff["today"]["rows"]["Confirmed"] == 16 and eff["today"]["slots"]["Confirmed"] == 13 and eff["today"]["rows"][po.UNVERIFIED] == 737
     assert eff["would_be"]["rows"] == {"Confirmed": 16, "Estimated": 0, "Estimated (existing fills)": 48, "Assumed": 0, "Calculated": 0, po.UNVERIFIED: 750}
     assert eff["would_be"]["slots"]["Confirmed"] == 13 and eff["would_be"]["slots"]["Missing"] == eff["today"]["slots"]["Missing"] == 236
 
@@ -274,8 +279,10 @@ def test_the_checker_reports_without_writing_and_refuses_to_write_an_invalid_she
     good = tmp_path / "good.csv"
     gen.write_csv(sheet, str(good))
     text, ok, overlay = chk.report(str(good))
-    assert ok and len(overlay) == 16 and "Would-be counts, row level" in text and "Nothing is applied" in text
-    assert not os.path.exists(OVERLAY_DEFAULT)
+    # PROVENANCE PHASE 2 (deliberate edit): the report headings were renamed (three columns now) and the committed overlay exists, so "not written" became "byte-identical".
+    overlay_before = _sha(OVERLAY_DEFAULT)
+    assert ok and len(overlay) == 16 and "Counts, row level" in text and "before phase 2 (old default)" in text and "Nothing is applied by this report" in text
+    assert _sha(OVERLAY_DEFAULT) == overlay_before
     bad = tmp_path / "bad.csv"
     rows = copy.deepcopy(sheet)
     rows[40]["origin"], rows[40]["source"] = "DOK-ING", ""
@@ -283,7 +290,7 @@ def test_the_checker_reports_without_writing_and_refuses_to_write_an_invalid_she
     out = tmp_path / "overlay.json"
     assert chk.main([str(bad), "--write", "--out", str(out)]) == 1 and not out.exists()
     assert chk.main([str(good), "--write", "--out", str(out)]) == 0 and out.exists()
-    assert not os.path.exists(OVERLAY_DEFAULT), "the default overlay path must stay unwritten in phase 1"
+    assert _sha(OVERLAY_DEFAULT) == overlay_before, "only `--write` with the default path may change the committed overlay, and these runs wrote to a temp path"
     capsys.readouterr()
 
 
@@ -294,7 +301,8 @@ def test_no_database_or_network_call_was_made(fake):
 
 
 def test_the_new_files_contain_no_database_network_or_scada_code():
-    for rel in sorted(OWN - {"tests/test_provenance_overlay.py"}):
+    # PROVENANCE PHASE 2 (deliberate edit): the check is about the module and scripts; test files (this one and the phase 2 one) legitimately name urllib to block the network.
+    for rel in sorted(p for p in OWN if not p.startswith("tests/")):
         with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
             code = "\n".join(line for line in f.read().splitlines() if not line.lstrip().startswith("#"))
         for forbidden in (r"\bimport requests\b", r"\burllib\b", r"\bimport supabase\b", r"\bcreate_client\b", r"\.upsert\(", r"\.table\(", r"\.execute\("):
@@ -316,8 +324,10 @@ def test_no_engine_app_or_datasheet_file_imports_the_overlay_module():
     assert offenders == [], offenders
 
 
-def test_the_default_status_and_the_registry_are_not_touched():
-    assert eds.slot_status([{"parameter": "x", "value": "1"}]) == eds.STATUS_CONFIRMED, "phase 1 must leave the default (equipment_datasheet.py:512) alone"
+def test_no_default_to_confirmed_and_the_registry_json_is_untouched():
+    # PROVENANCE PHASE 2 (deliberate edit; was `..._the_default_status_and_the_registry_are_not_touched`, which pinned the default phase 2 removes): the default is gone, the registry
+    # JSON still carries no status key (status lives in the overlay, never in the registry file).
+    assert eds.slot_status([{"parameter": "x", "value": "1"}]) != eds.STATUS_CONFIRMED, "a row without a status must not count as Confirmed"
     with open(REGISTRY, encoding="utf-8") as f:
         assert '"status"' not in f.read()
 
