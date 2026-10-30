@@ -582,6 +582,7 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
   H2-energy / feed-LHV ratio (52-69 % over DOK-ING's 15-20 MJ/kg range). The GA-001
   mass balance closes (0.001 %) only when ash and unconverted carbon are added;
   those are not published streams, so on published streams the residual is 4.56 %.
+- **Literature reference values are from other plants (`docs/literature_reference.md`, `python/literature_reference.py`):** `Assumed` (literature-informed), not DOK-ING's, not Confirmed or Measured, and not used by the engine, the uncertainty module or the app. Against the published sludge-study directions the model agrees on steam and ER and disagrees on temperature (H2 falls and CH4 is flat as temperature rises).
 
 ## Not yet built (the actual current state)
 
