@@ -175,6 +175,8 @@ carbon is exactly 45.0 % (at the floor, not above it; DOK-ING gave no basis); an
 3. **Feed LHV.** The +/-26 kW LHV uncertainty swamps everything else in the energy balance; pin it (DOK-ING analysis) before building on the gasifier energy results.
 4. Whether the H2 storage / dispensing lag oscillation (M5) is wanted for the hourly runtime, or only for the what-if tab.
 
+5. **Update 2026-10-30 (branch `tail-gas-heat`, `docs/tail_gas_heat.md`).** Decision 1 (carbon bookkeeping) is unchanged and still open. The tail-gas treatment, which this audit identified as the largest hydrogen driver, now has a switch (`GA-001-INPUT tail_gas_mode`, default `regasify` = the behaviour measured above) and a read-only `(GA-001, EnergyBalance)` key. With `heat_only` the carbon residual changes sign (-0.1875 kg/h: no recycle carbon is added) and the plant energy residual grows to +65 kW because the burned tail gas is heat the engine has no term to report; H, O, N still close. Line numbers quoted in this document are as of c9d1847.
+
 ## 7. Recommended next step and its cost
 
 The task that was planned (energy balance and gasifier temperature) is justified, and this audit says how to stage it. Cost figures are engineering estimates (Estimated), not measured.
