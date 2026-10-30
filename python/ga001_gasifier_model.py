@@ -670,7 +670,7 @@ def _recycle_atom_moles(get_input):
     HB-009 (ga001_gasifier_model.py's own self-test, gc_gas_cleaning_chain.py's
     own self-test) working completely unchanged: an absent lagged key is
     not an error, it is zero recycle, by construction."""
-    entry = get_input(("HB-009", "TailGas"))
+    entry = _tail_gas_entry(get_input)     # heat_only: a Missing-shaped entry, i.e. zero recycle atoms (the lagged HB-009 dependency stays registered)
     if entry["status"] == ps.STATUS_MISSING:
         return 0.0, 0.0, 0.0, 0.0
     tail = entry["value"]
@@ -832,7 +832,7 @@ def ga001_model(get_input):
             "self-test), NOT validated against a DOK-ING-confirmed design point -- none exists. "
             "Does NOT model GA-001's own Fe2O3/Fe3O4 chemical-looping oxygen carrier -- see "
             "module docstring for this stated limitation. Recycle contribution this cycle: "
-            f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)'}. "
+            f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else ('none (tail_gas_mode = heat_only: the tail gas is reported as heat, no atoms re-enter GA-001)' if _tail_gas_mode(get_input) == 'heat_only' else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)')}. "
             f"FE-005 moisture contribution this cycle: "
             f"{'active (' + f'{moisture_water_mol_h:.3f}' + ' mol/h extra H2O folded into the water/steam pool)' if moisture_water_mol_h else 'none (no prior-cycle FE-005 output available yet, or FE-005 not registered)'}."
         ),
@@ -1142,9 +1142,10 @@ def register_ga001(engine):
     engine.register_model(("GA-001-INPUT", "ch4_carbon_fraction"), _input_ch4_carbon_fraction, unit="-")
     engine.register_model(("GA-001-INPUT", "feedstock_composition"), _input_feedstock_composition, unit="mass fraction dict")
     engine.register_model(("GA-001-INPUT", "operating_temperature_C"), _input_operating_temperature_c, unit="degC")
+    engine.register_model(TAIL_GAS_MODE_KEY, _input_tail_gas_mode, unit="mode")
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
-        depends_on=list(_GA001_INPUT_KEYS),
+        depends_on=list(_GA001_INPUT_KEYS) + [TAIL_GAS_MODE_KEY],      # the switch is read same-cycle but is NOT in the published 'inputs' list
         lagged_depends_on=[("HB-009", "TailGas"), ("FE-005", "MoistureBalance")],
     )
     engine.register_model(("GA-001", "Tar content"), ga001_tar_content, unit="mol% (dry)")
@@ -1154,6 +1155,9 @@ def register_ga001(engine):
         depends_on=[("GA-001-INPUT", "dry_feed_rate_kg_h"), ("GA-001-INPUT", "equivalence_ratio"),
                     ("GA-001-INPUT", "feedstock_composition")],
     )
+    # Read-only energy report (a leaf: nothing depends on it, it feeds nothing back). Imported here to keep the module graph acyclic.
+    from . import ga001_energy_balance
+    ga001_energy_balance.register(engine)
 
 
 # --- Uncertainty propagation: the seventh uncertainty class ---------------
@@ -1525,3 +1529,50 @@ if __name__ == "__main__":
           "(not silently frozen) -- neither is a static one-off number.")
 
     print("\nAll ga001_gasifier_model.py self-tests PASSED.")
+
+
+# --- Tail-gas mode switch (tail-gas-heat task) ------------------------------------------------------------
+# "regasify" (DEFAULT, today's behaviour): HB-009's H2/CO/CH4 are folded back into GA-001's atom balance (below).
+# "heat_only": GA-001 receives ZERO recycle atoms; the tail gas is reported as a heat source only
+#   ((GA-001, EnergyBalance), ga001_energy_balance.py). HB-009 and every other model are untouched.
+# Reason: HB-007/HB-009's registry 'Tail gas disposition' is "Recycled to GA-001 gasifier as supplemental fuel" -- fuel = heat.
+# Flipping the default is the owner's decision; nothing here changes the default.
+TAIL_GAS_MODES = ("regasify", "heat_only")
+TAIL_GAS_MODE_DEFAULT = "regasify"
+TAIL_GAS_MODE_KEY = ("GA-001-INPUT", "tail_gas_mode")
+
+
+def check_tail_gas_mode(mode):
+    """Rejects anything that is not one of TAIL_GAS_MODES (never silently falls back to the default)."""
+    if mode not in TAIL_GAS_MODES:
+        raise ValueError(f"tail_gas_mode {mode!r} is not one of {TAIL_GAS_MODES}; refusing to guess a default")
+    return mode
+
+
+def _input_tail_gas_mode(get_input):
+    return {
+        "value": check_tail_gas_mode(TAIL_GAS_MODE_DEFAULT), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            "Switch, not a measurement. 'regasify' = today's behaviour (HB-009 H2/CO/CH4 atoms re-enter GA-001); 'heat_only' = GA-001 receives no recycle "
+            "atoms and the tail gas is reported as heat. Registry: HB-007/HB-009 'Tail gas disposition' = 'Recycled to GA-001 gasifier as supplemental "
+            "fuel', i.e. fuel / heat. Default unchanged until the owner flips it."
+        ),
+    }
+
+
+def _tail_gas_mode(get_input):
+    """The mode GA-001 runs in. A Missing entry only happens for a get_input that bypasses the engine (the registered model always yields
+    a value); it means 'this context never had the switch', i.e. today's behaviour. An INVALID value raises."""
+    entry = get_input(TAIL_GAS_MODE_KEY)
+    if entry["status"] == ps.STATUS_MISSING:
+        return TAIL_GAS_MODE_DEFAULT
+    return check_tail_gas_mode(entry["value"])
+
+
+
+
+def _tail_gas_entry(get_input):
+    """HB-009's tail gas as GA-001 receives it: the lagged entry in 'regasify', a Missing-shaped entry (-> zero recycle atoms) in 'heat_only'."""
+    if _tail_gas_mode(get_input) == "heat_only":
+        return {"value": None, "unit": None, "status": ps.STATUS_MISSING, "missing_reason": "tail_gas_mode = heat_only: the tail gas is heat, not gasifier feed"}
+    return get_input(("HB-009", "TailGas"))

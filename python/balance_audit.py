@@ -97,6 +97,12 @@ GA008_OPERATING_C = 180.0            # GA-008 "Operating temperature"
 SOLIDS_CP_KJ_KGK = (1.0, 0.8, 1.4)   # (point, low, high) Assumed, ash/char mean cp; NOT from the repo
 
 
+def tail_gas_mode(snapshot):
+    """'regasify' (today) or 'heat_only' (tail-gas-heat task). Snapshots from before the switch existed have no such key: regasify."""
+    e = snapshot.get(("GA-001-INPUT", "tail_gas_mode"))
+    return "regasify" if e is None or e["status"] == ps.STATUS_MISSING else e["value"]
+
+
 class AuditInputMissing(Exception):
     """A snapshot entry the audit needs is absent or Missing."""
 
@@ -205,6 +211,8 @@ def _recycle(snapshot, previous_snapshot):
     (ga001_gasifier_model.py:660-694, lagged read). Returns (species_mol_h | None, label, status)."""
     out = _val(snapshot, ("GA-001", "Outputs"))
     if not out["recycle_active"]:
+        if tail_gas_mode(snapshot) == "heat_only":
+            return {}, "none (tail_gas_mode = heat_only: the tail gas is heat, no atoms re-enter GA-001)", ps.STATUS_CALCULATED
         return {}, "none (first cycle: no previous tail gas)", ps.STATUS_CALCULATED
     if previous_snapshot is None:
         return None, "recycle is active but the previous cycle's snapshot was not supplied", ps.STATUS_MISSING
@@ -430,7 +438,15 @@ def plant_terms(snapshot, previous_snapshot=None, scope="plant"):
                            source="HB-012 h2_kg_h (hb_wgs_psa_storage_chain.py:467); PSA product taken as 100 % H2 (HB-009 docstring)"))
 
     # recycle inside the volume: the tail-gas H2/CO/CH4 produced this cycle minus what GA-001 read (one cycle old) = inventory in transit
-    if ga["recycle"] is None:
+    if tail_gas_mode(snapshot) == "heat_only":
+        # the tail combustibles are not recycled: they are burned for heat (audit convention: complete combustion, no burner exists in the engine)
+        h2, co, ch4 = (float(sp[k]) / NM3_PER_MOL for k in ("H2", "CO", "CH4"))
+        terms.append(make_term("air O2 for burning the tail-gas combustibles", "in", {"O2": 0.5 * h2 + 0.5 * co + 2.0 * ch4}, status=ps.STATUS_CALCULATED,
+                               source="audit convention for tail_gas_mode = heat_only: H2 + 1/2 O2, CO + 1/2 O2, CH4 + 2 O2 (complete combustion); the engine has no burner",
+                               note="the combustion air's N2 passes through and is not counted"))
+        terms.append(make_term("tail-gas combustion products (CO2, H2O) to the stack", "out", {"CO2": co + ch4, "H2O": h2 + 2.0 * ch4}, status=ps.STATUS_CALCULATED,
+                               source="same convention; the heat released is the tail gas LHV (see (GA-001, EnergyBalance))"))
+    elif ga["recycle"] is None:
         terms.append(make_term("recycle inventory in transit (lag)", "out", None, affects=("C", "H", "O"), blocking=True, source=ga["recycle_label"]))
     else:
         now = {s: float(sp[s]) / NM3_PER_MOL for s in ("H2", "CO", "CH4")}
@@ -647,6 +663,21 @@ def gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg):
             "cold_gas_efficiency_formula": "gas LHV (H2+CO+CH4) / (feed LHV + recycle LHV); net of recycle: (gas LHV - recycle LHV) / feed LHV"}
 
 
+def heat_demands(n_gasifier_steam_mol_h, wgs_steam_kg_h, air_o2_mol_h, air_n2_mol_h, evaporated_kg_h):
+    """Heat the plant needs that no engine term sources (kW): raise the gasifier and WGS steam from liquid at 25 degC to vapour at the GA-004 /
+    HB-005 350 degC, preheat the air to the GA-004 200 degC, evaporate the feed moisture in the dryer. Named constants above; Estimated.
+    Shared by plant_energy and the engine's read-only (GA-001, EnergyBalance) key so the two cannot drift apart."""
+    steam_raise = lambda n, t_c: n * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (t_c - T_REF_C) / 1000.0) * KW_PER_KJ_H
+    n_ws = wgs_steam_kg_h * 1000.0 / M_H2O_ENGINE
+    return [
+        _en("raise gasifier steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_gasifier_steam_mol_h, GA004_STEAM_C), ps.STATUS_ESTIMATED, "DH_VAP + mean cp x (350-25); source of this heat is not in the engine"),
+        _en("raise WGS steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_ws, GA004_STEAM_C), ps.STATUS_ESTIMATED, "HB-005 conditions 350 degC / 5 bar(g); the engine counts only HB-003's 20->150 degC sensible duty"),
+        _en("preheat air to 200 degC", _sens_kw({"O2": air_o2_mol_h, "N2": air_n2_mol_h}, GA004_AIR_PREHEAT_C), ps.STATUS_ESTIMATED, "GA-004 'recovered process heat'"),
+        _en("evaporate feed moisture in the dryer", float(evaporated_kg_h) * 1000.0 / M_H2O_ENGINE * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (FE005_DRYER_OPERATING_C - T_REF_C) / 1000.0) * KW_PER_KJ_H,
+            ps.STATUS_ESTIMATED, "FE-005 heat source 'recovered process heat ... electric/gas trim backup'"),
+    ]
+
+
 def plant_energy(snapshot, previous_snapshot, lhv_mj_kg, vent_temp_c=40.0, knockout_temp_c=40.0):
     """Whole-plant energy balance, steady state, kW, boundary crossings only (internal heat recovery cancels).
 
@@ -726,16 +757,7 @@ def plant_energy(snapshot, previous_snapshot, lhv_mj_kg, vent_temp_c=40.0, knock
         _en("shredder FE-004 electricity becomes heat", float(fe4["power_kw"]), ps.STATUS_CALCULATED, "FE-004 power_kw; not in EU-009 nor EU-008"),
     ]
     # internal heat demands the engine does not source (steam raising to the GA-004 / HB-005 conditions)
-    n_gs = by["gasifier steam"]["species"]["H2O"]
-    n_ws = hb005["steam_kg_h"] * 1000.0 / M_H2O_ENGINE
-    steam_raise = lambda n, t_c: n * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (t_c - T_REF_C) / 1000.0) * KW_PER_KJ_H
-    internal = [
-        _en("raise gasifier steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_gs, GA004_STEAM_C), ps.STATUS_ESTIMATED, "DH_VAP + mean cp x (350-25); source of this heat is not in the engine"),
-        _en("raise WGS steam: liquid 25 degC -> vapour 350 degC", steam_raise(n_ws, GA004_STEAM_C), ps.STATUS_ESTIMATED, "HB-005 conditions 350 degC / 5 bar(g); the engine counts only HB-003's 20->150 degC sensible duty"),
-        _en("preheat air to 200 degC", _sens_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, GA004_AIR_PREHEAT_C), ps.STATUS_ESTIMATED, "GA-004 'recovered process heat'"),
-        _en("evaporate feed moisture in the dryer", float(fe5["water_evaporated_kg_h"]) * 1000.0 / M_H2O_ENGINE * (DH_VAP_KJ_MOL + CP_J_MOLK["H2O"] * (FE005_DRYER_OPERATING_C - T_REF_C) / 1000.0) * KW_PER_KJ_H,
-            ps.STATUS_ESTIMATED, "FE-005 heat source 'recovered process heat ... electric/gas trim backup'"),
-    ]
+    internal = heat_demands(by["gasifier steam"]["species"]["H2O"], hb005["steam_kg_h"], ga["air_o2_mol_h"], ga["air_n2_mol_h"], fe5["water_evaporated_kg_h"])
     return {"lhv_mj_kg": lhv_mj_kg, "in": ins, "out": outs, "sum_in_kw": sum_in, "sum_out_known_kw": sum_out, "implied_heat_rejected_kw": implied_reject,
             "engine_reported_rejection": reported, "engine_reported_rejection_kw": reported_sum,
             "eu008_cooling_demand_kw": float(eu008["demand_kw"]), "eu008_includes_hb003_cold_side_kw": float(hb003["Q_cold_side_kW"]),
