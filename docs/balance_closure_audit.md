@@ -9,6 +9,31 @@ Reproduce: `python scripts/run_balance_audit.py` (about 1 minute; writes `output
 `python scripts/run_balance_audit.py --write-baseline` (rewrites `docs/balance_audit_baseline.json`). Code: `python/balance_audit.py`
 (pure functions), `python/balance_audit_inventory.py` (stream inventory; every `file:line` is checked by a test), `tests/test_balance_audit.py`.
 
+## Update 2026-10-30: carbon bookkeeping (branch `carbon-bookkeeping`, `docs/carbon_bookkeeping.md`)
+
+Decision 1 below was taken: the carbon conversion is the single governing value, the carbon black is derived from the unconverted carbon, the 5 % / GA-008 figure is a cross-check, and `verify_atom_balance` now covers C and N. **The carbon numbers in sections 1, 2 and 4.1 describe the state before this change** (kept for the record); the appendix tables below are regenerated. Carbon now closes to numerical precision (|residual| < 6e-15 kg/h) in every case, converged and five-cycle:
+
+| case | cycles | GA-001 carbon before, kg/h (% of C in) | GA-001 carbon after | loop carbon before (%) | loop carbon after | GA-001 total mass before (%) | GA-001 total mass after |
+|---|---|---|---|---|---|---|---|
+| default | 30 | +0.1380 (+0.69 %) | +0e+00 | +0.1380 (+0.82 %) | +0e+00 | +0.1380 (+0.109 %) | +1e-14 |
+| default | 5 | +0.1377 (+0.68 %) | +0e+00 | +0.1377 (+0.82 %) | +0e+00 | +0.1377 (+0.109 %) | +0e+00 |
+| heat_only | 30 | -0.1875 (-1.11 %) | +0e+00 | -0.1875 (-1.11 %) | +0e+00 | -0.1875 (-0.182 %) | +3e-14 |
+| heat_only | 5 | -0.1875 (-1.11 %) | +0e+00 | -0.1875 (-1.11 %) | +0e+00 | -0.1875 (-0.182 %) | +3e-14 |
+| ER 0.2125 | 30 | +0.1305 (+0.65 %) | +0e+00 | +0.1305 (+0.77 %) | -3e-15 | +0.1305 (+0.112 %) | -1e-14 |
+| ER 0.2125 | 5 | +0.1301 (+0.65 %) | +0e+00 | +0.1301 (+0.77 %) | -3e-15 | +0.1301 (+0.111 %) | +0e+00 |
+| ER 0.2875 | 30 | +0.1450 (+0.72 %) | +3e-15 | +0.1450 (+0.86 %) | +5e-15 | +0.1450 (+0.107 %) | +3e-14 |
+| ER 0.2875 | 5 | +0.1447 (+0.72 %) | -3e-15 | +0.1447 (+0.86 %) | -3e-15 | +0.1447 (+0.107 %) | +0e+00 |
+| feed -30 % (FE-001) | 30 | +0.0966 (+0.69 %) | +0e+00 | +0.0966 (+0.82 %) | +1e-15 | +0.0966 (+0.109 %) | +1e-14 |
+| feed -30 % (FE-001) | 5 | +0.0972 (+0.69 %) | +0e+00 | +0.0972 (+0.82 %) | -1e-15 | +0.0972 (+0.110 %) | +0e+00 |
+| feed +30 % (FE-001) | 30 | +0.1656 (+0.69 %) | -5e-15 | +0.1656 (+0.82 %) | -3e-15 | +0.1656 (+0.109 %) | +3e-14 |
+| feed +30 % (FE-001) | 5 | +0.1647 (+0.68 %) | +0e+00 | +0.1647 (+0.81 %) | +5e-15 | +0.1647 (+0.109 %) | +3e-14 |
+| conversion 0.85 | 30 | +1.1184 (+5.60 %) | +0e+00 | +1.1184 (+6.63 %) | +3e-15 | +1.1184 (+0.897 %) | +0e+00 |
+| conversion 0.85 | 5 | +1.1180 (+5.60 %) | -3e-15 | +1.1180 (+6.62 %) | -3e-15 | +1.1180 (+0.896 %) | +3e-14 |
+| conversion 0.98 | 30 | -1.4669 (-7.19 %) | +3e-15 | -1.4669 (-8.69 %) | -3e-15 | -1.4669 (-1.137 %) | +3e-14 |
+| conversion 0.98 | 5 | -1.4670 (-7.19 %) | +3e-15 | -1.4670 (-8.69 %) | +3e-15 | -1.4670 (-1.137 %) | +0e+00 |
+
+The GA-001 total mass closes to about 1e-14 kg/h too. The loop total mass keeps a residual of about -2e-3 to -4e-3 kg/h (1e-5 of the inflow, `closes to a stated tolerance`): it is the water molar-mass basis (18.015 in `ga001_gasifier_model.py:165` against 18.016 from the atomic masses) in `explain_plant_mass_residual`, not carbon. The whole-plant H and O residual (electrolyser water) and the energy findings are unchanged. Line numbers quoted in this document are as of c9d1847; `python/balance_audit_inventory.py` carries the current ones.
+
 ## 1. Headline
 
 - **H, O and N close to numerical precision** (relative residual below 5e-16) across GA-001 and across the whole gasification loop with the
@@ -169,13 +194,12 @@ carbon is exactly 45.0 % (at the floor, not above it; DOK-ING gave no basis); an
 
 ## 6. Needs your decision
 
-1. **Carbon bookkeeping.** Which Assumed constant governs: carbon conversion 0.90, or the 5 % carbon black (derived from GA-008's 1.88 kg/h at the old 37.5 kg/h)? And should the
-   recycled CO / CH4 carbon be subject to the solid-carbon conversion at all? Both are structure decisions, not plugs; this audit does not make them.
+1. **Carbon bookkeeping: DECIDED and implemented (2026-10-30).** Conversion governs; carbon black = unconverted carbon x an Assumed split (1.0, range 0.5-1.0); the 5 % / GA-008 figure is a cross-check. Still open: whether the recycled CO / CH4 carbon should be subject to the solid-carbon conversion at all (`docs/carbon_bookkeeping.md`).
 2. **Electrolyser unit** (E4): ask DOK-ING, or keep the 55 kWh/Nm3 reading.
 3. **Feed LHV.** The +/-26 kW LHV uncertainty swamps everything else in the energy balance; pin it (DOK-ING analysis) before building on the gasifier energy results.
 4. Whether the H2 storage / dispensing lag oscillation (M5) is wanted for the hourly runtime, or only for the what-if tab.
 
-5. **Update 2026-10-30 (branch `tail-gas-heat`, `docs/tail_gas_heat.md`).** Decision 1 (carbon bookkeeping) is unchanged and still open. The tail-gas treatment, which this audit identified as the largest hydrogen driver, now has a switch (`GA-001-INPUT tail_gas_mode`, default `regasify` = the behaviour measured above) and a read-only `(GA-001, EnergyBalance)` key. With `heat_only` the carbon residual changes sign (-0.1875 kg/h: no recycle carbon is added) and the plant energy residual grows to +65 kW because the burned tail gas is heat the engine has no term to report; H, O, N still close. Line numbers quoted in this document are as of c9d1847.
+5. **Update 2026-10-30 (branch `tail-gas-heat`, `docs/tail_gas_heat.md`).** Decision 1 (carbon bookkeeping) was taken afterwards (see the update at the top: carbon now closes). The tail-gas treatment, which this audit identified as the largest hydrogen driver, now has a switch (`GA-001-INPUT tail_gas_mode`, default `regasify` = the behaviour measured above) and a read-only `(GA-001, EnergyBalance)` key. With `heat_only`, at the time of that task, the carbon residual changed sign (-0.1875 kg/h: no recycle carbon is added; it closes since the carbon-bookkeeping change) and the plant energy residual grows to +65 kW because the burned tail gas is heat the engine has no term to report; H, O, N still close. Line numbers quoted in this document are as of c9d1847.
 
 ## 7. Recommended next step and its cost
 
@@ -205,26 +229,26 @@ Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance
 
 | stream | dir | what the model uses | status | file:line | closed by construction? |
 |---|---|---|---|---|---|
-| dry feed rate | in | GA-001-INPUT dry_feed_rate_kg_h = FE-005 dry solids (37.503 kg/h at 41.67 wet); on cycle 1 the 41.67 kg/h placeholder (a WET figure used as dry) | Calculated (cycle 1: Assumed) | ga001_gasifier_model.py:384 | input |
+| dry feed rate | in | GA-001-INPUT dry_feed_rate_kg_h = FE-005 dry solids (37.503 kg/h at 41.67 wet); on cycle 1 the 41.67 kg/h placeholder (a WET figure used as dry) | Calculated (cycle 1: Assumed) | ga001_gasifier_model.py:406 | input |
 | feed C/H/O/N (dry, ash-free: 0.50/0.06/0.43/0.01) | in | literature stand-in (Tchobanoglous et al.), cross-checked against DOK-ING floors only | Assumed | ga001_gasifier_model.py:193 | input |
 | feed ash (10 % of dry feed) | in | ASH_FRACTION, GA-005 registry 'Ash discharge rate 10 % of feed' | Confirmed registry value (tag Assumed in the engine) | gasifier_mass_balance.py:61 | not used by the gas closure; carried by the byproduct module only |
 | feed S, Cl, trace | in | no S/Cl in the composition; GC-008/GC-009 inlets are fixed 200 / 150 ppm | Missing | gc_gas_cleaning_chain.py:413 | no |
-| residual moisture in the dry feed | in | FE-005 residual_water_kg_h (0.379 kg/h), read one cycle late, added to the steam pool | Calculated | ga001_gasifier_model.py:697 | Y (H, O) |
+| residual moisture in the dry feed | in | FE-005 residual_water_kg_h (0.379 kg/h), read one cycle late, added to the steam pool | Calculated | ga001_gasifier_model.py:719 | Y (H, O) |
 | gasifying air | in | not a stream: O2 = ER x (1 + x/4 - y/2) per mol C, N2 = O2 x 0.79/0.21 (no argon); ER 0.25 | Assumed (ER) | ga001_gasifier_model.py:301 | Y (O, N) |
-| gasifier steam | in | steam_to_feed_ratio 0.4 kg/kg dry feed = 15.0 kg/h; GA-003 registry 15 kg/h at 37.5 kg/h | Assumed | ga001_gasifier_model.py:752 | Y (H, O) |
-| oxygen-carrier (Fe2O3/Fe3O4) oxygen | in | NOT in the model: the circulation estimate is standalone and 'does NOT feed back into ga001_model()' | Missing (as a stream) | ga001_gasifier_model.py:962 | n/a |
-| bed material / carrier inventory, make-up, attrition | in/out | not modelled | Missing | ga001_gasifier_model.py:962 | n/a |
-| tail-gas recycle (HB-009 H2, CO, CH4) | in | previous cycle's tail gas atoms added to the fuel atoms; CO2 and N2 deliberately not recycled | Calculated | ga001_gasifier_model.py:660 | Y (H, O); C only at the 0.90 conversion |
-| product gas, dry flow + composition (H2, CO, CO2, CH4, N2) | out | dry_flow_nm3_h and mol % from the WGS-equilibrium closure | Calculated | ga001_gasifier_model.py:793 | Y (H, O, N) |
-| product gas, water | out | wet_flow_nm3_h and H2O_mol_pct_wet | Calculated | ga001_gasifier_model.py:795 | Y (H, O) |
-| unconverted carbon / char | out | NOT a stream: (1 - 0.90) x total C simply does not appear in the gas (also applied to the recycled CO and CH4 carbon) | Assumed (0.90) | ga001_gasifier_model.py:303 | no stream |
+| gasifier steam | in | steam_to_feed_ratio 0.4 kg/kg dry feed = 15.0 kg/h; GA-003 registry 15 kg/h at 37.5 kg/h | Assumed | ga001_gasifier_model.py:774 | Y (H, O) |
+| oxygen-carrier (Fe2O3/Fe3O4) oxygen | in | NOT in the model: the circulation estimate is standalone and 'does NOT feed back into ga001_model()' | Missing (as a stream) | ga001_gasifier_model.py:984 | n/a |
+| bed material / carrier inventory, make-up, attrition | in/out | not modelled | Missing | ga001_gasifier_model.py:984 | n/a |
+| tail-gas recycle (HB-009 H2, CO, CH4) | in | previous cycle's tail gas atoms added to the fuel atoms; CO2 and N2 deliberately not recycled | Calculated | ga001_gasifier_model.py:682 | Y (H, O); C only at the 0.90 conversion |
+| product gas, dry flow + composition (H2, CO, CO2, CH4, N2) | out | dry_flow_nm3_h and mol % from the WGS-equilibrium closure | Calculated | ga001_gasifier_model.py:815 | Y (H, O, N) |
+| product gas, water | out | wet_flow_nm3_h and H2O_mol_pct_wet | Calculated | ga001_gasifier_model.py:817 | Y (H, O) |
+| unconverted carbon / char | out | (1 - 0.90) x total C does not appear in the gas (also applied to the recycled CO and CH4 carbon); since the carbon-bookkeeping task it is published as (GA-001, CarbonAccounting).unconverted_carbon_kg_h | Calculated (conversion 0.90 Assumed) | ga001_gasifier_model.py:303 | Y (published, carbon closes) |
 | ash | out | 10 % of dry feed from the byproduct module, independent of the gas closure | Assumed | gasifier_mass_balance.py:65 | by an independent constant |
-| carbon black | out | 5 % of dry feed from the byproduct module, independent of the 0.90 carbon conversion | Assumed | gasifier_mass_balance.py:62 | N (not tied to the gas closure) |
-| tar | out | permanently Missing | Missing | ga001_gasifier_model.py:842 | N |
+| carbon black | out | DERIVED: unconverted carbon x the Assumed split (1.0) in (GA-001, CarbonAccounting); the old 5 % of dry feed (CARBON_BLACK_FRACTION) and GA-008's 1.88 kg/h are a cross-check only; the static byproduct_mass_flows() used by the app cards and circularity still uses the 5 % rule | Calculated (split Assumed) | gasifier_mass_balance.py:62 | Y (tied to the gas closure) |
+| tar | out | permanently Missing | Missing | ga001_gasifier_model.py:864 | N |
 | fly ash / dust leaving with the gas | out | GC-001 Dust Missing; GC-003 inlet fixed 2 g/Nm3 | Missing | gc_gas_cleaning_chain.py:132 | N |
 
 - solve_product_gas conserves H, O and N exactly by construction (ga001_gasifier_model.py:299-330). Carbon is conserved only on the gas side: 0.90 of the carbon (including the recycled carbon) goes to CO + CO2 + CH4 and the other 10 % has no stream.
-- verify_atom_balance (ga001_gasifier_model.py:333) tests H and O only: `ok` uses h_check and o_check; the carbon check is returned in `detail` but never compared, and nitrogen is not tested at all.
+- verify_atom_balance (ga001_gasifier_model.py) used to test H and O only (the carbon check was returned in `detail` but never compared, nitrogen not tested at all). Since the carbon-bookkeeping task it tests C (gas carbon equals the conversion and gas carbon + unconverted_carbon_fraction is the 1 mol fed), H, O and N.
 
 #### A2. Every other unit
 
@@ -236,7 +260,7 @@ Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance
 | FE-004 shredder | FE-003 flow | same flow; 150 kWh/t electricity | Y (mass); electricity computed | fe_feed_handling.py:243 | power not summed in EU-009 |
 | FE-005 dryer | wet feed (10 % water) | dry solids + 1 % residual water to GA-001; evaporated water 3.79 kg/h | Y (mass, explicit) | fe_feed_handling.py:275 | no dryer heat duty; evaporated water has no destination |
 | FE-006 / FE-007 / FE-008 | FE-005 outlet | pass-through 37.88 kg/h | Y (pass-through) | fe_feed_handling.py:331 | GA-001 takes the dry mass and the water separately |
-| GA-001 gasifier | see A1 | see A1 | H, O, N Y; C partly; ash by constant; energy N | ga001_gasifier_model.py:718 | no heat duty computed |
+| GA-001 gasifier | see A1 | see A1 | H, O, N Y; C partly; ash by constant; energy N | ga001_gasifier_model.py:740 | no heat duty computed |
 | GC-001 / GC-003 cyclones | GA-001 gas | same gas (copied) | Y (copy) | gc_gas_cleaning_chain.py:152 | dust: GC-001 Missing, GC-003 fixed 2 g/Nm3 and 95 % |
 | GC-004 quench | GA-001 wet gas | dry gas + condensate (wet - dry) | Y (water, by construction) | gc_gas_cleaning_chain.py:256 | duty = sensible heat of the dry gas only |
 | GC-005 quench water | - | blowdown 0.05 m3/h (fixed) | N | gc_gas_cleaning_chain.py:312 | no make-up stream, no circulation balance |
@@ -261,7 +285,7 @@ Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance
 | EU-009 electrical metering | HB-012 + HB-011 + GC-013 fan + EU-008 fan | consumption kW | N (a sum) | eu_utilities_chp.py:733 | omits FE-004 and all other nameplate loads |
 | EU-010 UPS | EU-009 net | state of charge | explicit (Coulomb counting) | eu_utilities_chp.py:775 |  |
 | EU-011..013 heat recovery | EU-005 exhaust, EU-004 | kWth | Y (sums) | eu_utilities_chp.py:813 | zero while the CHP units idle |
-| oxygen carrier (chemical looping) | - | - | n/a (standalone estimate) | ga001_gasifier_model.py:962 | no stream enters or leaves the balance |
+| oxygen carrier (chemical looping) | - | - | n/a (standalone estimate) | ga001_gasifier_model.py:984 | no stream enters or leaves the balance |
 
 #### A3. Mass or energy that appears or disappears without a stream (live values, converged state)
 
@@ -269,7 +293,8 @@ Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance
 |---|---|---|---|---|---|
 | ash leaving as bottom ash (10 % of dry feed) | 3.7503 | kg/h | Assumed | gasifier_mass_balance.py:61 | carries no C/H/O/N; closed by an independent constant |
 | fly ash implied by GC-003's fixed 2 g/Nm3 inlet | 0.2055 | kg/h | Assumed | gc_gas_cleaning_chain.py:206 | not subtracted from the 10 % bottom ash |
-| carbon black (5 % of dry feed) | 1.8752 | kg/h | Assumed | gasifier_mass_balance.py:62 | not tied to the unconverted carbon |
+| carbon black, derived from the unconverted carbon | 2.0132 | kg/h | Calculated | gasifier_mass_balance.py:62 | the 5 % datasheet rule is now a cross-check; the app cards and circularity still show the 5 % rule |
+| carbon black by the 5 % datasheet rule (cross-check) | 1.8752 | kg/h | Assumed | gasifier_mass_balance.py:62 | not used by the gas closure |
 | tar mass removed by GC-006/GC-007 (500 -> 50 mg/Nm3) | 0.0462 | kg/h | Assumed | gc_gas_cleaning_chain.py:364 | tar that GA-001 does not produce (Missing) is removed here |
 | H2S entering GC-008 (200 ppm of the dry gas), as sulfur | 0.0294 | kg S/h | Assumed | gc_gas_cleaning_chain.py:413 | no sulfur in the feed composition: S appears from nowhere |
 | HCl entering GC-009 (150 ppm of the dry gas), as chlorine | 0.0244 | kg Cl/h | Assumed | gc_gas_cleaning_chain.py:463 | no chlorine in the feed composition |
@@ -277,7 +302,7 @@ Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance
 | GC-007/008/009 blowdowns (scaled to gas flow) | 77.0646 | kg/h | Assumed | gc_gas_cleaning_chain.py:389 | no make-up stream |
 | WGS unreacted steam knocked out | 56.6966 | kg/h | Calculated | hb_wgs_psa_storage_chain.py:270 | no condensate stream, no unit, no heat rejection |
 | WGS steam raised (HB-005) | 70.8966 | kg/h | Calculated | hb_wgs_psa_storage_chain.py:189 | feedwater source and boiler energy not modelled |
-| gasifier steam (GA-003 / GA-004) | 15.0012 | kg/h | Assumed | ga001_gasifier_model.py:752 | source and energy of this steam not modelled |
+| gasifier steam (GA-003 / GA-004) | 15.0012 | kg/h | Assumed | ga001_gasifier_model.py:774 | source and energy of this steam not modelled |
 | dryer vapour (FE-005) | 3.7882 | kg/h | Calculated | fe_feed_handling.py:291 | no destination, no heat duty |
 | tail-gas CO2 + N2 vented | 105.3691 | kg/h | Calculated | eu_utilities_chp.py:485 | a real exit stream (EU-007) |
 | HB-013 clamp at 0 kg (storage would go negative) | - | kg per cycle | Calculated | hb_wgs_psa_storage_chain.py:537 | creates H2; see storage_inventory_check |
@@ -294,7 +319,7 @@ Hard-coded efficiencies, losses and constants:
 | carbon conversion efficiency | 0.90 (range 0.85-0.98), Assumed | ga001_gasifier_model.py:217 | sets the unconverted carbon; independent of temperature |
 | CH4 carbon fraction | 0.05, Assumed | ga001_gasifier_model.py:224 | CH4 is not an equilibrium result |
 | ash fraction | 0.10 of dry feed, Confirmed registry value | gasifier_mass_balance.py:61 | a constant, not tied to the composition |
-| carbon-black fraction | 0.05 of dry feed | gasifier_mass_balance.py:62 | not tied to the 0.90 conversion |
+| carbon-black fraction | 0.05 of dry feed | gasifier_mass_balance.py:62 | cross-check only since the carbon-bookkeeping task; still drives the static byproduct_mass_flows() |
 | gasifier operating temperature | 950 degC, registry value | ga001_gasifier_model.py:230 | enters only the WGS Keq |
 | steam-to-CO ratio in the WGS | 4.0 mol/mol | hb_wgs_psa_storage_chain.py:98 | sets the steam raised and the water knocked out |
 | quench inlet / outlet temperature | 860 / 65 degC | gc_gas_cleaning_chain.py:295 | duty excludes latent heat |
@@ -306,7 +331,7 @@ Hard-coded efficiencies, losses and constants:
 | UPS round-trip efficiency | 0.94 | eu_utilities_chp.py:207 | charge side only |
 | WGS/PSA claim on syngas | 1.0 | eu_utilities_chp.py:231 | CHP fuel budget is 0 |
 | gas-train fan power | hydraulic power only (efficiency not applied) | gc_gas_cleaning_chain.py:594 | lower bound of electrical load |
-| heat loss from any vessel or pipe | none anywhere | ga001_gasifier_model.py:718 | no heat-loss term exists in the repo |
+| heat loss from any vessel or pipe | none anywhere | ga001_gasifier_model.py:740 | no heat-loss term exists in the repo |
 
 #### A4. Feedstock composition
 
@@ -399,52 +424,52 @@ Verdicts: closes to numerical precision (< 1e-6 relative) / closes to a stated t
 
 | control volume | quantity | in kg/h | out kg/h | residual kg/h | % of inflow | verdict | Missing terms listed |
 |---|---|---|---|---|---|---|---|
-| GA-001 (recycle = external feed) | C | 20.1319 | 19.9939 | +1.3804e-01 | +0.6857 | does not close | tar |
+| GA-001 (recycle = external feed) | C | 20.1319 | 20.1319 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | H | 4.9256 | 4.9256 | +1.8335e-15 | +3.722e-14 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | O | 46.6595 | 46.6595 | +7.2760e-15 | +1.559e-14 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | N | 50.9101 | 50.9101 | -6.3696e-15 | -1.251e-14 | closes to numerical precision (< 1e-6 relative) | - |
 | GA-001 (recycle = external feed) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| GA-001 (recycle = external feed) | mass | 126.3774 | 126.2393 | +1.3804e-01 | +0.1092 | does not close | tar; sulfur, chlorine, argon and trace species |
-| gasification loop (recycle INSIDE) | C | 16.8764 | 16.7383 | +1.3804e-01 | +0.818 | does not close | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
+| GA-001 (recycle = external feed) | mass | 126.3774 | 126.3774 | +1.4211e-14 | +1.124e-14 | closes to numerical precision (< 1e-6 relative) | tar; sulfur, chlorine, argon and trace species |
+| gasification loop (recycle INSIDE) | C | 16.8764 | 16.8764 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | H | 11.6801 | 11.6801 | +1.8335e-15 | +1.57e-14 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | O | 106.4962 | 106.4962 | +1.4552e-14 | +1.366e-14 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | N | 50.9101 | 50.9101 | -6.3696e-15 | -1.251e-14 | closes to numerical precision (< 1e-6 relative) | PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| gasification loop (recycle INSIDE) | mass | 189.7091 | 189.5740 | +1.3514e-01 | +0.07124 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
-| whole plant (wet MSW in, H2 out) | C | 16.8764 | 16.7383 | +1.3804e-01 | +0.818 | does not close | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
+| gasification loop (recycle INSIDE) | mass | 189.7091 | 189.7120 | -2.9015e-03 | -0.001529 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
+| whole plant (wet MSW in, H2 out) | C | 16.8764 | 16.8764 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | H | 12.1116 | 12.1101 | +1.4851e-03 | +0.01226 | closes to a stated tolerance (< 0.1 % of inflow) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | O | 109.9208 | 109.9090 | +1.1786e-02 | +0.01072 | closes to a stated tolerance (< 0.1 % of inflow) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | N | 50.9101 | 50.9101 | -6.3696e-15 | -1.251e-14 | closes to numerical precision (< 1e-6 relative) | PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| whole plant (wet MSW in, H2 out) | mass | 193.5649 | 193.4165 | +1.4839e-01 | +0.07666 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
+| whole plant (wet MSW in, H2 out) | mass | 193.5649 | 193.5545 | +1.0345e-02 | +0.005345 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
 
-Carbon detail (GA-001): total C 20.1319 kg/h; in the gas 18.1187; not in the gas 2.0132 (= (1-0.90) x total C, of which 0.3256 is recycled CO/CH4 carbon); carbon-black stream 1.8751; **unassigned carbon +0.1380 kg/h**. Recycle cross-check (carbon implied by the published gas vs feed + recycle read): relative difference -1.36e-16.
+Carbon detail (GA-001): total C 20.1319 kg/h; in the gas 18.1187; not in the gas 2.0132 (= (1-0.90) x total C, of which 0.3256 is recycled CO/CH4 carbon); carbon-black stream 2.0132; **unassigned carbon -0.0000 kg/h**. Recycle cross-check (carbon implied by the published gas vs feed + recycle read): relative difference -1.36e-16.
 HB-013 storage this cycle: level 0.0000 -> 1.7988 kg, inflow 3.2571, outflow 1.4583; expected without the clamp +1.7988; **H2 created (+) / destroyed (-) by the clamp: +0.0000 kg** (0.00 % of the cycle's inflow) -- closes to numerical precision (< 1e-6 relative). FE-003 clipped surplus: 0.000 kg/h.
 
 #### B1/B2. Default inputs, default five-cycle state
 
 | control volume | quantity | in kg/h | out kg/h | residual kg/h | % of inflow | verdict | Missing terms listed |
 |---|---|---|---|---|---|---|---|
-| GA-001 (recycle = external feed) | C | 20.1286 | 19.9909 | +1.3771e-01 | +0.6842 | does not close | tar |
+| GA-001 (recycle = external feed) | C | 20.1286 | 20.1286 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | H | 4.9245 | 4.9245 | +9.1677e-16 | +1.862e-14 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | O | 46.6526 | 46.6526 | +7.2760e-15 | +1.56e-14 | closes to numerical precision (< 1e-6 relative) | tar |
 | GA-001 (recycle = external feed) | N | 50.8986 | 50.8986 | -6.3696e-15 | -1.251e-14 | closes to numerical precision (< 1e-6 relative) | - |
 | GA-001 (recycle = external feed) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| GA-001 (recycle = external feed) | mass | 126.3546 | 126.2169 | +1.3771e-01 | +0.109 | does not close | tar; sulfur, chlorine, argon and trace species |
-| gasification loop (recycle INSIDE) | C | 16.8764 | 16.7386 | +1.3771e-01 | +0.816 | does not close | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
+| GA-001 (recycle = external feed) | mass | 126.3546 | 126.3546 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; sulfur, chlorine, argon and trace species |
+| gasification loop (recycle INSIDE) | C | 16.8764 | 16.8764 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | H | 11.6785 | 11.6785 | +1.8335e-15 | +1.57e-14 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | O | 106.4801 | 106.4801 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | N | 50.8986 | 50.8986 | -1.9109e-14 | -3.754e-14 | closes to numerical precision (< 1e-6 relative) | PSA product impurities (purity 99.97 % taken as 100 %) |
 | gasification loop (recycle INSIDE) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| gasification loop (recycle INSIDE) | mass | 189.6798 | 189.5450 | +1.3481e-01 | +0.07107 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
-| whole plant (wet MSW in, H2 out) | C | 16.8764 | 16.7386 | +1.3771e-01 | +0.816 | does not close | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
+| gasification loop (recycle INSIDE) | mass | 189.6798 | 189.6827 | -2.9009e-03 | -0.001529 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
+| whole plant (wet MSW in, H2 out) | C | 16.8764 | 16.8764 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | H | 12.1100 | 12.1085 | +1.4851e-03 | +0.01226 | closes to a stated tolerance (< 0.1 % of inflow) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | O | 109.9046 | 109.8928 | +1.1786e-02 | +0.01072 | closes to a stated tolerance (< 0.1 % of inflow) | tar; PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | N | 50.8986 | 50.8986 | -1.9109e-14 | -3.754e-14 | closes to numerical precision (< 1e-6 relative) | PSA product impurities (purity 99.97 % taken as 100 %) |
 | whole plant (wet MSW in, H2 out) | ash | 3.7503 | 3.7503 | +0.0000e+00 | +0 | closes to numerical precision (< 1e-6 relative) | - |
-| whole plant (wet MSW in, H2 out) | mass | 193.5356 | 193.3876 | +1.4806e-01 | +0.0765 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
+| whole plant (wet MSW in, H2 out) | mass | 193.5356 | 193.5253 | +1.0346e-02 | +0.005346 | closes to a stated tolerance (< 0.1 % of inflow) | tar; dust / fly ash, S and Cl species, argon; quench / scrubber / cooling-tower water loops (make-up, blowdown, evaporation); PSA product impurities (purity 99.97 % taken as 100 %); FE-002 tramp metal reject; membrane (HB-010) and LOHC (HB-014..017) branches |
 
-Carbon detail (GA-001): total C 20.1286 kg/h; in the gas 18.1158; not in the gas 2.0129 (= (1-0.90) x total C, of which 0.3252 is recycled CO/CH4 carbon); carbon-black stream 1.8751; **unassigned carbon +0.1377 kg/h**. Recycle cross-check (carbon implied by the published gas vs feed + recycle read): relative difference 0.00e+00.
+Carbon detail (GA-001): total C 20.1286 kg/h; in the gas 18.1158; not in the gas 2.0129 (= (1-0.90) x total C, of which 0.3252 is recycled CO/CH4 carbon); carbon-black stream 2.0129; **unassigned carbon +0.0000 kg/h**. Recycle cross-check (carbon implied by the published gas vs feed + recycle read): relative difference 0.00e+00.
 HB-013 storage this cycle: level 2.1090 -> 0.0000 kg, inflow 3.2562, outflow 5.4980; expected without the clamp -0.1327; **H2 created (+) / destroyed (-) by the clamp: +0.1327 kg** (4.08 % of the cycle's inflow) -- does not close. FE-003 clipped surplus: 0.000 kg/h.
 
 #### Terms of the converged default balances
@@ -461,7 +486,7 @@ HB-013 storage this cycle: level 2.1090 -> 0.0000 kg, inflow 3.2562, outflow 5.4
 | in | tail-gas recycle (HB-009) | Calculated | 7.56482 | previous cycle's HB-009 tail gas (H2, CO, CH4; CO2 and N2 are not recycled, ga001_gasifier_model.py:654-657) |
 | out | product gas (wet) | Calculated | 120.61388 | GA-001 Outputs dry_flow_nm3_h x mol% and (wet - dry) water (ga001:793-803) |
 | out | ash | Assumed | 3.75030 | ASH_FRACTION x dry feed, gasifier_mass_balance.py:65-71 (GA-005 'Ash discharge rate 10 % of feed') |
-| out | carbon black (taken as pure C) | Assumed | 1.87515 | CARBON_BLACK_FRACTION 5 % x dry feed (gasifier_mass_balance.py:62, derived from GA-008 1.88 kg/h / 37.5 kg/h); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%') |
+| out | carbon black (taken as pure C) | Assumed | 2.01319 | derived: unconverted carbon x split, (GA-001, CarbonAccounting); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%') |
 | out | tar | Missing | MISSING | GA-001 'Tar content' is permanently Missing (ga001_gasifier_model.py:842-857) |
 | out | sulfur, chlorine, argon and trace species | Missing | MISSING | no S/Cl/Ar in the feed composition (ga001:193-196); GC-008/GC-009 inlets are fixed ppm (Assumed), not tied to the feed |
 
@@ -480,7 +505,7 @@ HB-013 storage this cycle: level 2.1090 -> 0.0000 kg, inflow 3.2562, outflow 5.4
 | out | electrolyser H2 (HB-011) | Calculated | 0.00608 | HB-011 h2_kg_h |
 | out | electrolyser O2 (stoichiometric, not published) | Calculated | 0.04827 | audit: 2 H2O -> 2 H2 + O2; the engine publishes no O2 stream |
 | out | ash | Assumed | 3.75030 | ASH_FRACTION x dry feed, gasifier_mass_balance.py:65-71 (GA-005 'Ash discharge rate 10 % of feed') |
-| out | carbon black (taken as pure C) | Assumed | 1.87515 | CARBON_BLACK_FRACTION 5 % x dry feed (gasifier_mass_balance.py:62, derived from GA-008 1.88 kg/h / 37.5 kg/h); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%') |
+| out | carbon black (taken as pure C) | Assumed | 2.01319 | derived: unconverted carbon x split, (GA-001, CarbonAccounting); pure carbon is an audit assumption (GA-008 'product ash < 1 wt%') |
 | out | quench condensate (GC-004) | Calculated | 18.62577 | GC-004 'Condensed water' m3/h x 1000 kg/m3 (gc_gas_cleaning_chain.py:265-268) |
 | out | WGS unreacted steam (knocked out, no equipment) | Calculated | 56.69972 | WGS Composition.H2O x GC-013 dry flow (hb_wgs_psa_storage_chain.py:262-270) |
 | out | tail-gas CO2 + N2 to flare/vent (HB-009 -> EU-007) | Calculated | 105.37202 | HB-009 TailGas.species_nm3_h; EU-007 inert_in (eu_utilities_chp.py:485) |
@@ -497,20 +522,26 @@ HB-013 storage this cycle: level 2.1090 -> 0.0000 kg, inflow 3.2562, outflow 5.4
 
 | case | cycles | GA-001 C residual kg/h (% of C in) | GA H rel | GA O rel | GA N rel | loop mass residual kg/h | plant mass residual kg/h (%) | H2 created by storage clamp kg |
 |---|---|---|---|---|---|---|---|---|
-| default | 40 | +0.1380 (+0.69 %) | 3.7e-16 | 1.6e-16 | -1.3e-16 | +0.1351 | +0.1484 (+0.077 %) | +0.000 |
-| default | 5 | +0.1377 (+0.68 %) | 1.9e-16 | 1.6e-16 | -1.3e-16 | +0.1348 | +0.1481 (+0.077 %) | +0.133 |
-| ER 0.2125 | 40 | +0.1305 (+0.65 %) | -1.8e-16 | -1.6e-16 | -1.5e-16 | +0.1273 | +0.1405 (+0.075 %) | +0.000 |
-| ER 0.2125 | 5 | +0.1301 (+0.65 %) | 0.0e+00 | 1.6e-16 | -2.9e-16 | +0.1269 | +0.1402 (+0.075 %) | +0.025 |
-| ER 0.2875 | 40 | +0.1450 (+0.72 %) | 1.9e-16 | 0.0e+00 | 0.0e+00 | +0.1424 | +0.1556 (+0.078 %) | +0.000 |
-| ER 0.2875 | 5 | +0.1447 (+0.72 %) | 1.9e-16 | 0.0e+00 | -4.4e-16 | +0.1421 | +0.1553 (+0.078 %) | +0.232 |
-| feed -30 % at FE-001 | 40 | +0.0966 (+0.69 %) | -1.3e-16 | 0.0e+00 | 1.8e-16 | +0.0946 | +0.1079 (+0.080 %) | +0.000 |
-| feed -30 % at FE-001 | 5 | +0.0972 (+0.69 %) | 1.3e-16 | 1.1e-16 | -1.8e-16 | +0.0951 | +0.1084 (+0.080 %) | +0.754 |
-| feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %) | 40 | +0.1656 (+0.69 %) | 1.6e-16 | 2.6e-16 | 0.0e+00 | +0.1622 | +0.1754 (+0.076 %) | +0.000 |
-| feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %) | 5 | +0.1647 (+0.68 %) | 1.6e-16 | 0.0e+00 | 2.1e-16 | +0.1613 | +0.1745 (+0.075 %) | +0.000 |
-| dry feed -30 % at GA-001 | 40 | +0.0967 (+0.69 %) | 1.3e-16 | -2.2e-16 | -1.8e-16 | +0.0947 | +11.3588 (+7.678 %) | +0.000 |
-| dry feed -30 % at GA-001 | 5 | +0.0963 (+0.68 %) | 0.0e+00 | 1.1e-16 | -1.8e-16 | +0.0943 | +11.3584 (+7.680 %) | +0.125 |
-| dry feed +30 % at GA-001 | 40 | +0.1794 (+0.69 %) | 1.4e-16 | -1.2e-16 | 1.9e-16 | +0.1756 | -11.0620 (-4.625 %) | +0.000 |
-| dry feed +30 % at GA-001 | 5 | +0.1786 (+0.68 %) | 2.9e-16 | 0.0e+00 | -3.9e-16 | +0.1749 | -11.0628 (-4.626 %) | +0.000 |
+| default | 40 | +0.0000 (+0.00 %) | 3.7e-16 | 1.6e-16 | -1.3e-16 | -0.0029 | +0.0103 (+0.005 %) | +0.000 |
+| default | 5 | +0.0000 (+0.00 %) | 1.9e-16 | 1.6e-16 | -1.3e-16 | -0.0029 | +0.0103 (+0.005 %) | +0.133 |
+| ER 0.2125 | 40 | +0.0000 (+0.00 %) | -1.8e-16 | -1.6e-16 | -1.5e-16 | -0.0032 | +0.0101 (+0.005 %) | +0.000 |
+| ER 0.2125 | 5 | +0.0000 (+0.00 %) | 0.0e+00 | 1.6e-16 | -2.9e-16 | -0.0032 | +0.0101 (+0.005 %) | +0.025 |
+| ER 0.2875 | 40 | +0.0000 (+0.00 %) | 1.9e-16 | 0.0e+00 | 0.0e+00 | -0.0026 | +0.0106 (+0.005 %) | +0.000 |
+| ER 0.2875 | 5 | -0.0000 (-0.00 %) | 1.9e-16 | 0.0e+00 | -4.4e-16 | -0.0026 | +0.0106 (+0.005 %) | +0.232 |
+| feed -30 % at FE-001 | 40 | +0.0000 (+0.00 %) | -1.3e-16 | 0.0e+00 | 1.8e-16 | -0.0020 | +0.0112 (+0.008 %) | +0.000 |
+| feed -30 % at FE-001 | 5 | +0.0000 (+0.00 %) | 1.3e-16 | 1.1e-16 | -1.8e-16 | -0.0020 | +0.0112 (+0.008 %) | +0.754 |
+| feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %) | 40 | -0.0000 (-0.00 %) | 1.6e-16 | 2.6e-16 | 0.0e+00 | -0.0035 | +0.0098 (+0.004 %) | +0.000 |
+| feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %) | 5 | +0.0000 (+0.00 %) | 1.6e-16 | 0.0e+00 | 2.1e-16 | -0.0035 | +0.0098 (+0.004 %) | +0.000 |
+| dry feed -30 % at GA-001 | 40 | +0.0000 (+0.00 %) | 1.3e-16 | -2.2e-16 | -1.8e-16 | -0.0020 | +11.2621 (+7.613 %) | +0.000 |
+| dry feed -30 % at GA-001 | 5 | +0.0000 (+0.00 %) | 0.0e+00 | 1.1e-16 | -1.8e-16 | -0.0020 | +11.2621 (+7.615 %) | +0.125 |
+| dry feed +30 % at GA-001 | 40 | +0.0000 (+0.00 %) | 1.4e-16 | -1.2e-16 | 1.9e-16 | -0.0038 | -11.2414 (-4.700 %) | +0.000 |
+| dry feed +30 % at GA-001 | 5 | +0.0000 (+0.00 %) | 2.9e-16 | 0.0e+00 | -3.9e-16 | -0.0038 | -11.2414 (-4.701 %) | +0.000 |
+| carbon conversion 0.85 | 40 | +0.0000 (+0.00 %) | -1.9e-16 | -1.6e-16 | 1.3e-16 | -0.0024 | +0.0108 (+0.006 %) | +0.000 |
+| carbon conversion 0.85 | 5 | -0.0000 (-0.00 %) | 3.8e-16 | 1.6e-16 | 2.5e-16 | -0.0024 | +0.0108 (+0.006 %) | +0.241 |
+| carbon conversion 0.98 | 40 | +0.0000 (+0.00 %) | 0.0e+00 | 0.0e+00 | 1.2e-16 | -0.0037 | +0.0096 (+0.005 %) | +0.000 |
+| carbon conversion 0.98 | 5 | +0.0000 (+0.00 %) | 1.8e-16 | 1.5e-16 | 1.2e-16 | -0.0037 | +0.0096 (+0.005 %) | +0.000 |
+| tail_gas_mode heat_only | 40 | +0.0000 (+0.00 %) | 2.4e-16 | 1.8e-16 | 0.0e+00 | -0.0022 | +0.0110 (+0.006 %) | +0.000 |
+| tail_gas_mode heat_only | 5 | +0.0000 (+0.00 %) | 2.4e-16 | 1.8e-16 | 0.0e+00 | -0.0022 | +0.0110 (+0.006 %) | +0.587 |
 
 ### C. Energy balances (kW; converged default state)
 
@@ -552,18 +583,18 @@ Missing terms (listed, not zero): tar chemical and sensible energy (GA-001 tar M
 | shredder FE-004 electricity (computed by the engine, NOT in EU-009) | in | 6.250 | 6.250 | 6.250 | 6.250 |
 | PSA hydrogen product, LHV | out | 108.325 | 108.325 | 108.325 | 108.325 |
 | electrolyser hydrogen, LHV | out | 0.203 | 0.203 | 0.203 | 0.203 |
-| carbon black, chemical energy (taken as pure carbon) | out | 17.065 | 17.065 | 17.065 | 17.065 |
-| carbon black, sensible heat at 180 degC | out | 0.081 | 0.081 | 0.081 | 0.081 |
-| model-implied carbon beyond the carbon-black stream (chemical) | out | 1.256 | 1.256 | 1.256 | 1.256 |
+| carbon black, chemical energy (taken as pure carbon) | out | 18.321 | 18.321 | 18.321 | 18.321 |
+| carbon black, sensible heat at 180 degC | out | 0.087 | 0.087 | 0.087 | 0.087 |
+| model-implied carbon beyond the carbon-black stream (chemical) | out | -3.11e-15 | -3.11e-15 | -3.11e-15 | -3.11e-15 |
 | vent gas CO2 + N2 sensible heat | out | 0.471 | 0.471 | 0.471 | 0.471 |
 | quench condensate (liquid, 65 degC) | out | -11.771 | -11.771 | -11.771 | -11.771 |
 | WGS knocked-out water (liquid) | out | -37.480 | -37.480 | -37.480 | -37.480 |
 | dryer vapour (100 degC) | out | 0.164 | 0.164 | 0.164 | 0.164 |
 | **sum in** |  | 117.203 | 143.247 | 169.291 | 125.053 |
-| **known energy out (non-heat)** |  | 78.314 | 78.314 | 78.314 | 78.314 |
-| **heat the balance says must be rejected** (in - known out) |  | 38.89 | 64.93 | 90.98 | 46.74 |
+| **known energy out (non-heat)** |  | 78.320 | 78.320 | 78.320 | 78.320 |
+| **heat the balance says must be rejected** (in - known out) |  | 38.88 | 64.93 | 90.97 | 46.73 |
 | heat rejection the engine reports (GC-004 sensible + HB-012 power) |  | 41.28 | 41.28 | 41.28 | 41.28 |
-| **closure residual = balance - engine, kW** |  | -2.39 | +23.66 | +49.70 | +5.46 |
+| **closure residual = balance - engine, kW** |  | -2.39 | +23.65 | +49.70 | +5.46 |
 | closure residual, % of energy input |  | -2.0 | +16.5 | +29.4 | +4.4 |
 
 Heat rejection the engine omits (computed from the same constants, Calculated / Estimated; midpoint LHV):

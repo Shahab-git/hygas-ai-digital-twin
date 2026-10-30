@@ -73,6 +73,10 @@ CASES = [
     ("feed +30 % at FE-001 (FE-003 clips to 50 kg/h = +20 %)", {("FE-001-INPUT", "msw_delivery_rate_kg_h"): _const(BASE_WET * 1.3)}),
     ("dry feed -30 % at GA-001", {("GA-001-INPUT", "dry_feed_rate_kg_h"): _const(BASE_DRY * 0.7)}),
     ("dry feed +30 % at GA-001", {("GA-001-INPUT", "dry_feed_rate_kg_h"): _const(BASE_DRY * 1.3)}),
+    # carbon-bookkeeping task: the conversion sweep and the other tail-gas mode
+    ("carbon conversion 0.85", {("GA-001-INPUT", "carbon_conversion_efficiency"): _const(0.85)}),
+    ("carbon conversion 0.98", {("GA-001-INPUT", "carbon_conversion_efficiency"): _const(0.98)}),
+    ("tail_gas_mode heat_only", {("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")}),
 ]
 
 
