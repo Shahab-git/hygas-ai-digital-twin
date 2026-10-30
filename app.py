@@ -4801,7 +4801,31 @@ def _ga_derived_byproduct_flows(snap):
     dry_feed_kg_h = entry["value"]
     flows = gasifier_mass_balance.byproduct_mass_flows(dry_feed_kg_h)
     flows["dry_feed_kg_h"] = dry_feed_kg_h
+    # Carbon black: the engine's derived value ((GA-001, CarbonAccounting): unconverted carbon x split) when the key is present; the old 5 % rule
+    # otherwise (older snapshots). The ash flow is unchanged. The datasheet figure stays as the cross-check the engine publishes.
+    flows["carbon_black_rule_kg_h"] = flows["carbon_black_kg_h"]
+    flows["carbon_black_source"] = "5 % datasheet rule"
+    acc = snap.get(("GA-001", "CarbonAccounting"))
+    acc_value = acc.get("value") if acc is not None and acc.get("status") != ps.STATUS_MISSING else None
+    if isinstance(acc_value, dict) and isinstance(acc_value.get("carbon_black_kg_h"), (int, float)):
+        conv_entry = snap.get(("GA-001-INPUT", "carbon_conversion_efficiency"))
+        flows["carbon_black_kg_h"] = float(acc_value["carbon_black_kg_h"])
+        flows["carbon_black_source"] = "engine"
+        flows["carbon_black_conversion"] = acc_value.get("carbon_conversion_efficiency")
+        flows["carbon_black_conversion_status"] = conv_entry.get("status") if conv_entry is not None and conv_entry.get("status") != ps.STATUS_MISSING else None
+        flows["carbon_black_datasheet_kg_h"] = (acc_value.get("datasheet_cross_check") or {}).get("ga008_nominal_at_old_design_scaled_kg_h")
+        flows["carbon_black_status_line"] = f"{acc.get('status')} · {acc.get('confidence_note')}"
     return flows
+
+
+def _ga_carbon_black_note(flows):
+    """Caption text for a carbon-black value: '' for the old 5 % rule (nothing to add), else how the engine's value is derived plus the datasheet cross-check."""
+    if flows is None or flows.get("carbon_black_source") != "engine":
+        return ""
+    conv, status = flows.get("carbon_black_conversion"), flows.get("carbon_black_conversion_status")
+    text = "derived from unconverted carbon" + (f" (conversion {conv:.2f}, {status})" if isinstance(conv, (int, float)) and status else "")
+    ds = flows.get("carbon_black_datasheet_kg_h")
+    return text + (f" · datasheet cross-check {ds:.2f} kg/h" if isinstance(ds, (int, float)) else "")
 
 
 def _ga_edge_flow_values(snap):
@@ -5069,7 +5093,7 @@ def _render_ga_live_kpis(snap):
             label="Carbon black recovery (derived)", icon="⚫", raw=flows["carbon_black_kg_h"],
             text=f"{flows['carbon_black_kg_h']:.3f} kg/h",
             skey="tab4_kpi_delta__cb_rate", entry={"timestamp": feed_entry["timestamp"], "cycle": _display_cycle(feed_entry["cycle"])},
-            compare=f"vs GA-008's Confirmed design capacity {ga008_cap:.0f} kg/h",
+            compare=(_ga_carbon_black_note(flows) + " · " if _ga_carbon_black_note(flows) else "") + f"vs GA-008's Confirmed design capacity {ga008_cap:.0f} kg/h",
             bar=_fe_inline_bar_svg(flows["carbon_black_kg_h"] / ga008_cap, "#6D28D9"),
             delta_fmt=lambda d: f"{d:+.3f} kg/h",
         ))
@@ -5108,6 +5132,7 @@ def _render_ga_live_kpis(snap):
         "design-target validation (see Section 4): no real Confirmed target exists to compare against. "
         "The carbon black/ash cards are DERIVED (gasifier_mass_balance.py applied to GA-001's own live "
         "feed rate), compared against GA-008/GA-009's own real Confirmed registry design capacities."
+        + (f" The carbon black card is the engine's value, not the 5 % rule: {flows['carbon_black_status_line']}" if flows is not None and flows.get("carbon_black_source") == "engine" else "")
     )
 
 
@@ -5366,6 +5391,8 @@ def _render_ga_live_results(snap):
                     "Ash discharge (derived)" if value_kind == "ash_kg_h" else "Carbon black (derived)"
                 )
                 st.metric(label, f"{shown:.3f} kg/h")
+                if value_kind in ("combined", "carbon_black_kg_h") and _ga_carbon_black_note(flows):
+                    st.caption("Carbon black part: " + _ga_carbon_black_note(flows))
                 if bar_spec:
                     field, cap, color = bar_spec
                     st.markdown(
@@ -5385,6 +5412,8 @@ def _render_ga_live_results(snap):
                     f"this item already use) applied to GA-001's own real, live dry_feed_rate_kg_h input "
                     f"this cycle. {eq_id}'s own real Confirmed/Estimate registry parameters are in "
                     f"Section 7 — Existing Data below."
+                    + (f" The carbon black part is instead the engine's value: {flows['carbon_black_status_line']}"
+                       if flows is not None and flows.get("carbon_black_source") == "engine" and value_kind in ("combined", "carbon_black_kg_h") else "")
                 )
 
 
@@ -5416,6 +5445,8 @@ def _render_ga_mass_energy_balance(snap):
     c1.metric("GA-001 dry feed rate (live)", f"{flows['dry_feed_kg_h']:.3f} kg/h")
     c2.metric("→ GA-009 ash (derived)", f"{flows['ash_kg_h']:.3f} kg/h")
     c3.metric("→ GA-010 carbon black (derived)", f"{flows['carbon_black_kg_h']:.3f} kg/h")
+    if _ga_carbon_black_note(flows):
+        st.caption("Carbon black: " + _ga_carbon_black_note(flows) + ". Ash is still the 10 % ASH_FRACTION rule.")
 
     changed_feed, note_feed = _fe_status_changed_flag("tab4_s5_changed__feed", flows["dry_feed_kg_h"])
     changed_ash, note_ash = _fe_status_changed_flag("tab4_s5_changed__ash", flows["ash_kg_h"])
@@ -5439,7 +5470,9 @@ def _render_ga_mass_energy_balance(snap):
         "from the SAME `gasifier_mass_balance.byproduct_mass_flows()` call on the SAME live feed rate, "
         "using ASH_FRACTION + CARBON_BLACK_FRACTION that were never claimed to sum to anything else. "
         "It confirms the arithmetic is applied consistently -- it does NOT confirm the real plant's "
-        "own ash/carbon-black split matches these ported design-basis fractions.",
+        "own ash/carbon-black split matches these ported design-basis fractions."
+        + (" (When the carbon black is the engine's value, as in the caption above, only the ash side uses the ported fraction.)"
+           if flows.get("carbon_black_source") == "engine" else ""),
         icon="⚠️",
     )
 
