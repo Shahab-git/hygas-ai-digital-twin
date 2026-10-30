@@ -77,13 +77,14 @@ def test_counts_add_up_to_the_rows_that_really_exist(audit, result):
     assert c["no_value"] == sum(1 for p in params if p.get("value") is None)
 
 
-def test_the_audits_default_is_the_codes_real_default():
-    """If the owner changes the default in equipment_datasheet.slot_status, this fails and says the audit must be re-run."""
+def test_the_audits_default_is_the_old_default_and_the_code_no_longer_has_it():
+    """PROVENANCE PHASE 2 (deliberate edit; was `..._is_the_codes_real_default`, which pinned the default this task removes): the audit script keeps describing the registry as
+    it was stored, under the OLD default (STATUS_DEFAULT = Confirmed, the historical behaviour it measured); the code must no longer have that default."""
     spec = importlib.util.spec_from_file_location("a2", SCRIPT)
     a = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(a)
-    assert a.STATUS_DEFAULT == eds.STATUS_CONFIRMED
-    assert eds.slot_status([{"parameter": "x", "value": "1"}]) == a.STATUS_DEFAULT, "a row without a status key must still count as the audit's default"
+    assert a.STATUS_DEFAULT == eds.STATUS_CONFIRMED, "the audit still reports the registry as stored under the old default"
+    assert eds.slot_status([{"parameter": "x", "value": "1"}]) != eds.STATUS_CONFIRMED, "a row without a status must NOT count as Confirmed any more"
     assert eds.slot_status([{"parameter": "x", "value": "1", "status": eds.STATUS_ESTIMATE}]) == eds.STATUS_ESTIMATE
 
 
@@ -147,8 +148,11 @@ def test_cross_check_flags_the_parameter_table_rows_that_disagree(audit, result)
     cc = audit.cross_check(result["rows"])
     by = {(x["tag"], x["table_row"][:8]): x for x in cc}
     air = next(x for x in cc if x["tag"] == "GA-003.air_flow_design_Nm3_h")
-    assert air["table_status"] == "Confirmed" and air["audit_class"] == "E3" and air["agree"] is False
-    assert any(x["table_row"] == "(all rows of the tag)" and x["tag"] == "GA-001.T_gasifier_C" for x in cc), by.keys()
+    # PROVENANCE PHASE 2 (deliberate edit): the parameter table now resolves its registry rows with the owner's answers, so the disagreement this test used to pin is gone:
+    # the GA-003 air row is Calculated (owner: CALCULATED), the E3 audit class and the table agree, and no tag is Confirmed in one row and Assumed in another any more.
+    assert air["table_status"] == "Calculated" and air["audit_class"] == "E3" and air["agree"] is True
+    assert not any(x["table_row"] == "(all rows of the tag)" for x in cc), by.keys()
+    assert all(x["table_status"] != "Confirmed" or x["audit_class"] == "E1" for x in cc), "a Confirmed table row must have DOK-ING evidence"
 
 
 def test_this_tasks_commits_touch_no_engine_registry_or_existing_test_file():

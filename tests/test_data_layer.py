@@ -225,7 +225,9 @@ def test_dry_run_lists_what_would_change_and_touches_nothing(table):
     by = {x["tag"]: x for x in out["changes"]}
     t = by["GA-001.T_gasifier_C"]
     assert (t["model_value"], t["resolved_value"], t["resolved_status"], t["changes"]) == (950.0, 930.0, "Measured", True)
-    assert t["abs_change"] == -20.0 and t["override"] is not None, "930 beats the Confirmed registry 950 and says so"
+    # PROVENANCE PHASE 2 (deliberate edit): the registry row for the gasifier temperature is no longer Confirmed by default; the owner's worksheet says ASSUMED. A good Measured
+    # value therefore wins over Assumed candidates and there is no Measured-over-Confirmed override to report (the override machinery itself is tested in the precedence tests above).
+    assert t["abs_change"] == -20.0 and t["override"] is None, "930 beats the Assumed registry 950; no Confirmed value is overridden"
     assert by["GA-001.ER"]["changes"] is False and by["GA-001.ER"]["n_rejected"] == 1
     assert by["GA-001.carbon_conversion"]["changes"] is False and by["GA-001.carbon_conversion"]["n_rejected"] == 1, "wrong unit is rejected, not converted"
     assert out["not_parameters"] == [{"tag": "NOT.a_parameter", "n_readings": 1}]
