@@ -131,7 +131,8 @@ def match(supply, need, dt_min):
 # --- the inventory -------------------------------------------------------------------------------------------------------------------------------
 
 def _src(name, kw, t_hi, t_lo, status, note, recovery_key=None, counted=True, grade=None, recoverable=True):
-    return {"name": name, "kw_available": float(kw), "t_high_c": float(t_hi), "t_low_c": float(t_lo), "status": status, "note": note, "recovery_key": recovery_key,
+    """One source. A Missing source has kw None (never zero) and is never counted."""
+    return {"name": name, "kw_available": None if kw is None else float(kw), "t_high_c": float(t_hi), "t_low_c": float(t_lo), "status": status, "note": note, "recovery_key": recovery_key,
             "counted": counted, "grade": grade, "recoverable_in_principle": recoverable}
 
 
@@ -238,7 +239,8 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
     sources.append(_src("ash sensible heat (bed temperature -> discharge)", ash_kw, t_gas, a["ash_discharge_temperature_c"], ps.STATUS_ASSUMED,
                         f"{ash_kg_h:.2f} kg/h x cp {cp_s} kJ/kg.K (Assumed, no solids cp in the repo) x temperature drop; the ash fraction is the code's 10 %", "recovery_ash", grade="low"))
     if cb_kg_h is None:
-        sources.append(_src("carbon-black sensible heat", 0.0, CARBON_BLACK_COLLECTION_C, a["carbon_black_final_c"], ps.STATUS_MISSING, "(GA-001, CarbonAccounting) is Missing", "recovery_ash", grade="low"))
+        sources.append(_src("carbon-black sensible heat", None, CARBON_BLACK_COLLECTION_C, a["carbon_black_final_c"], ps.STATUS_MISSING, "(GA-001, CarbonAccounting) is Missing: no carbon-black flow, so no heat is stated",
+                            "recovery_ash", counted=False, grade="low"))
     else:
         sources.append(_src("carbon-black sensible heat (collection -> packaging)", cb_kg_h * cp_s * (CARBON_BLACK_COLLECTION_C - a["carbon_black_final_c"]) * ba.KW_PER_KJ_H,
                             CARBON_BLACK_COLLECTION_C, a["carbon_black_final_c"], ps.STATUS_ASSUMED, f"{cb_kg_h:.3f} kg/h from (GA-001, CarbonAccounting) x cp {cp_s} (Assumed)", "recovery_ash", grade="low"))
@@ -275,7 +277,7 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
         rec = {}
         for s in s_case:
             r = a[s["recovery_key"]] if s["recovery_key"] else 0.0
-            s["kw_recovered"] = s["kw_available"] * r if s["counted"] and s["recoverable_in_principle"] else 0.0
+            s["kw_recovered"] = s["kw_available"] * r if s["counted"] and s["recoverable_in_principle"] and s["kw_available"] is not None else 0.0
             s["recovery_fraction"] = r if s["recovery_key"] else None
             rec[s["name"]] = s["kw_recovered"]
             if s["kw_recovered"] > 0.0:
@@ -292,8 +294,9 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
         net_energy = supply_total - demand_total
         fuel_kw = unmet_total
         by_source = {n: {"kw_recovered": rec[n], "kw_matched": sum(v for (sk, so), v in alloc.items() if so == n), "kw_unused_level_or_surplus": unused.get(n, 0.0)} for n in rec}
-        by_sink = {sk["name"]: {"kw_needed": sk["kw"], "t_high_c": sk["t_high_c"], "kw_matched": sum(v for (k2, so), v in alloc.items() if k2 == sk["bands"][0][0]),
-                                "kw_unmet": unmet.get(sk["bands"][0][0], 0.0)} for sk in sinks_case}
+        bkey = lambda sk: sk["bands"][0][0] if sk["bands"] else sk["name"]            # a zero-kW sink (for example no air in a steam-only case) has no bands
+        by_sink = {sk["name"]: {"kw_needed": sk["kw"], "t_high_c": sk["t_high_c"], "kw_matched": sum(v for (k2, so), v in alloc.items() if k2 == bkey(sk)),
+                                "kw_unmet": unmet.get(bkey(sk), 0.0)} for sk in sinks_case}
         cases[cname] = {
             "lhv_mj_kg": float(lhv), "implied_gasifier_heat_duty_kw": duty, "demand_total_kw": demand_total, "source_recovered_counted_kw": supply_total,
             "net_energy_basis_kw": net_energy, "net_reading": "surplus" if net_energy >= 0 else "deficit",
