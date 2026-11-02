@@ -325,6 +325,55 @@ def test_ash_fraction_is_assumed_in_the_table_and_the_ledger_and_the_evidence_is
     assert (ash["range_low"], ash["range_high"]) == (0.05, 0.15) and ash["value"] == 0.1
 
 
+# ------------------------------------------------------------------ (A3c 3) the refused borrowings, FE-001 and GA-002
+
+def test_every_refused_borrowing_has_a_kind_and_is_listed_with_both_values_in_the_doc():
+    assert set(lr.REFUSAL_KIND) == set(lr.NOT_BORROWED) and len(lr.NOT_BORROWED) == 14
+    section = COMMITTED["design_basis_ledger.md"].split("## Refused borrowings")[1].split("## Known undeclared reads")[0]
+    table = [l for l in section.split(chr(10)) if l.startswith("| ") and not l.startswith("| ledger row") and not l.startswith("|---")]
+    assert len(table) == 14 and {l.split(" | ")[0][2:] for l in table} == set(lr.NOT_BORROWED)
+    for l in table:
+        cells = l.split(" | ")
+        assert len(cells) == 7 and all(c.strip() for c in cells), l
+
+
+def test_fe001_delivery_is_not_the_feed_rate_of_fe003_and_stays_assumed(built):
+    from python import equipment_registry as er, fe_feed_handling as fe
+    row = next(p for it in er.load_registry() if it["id"] == "FE-003" for p in it["parameters"] if p["parameter"] == "Nominal feed rate")
+    assert (row["value"], row["unit"]) == ("0.042", "t/h")
+    assert abs(float(row["value"]) * 1000.0 - fe.FE001_DEFAULT_DELIVERY_RATE_KG_H) > 0.3, "not a pure unit conversion: 42 against 41.67"
+    assert abs(1000.0 / 24.0 - fe.FE001_DEFAULT_DELIVERY_RATE_KG_H) < 0.01, "1,000 kg/day / 24 h"
+    src = open(os.path.join(ROOT, "python", "fe_feed_handling.py"), encoding="utf-8").read()
+    assert "FE-001-INPUT" in src and "msw_delivery_rate_kg_h" in src and "AS-RECEIVED" in src
+    assert "(delivery_rate_kg_h - FE003_NOMINAL_KG_H)" in src, "the hopper level changes by delivery minus feed: two different rates"
+    line11 = open(os.path.join(ROOT, "data", "dokink_rfi_answers.md"), encoding="utf-8").read().split(chr(10))[10]
+    assert "1,000 kg/day" in line11 and "deliver" not in line11.lower() and "as-received" not in line11.lower() and "dry" not in line11.lower()
+    r = next(r for r in built[0] if r["tag"] == "FE-001.default_delivery_rate_kg_h")
+    assert r["status"] == "Assumed" and r["status_via"] == "own"
+    fed = next(r for r in built[0] if r["tag"] == "FE-003.nominal_kg_h")
+    assert fed["status"] == "Confirmed" and fed["status_via"] == "registry counterpart: FE-003/Nominal feed rate", "the feed rate itself still borrows"
+
+
+def test_ga002_typical_pressure_borrows_from_the_typical_row_and_never_from_a_design_row(built):
+    from python import equipment_registry as er
+    rows = {(it["id"], p["parameter"]): p for it in er.load_registry() if it["id"] in ("GA-001", "GA-002") for p in it["parameters"]}
+    assert (rows[("GA-001", "Design pressure")]["value"], rows[("GA-001", "Design pressure")]["unit"]) == ("500", "mbar(g)")
+    assert (rows[("GA-001", "Operating pressure (typical)")]["value"], rows[("GA-001", "Operating pressure (typical)")]["unit"]) == ("100", "mbar(g)")
+    assert (rows[("GA-002", "Design pressure")]["value"], rows[("GA-002", "Operating pressure range")]["value"]) == ("500", "50-150")
+    r = next(r for r in built[0] if r["tag"] == "GA-002.typical_pressure_mbar_g")
+    assert r["value"] == 100.0 and r["status_via"] == "registry counterpart: GA-001/Operating pressure (typical)"
+    assert lr.quantity_class(r["tag"] + " " + r["source"]) == lr.quantity_class("Operating pressure (typical)") == "operating" and lr.quantity_class("Design pressure") == "design"
+
+
+def test_no_borrowing_crosses_a_design_row_and_a_typical_or_operating_row():
+    assert lr.crosses_design_and_operating("GA-002.typical_pressure_mbar_g module constant gc_gas_cleaning_chain.GA002_TYPICAL_PRESSURE_MBAR_G", "Design pressure")
+    assert lr.crosses_design_and_operating("GC-014.design_suction_mbar_g", "Operating pressure (typical)")
+    assert not lr.crosses_design_and_operating("GC-014.design_suction_mbar_g", "Design suction pressure")
+    assert not lr.crosses_design_and_operating("GA-002.typical_pressure_mbar_g", "Operating pressure (typical)")
+    crossing = [n["tag"] for n in lr.build_rows() if n["reg"] and n["tag"] in lr.BORROW and lr.crosses_design_and_operating(n["tag"] + " " + n["source"], n["reg"][1])]
+    assert crossing == [], crossing
+
+
 # ------------------------------------------------------------------ (A3b 3) upgrade_question is a list of references to questions that exist
 
 def test_rfi2_is_in_the_repo_unchanged_with_its_24_questions():

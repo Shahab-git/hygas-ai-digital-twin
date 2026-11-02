@@ -323,6 +323,34 @@ NOT_BORROWED = {
     "FE-005.outlet_moisture_fraction": "the registry text of FE-005 'Outlet moisture (target)' is '-1 % moisture' (a negative number); equality with 1 % cannot be shown",
     "PLANT.audit_lts_steam_temperature_C": "the code takes the LTS INLET temperature as a lower bound of the (not stated) LTS outlet steam temperature: not the same quantity",
 }
+# why each refused row was refused, in a few words (shown in the ledger doc; tests/test_design_basis_ledger.py checks that every refusal has one)
+REFUSAL_KIND = {
+    "GA-001.ash_fraction": "different quantity and basis", "GC-005.blowdown_to_circulation_ratio": "different quantity (derived ratio)", "GC-015.ambient_temp_C": "different quantity",
+    "GC-003.inlet_dust_mg_nm3": "different basis (maximum against design)", "GC-003.efficiency": "bound used as a point value", "GC-003.outlet_temperature_C": "different quantity (inlet against outlet)",
+    "FE-002.removal_efficiency": "bound used as a point value", "HB-017.recovery_efficiency": "bound used as a point value", "HB-005.steam_to_co_molar_ratio": "registry text unreadable, no conversion can be shown",
+    "HB-010.design_feed_h2_fraction": "different quantity (mole fraction against partial pressure)", "EU-003.syngas_lhv_mj_per_nm3": "different quantity (requirement against value)",
+    "FE-001.default_delivery_rate_kg_h": "different quantity (delivery into the hopper against feed out of it) and basis not stated",
+    "FE-005.outlet_moisture_fraction": "registry text unreadable, no conversion can be shown", "PLANT.audit_lts_steam_temperature_C": "different quantity (inlet against outlet)",
+}
+
+
+def quantity_class(text):
+    """'design' / 'operating' / None from the words in a row's tag, constant name or registry parameter. Design pressure and typical or operating pressure are different quantities (A3c 3): a borrowing
+    whose two sides fall in different classes is refused."""
+    s = text.lower()
+    if "design" in s:
+        return "design"
+    if "typical" in s or "operating" in s:
+        return "operating"
+    return None
+
+
+def crosses_design_and_operating(row_text, registry_parameter):
+    """True when one side is a design quantity and the other a typical or operating one (A3c 3): such a pair is never the same quantity."""
+    a, b = quantity_class(row_text), quantity_class(registry_parameter)
+    return a is not None and b is not None and a != b
+
+
 VIA_OWN = "own"
 VIA_REG = "registry counterpart: %s/%s"
 

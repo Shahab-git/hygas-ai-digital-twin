@@ -138,3 +138,44 @@ def render_confirmed():
         L.append(f"| {file} | {per[file]} |")
     L.append(f"| **all** | {len(mentions)} |")
     return L
+
+
+def _value(module, name):
+    import importlib
+    return getattr(importlib.import_module("python." + module), name)
+
+
+def render_refused():
+    """The 'Refused borrowings' section: every row that has a registry row nearby but does not take its status, with both values side by side, the registry row's resolved status and the reason."""
+    from . import ledger_rows as lr
+    from . import parameter_table as pt
+    esc = lambda s: str(s).replace("|", "/").replace(chr(10), " ")
+    table = {r["tag"]: r for r in pt.build_table()}
+    rows = {n["tag"]: n for n in lr.build_rows()}
+    reg_of = {tag: n["reg"] for tag, n in rows.items() if n["reg"]}
+    reg_of["GA-001.ash_fraction"] = ("GA-005", "Ash discharge rate (design)")
+    L = ["## Refused borrowings", "",
+         "A row takes the status of a registry row only for the SAME quantity in the SAME basis (`status_via`). These rows have a registry row nearby and do not: they are Assumed. "
+         "One line each: the engine value, the registry value as written in the registry, the registry row's resolved status, and why.", "",
+         "| ledger row | engine value | registry row | registry value | registry status | kind | reason |", "|---|---|---|---|---|---|---|"]
+    for tag in lr.NOT_BORROWED:
+        src = rows.get(tag) or table[tag]
+        item, param = reg_of[tag]
+        res, p = lr._registry_status((item, param))
+        L.append(f"| {tag} | {esc(src['value'])} {esc(src['unit'])} | {item} / {esc(param)} | {esc(p['value'])} {esc(p['unit'])} | {res['status']} | {lr.REFUSAL_KIND[tag]} | {esc(lr.NOT_BORROWED[tag])} |")
+    L += ["", "### FE-001 default delivery rate against FE-003 nominal feed rate", "",
+          f"Engine: `FE001_DEFAULT_DELIVERY_RATE_KG_H` = {_value('fe_feed_handling', 'FE001_DEFAULT_DELIVERY_RATE_KG_H')} kg/h, the default of the engine input `FE-001-INPUT/msw_delivery_rate_kg_h` (the rate at which MSW arrives in the hopper; "
+          "a scenario knob). Registry: FE-003 'Nominal feed rate' = 0.042 t/h (remark: \"Matches DOK-ING's 1 tpd (41.7 kg/h) nominal basis directly\"), Confirmed by the owner's worksheet with the DOK-ING line "
+          "`data/dokink_rfi_answers.md:11` (RFI answer 1: 'Nominal capacity fixed at 1 tonne/day (1,000 kg/day) for continuous 24/7 operation'). They are not one quantity in one basis that differ by a unit conversion: "
+          "(1) the registry row is the rate at which the plant FEEDS the process, the engine value is the rate at which feed is DELIVERED to the hopper (the hopper level changes by delivery minus feed, `fe001_inventory`); "
+          "DOK-ING's answer is the processing capacity and says nothing about deliveries; (2) the basis of the 1,000 kg/day (as received or dry) is not stated in DOK-ING's line and is an open question "
+          "(`docs/master_open_questions.md` Section 1 item 2) while the code comment says AS-RECEIVED; (3) 0.042 t/h x 1000 = 42 kg/h, not 41.67: the registry value is the same number rounded to two digits, so the engine value "
+          "is not a unit conversion of it either (1,000 kg/day / 24 h = 41.667). The row stays Assumed.", "",
+          "### GA-002 typical pressure", "",
+          f"Engine: `GA002_TYPICAL_PRESSURE_MBAR_G` = {_value('gc_gas_cleaning_chain', 'GA002_TYPICAL_PRESSURE_MBAR_G')} mbar(g), the typical gasifier pressure used by the suction cross-check of GC-014. Registry rows of the gasifier vessel: "
+          "GA-001 'Design pressure' 500 mbar(g) (a design quantity); GA-001 'Operating pressure (typical)' 100 mbar(g) (remark: 'Matches ~1.1 bar absolute already used in the pressure profile chart'); "
+          "GA-002 'Design pressure' 500 mbar(g) ('Matches GA-001's design pressure directly'); GA-002 'Operating pressure range' 50-150 mbar(g) ('Band around the 100 mbar(g) typical value'). "
+          "Design pressure and typical or operating pressure are different quantities and nothing is borrowed across them. The only row that is the same quantity (typical operating gauge pressure of the gasifier vessel, "
+          "mbar(g), same value) is GA-001 'Operating pressure (typical)'; GA-002's own row is a band, not a typical value. So `GA-002.typical_pressure_mbar_g` borrows from GA-001 'Operating pressure (typical)' "
+          "(Unverified (registry)); `ledger_rows.quantity_class` and a test refuse any borrowing across a design row and a typical or operating row."]
+    return L
