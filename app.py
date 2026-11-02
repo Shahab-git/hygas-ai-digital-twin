@@ -26,7 +26,7 @@ from python import (
     equipment_engineering_estimates, tab1_integration, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
-    ai_automation_layer as ai_module,
+    ai_automation_layer as ai_module, maturity,
 )
 
 st.set_page_config(page_title="HYGAS-AI Digital Twin", layout="wide")
@@ -587,12 +587,13 @@ with tab1:
     # design assumptions (see python/uncertainty.py for the full reasoning)
     # ---------------------------------------------------------------------
     st.header("Uncertainty Analysis")
+    st.caption(maturity.caption("uncertainty"))
     st.warning(
         "This reflects uncertainty in **unconfirmed design assumptions** — steam-to-feed "
         "ratio, air equivalence ratio, feed sulfur/chlorine, and the WGS/PSA target "
         "calibrations themselves — **not measurement noise or numerical/model error.** "
-        "kinetics.py and psa.py's own math is deterministic and already validated exactly "
-        "against their design targets; what's uncertain is whether the *inputs* to that "
+        "kinetics.py and psa.py's own math is deterministic and reproduces their design-point targets "
+        "(a consistency check against those targets, not a validation against plant data); what's uncertain is whether the *inputs* to that "
         "math are correct, since DOK-ING hasn't confirmed them yet.",
         icon="⚠️",
     )
@@ -663,6 +664,7 @@ with tab1:
     # python/optimizer.py for the full honest-scoping explanation)
     # ---------------------------------------------------------------------
     st.header("Optimizer")
+    st.caption(maturity.caption("optimizer"))
     st.warning(
         "**v1 — single-shot setpoint optimizer, not real MPC.** True model "
         "predictive control does receding-horizon optimization over time — "
@@ -746,6 +748,7 @@ with tab1:
     # python/predictive_maintenance.py for the full reasoning)
     # ---------------------------------------------------------------------
     st.header("Predictive Maintenance")
+    st.caption(maturity.caption("predictive_maintenance"))
     st.warning(
         "**v1 — inverse-kinetics activity monitoring; thresholds are our own "
         "assumed defaults.** Enter a live-sensor conversion reading and this "
@@ -772,7 +775,7 @@ with tab1:
     )
 
     pm_observed_pct = st.number_input(
-        f"Observed {pm_stage} conversion from a live sensor (%)",
+        f"Observed {pm_stage} conversion, typed in by hand (%) — no live sensor is connected",
         min_value=0.0, max_value=100.0, value=round(pm_expected_pct, 1), step=0.5, key="pm_observed",
     )
 
@@ -813,6 +816,7 @@ with tab1:
             )
 
             if pm_result["status"] in ("watch", "flag for maintenance"):
+                st.caption(maturity.caption("root_cause"))
                 st.caption(
                     "**Root-cause diagnosis v1 — rule-based reasoning over existing model outputs, not a new "
                     "inference engine.** Compares this activity factor against the range that unconfirmed "
@@ -847,6 +851,7 @@ with tab1:
     # Section 8 — Operator copilot (rule-based v1, no LLM / API key)
     # ---------------------------------------------------------------------
     st.header("Operator Copilot")
+    st.caption(maturity.caption("copilot"))
     st.caption(
         "Rule-based v1 — answers questions about WGS kinetics, PSA recovery, and the CHP "
         "dispatch GA using the current values above. No LLM call, no API key. Anything "
@@ -1011,6 +1016,7 @@ with tab1:
                 st.write(_item["notes"])
 
     st.subheader("Draft Compliance Summary")
+    st.caption(maturity.caption("regulatory_drafting"))
     st.caption(
         "**This is drafting, not legal writing.** The generated document needs review by "
         "someone qualified — compliance/legal counsel, or an accredited RFNBO auditor — "
@@ -1040,6 +1046,7 @@ with tab1:
     # python/multi_agent_negotiation.py for the full honest-scoping statement)
     # ---------------------------------------------------------------------
     st.header("Multi-Module Negotiation")
+    st.caption(maturity.caption("multi_agent_negotiation"))
     st.warning(
         "**These are simulated hypothetical plant variants, not live data from real additional "
         "facilities.** This repo represents exactly one real plant. 'Plant B' and 'Plant C' below are "
@@ -1253,6 +1260,7 @@ with tab1:
     # See python/multi_module_orchestration.py for the full distinction.)
     # ---------------------------------------------------------------------
     st.header("Multi-Module Orchestration")
+    st.caption(maturity.caption("multi_module_orchestration"))
     st.warning(
         "**Simulated hypothetical plant modules, not live data from real additional hardware.** This "
         "repo represents exactly one real WGS train. The 3 modules below are illustrative variants of "
@@ -1327,6 +1335,7 @@ with tab1:
     # assessment — see python/novelty_audit.py for the full scoping)
     # ---------------------------------------------------------------------
     st.header("Novelty Audit Coverage")
+    st.caption(maturity.caption("novelty_audit"))
     st.warning(
         "**This is NOT a genuine novelty assessment.** Code cannot judge real engineering novelty — "
         "that needs actual domain-expert judgment against prior art (patents, published literature, "
@@ -1386,6 +1395,7 @@ with tab1:
     # python/safety_flags.py for the full scoping and every citation.)
     # ---------------------------------------------------------------------
     st.header("Safety Flags")
+    st.caption(maturity.caption("safety_flags"))
     st.markdown(
         "**⚠️ This is NOT a certified safety assessment.** Real hazard analysis requires qualified "
         "safety engineers using formal methodology (HAZOP, PHA) — this tool cannot replicate that. "
@@ -1443,10 +1453,11 @@ with tab1:
     # for the full formulation, gradient derivation, and honest limitations.)
     # ---------------------------------------------------------------------
     st.header("Physics-Informed Neural Network")
+    st.caption(maturity.caption("pinn_kinetics"))
     st.markdown(
         "**⚠️ Scope.** This predicts HTS WGS conversion under the same steady-state assumptions as "
         "the rest of this app, trained on ONE specific rate law (`kinetics.hts_conversion` — HTS only, "
-        "not LTS). It is not reliable outside the physical range this project has already validated: "
+        "not LTS). It is not reliable outside the range it was trained on and compared with kinetics.py: "
         "**300–400°C, 1000–4000 GHSV.** No PyTorch/JAX/autograd dependency was added — checked first "
         "and confirmed none is already installed, and a full autodiff framework was judged a real "
         "memory/CPU risk on Streamlit Community Cloud's free tier. Instead this is a tiny hand-rolled "
@@ -1552,6 +1563,7 @@ with tab1:
     # for the full honest-scoping statement)
     # ---------------------------------------------------------------------
     st.header("Sim-to-Real Transfer")
+    st.caption(maturity.caption("sim_to_real"))
     st.warning(
         "**Synthetic 'real world', not a real plant.** This repo has no real plant or real sensors to "
         "transfer to. 'Real-world' data below means `kinetics.py`'s own true conversion values, "
@@ -1559,7 +1571,7 @@ with tab1:
         "conversion reading (a gas analyser is never exact) and a systematic temperature calibration "
         "offset (a thermocouple reading consistently off true process temperature). Both magnitudes are "
         "assumed defaults, not measured instrument specs. This demonstrates the *mechanism* of domain-"
-        "gap evaluation and adaptation on this project's own validated physics — it is not a claim of "
+        "gap evaluation and adaptation on this project's own steady-state physics — it is not a claim of "
         "real-world validation.",
         icon="⚠️",
     )
@@ -1648,12 +1660,13 @@ with tab1:
     # the full honest-scoping statement)
     # ---------------------------------------------------------------------
     st.header("Federated Learning")
+    st.caption(maturity.caption("federated_learning"))
     st.warning(
         "**Illustrative hypothetical plants, not real facilities.** This repo represents exactly one "
         "real plant. The plants below are illustrative HTS-temperature-variant stand-ins — the same "
         "pattern Multi-Module Orchestration above already uses — not live data from a real fleet. What "
         "IS real: genuine federated averaging (FedAvg) of real model weights, trained with this "
-        "project's own validated physics-informed loss, reused unchanged from `pinn_kinetics.py`.",
+        "project's own physics-informed loss (its gradient checked against finite differences), reused unchanged from `pinn_kinetics.py`.",
         icon="⚠️",
     )
     st.caption(
@@ -1771,6 +1784,7 @@ with tab1:
     # statement)
     # ---------------------------------------------------------------------
     st.header("Performance Guarantee Pricing")
+    st.caption(maturity.caption("performance_guarantee"))
     st.warning(
         "**Illustrative pricing framework, not a real actuarial/insurance-grade guarantee.** This "
         "prices a hypothetical \"we guarantee ≥X% PSA recovery, or pay a penalty\" offer using this "
@@ -1856,6 +1870,7 @@ with tab1:
     # honest-scoping statements)
     # ---------------------------------------------------------------------
     st.header("Topological Data Analysis")
+    st.caption(maturity.caption("tda_analysis"))
     st.warning(
         "**First-pass illustrative pipeline on synthetic data — not validated against real plant "
         "sensor data.** The underlying time series is a steady-state physics chain (`kinetics.py`/"
@@ -1906,6 +1921,7 @@ with tab1:
         _band = alt.Chart(_span_df).mark_rect(opacity=0.15, color="#E45756").encode(x="t_start:Q", x2="t_end:Q")
 
         st.subheader("The multi-sensor time series (each shift individually subtle)")
+        st.caption(maturity.caption("time_series_sim"))
         _sensor_df = pd.concat([
             pd.DataFrame({"t": _td["t"], "value": _td["hts"] * 100, "Sensor": "HTS conversion (%)"}),
             pd.DataFrame({"t": _td["t"], "value": _td["lts"] * 100, "Sensor": "LTS conversion (%)"}),
@@ -7677,10 +7693,11 @@ def _render_sa_tab():
     # here rather than re-discovered).
     global _sa_summary
     st.header("Sensors & Analysers — SA-001 through SA-012")
+    st.caption(maturity.caption("sa_virtual_sensors"))
     st.caption(
         "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
         "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
-        "which one THIS page load used. All 12 SA items are live-registered virtual sensors "
+        "which one THIS page load used. All 12 SA items are virtual sensors registered in the engine (they read the twin's own calculated values; there is no instrument data) "
         "(audited in Section 5/6 below) — SA-011/SA-012 read a static registry design constant "
         "(no live upstream model exists at this specific point), all 10 others tap an already-live "
         "upstream GC value."
@@ -10590,6 +10607,7 @@ def _render_ai_tab():
     # before (_ga_summary/_gc_summary/_sa_summary/_hb_summary/_eu_summary).
     global _ai_summary
     st.header("Automation & Instrumentation — AI-001 through AI-015")
+    st.caption(maturity.caption("ai_automation_layer"))
     st.caption(
         "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
         "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
