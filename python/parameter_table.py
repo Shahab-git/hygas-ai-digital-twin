@@ -259,6 +259,13 @@ def _origin_of(res):
     return NOT_STATED, ""
 
 
+def _questions(tag, master):
+    """The upgrade_question references of a row: its master_open_questions reference (if any) plus the RFI questions of ledger_questions.RFI_MAP (A3b section 3)."""
+    from . import ledger_questions
+    refs = [master] if master else []
+    return refs + [r for r in ledger_questions.RFI_MAP.get(tag, ([], ""))[0] if r not in refs]
+
+
 def build_ledger(readers=None):
     """The ledger: every row of build_table() plus ledger_rows.build_rows(), sorted by (tag, source), with LEDGER_COLUMNS as keys.
 
@@ -285,7 +292,7 @@ def build_ledger(readers=None):
             mod, name = ledger_rows.TABLE_TOKENS[r["tag"]]
             consumers = ledger_consumers.referrers(mod, name)
         row["consumers"] = consumers
-        row["upgrade_question"] = ledger_rows.UPGRADE.get(r["tag"])
+        row["upgrade_question"] = _questions(r["tag"], ledger_rows.UPGRADE.get(r["tag"]))
         row["origin"], row["source_line"] = _origin_of(res)
         row["status_via"] = ledger_rows.VIA_OWN
         if r["tag"] in ledger_rows.NOT_BORROWED:                      # A3b 2.8: the table row's registry counterpart is not the same quantity / basis, so the ledger does not borrow its status
@@ -299,7 +306,7 @@ def build_ledger(readers=None):
         mod, ref = n["reader"]
         consumers = [f"{mod}.{ref}"] if n["kind"] == "l" else ledger_consumers.referrers(mod, ref)
         row = {c: n[c] for c in COLUMNS}
-        row["consumers"], row["upgrade_question"] = consumers, n["upgrade_question"]
+        row["consumers"], row["upgrade_question"] = consumers, _questions(n["tag"], (n["upgrade_question"] or [None])[0])
         row["origin"], row["source_line"] = _origin_of(n["reg_res"])
         row["status_via"] = n["status_via"]
         out.append(row)

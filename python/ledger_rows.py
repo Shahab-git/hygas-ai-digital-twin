@@ -22,24 +22,12 @@ _PKG = __package__ or "python"
 VIA_CODE = "code only"
 _ASSIGNED = "STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): "
 
-# the questions (docs/master_open_questions.md numbering; data/dokink_rfi_answers.md numbers DOK-ING's 17 RFI answers)
-_MQ = "docs/master_open_questions.md Section 1 item %d (%s)"
-Q_EU008 = _MQ % (1, "EU-008 second cooling path")
-Q_FEED = _MQ % (2, "feed-rate basis, wet or dry") + "; data/dokink_rfi_answers.md RFI answer 1 gives the 1,000 kg/day rate"
-Q_COMP = _MQ % (3, "full feedstock ultimate analysis")
-Q_LHV = _MQ % (4, "feedstock LHV: precise value or confirm the range")
-Q_OC = _MQ % (5, "Fe2O3 / Fe3O4 oxygen-carrier circulation")
-Q_AIR = _MQ % (6, "GA-001 / GA-003 primary air-flow reconciliation")
-Q_HB003 = _MQ % (7, "HB-003 heat-exchanger duty reconciliation")
-Q_HCL = _MQ % (8, "GC-009 HCl removal efficiency")
-Q_SPLIT = _MQ % (9, "HB-007 H2 split fraction")
-Q_MEMB = _MQ % (10, "HB-010 membrane separator selectivity")
-Q_LOHC = _MQ % (11, "HB-014 / HB-016 catalyst reaction kinetics")
-_FU = "docs/master_open_questions.md follow-up list (Section 3) item %d (%s)"
-Q_SIZING = _FU % (1, "EU-008 sizing margin")
-Q_CYCLE = _FU % (2, "ASSUMED_HOURS_PER_CYCLE mapping")
-Q_POLY = _FU % (3, "compressor polytropic exponent")
-Q_PEM = _FU % (4, "PEM electrolyser part-load parameters")
+# the questions, as references (python/ledger_questions.py): `master_open_questions:1.<n>` = item n of Section 1 of docs/master_open_questions.md, `master_open_questions:3.<n>` = item n of
+# its list of specific items in Section 3; RFI2-<n> / RFI1-<n> are the questions of docs/rfi2_dokink.md and data/rfi_dokink.md (see ledger_questions.RFI_MAP)
+_MQ = "master_open_questions:%s"
+Q_EU008, Q_FEED, Q_COMP, Q_LHV, Q_OC, Q_AIR = (_MQ % "1.1", _MQ % "1.2", _MQ % "1.3", _MQ % "1.4", _MQ % "1.5", _MQ % "1.6")
+Q_HB003, Q_HCL, Q_SPLIT, Q_MEMB, Q_LOHC = _MQ % "1.7", _MQ % "1.8", _MQ % "1.9", _MQ % "1.10", _MQ % "1.11"
+Q_SIZING, Q_CYCLE, Q_POLY, Q_PEM = _MQ % "3.1", _MQ % "3.2", _MQ % "3.3", _MQ % "3.4"
 
 # tag -> the constants of the scanned modules that an EXISTING parameter_table row stands for
 _G, _GM, _U = "python/ga001_gasifier_model.py", "python/gasifier_mass_balance.py", "python/uncertainty.py"
@@ -329,7 +317,7 @@ NOT_BORROWED = {
     "FE-002.removal_efficiency": "registry FE-002 states '>98' (a lower bound); the code uses 0.98 as the efficiency itself: a bound used as a point value",
     "HB-017.recovery_efficiency": "registry HB-017 states '>99 %' (a lower bound); the code uses 0.99 as the efficiency itself: a bound used as a point value",
     "HB-005.steam_to_co_molar_ratio": "the registry text of HB-005 'Steam-to-CO ratio' is '04:01:00' (it reads as a time, not a ratio), so equality with 4.0 mol/mol cannot be shown",
-    "HB-010.design_feed_h2_fraction": "a mole fraction derived as 4.4 bar H2 partial pressure / 8 bar feed pressure (two different registry quantities); the registry row states the partial pressure",
+    "HB-010.design_feed_h2_fraction": "a mole fraction; the registry row states the H2 PARTIAL PRESSURE (4.4 bar = '55% H2 content (HB-006) x ~8 bar(a)', its remark), so the 55 % is an input of that row's value, not its value",
     "EU-003.syngas_lhv_mj_per_nm3": "registry EU-003 'Fuel gas LHV required' is a requirement of the engine; the code uses 9.8 as a static syngas LHV: not the same quantity",
     "FE-001.default_delivery_rate_kg_h": "the delivery rate INTO the hopper (a model choice, set equal to the feeder's nominal rate); registry FE-003 'Nominal feed rate' is the rate OUT of it",
     "FE-005.outlet_moisture_fraction": "the registry text of FE-005 'Outlet moisture (target)' is '-1 % moisture' (a negative number); equality with 1 % cannot be shown",
@@ -402,7 +390,7 @@ def build_rows(sources=None):
             status, res, via = ps.STATUS_ASSUMED, None, VIA_OWN
             tail = _ASSIGNED + "no registry row states this quantity, or the code holds it as a model choice."
         out.append({"tag": tag, "value": value, "unit": unit, "status": status, "source": source, "range_low": lo, "range_high": hi, "overridable_via": VIA_CODE,
-                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": up, "reader": reader, "kind": kind, "status_via": via})
+                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": [up] if up else [], "reader": reader, "kind": kind, "status_via": via})
     return out
 
 

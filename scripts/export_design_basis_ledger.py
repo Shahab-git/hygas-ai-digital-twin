@@ -20,7 +20,7 @@ if os.environ.get("HYGAS_ALLOW_DB_WRITES") == "1":
     sys.exit("Refusing to run: HYGAS_ALLOW_DB_WRITES=1 is set. This script never writes to a database; unset it.")
 
 from _fakes import FakeSupabase, patched_supabase       # noqa: E402
-from python import ledger_consumers, ledger_coverage as lc, parameter_table as pt    # noqa: E402
+from python import ledger_consumers, ledger_coverage as lc, ledger_notes, parameter_table as pt    # noqa: E402
 from python import tab1_integration as t1               # noqa: E402
 
 MD_PATH = os.path.join(ROOT, "docs", "design_basis_ledger.md")
@@ -56,7 +56,7 @@ def render_csv(ledger):
     w = csv.writer(out, lineterminator="\n")
     w.writerow(pt.LEDGER_COLUMNS)
     for r in ledger:
-        w.writerow([_cons(r) if c == "consumers" else (r[c] or "") if c in ("upgrade_question", "source_line") else _v(r[c]) for c in pt.LEDGER_COLUMNS])
+        w.writerow([_cons(r) if c == "consumers" else "; ".join(r[c]) if c == "upgrade_question" else (r[c] or "") if c == "source_line" else _v(r[c]) for c in pt.LEDGER_COLUMNS])
     return out.getvalue()
 
 
@@ -102,7 +102,8 @@ def render_md(ledger, items, exceptions):
     for r in ledger:
         L.append("| " + " | ".join(esc(x) for x in (
             r["ledger_id"], _v(r["value"]), r["unit"], r["status"], r["status_via"], r["origin"], r["source_line"] or "", _v(r["range_low"]), _v(r["range_high"]), r["overridable_via"], r["file_line"],
-            _cons(r), r["upgrade_question"] or "", r["source"], r["note"])) + " |")
+            _cons(r), "; ".join(r["upgrade_question"]), r["source"], r["note"])) + " |")
+    L += [""] + ledger_notes.render_questions(ledger) + [""] + ledger_notes.render_prose()
     L += ["", "## Exceptions (numeric constants that are not parameters)", "",
           "| key | class | reason |", "|---|---|---|"]
     for e in exceptions:

@@ -23,6 +23,8 @@ from _fakes import FakeSupabase, patched_supabase
 from python import equipment_datasheet as ed
 from python import ledger_consumers as lcons
 from python import ledger_coverage as lc
+from python import ledger_notes as lnotes
+from python import ledger_questions as lq
 from python import ledger_rows as lr
 from python import parameter_table as pt
 from python import plant_status as ps
@@ -305,6 +307,86 @@ def test_the_refused_rows_are_assumed_with_their_reason_in_the_note(built):
     assert by["FE-003.nominal_kg_h"]["status"] == "Confirmed" and by["FE-003.nominal_kg_h"]["status_via"] == "registry counterpart: FE-003/Nominal feed rate"
     assert by["HB-012.discharge_bar_a"]["status"] == "Confirmed" and "701 bar" not in by["HB-012.discharge_bar_a"]["note"] or "bar(a) = bar(g) + 1 bar" in by["HB-012.discharge_bar_a"]["note"]
     assert by["FE-001.default_delivery_rate_kg_h"]["status"] == "Assumed"
+
+
+# ------------------------------------------------------------------ (A3b 3) upgrade_question is a list of references to questions that exist
+
+def test_rfi2_is_in_the_repo_unchanged_with_its_24_questions():
+    raw = open(os.path.join(ROOT, "docs", "rfi2_dokink.md"), "rb").read().replace(b"\r\n", b"\n")
+    import hashlib
+    assert hashlib.sha256(raw).hexdigest() == "9ce3c1c67e5ca71bd10534d7eeb8a38bbc42a28ce7f0887528ac6ce16fa140bc", "docs/rfi2_dokink.md is the owner's file; it is not edited here"
+    q = lq.rfi2_questions()
+    assert sorted(q) == list(range(1, 25)) and "gasifier operating temperature" in q[17].lower()
+    assert sorted(lq.rfi1_questions()) == list(range(1, 18)), "data/rfi_dokink.md stays the first, 17-question RFI"
+
+
+def test_every_upgrade_question_reference_points_to_a_question_that_exists(built):
+    refs = {r for row in built[0] for r in row["upgrade_question"]}
+    assert refs and lq.problems(sorted(refs)) == []
+    assert all(isinstance(row["upgrade_question"], list) for row in built[0])
+    every = {r for refs_, _ in lq.RFI_MAP.values() for r in refs_} | {r for refs_, _ in lq.CONSIDERED.values() for r in refs_}
+    assert lq.problems(sorted(every)) == []
+
+
+def test_a_reference_to_a_question_that_does_not_exist_is_refused():
+    assert lq.problems(["RFI2-25", "RFI2-0", "RFI1-18", "master_open_questions:1.99", "master_open_questions:2.1", "RFI3-1", "RFI2-3x", ""]) == ["RFI2-25", "RFI2-0", "RFI1-18", "master_open_questions:1.99", "master_open_questions:2.1", "RFI3-1", "RFI2-3x", ""]
+    assert lq.problems(["RFI2-1", "RFI2-24", "RFI1-1", "RFI1-17", "master_open_questions:1.1", "master_open_questions:3.4"]) == []
+
+
+def test_the_rfi_mapping_only_touches_rows_that_had_no_question_and_every_reason_is_stated(built):
+    tags = {r["tag"] for r in built[0]}
+    assert set(lq.RFI_MAP) <= tags and set(lq.CONSIDERED) <= tags and not (set(lq.RFI_MAP) & set(lq.CONSIDERED))
+    assert not (set(lq.RFI_MAP) & set(lr.UPGRADE)), "a row that already had a master_open_questions reference is not remapped"
+    for n in lr.build_rows():
+        if n["tag"] in lq.RFI_MAP:
+            assert n["upgrade_question"] == [], n["tag"]
+    for tag, (refs, why) in list(lq.RFI_MAP.items()) + list(lq.CONSIDERED.items()):
+        assert refs and len(why) > 20, tag
+    by = {r["tag"]: r["upgrade_question"] for r in built[0]}
+    assert by["GA-001.T_gasifier_C"] == ["RFI2-17"] and by["GA-001.tail_gas_mode"] == ["RFI2-9", "RFI2-20"] and by["UNC.feed_chlorine_ppm"] == ["RFI2-7", "RFI1-2"]
+    assert by["HB-012.polytropic_n"] == ["master_open_questions:3.3"]
+    for tag in lq.CONSIDERED:
+        assert not any(r.startswith("RFI") for r in by[tag]), tag
+
+
+# ------------------------------------------------------------------ (A3b 2.5 to 2.7, 4.1) the prose sections cite lines that exist
+
+def test_every_line_cited_in_the_prose_sections_is_found():
+    for u in lnotes.KNOWN_UNDECLARED_READS:
+        for w in u["where"]:
+            assert lnotes.locate(*w), w
+    for _, f, tok, _ in lnotes.UNUSED_CONSTANTS:
+        assert lnotes.locate(f, tok), tok
+    for i in lnotes.INCONSISTENCIES:
+        for _, f, tok in i["values"]:
+            assert lnotes.locate(f, tok), tok
+    assert "NOT FOUND" not in "\n".join(lnotes.render_prose())
+
+
+def test_the_known_undeclared_reads_in_the_docs_are_the_ones_the_test_pins():
+    docs = {(u["reads"], u["reader"]) for u in lnotes.KNOWN_UNDECLARED_READS}
+    assert docs == KNOWN_UNDECLARED_READS
+
+
+def test_the_two_recorded_inconsistencies_are_the_values_in_the_code():
+    from python import eu_utilities_chp as eu, ga001_gasifier_model as ga
+    assert eu.H2_LHV_MJ_PER_NM3 == 10.8 and eu.SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"] == 10.783
+    assert ga.M_H2O == 18.015 and abs((2 * ga.M_H + ga.M_O) - 18.016) < 1e-9
+    docs = open(os.path.join(ROOT, "docs", "design_basis_ledger.md"), encoding="utf-8").read()
+    for heading in ("## Known undeclared reads", "## Inline literals", "## Constants nothing uses", "## Inconsistencies recorded, not fixed", "## Question references", "## RFI mapping"):
+        assert heading in docs, heading
+
+
+def test_the_three_constants_nothing_uses_are_still_unused(built):
+    none = {r["ledger_id"] for r in built[0] if not r["consumers"]}
+    assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none
+    for name, f, tok, _ in lnotes.UNUSED_CONSTANTS:
+        hits = []
+        for fn in os.listdir(os.path.join(ROOT, "python")):
+            if fn.endswith(".py") and not fn.startswith("ledger_"):
+                hits += [(fn, i) for i, line in enumerate(open(os.path.join(ROOT, "python", fn), encoding="utf-8"), 1) if name in line]
+        code_lines = [h for h in hits if h[0] != f.split("/")[-1] or name + " =" in open(os.path.join(ROOT, f), encoding="utf-8").read().split("\n")[h[1] - 1]]
+        assert len(code_lines) == 1, (name, hits)
 
 
 # ------------------------------------------------------------------ (C.3) status rules
