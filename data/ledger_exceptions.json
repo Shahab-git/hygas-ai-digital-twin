@@ -1003,14 +1003,6 @@
    "value": "3600.0"
   },
   {
-   "key": "lit|python/gc_gas_cleaning_chain.py|gc014_blower_pressure|0.5",
-   "file": "python/gc_gas_cleaning_chain.py",
-   "class": "NUMERICAL",
-   "reason": "cross-check tolerance (50 % of the smaller design pressure); a verdict threshold, not a plant parameter",
-   "function": "gc014_blower_pressure",
-   "value": "0.5"
-  },
-  {
    "key": "lit|python/hb_remaining_chain.py|_mock_wgs_alt|0.05",
    "file": "python/hb_remaining_chain.py",
    "class": "SELF-TEST FIXTURE",
@@ -1097,14 +1089,6 @@
    "reason": "unit factor: percent <-> fraction (100)",
    "function": "hb014_mass_balance",
    "value": "100.0"
-  },
-  {
-   "key": "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|0.2",
-   "file": "python/hb_remaining_chain.py",
-   "class": "PRESENTATION",
-   "reason": "lower bound of the PASS verdict ratio (presentation of a cross-check result; it feeds no value)",
-   "function": "hb016_kinetics_baseline",
-   "value": "0.2"
   },
   {
    "key": "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|60.0",

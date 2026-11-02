@@ -136,7 +136,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 360 and len(exceptions) == 191 and len(items) - len(exceptions) == 169     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions (184 -> 191, 176 -> 169)
+    assert len(items) == 360 and len(exceptions) == 189 and len(items) - len(exceptions) == 171     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -209,6 +209,20 @@ def test_a_correlation_entry_without_a_correlation_name_or_a_source_is_refused()
     assert lc.exception_problems([dict(base, reason="a coefficient of Moe (1962)")])           # does not say it is a correlation
     assert lc.exception_problems([dict(base, reason="coefficient of the Moe (1962) correlation")]) == []
     assert lc.exception_problems([dict(base, reason="coefficient of a published correlation; source NOT STATED in repo")]) == []
+
+
+# ------------------------------------------------------------------ (A3b 2.4) verdict thresholds that decide a persisted value are parameters
+
+def test_the_two_verdict_thresholds_that_decide_a_persisted_verdict_are_assumed_rows(built, runs):
+    by = {r["tag"]: r for r in built[0]}
+    for tag, val in (("HB-016.consistency_verdict_ratio_lower_bound", 0.2), ("GC-014.consistency_tolerance_fraction", 0.5)):
+        assert by[tag]["value"] == val and by[tag]["status"] == "Assumed", tag
+    snap = _ser(runs["default"])
+    assert snap["GC-014|Pressure"]["value"]["consistency_check"]["verdict"] == "PARTIAL" and "(PARTIAL)" in snap["GC-014|Pressure"]["confidence_note"]
+    assert snap["HB-016|KineticsBaselineEstimate"]["value"]["consistency_check"]["verdict"] == "PASS" and "(PASS)" in snap["HB-016|KineticsBaselineEstimate"]["confidence_note"]
+    # the thresholds are not in the exception list any more (they would be both a row and an exception)
+    keys = {e["key"] for e in built[2]}
+    assert "lit|python/gc_gas_cleaning_chain.py|gc014_blower_pressure|0.5" not in keys and "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|0.2" not in keys
 
 
 # ------------------------------------------------------------------ (C.3) status rules
@@ -285,7 +299,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none      # constants nothing in the code uses
-    assert len(ledger) == 171                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row
+    assert len(ledger) == 173                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
