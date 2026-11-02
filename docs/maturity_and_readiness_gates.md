@@ -56,20 +56,35 @@ does: "already validated exactly against their design targets" (uncertainty), "f
 `readiness_gate(capability, evidence, criteria)` returns `{"passes", "reasons", "maturity_allowed"}`. **Every numeric criterion defaults to `None`** ("criteria not yet set — to be fixed with literature
 task C6 and DOK-ING"); with one `None` the gate fails with `criteria not set: <field>`. No number for data volume, coverage or error is written anywhere.
 
-| capability | required evidence items |
+<!-- REQUIRED:start (generated from python/readiness_gate.REQUIRED; do not edit by hand) -->
+
+| capability | required evidence items (criterion field in brackets) |
 |---|---|
-| calibration | measured_pairs_count, operating_range_coverage, instrument_uncertainty_known, identifiability_screen_passed |
-| validation | calibration items + heldout_campaigns, heldout_error |
-| virtual_sensing | the validation items |
-| predictive_maintenance | the validation items + failure_events_count |
-| optimisation | the validation items + confirmed_envelope_present |
-| online_replacement | the validation items + confirmed_envelope_present, fallback_defined |
+| `calibration` | `measured_pairs_count` (>= `min_measured_pairs`), `operating_range_coverage` (>= `min_operating_range_coverage`), `instrument_uncertainty_known`, `identifiability_screen_passed`, `balance_closure_within_uncertainty` |
+| `validation` | `heldout_campaigns` (>= `min_heldout_campaigns`), `heldout_data_independent`, `heldout_error` (<= `max_heldout_error`), `error_metrics_per_quantity` |
+| `virtual_sensing` | `measured_pairs_count` (>= `min_measured_pairs`), `operating_range_coverage` (>= `min_operating_range_coverage`), `physical_model_validated`, `heldout_error` (<= `max_target_accuracy`) |
+| `predictive_maintenance` | `failure_events_count` (>= `min_failure_events`), `failure_events_defined`, `intervals_reported` |
+| `optimisation` | `physical_model_validated`, `uncertainty_bounds_available`, `confirmed_envelope_present`, `shadow_mode_comparison_done` |
+| `online_replacement` | `calibrated_model_available`, `quality_gate_defined`, `drift_monitoring_defined`, `fallback_defined` |
 
-Criteria fields: `min_measured_pairs`, `min_operating_range_coverage`, `min_heldout_campaigns`, `max_heldout_error`, `min_failure_events`. `maturity_allowed`: no evidence → `PHYSICS_ESTIMATE`;
-twin-generated data only → `SYNTHETIC_BENCHMARK`; Measured plant data → `TRAINED_ON_PLANT_DATA`; plant data whose held-out campaigns meet both held-out criteria → `VALIDATED_ON_HELDOUT`.
+<!-- REQUIRED:end -->
 
-**NOT VERIFIED:** the roadmap's section 7 table is not in this repository. The item names are the ones the task names; the assignment to capabilities follows one stated rule (each capability adds its own
-item to the validation set). The owner should correct `REQUIRED` against the roadmap; the tests pin the current version.
+The table is the roadmap's Track D gate table (A10c replaced the earlier rule "each later capability adds its own item to the validation set"). In words: **calibration**: measured inputs and outputs from
+steady operation at several loads, instrument uncertainties known, identifiability screen passes for each parameter to be fitted, closure residual of the measured balances within measurement uncertainty.
+**validation**: data from operating campaigns not used for calibration (`heldout_data_independent`), error metrics stated per quantity against instrument uncertainty; the calibration set is not required
+here. **virtual_sensing**: paired measurements across the operating range, a physical model validated at the same level, held-out error below the target accuracy of that sensor
+(`max_target_accuracy`, not the validation criterion). **predictive_maintenance**: failure history with defined events, enough events to estimate a survival or trend model with intervals.
+**optimisation**: validated model with uncertainty bounds, constraints from the Confirmed design basis, open-loop recommendations compared with operator actions (shadow mode). **online_replacement**:
+quality gate, drift monitoring, fallback to the last Confirmed value; it needs a calibrated model, not necessarily a validated one.
+
+Criteria fields (all `None`): `min_measured_pairs`, `min_operating_range_coverage`, `min_heldout_campaigns`, `max_heldout_error`, `max_target_accuracy`, `min_failure_events`. `maturity_allowed`: no evidence →
+`PHYSICS_ESTIMATE`; twin-generated data only → `SYNTHETIC_BENCHMARK`; Measured plant data → `TRAINED_ON_PLANT_DATA`; Measured plant data and a passing `validation` gate → `VALIDATED_ON_HELDOUT`. No other
+capability passing (`online_replacement`, `predictive_maintenance`, ...) grants the last class.
+
+`physical_model_validated` cannot be set on its own: `evidence_with_validation_result(evidence, validation_result)` sets it only from a passing `validation` result, and a hand-set `True` without a passing
+validation gate (re-run with the same evidence and criteria) adds the reason `physical_model_validated claimed without a passing validation gate` and fails the gate.
+
+The table block above is generated from `python/readiness_gate.requirements_markdown()`; `tests/test_readiness_gate.py` fails if it differs.
 
 ## 5. What the gate does not do
 
@@ -83,9 +98,9 @@ promote a module (the registry class is a declaration that a person changes with
 * **predictive_maintenance (RULE_BASED)** would need Measured conversions with known instrument uncertainty and recorded degradation / failure events (`predictive_maintenance` capability) before its thresholds could be fitted
   instead of chosen.
 * **RULE_BASED** modules are not data-driven; they stay RULE_BASED. copilot, root_cause, safety_flags, regulatory_drafting and novelty_audit would change class only if rewritten as fitted methods.
-  sa_virtual_sensors would become a measurement-backed virtual sensor only with `calibration` and `virtual_sensing` evidence (measured pairs across the operating range, instrument uncertainty,
-  identifiability, held-out campaigns).
-* **PHYSICS_ESTIMATE → TRAINED_ON_PLANT_DATA**: Measured plant data with known instrument uncertainty over the operating range (`calibration`). The optimizer additionally needs a DOK-ING-confirmed envelope and a fallback (`optimisation`, `online_replacement`); uncertainty and performance_guarantee would take
+  sa_virtual_sensors would become a measurement-backed virtual sensor only with `virtual_sensing` evidence: paired measurements across the operating range, a physical model that passes the `validation`
+  gate, and a held-out error below the target accuracy of that sensor.
+* **PHYSICS_ESTIMATE → TRAINED_ON_PLANT_DATA**: Measured plant data with known instrument uncertainty over the operating range (`calibration`). The optimizer additionally needs a validated model with uncertainty bounds, a DOK-ING-confirmed envelope and a shadow-mode comparison with operator actions (`optimisation`), and a calibrated model with a quality gate, drift monitoring and a fallback (`online_replacement`); uncertainty and performance_guarantee would take
   measured distributions in place of the Assumed ranges.
 * **SYNTHETIC_BENCHMARK → TRAINED_ON_PLANT_DATA**: replace the twin-generated training or test data by Measured plant data; pinn_kinetics also needs the held-out campaigns for `validation`.
 * **→ VALIDATED_ON_HELDOUT** needs held-out campaigns whose error meets the criteria once they are set.
