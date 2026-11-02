@@ -15,7 +15,6 @@ it "Confirmed" is quoted in the note where there is one, never relied on. A rang
 (None) when the repo holds no such question. Not imported by the engine, the runtime or the app.
 """
 import importlib
-import os
 
 from . import equipment_registry, ledger_coverage as lc, plant_status as ps, registry_status
 
@@ -273,9 +272,9 @@ def _walk(obj, path):
     return obj
 
 
-def _scan_index(file, cache):
+def _scan_index(file, cache, sources=None):
     if file not in cache:
-        cache[file] = {i["key"]: i for i in lc.scan_source(file, open(os.path.join(lc._ROOT, file), encoding="utf-8").read())}
+        cache[file] = {i["key"]: i for i in lc.scan_source(file, lc._read(file, sources))}
     return cache[file]
 
 
@@ -289,12 +288,12 @@ def _registry_status(reg):
     raise LookupError(f"registry {item_id} has no parameter {parameter!r}")
 
 
-def build_rows():
-    """The new rows as dicts with the parameter-table columns (tag .. note) plus `covers` (scan keys), `reg`, `upgrade_question` and `reader` (module, name) for the consumer search."""
+def build_rows(sources=None):
+    """`sources` = {relative file: source text} replaces a file for the ast reads (tests change a constant in a copy and expect a loud LookupError). The new rows as dicts with the parameter-table columns (tag .. note) plus `covers` (scan keys), `reg`, `upgrade_question` and `reader` (module, name) for the consumer search."""
     cache, out = {}, []
     for tag, kind, mod, ref, unit, reg, up, note in R:
         file = lc.rel_path(mod)
-        idx = _scan_index(file, cache)
+        idx = _scan_index(file, cache, sources)
         lo = hi = None
         if kind == "c":
             it = idx.get(lc.const_key(file, ref))
