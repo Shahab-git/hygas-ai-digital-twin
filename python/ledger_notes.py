@@ -64,12 +64,15 @@ INCONSISTENCIES = [
      "affects": "18.015 converts water between kg and mol in `ga001_gasifier_model` (steam and moisture, GA-001 outputs), `gc_gas_cleaning_chain.gc004_condensed_water` (GC-004) and `hb_wgs_psa_storage_chain.hb005_steam_generation` (HB-005); the atom "
                 "masses (18.016) are used by `ga001_gasifier_model.elemental_atomic_ratios` and, in the audit, `balance_audit.molar_mass`. Both values are defined in ga001_gasifier_model.py; the atom sum is a second route to the same molecule.",
      "size": "5.5e-5 of the water mass; in scenario S4a it equals the whole A5 loop-mass residual (3.2e-5 of the loop inflow).",
-     "hidden": "Yes: balance_audit.TOL_STATED = 1e-3 (balance_audit.py:43, used at balance_audit.py:165) classes a mass residual below 1e-3 as 'closes to a stated tolerance', and 3.2e-5 is far below it, so the verdict does not show it. Not fixed."},
+     "hidden": "Yes: balance_audit.TOL_STATED = 1e-3 (used in balance_audit.verdict) classes a mass residual below 1e-3 as 'closes to a stated tolerance', and 3.2e-5 is far below it, so the verdict does not show it. Not fixed."},
 ]
 
 
 def _loc(file, token, after=None):
-    return locate(file, token, after) or f"{file}:NOT FOUND"
+    """`file` (`token`): where the text is, named by the text itself. The line number is looked up only to prove the text is there; it is NOT printed (it would go stale, task A3c)."""
+    if locate(file, token, after) is None:
+        return f"{file} NOT FOUND ({token.strip()[:50]})"
+    return f"{file} ({token.strip()[:70]})"
 
 
 def render_prose():
@@ -77,7 +80,7 @@ def render_prose():
     L = ["## Known undeclared reads", "",
          "Engine models whose code reads another published key that their registration does not declare (found by the instrumented run against `declared_readers`). " + KNOWN_UNDECLARED_FIX, ""]
     for u in KNOWN_UNDECLARED_READS:
-        L.append(f"- `{u['reader'][0]}|{u['reader'][1]}` reads `{u['reads'][0]}|{u['reads'][1]}`: {u['why']} Lines: " + ", ".join(f"`{_loc(w[0], w[1], *w[2:])}`" for w in u["where"]) + ".")
+        L.append(f"- `{u['reader'][0]}|{u['reader'][1]}` reads `{u['reads'][0]}|{u['reads'][1]}`: {u['why']} Where: " + ", ".join(f"`{_loc(w[0], w[1], *w[2:])}`" for w in u["where"]) + ".")
     L += ["", "## Inline literals", "", INLINE_LITERAL_NOTE, "", "## Constants nothing uses", "",
           "Ledger rows with no consumer. They are reported, not removed.", ""]
     for name, f, tok, says in UNUSED_CONSTANTS:
@@ -118,27 +121,20 @@ def render_questions(ledger):
 
 
 def render_confirmed():
-    """The 'Confirmed mentions' section: lines of the 18 engine modules that mention "confirmed", by class and file (the guard that pins these counts is in tests/test_design_basis_ledger.py)."""
+    """The 'Confirmed mentions' section: lines of the 18 engine modules that mention "confirmed", per file. The split into classes is NOT printed here: it is decided by the three lines that follow a
+    mention, so a line inserted between a mention and its source would change this file for a reason that is not a change of the ledger (task A3c). The classes and their counts per file are pinned in
+    tests/test_design_basis_ledger.py (CONFIRMED_PIN) and reported by python/ledger_coverage.mention_counts()."""
     from . import ledger_coverage as lc
     mentions = lc.confirmed_mentions()
-    counts = lc.mention_counts(mentions)
-    L = ["## Confirmed mentions in the engine modules", "",
-         f"{len(mentions)} lines of the {len(lc.CONFIRMED_SCOPE)} engine modules mention \"confirmed\". They are classified by `python/ledger_coverage.classify_mention` and the counts per class and file are pinned by a test, so a new "
-         "REGISTRY-STATED use fails. They are not rewritten here. `DOK-ING-SOURCED`: the line or one of the next 3 lines names a DOK-ING source (an RFI or a DOK-ING answer); `GENERIC`: explanatory use "
-         "that states no value as Confirmed (a negation, the status vocabulary, an identifier, a line that says Unverified); `REGISTRY-STATED`: the word is used for a registry value with no DOK-ING source named next to it.", "",
-         "| file | DOK-ING-SOURCED | GENERIC | REGISTRY-STATED | total |", "|---|---|---|---|---|"]
-    tot = {c: 0 for c in lc.MENTION_CLASSES}
-    for file in sorted(counts):
-        c = counts[file]
-        L.append(f"| {file} | {c[lc.MENTION_SOURCED]} | {c[lc.MENTION_GENERIC]} | {c[lc.MENTION_REGISTRY]} | {sum(c.values())} |")
-        for k in tot:
-            tot[k] += c[k]
-    L.append(f"| **all** | {tot[lc.MENTION_SOURCED]} | {tot[lc.MENTION_GENERIC]} | {tot[lc.MENTION_REGISTRY]} | {sum(tot.values())} |")
-    where = {}
+    per = {}
     for m in mentions:
-        where.setdefault(m["class"], {}).setdefault(m["where"], 0)
-        where[m["class"]][m["where"]] += 1
-    L += ["", "By kind of line (a `string` is a literal that can be published or shown; a `docstring` or `comment` is not):", ""]
-    for k in lc.MENTION_CLASSES:
-        L.append(f"- {k}: " + ", ".join(f"{w} {n}" for w, n in sorted(where.get(k, {}).items())))
+        per[m["file"]] = per.get(m["file"], 0) + 1
+    L = ["## Confirmed mentions in the engine modules", "",
+         f"{len(mentions)} lines of the {len(lc.CONFIRMED_SCOPE)} engine modules mention \"confirmed\" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is "
+         "named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and "
+         "file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.", "",
+         "| file | lines mentioning \"confirmed\" |", "|---|---|"]
+    for file in sorted(per):
+        L.append(f"| {file} | {per[file]} |")
+    L.append(f"| **all** | {len(mentions)} |")
     return L

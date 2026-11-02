@@ -245,7 +245,7 @@ def build_table():
 # --- the design-basis ledger (task A3): the same rows plus the constants the table did not list, with five more columns ----------------
 # Additive: COLUMNS, build_table() and to_markdown() are unchanged; build_ledger() is the new, larger view.
 
-LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via")
+LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via", "anchor")
 NOT_STATED = "NOT STATED"
 _REG_SOURCE = re.compile(r"^registry (\S+) '(.+)'$")
 _ENGINE_SOURCE = re.compile(r"^engine input (\S+)/(\S+) via ")
@@ -257,6 +257,11 @@ def _origin_of(res):
     if res and res.get("origin"):
         return res["origin"], res.get("citation") or ""
     return NOT_STATED, ""
+
+
+def _read_source(rel):
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), rel), encoding="utf-8") as f:
+        return f.read()
 
 
 def _questions(tag, master):
@@ -272,7 +277,7 @@ def build_ledger(readers=None):
     `readers` = {input key: [model keys]} from ledger_consumers.engine_input_readers (instrumented) or declared_readers (declared); default = declared.
     consumers: an `engine input` row lists the model keys that read it; a `registry` row lists none (the engine does not read the registry); a code row lists the
     functions that name the constant (ast); a hard-coded literal lists its function."""
-    from . import ledger_consumers, ledger_rows
+    from . import ledger_anchors, ledger_consumers, ledger_rows
     readers = readers if readers is not None else ledger_consumers.declared_readers()
     out = []
     for r in build_table():
@@ -295,6 +300,8 @@ def build_ledger(readers=None):
         row["upgrade_question"] = _questions(r["tag"], ledger_rows.UPGRADE.get(r["tag"]))
         row["origin"], row["source_line"] = _origin_of(res)
         row["status_via"] = ledger_rows.VIA_OWN
+        row["anchor"] = ledger_anchors.table_anchor(r, _read_source)
+        row["anchor_flags"] = set()
         if r["tag"] in ledger_rows.NOT_BORROWED:                      # A3b 2.8: the table row's registry counterpart is not the same quantity / basis, so the ledger does not borrow its status
             reg = _EXISTING_REG_COUNTERPART[r["tag"]]
             row["status"], row["origin"], row["source_line"] = ps.STATUS_ASSUMED, NOT_STATED, ""
@@ -309,6 +316,7 @@ def build_ledger(readers=None):
         row["consumers"], row["upgrade_question"] = consumers, _questions(n["tag"], (n["upgrade_question"] or [None])[0])
         row["origin"], row["source_line"] = _origin_of(n["reg_res"])
         row["status_via"] = n["status_via"]
+        row["anchor"], row["anchor_flags"] = n["anchor"], n["anchor_flags"]
         out.append(row)
     for row in out:
         row["ledger_id"] = "LEDGER." + row["tag"]

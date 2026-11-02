@@ -102,7 +102,7 @@ def main_snap():
 # ------------------------------------------------------------------ the table itself is unchanged and the ledger extends it
 
 def test_the_ledger_extends_the_table_without_changing_it():
-    assert pt.LEDGER_COLUMNS[:len(pt.COLUMNS)] == pt.COLUMNS and pt.LEDGER_COLUMNS[len(pt.COLUMNS):] == ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via")
+    assert pt.LEDGER_COLUMNS[:len(pt.COLUMNS)] == pt.COLUMNS and pt.LEDGER_COLUMNS[len(pt.COLUMNS):] == ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via", "anchor")
     table, ledger = pt.build_table(), pt.build_ledger()
     assert len(table) == 26, "build_table() is unchanged: its 26 rows"
     by = {(r["tag"], r["source"]): r for r in ledger}
@@ -253,7 +253,7 @@ def test_every_row_has_status_via_own_or_a_registry_counterpart(built):
     for r in built[0]:
         via = r["status_via"]
         assert via == "own" or via.startswith("registry counterpart: ") and "/" in via, (r["ledger_id"], via)
-    assert pt.LEDGER_COLUMNS[-1] == "status_via"
+    assert pt.LEDGER_COLUMNS[-2:] == ("status_via", "anchor")
     assert sum(1 for r in built[0] if r["status_via"] != "own") == 63
 
 
@@ -654,7 +654,7 @@ def test_the_csv_has_one_row_per_ledger_row_and_the_ledger_columns(built):
     import csv
     ex = _export_module()
     rows = list(csv.reader(ex.render_csv(built[0]).splitlines()))
-    assert tuple(rows[0]) == pt.LEDGER_COLUMNS and len(rows) == 1 + len(built[0])
+    assert tuple(rows[0]) == ex.EXPORT_COLUMNS and "file_line" not in rows[0] and "anchor" in rows[0] and len(rows) == 1 + len(built[0])
 
 
 def test_no_database_or_network_call(fake, monkeypatch):

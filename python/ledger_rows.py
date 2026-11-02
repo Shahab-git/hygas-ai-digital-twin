@@ -16,7 +16,7 @@ it "Confirmed" is quoted in the note where there is one, never relied on. A rang
 """
 import importlib
 
-from . import equipment_registry, ledger_coverage as lc, plant_status as ps, registry_status
+from . import equipment_registry, ledger_anchors, ledger_coverage as lc, plant_status as ps, registry_status
 
 _PKG = __package__ or "python"
 VIA_CODE = "code only"
@@ -345,6 +345,7 @@ def build_rows(sources=None):
                 lo, hi = value[1], value[2]
             covers, line, source = [it["key"]], it["line"], f"module constant {mod}.{ref}"
             reader = (mod, ref)
+            anchor, aflags = f"{mod}:{ref}", set()
         elif kind == "l":
             fn, vals = ref
             keys, found, line = [], [], None
@@ -359,6 +360,7 @@ def build_rows(sources=None):
             value = found[0] if len(found) == 1 else found
             covers, source = keys, f"literal {vals if len(vals) > 1 else vals[0]} inside {mod}.{fn}() (read from its ast)"
             reader = (mod, fn)
+            anchor, aflags = ledger_anchors.literal_anchor(file, lc._read(file, sources), fn, vals)
         else:
             name = ref[0]
             it = idx.get(lc.const_key(file, name))
@@ -375,6 +377,7 @@ def build_rows(sources=None):
                 lo, hi = _module("uncertainty").bounds(ref[1])
             covers, line, source = [it["key"]], it["line"], f"module constant {mod}.{name}" + "".join(f"[{k!r}]" for k in ref[1:])
             reader = (mod, name)
+            anchor, aflags = ledger_anchors.path_anchor(mod, name, ref[1:], obj), set()
         if reg and tag in NOT_BORROWED:
             res, p = _registry_status(reg)
             status, res, via = ps.STATUS_ASSUMED, None, VIA_OWN
@@ -390,7 +393,7 @@ def build_rows(sources=None):
             status, res, via = ps.STATUS_ASSUMED, None, VIA_OWN
             tail = _ASSIGNED + "no registry row states this quantity, or the code holds it as a model choice."
         out.append({"tag": tag, "value": value, "unit": unit, "status": status, "source": source, "range_low": lo, "range_high": hi, "overridable_via": VIA_CODE,
-                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": [up] if up else [], "reader": reader, "kind": kind, "status_via": via})
+                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": [up] if up else [], "reader": reader, "kind": kind, "status_via": via, "anchor": anchor, "anchor_flags": aflags})
     return out
 
 
