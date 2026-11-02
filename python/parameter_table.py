@@ -150,13 +150,15 @@ def _resolved_registry_status(item_id, parameter):
 
 def _code_only_rows():
     ash_lo, ash_hi = design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES["ash_pct"]
-    ash_status, ash_res = _resolved_registry_status("GA-005", "Ash discharge rate (design)")
     return [
-        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", ash_status,
+        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", ps.STATUS_ASSUMED,
              "module constant gasifier_mass_balance.ASH_FRACTION (reused by ga001 as ASH_FRACTION)",
              ash_lo / 100.0, ash_hi / 100.0, VIA_CODE, _loc("python/gasifier_mass_balance.py", r"^ASH_FRACTION\s*="),
-             "Status = the resolved status of its registry counterpart GA-005 'Ash discharge rate (design)' (" + ash_res["reason"] + "); the code comment on ASH_FRACTION calls "
-             "the 10 % 'Confirmed' ('GA-005: 10% ash content'), which the owner's worksheet does not support: only the 5-15 % band is a DOK-ING line (data/dokink_rfi_answers.md:15). "
+             _ASSIGNED + "the nearest registry row, GA-005 'Ash discharge rate (design)' = '10 % of feed' (remark: 'Matches the 10% ash content (dry basis) already used in the mass/energy balance'), "
+             "is the discharge rate of the bed-drain system with its basis ('of feed') not stated in the value, and its remark says it was set to match this model value; it is not the ash mass fraction "
+             "of the dry feed, so its status is not borrowed (task A3c; GA-005 is Unverified (registry) in any case). The 10 % value lies within the DOK-ING-stated range 5 to 15 % ash "
+             "(source: data/dokink_rfi_answers.md, line 15, 'Ash 5-15%'; the line does not state the basis of the ash figure: '(dry basis)' stands after the LHV on the next line), which does NOT make "
+             "the 10 % Confirmed. The code comment on ASH_FRACTION calls it 'Confirmed' ('GA-005: 10% ash content'); the owner's worksheet does not support that. "
              "Range = that DOK-ING ash band (design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES). NOT an engine input: a feed with another ash content cannot be represented "
              "without a code edit."),
         _row("HB-006.psa_K1", psa.K1, "-", ps.STATUS_ASSUMED, "module constant psa.K1", None, None, VIA_CODE, _loc("python/psa.py", r"^K1\s*="),
@@ -249,7 +251,6 @@ LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origi
 NOT_STATED = "NOT STATED"
 _REG_SOURCE = re.compile(r"^registry (\S+) '(.+)'$")
 _ENGINE_SOURCE = re.compile(r"^engine input (\S+)/(\S+) via ")
-_EXISTING_REG_COUNTERPART = {"GA-001.ash_fraction": ("GA-005", "Ash discharge rate (design)")}     # the table row's own note names this registry counterpart
 
 
 def _origin_of(res):
@@ -286,8 +287,6 @@ def build_ledger(readers=None):
         m = _REG_SOURCE.match(r["source"]) if r["overridable_via"] == VIA_REGISTRY else None
         if m:
             res = _resolved_registry_status(*m.groups())[1]
-        elif r["tag"] in _EXISTING_REG_COUNTERPART:
-            res = _resolved_registry_status(*_EXISTING_REG_COUNTERPART[r["tag"]])[1]
         if r["overridable_via"] == VIA_ENGINE:
             k = _ENGINE_SOURCE.match(r["source"])
             consumers = [f"{a}|{b}" for a, b in readers.get((k.group(1), k.group(2)), [])] if k else []
@@ -302,12 +301,6 @@ def build_ledger(readers=None):
         row["status_via"] = ledger_rows.VIA_OWN
         row["anchor"] = ledger_anchors.table_anchor(r, _read_source)
         row["anchor_flags"] = set()
-        if r["tag"] in ledger_rows.NOT_BORROWED:                      # A3b 2.8: the table row's registry counterpart is not the same quantity / basis, so the ledger does not borrow its status
-            reg = _EXISTING_REG_COUNTERPART[r["tag"]]
-            row["status"], row["origin"], row["source_line"] = ps.STATUS_ASSUMED, NOT_STATED, ""
-            row["note"] = f"{row['note']} LEDGER VIEW (A3b 2.8): status Assumed, not borrowed from {reg[0]} '{reg[1]}': {ledger_rows.NOT_BORROWED[r['tag']]}."
-        elif res is not None and m is None:
-            row["status_via"] = ledger_rows.VIA_REG % _EXISTING_REG_COUNTERPART[r["tag"]]
         out.append(row)
     for n in ledger_rows.build_rows():
         mod, ref = n["reader"]

@@ -6,7 +6,7 @@ Stable anchors for the design-basis ledger (task A3c, section 1). Nothing here i
 
 An anchor names WHERE the value lives by symbol, never by line:
 
-  module:NAME                        a module-level constant (`psa:K1`); a dict entry adds its keys (`plant_heat_integration:ASSUMED['delta_t_min_k']['value']`); an entry of a list of
+  module:NAME                        a module-level constant (`psa:K1`); a dict entry adds its keys (`uncertainty:ASSUMPTIONS['feed_sulfur_ppm']['point']`); an entry of a list of
                                      named dicts is addressed by its `name` (`ga001_energy_balance:ASSUMED_INPUTS['air preheat temperature (degC)']['value']`), not by its position;
   module:function:variable           a numeric literal inside a function, named by what it is assigned to (`gc_gas_cleaning_chain:gc003_dust:efficiency`), by its keyword argument
                                      or by the parameter it is the default of; several literals of one row are joined with `+` (`kinetics:hts_conversion:T_K+GHSV+y_CO_in+steam_to_CO`);

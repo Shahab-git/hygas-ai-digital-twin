@@ -308,7 +308,7 @@ BORROW.update({
     "FE-003.nominal_kg_h": (1000.0, 0.0, 0.01, "t/h x 1000 = kg/h; the registry's 0.042 t/h is the code's 41.67 kg/h (= 1,000 kg/day / 24 h, DOK-ING RFI answer 1) rounded to two significant digits (0.8 %)"),
 })
 NOT_BORROWED = {
-    "GA-001.ash_fraction": "ASH_FRACTION is a mass fraction of dry feed; the nearest registry row, GA-005 'Ash discharge rate (design)', is a discharge rate: not the same quantity",
+    "GA-001.ash_fraction": "ASH_FRACTION is a mass fraction of dry feed; the nearest registry row, GA-005 'Ash discharge rate (design)' = '10 % of feed', is the bed-drain discharge rate, its basis is not in the value, and its remark says it was set to match this model value: not the same quantity in the same basis (the table row itself is Assumed)",
     "GC-005.blowdown_to_circulation_ratio": "a ratio (0.05 m3/h / 0.5 m3/h, code comment) derived from two registry rows; the row GC-005 'Blowdown rate' is only its numerator",
     "GC-015.ambient_temp_C": "the lower bound of GC-015's operating range; GC-005 'Water supply temperature' (20 degC) is a different quantity that happens to have the same number",
     "GC-003.inlet_dust_mg_nm3": "registry GC-003 'Dust loading inlet (max)' (2 g/Nm3) is a MAXIMUM; the code uses it as the inlet loading: not the same basis",
