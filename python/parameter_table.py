@@ -242,6 +242,66 @@ def build_table():
     return sorted(rows, key=lambda r: (r["tag"], r["source"]))
 
 
+# --- the design-basis ledger (task A3): the same rows plus the constants the table did not list, with five more columns ----------------
+# Additive: COLUMNS, build_table() and to_markdown() are unchanged; build_ledger() is the new, larger view.
+
+LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line")
+NOT_STATED = "NOT STATED"
+_REG_SOURCE = re.compile(r"^registry (\S+) '(.+)'$")
+_ENGINE_SOURCE = re.compile(r"^engine input (\S+)/(\S+) via ")
+_EXISTING_REG_COUNTERPART = {"GA-001.ash_fraction": ("GA-005", "Ash discharge rate (design)")}     # the table row's own note names this registry counterpart
+
+
+def _origin_of(res):
+    """(origin, source_line) from a registry_status.resolve_row result: the overlay's, or NOT STATED / empty when the owner's worksheet has no answer for the row."""
+    if res and res.get("origin"):
+        return res["origin"], res.get("citation") or ""
+    return NOT_STATED, ""
+
+
+def build_ledger(readers=None):
+    """The ledger: every row of build_table() plus ledger_rows.build_rows(), sorted by (tag, source), with LEDGER_COLUMNS as keys.
+
+    `readers` = {input key: [model keys]} from ledger_consumers.engine_input_readers (instrumented) or declared_readers (declared); default = declared.
+    consumers: an `engine input` row lists the model keys that read it; a `registry` row lists none (the engine does not read the registry); a code row lists the
+    functions that name the constant (ast); a hard-coded literal lists its function."""
+    from . import ledger_consumers, ledger_rows
+    readers = readers if readers is not None else ledger_consumers.declared_readers()
+    out = []
+    for r in build_table():
+        row = dict(r)
+        res = None
+        m = _REG_SOURCE.match(r["source"]) if r["overridable_via"] == VIA_REGISTRY else None
+        if m:
+            res = _resolved_registry_status(*m.groups())[1]
+        elif r["tag"] in _EXISTING_REG_COUNTERPART:
+            res = _resolved_registry_status(*_EXISTING_REG_COUNTERPART[r["tag"]])[1]
+        if r["overridable_via"] == VIA_ENGINE:
+            k = _ENGINE_SOURCE.match(r["source"])
+            consumers = [f"{a}|{b}" for a, b in readers.get((k.group(1), k.group(2)), [])] if k else []
+        elif r["overridable_via"] == VIA_REGISTRY:
+            consumers = []
+        else:
+            mod, name = ledger_rows.TABLE_TOKENS[r["tag"]]
+            consumers = ledger_consumers.referrers(mod, name)
+        row["consumers"] = consumers
+        row["upgrade_question"] = ledger_rows.UPGRADE.get(r["tag"])
+        row["origin"], row["source_line"] = _origin_of(res)
+        out.append(row)
+    for n in ledger_rows.build_rows():
+        mod, ref = n["reader"]
+        consumers = [f"{mod}.{ref}"] if n["kind"] == "l" else ledger_consumers.referrers(mod, ref)
+        row = {c: n[c] for c in COLUMNS}
+        row["consumers"], row["upgrade_question"] = consumers, n["upgrade_question"]
+        row["origin"], row["source_line"] = _origin_of(n["reg_res"])
+        out.append(row)
+    for row in out:
+        row["ledger_id"] = "LEDGER." + row["tag"]
+        if isinstance(row["consumers"], list) and row["consumers"] and isinstance(row["consumers"][0], tuple):
+            row["consumers"] = [f"{a}|{b}" for a, b in row["consumers"]]
+    return sorted(out, key=lambda r: (r["tag"], r["source"]))
+
+
 def code_only_rows(table=None):
     return [r for r in (table if table is not None else build_table()) if r["overridable_via"] == VIA_CODE]
 
