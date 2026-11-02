@@ -100,12 +100,18 @@ def main_snap():
 # ------------------------------------------------------------------ the table itself is unchanged and the ledger extends it
 
 def test_the_ledger_extends_the_table_without_changing_it():
-    assert pt.LEDGER_COLUMNS[:len(pt.COLUMNS)] == pt.COLUMNS and pt.LEDGER_COLUMNS[len(pt.COLUMNS):] == ("ledger_id", "consumers", "upgrade_question", "origin", "source_line")
+    assert pt.LEDGER_COLUMNS[:len(pt.COLUMNS)] == pt.COLUMNS and pt.LEDGER_COLUMNS[len(pt.COLUMNS):] == ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via")
     table, ledger = pt.build_table(), pt.build_ledger()
     assert len(table) == 26, "build_table() is unchanged: its 26 rows"
     by = {(r["tag"], r["source"]): r for r in ledger}
     for r in table:
-        assert all(by[(r["tag"], r["source"])][c] == r[c] for c in pt.COLUMNS), r["tag"]
+        # A3b 2.8: the ledger VIEW of GA-001.ash_fraction does not borrow GA-005's status (a discharge rate is not a mass fraction), so its status and note differ from the table row;
+        # build_table() itself is untouched (tests/test_apply_provenance.py still pins it to GA-005's resolved status). Every other column of that row, and every column of every other row, is equal.
+        cols = [c for c in pt.COLUMNS if not (r["tag"] == "GA-001.ash_fraction" and c in ("status", "note"))]
+        assert all(by[(r["tag"], r["source"])][c] == r[c] for c in cols), r["tag"]
+    ash = by[("GA-001.ash_fraction", "module constant gasifier_mass_balance.ASH_FRACTION (reused by ga001 as ASH_FRACTION)")]
+    assert ash["status"] == "Assumed" and ash["status_via"] == "own" and ash["origin"] == "NOT STATED"
+    assert next(x for x in table if x["tag"] == "GA-001.ash_fraction")["status"] != "Assumed", "the table row keeps its own (borrowed) status"
     assert len(ledger) == 26 + len(lr.build_rows()) == len(by)
     assert all(r["ledger_id"] == "LEDGER." + r["tag"] for r in ledger)
     assert all(set(r) >= set(pt.LEDGER_COLUMNS) for r in ledger)
@@ -223,6 +229,82 @@ def test_the_two_verdict_thresholds_that_decide_a_persisted_verdict_are_assumed_
     # the thresholds are not in the exception list any more (they would be both a row and an exception)
     keys = {e["key"] for e in built[2]}
     assert "lit|python/gc_gas_cleaning_chain.py|gc014_blower_pressure|0.5" not in keys and "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|0.2" not in keys
+
+
+# ------------------------------------------------------------------ (A3b 2.8) status_via: a borrowed status needs the same quantity in the same basis
+
+_NUM = __import__("re").compile(r"^[<~]?\s*(-?\d+(?:\.\d+)?)\s*$")
+_RANGE = __import__("re").compile(r"^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$")
+
+
+def _registry_numbers(text):
+    """The number(s) a registry value text states: '85' -> [85.0], '<50' -> [50.0], '~1' -> [1.0], '95-98' -> [95.0, 98.0]; None when the text is not a plain number or range."""
+    s = str(text).strip()
+    m = _NUM.match(s)
+    if m:
+        return [float(m.group(1))]
+    m = _RANGE.match(s)
+    return [float(m.group(1)), float(m.group(2))] if m else None
+
+
+def test_every_row_has_status_via_own_or_a_registry_counterpart(built):
+    for r in built[0]:
+        via = r["status_via"]
+        assert via == "own" or via.startswith("registry counterpart: ") and "/" in via, (r["ledger_id"], via)
+    assert pt.LEDGER_COLUMNS[-1] == "status_via"
+    assert sum(1 for r in built[0] if r["status_via"] != "own") == 63
+
+
+def test_every_row_with_a_registry_counterpart_is_borrowed_or_explicitly_not_borrowed():
+    reg_rows = {r["tag"] for r in lr.build_rows() if r["reg"]}
+    assert reg_rows == (set(lr.BORROW) | set(lr.NOT_BORROWED)) - {"GA-001.ash_fraction"}, "a new row with a registry counterpart must be decided: BORROW (same quantity, same basis) or NOT_BORROWED"
+    assert not (set(lr.BORROW) & set(lr.NOT_BORROWED))
+    assert all(len(v) == 4 and v[3] for v in lr.BORROW.values()), "every borrowed row states its unit conversion or 'same quantity, same unit, same basis'"
+    assert all(len(v) > 30 for v in lr.NOT_BORROWED.values()), "every refusal states why"
+
+
+def test_a_borrowed_status_is_never_higher_than_the_counterparts_and_the_value_matches_it(built):
+    from python import registry_status as rs
+    by = {r["tag"] + "|" + r["source"]: r for r in built[0]}
+    checked = 0
+    for n in lr.build_rows():
+        if not n["reg"] or n["tag"] in lr.NOT_BORROWED:
+            continue
+        row = next(r for r in built[0] if r["tag"] == n["tag"])
+        res, p = lr._registry_status(n["reg"])
+        assert row["status_via"] == "registry counterpart: %s/%s" % n["reg"], n["tag"]
+        assert rs.rank_of(row["status"]) >= rs.rank_of(res["status"]), (n["tag"], "borrowed status is higher than the counterpart's resolved status")
+        assert row["status"] == res["status"], n["tag"]
+        factor, offset, tol, statement = lr.BORROW[n["tag"]]
+        nums = _registry_numbers(p["value"])
+        code = list(n["value"]) if isinstance(n["value"], (tuple, list)) else [n["value"]]
+        if nums is None:
+            raise AssertionError(f"{n['tag']}: registry text {p['value']!r} is not a number; a row whose counterpart cannot be compared belongs in NOT_BORROWED")
+        assert len(nums) == len(code), n["tag"]
+        for c, x in zip(code, nums):
+            expected = factor * x + offset
+            assert abs(c - expected) <= tol * max(abs(expected), 1e-12), (n["tag"], c, expected, statement)
+        checked += 1
+    assert checked == 63
+
+
+def test_a_borrowed_row_whose_value_drifted_from_its_counterpart_is_caught():
+    n = next(r for r in lr.build_rows() if r["tag"] == "HB-012.discharge_bar_a")
+    res, p = lr._registry_status(n["reg"])
+    factor, offset, tol, _ = lr.BORROW["HB-012.discharge_bar_a"]
+    assert abs(n["value"] - (factor * _registry_numbers(p["value"])[0] + offset)) <= tol * n["value"]          # 701 bar(a) = 700 bar(g) + 1 bar
+    assert abs(702.0 - (factor * _registry_numbers(p["value"])[0] + offset)) > tol * 702.0                    # 702 would not be
+
+
+def test_the_refused_rows_are_assumed_with_their_reason_in_the_note(built):
+    by = {r["tag"]: r for r in built[0]}
+    for tag, reason in lr.NOT_BORROWED.items():
+        r = by[tag]
+        assert r["status"] == "Assumed" and r["status_via"] == "own" and r["origin"] == "NOT STATED" and not r["source_line"], tag
+        assert reason in r["note"], tag
+    assert by["FE-003.nominal_kg_h"]["status"] == "Confirmed" and by["FE-003.nominal_kg_h"]["status_via"] == "registry counterpart: FE-003/Nominal feed rate"
+    assert by["HB-012.discharge_bar_a"]["status"] == "Confirmed" and "701 bar" not in by["HB-012.discharge_bar_a"]["note"] or "bar(a) = bar(g) + 1 bar" in by["HB-012.discharge_bar_a"]["note"]
+    assert by["FE-001.default_delivery_rate_kg_h"]["status"] == "Assumed"
 
 
 # ------------------------------------------------------------------ (C.3) status rules

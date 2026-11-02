@@ -245,7 +245,7 @@ def build_table():
 # --- the design-basis ledger (task A3): the same rows plus the constants the table did not list, with five more columns ----------------
 # Additive: COLUMNS, build_table() and to_markdown() are unchanged; build_ledger() is the new, larger view.
 
-LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line")
+LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via")
 NOT_STATED = "NOT STATED"
 _REG_SOURCE = re.compile(r"^registry (\S+) '(.+)'$")
 _ENGINE_SOURCE = re.compile(r"^engine input (\S+)/(\S+) via ")
@@ -287,6 +287,13 @@ def build_ledger(readers=None):
         row["consumers"] = consumers
         row["upgrade_question"] = ledger_rows.UPGRADE.get(r["tag"])
         row["origin"], row["source_line"] = _origin_of(res)
+        row["status_via"] = ledger_rows.VIA_OWN
+        if r["tag"] in ledger_rows.NOT_BORROWED:                      # A3b 2.8: the table row's registry counterpart is not the same quantity / basis, so the ledger does not borrow its status
+            reg = _EXISTING_REG_COUNTERPART[r["tag"]]
+            row["status"], row["origin"], row["source_line"] = ps.STATUS_ASSUMED, NOT_STATED, ""
+            row["note"] = f"{row['note']} LEDGER VIEW (A3b 2.8): status Assumed, not borrowed from {reg[0]} '{reg[1]}': {ledger_rows.NOT_BORROWED[r['tag']]}."
+        elif res is not None and m is None:
+            row["status_via"] = ledger_rows.VIA_REG % _EXISTING_REG_COUNTERPART[r["tag"]]
         out.append(row)
     for n in ledger_rows.build_rows():
         mod, ref = n["reader"]
@@ -294,6 +301,7 @@ def build_ledger(readers=None):
         row = {c: n[c] for c in COLUMNS}
         row["consumers"], row["upgrade_question"] = consumers, n["upgrade_question"]
         row["origin"], row["source_line"] = _origin_of(n["reg_res"])
+        row["status_via"] = n["status_via"]
         out.append(row)
     for row in out:
         row["ledger_id"] = "LEDGER." + row["tag"]

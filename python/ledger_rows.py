@@ -109,7 +109,7 @@ _c("GC-005.blowdown_to_circulation_ratio", "gc_gas_cleaning_chain", "QUENCH_BLOW
    "0.05 / 0.5 = registry blowdown 0.05 m3/h over water consumption 0.5 m3/h (a ratio of two GC-005 rows); reused for GC-007/008/009 as well.")
 _c("GC-014.design_discharge_mbar_g", "gc_gas_cleaning_chain", "GC014_DESIGN_DISCHARGE_MBAR_G", "mbar(g)", ("GC-014", "Design discharge pressure"))
 _c("GC-014.design_suction_mbar_g", "gc_gas_cleaning_chain", "GC014_DESIGN_SUCTION_MBAR_G", "mbar(g)", ("GC-014", "Design suction pressure"))
-_c("GA-002.typical_pressure_mbar_g", "gc_gas_cleaning_chain", "GA002_TYPICAL_PRESSURE_MBAR_G", "mbar(g)", ("GA-002", "Operating pressure range"), None,
+_c("GA-002.typical_pressure_mbar_g", "gc_gas_cleaning_chain", "GA002_TYPICAL_PRESSURE_MBAR_G", "mbar(g)", ("GA-001", "Operating pressure (typical)"), None,
    "100 mbar(g) is the middle of GA-002's registry range 50-150 mbar(g); used as a consistency check on GC-014's suction pressure.")
 _c("GC-015.ambient_temp_C", "gc_gas_cleaning_chain", "GC015_AMBIENT_TEMP_C", "degC", ("GC-005", "Water supply temperature"), None, "Lower bound of GC-015's operating-temperature range.")
 _c("GC.stage_delta_p_mbar", "gc_gas_cleaning_chain", "_STAGE_DELTA_P_MBAR", "mbar", None, None,
@@ -291,6 +291,54 @@ def _registry_status(reg):
     raise LookupError(f"registry {item_id} has no parameter {parameter!r}")
 
 
+# --- status borrowing (task A3b 2.8) ---------------------------------------------------------------------------------------------------------------
+# A row with a registry counterpart `reg` may BORROW that registry row's resolved status (and its origin / source_line) only when the engine constant and the registry row are the SAME
+# quantity in the SAME basis. BORROW says so per row: tag -> (factor, offset, rel_tol, statement); the code value must equal factor * registry value + offset within rel_tol
+# (tests/test_design_basis_ledger.py checks this numerically wherever the registry text is a number; a leading '<' or '~' is read as the number). NOT_BORROWED lists the rows that have a
+# registry row nearby but are not the same quantity / basis: they are Assumed (status_via = own) and the reason is in the row's note. Every row with a `reg` is in exactly one of the two.
+_S = (1.0, 0.0, 1e-9, "same quantity, same unit, same basis")
+_PCT = (0.01, 0.0, 1e-9, "registry states a percentage, the code a fraction: code = registry / 100")
+_BARG = (1.0, 1.0, 1e-9, "code is absolute, registry is gauge: bar(a) = bar(g) + 1 bar (atmospheric pressure taken as 1 bar, not 1.01325)")
+_LIM = (1.0, 0.0, 1e-9, "registry states the TARGET as an upper limit ('<x'); the code uses the limit value x as the target")
+BORROW = {tag: _S for tag in (
+    "GA-008.capacity_kg_h", "GC-014.design_discharge_mbar_g", "GC-014.design_suction_mbar_g", "GA-002.typical_pressure_mbar_g", "GC-001.outlet_temperature_C", "GC-004.inlet_temperature_C",
+    "GC-004.outlet_temperature_C", "GC-005.blowdown_m3_h", "GC-008.h2s_inlet_ppm", "GC-008.liquid_to_gas_l_nm3", "GC-009.hcl_inlet_ppm", "GC-009.liquid_to_gas_l_nm3", "GC-010.inlet_dust_mg_nm3",
+    "HB-001.inlet_temperature_C", "HB-003.hot_inlet_C", "HB-003.hot_outlet_C", "HB-003.cold_inlet_C", "HB-003.cold_outlet_C", "HB-013.storage_capacity_kg", "HB-005.steam_temperature_C",
+    "HB-005.steam_pressure_bar_g", "HB-011.rated_power_kw", "HB-011.rated_h2_nm3_h", "HB-011.sec_rated_kwh_per_nm3", "HB-010.feed_flow_nm3_h", "HB-014.loading_efficiency_wt_pct",
+    "HB-016.release_efficiency_wt_pct", "EU-004.jacket_kwth_rated", "EU-004.exhaust_kwth_rated", "EU-005.exhaust_flow_nm3_h_rated", "EU-008.rated_capacity_kw", "EU-008.nominal_supply_temp_C",
+    "EU-008.fan_motor_power_kw", "EU-010.rated_kva", "EU-011.exhaust_inlet_C", "EU-011.exhaust_outlet_C", "FE-001.total_capacity_t", "FE-001.live_capacity_t", "FE-004.motor_kw",
+    "FE-004.throughput_t_h", "GA-004.air_preheat_C", "GA-004.steam_T_C", "FE-005.dryer_operating_C", "GC-004.quench_out_C", "GA-008.operating_C", "PLANT.audit_quench_inlet_temperature_C")}
+BORROW.update({
+    "GC-007.tar_outlet_target_mg_nm3": _LIM, "GC-009.hcl_outlet_target_ppm": _LIM, "GC-010.outlet_target_mg_nm3": _LIM, "GC-012.h2s_cos_outlet_target_ppm": _LIM,
+    "HB-008.psa_adsorption_pressure_bar_a": _BARG, "HB-008.psa_regen_pressure_bar_a": _BARG, "HB-012.suction_bar_a": _BARG, "HB-012.discharge_bar_a": _BARG,
+    "HB-010.h2_recovery": _PCT, "HB-010.permeate_purity_range": (0.01, 0.0, 1e-9, "registry states vol%, the code a mole fraction (ideal gas: vol% = mol%): code = registry / 100, both ends of the range"),
+    "FE-005.inlet_moisture_fraction": _PCT,
+    "HB-011.water_l_per_nm3": (1.0, 0.0, 1e-9, "registry states '~1' (approximate); the code uses 1.0"),
+    "HB-018.max_dispense_rate_kg_h": (60.0, 0.0, 1e-9, "kg/min x 60 = kg/h"),
+    "EU-010.backup_hours": (1.0 / 60.0, 0.0, 1e-9, "min / 60 = h"),
+    "FE-003.min_kg_h": (1000.0, 0.0, 1e-9, "t/h x 1000 = kg/h"), "FE-003.max_kg_h": (1000.0, 0.0, 1e-9, "t/h x 1000 = kg/h"),
+    "FE-003.nominal_kg_h": (1000.0, 0.0, 0.01, "t/h x 1000 = kg/h; the registry's 0.042 t/h is the code's 41.67 kg/h (= 1,000 kg/day / 24 h, DOK-ING RFI answer 1) rounded to two significant digits (0.8 %)"),
+})
+NOT_BORROWED = {
+    "GA-001.ash_fraction": "ASH_FRACTION is a mass fraction of dry feed; the nearest registry row, GA-005 'Ash discharge rate (design)', is a discharge rate: not the same quantity",
+    "GC-005.blowdown_to_circulation_ratio": "a ratio (0.05 m3/h / 0.5 m3/h, code comment) derived from two registry rows; the row GC-005 'Blowdown rate' is only its numerator",
+    "GC-015.ambient_temp_C": "the lower bound of GC-015's operating range; GC-005 'Water supply temperature' (20 degC) is a different quantity that happens to have the same number",
+    "GC-003.inlet_dust_mg_nm3": "registry GC-003 'Dust loading inlet (max)' (2 g/Nm3) is a MAXIMUM; the code uses it as the inlet loading: not the same basis",
+    "GC-003.efficiency": "registry GC-003 states '>95 %' (a lower bound); the code uses 0.95 as the efficiency itself: a bound used as a point value",
+    "GC-003.outlet_temperature_C": "the code publishes the cyclone INLET temperature (870 degC) as its outlet; registry GC-003 'Inlet gas temperature' is not the outlet temperature",
+    "FE-002.removal_efficiency": "registry FE-002 states '>98' (a lower bound); the code uses 0.98 as the efficiency itself: a bound used as a point value",
+    "HB-017.recovery_efficiency": "registry HB-017 states '>99 %' (a lower bound); the code uses 0.99 as the efficiency itself: a bound used as a point value",
+    "HB-005.steam_to_co_molar_ratio": "the registry text of HB-005 'Steam-to-CO ratio' is '04:01:00' (it reads as a time, not a ratio), so equality with 4.0 mol/mol cannot be shown",
+    "HB-010.design_feed_h2_fraction": "a mole fraction derived as 4.4 bar H2 partial pressure / 8 bar feed pressure (two different registry quantities); the registry row states the partial pressure",
+    "EU-003.syngas_lhv_mj_per_nm3": "registry EU-003 'Fuel gas LHV required' is a requirement of the engine; the code uses 9.8 as a static syngas LHV: not the same quantity",
+    "FE-001.default_delivery_rate_kg_h": "the delivery rate INTO the hopper (a model choice, set equal to the feeder's nominal rate); registry FE-003 'Nominal feed rate' is the rate OUT of it",
+    "FE-005.outlet_moisture_fraction": "the registry text of FE-005 'Outlet moisture (target)' is '-1 % moisture' (a negative number); equality with 1 % cannot be shown",
+    "PLANT.audit_lts_steam_temperature_C": "the code takes the LTS INLET temperature as a lower bound of the (not stated) LTS outlet steam temperature: not the same quantity",
+}
+VIA_OWN = "own"
+VIA_REG = "registry counterpart: %s/%s"
+
+
 def build_rows(sources=None):
     """`sources` = {relative file: source text} replaces a file for the ast reads (tests change a constant in a copy and expect a loud LookupError). The new rows as dicts with the parameter-table columns (tag .. note) plus `covers` (scan keys), `reg`, `upgrade_question` and `reader` (module, name) for the consumer search."""
     cache, out = {}, []
@@ -339,16 +387,22 @@ def build_rows(sources=None):
                 lo, hi = _module("uncertainty").bounds(ref[1])
             covers, line, source = [it["key"]], it["line"], f"module constant {mod}.{name}" + "".join(f"[{k!r}]" for k in ref[1:])
             reader = (mod, name)
-        if reg:
+        if reg and tag in NOT_BORROWED:
             res, p = _registry_status(reg)
-            status = res["status"]
+            status, res, via = ps.STATUS_ASSUMED, None, VIA_OWN
+            tail = _ASSIGNED + f"not borrowed from the nearby registry row {reg[0]} '{reg[1]}' (registry value {p['value']} {p['unit']}): {NOT_BORROWED[tag]}."
+        elif reg:
+            if tag not in BORROW:
+                raise LookupError(f"{tag}: has a registry counterpart {reg} but is neither in BORROW (same quantity, same basis) nor in NOT_BORROWED")
+            res, p = _registry_status(reg)
+            status, via = res["status"], VIA_REG % reg
             tail = (f"Value read from the code; status, origin and source_line are those of its registry counterpart {reg[0]} '{reg[1]}' (registry value {p['value']} {p['unit']}; "
-                    f"same quantity, units may differ): {res['reason']}")
+                    f"{BORROW[tag][3]}): {res['reason']}")
         else:
-            status, res = ps.STATUS_ASSUMED, None
+            status, res, via = ps.STATUS_ASSUMED, None, VIA_OWN
             tail = _ASSIGNED + "no registry row states this quantity, or the code holds it as a model choice."
         out.append({"tag": tag, "value": value, "unit": unit, "status": status, "source": source, "range_low": lo, "range_high": hi, "overridable_via": VIA_CODE,
-                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": up, "reader": reader, "kind": kind})
+                    "file_line": f"{file}:{line}", "note": (note + " " if note else "") + tail, "covers": covers, "reg": reg, "reg_res": res, "upgrade_question": up, "reader": reader, "kind": kind, "status_via": via})
     return out
 
 

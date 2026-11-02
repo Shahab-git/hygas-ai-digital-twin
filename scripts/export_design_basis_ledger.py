@@ -66,6 +66,7 @@ def counts(ledger, items, exceptions):
         "by_status": dict(sorted(collections.Counter(r["status"] for r in ledger).items())),
         "by_origin": dict(sorted(collections.Counter(r["origin"] for r in ledger).items())),
         "by_via": dict(sorted(collections.Counter(r["overridable_via"] for r in ledger).items())),
+        "by_via_status": dict(sorted(collections.Counter("own" if r["status_via"] == "own" else "registry counterpart" for r in ledger).items())),
         "no_consumer": sorted(f"{r['ledger_id']} ({r['overridable_via']})" for r in ledger if not r["consumers"]),
         "no_question": sum(1 for r in ledger if not r["upgrade_question"]),
         "items": len(items), "by_kind": dict(sorted(collections.Counter(i["kind"] for i in items).items())),
@@ -87,6 +88,7 @@ def render_md(ledger, items, exceptions):
          "## Counts", "",
          f"- Rows: **{c['rows']}** ({c['ledger_ids']} distinct `ledger_id`; a quantity held in two places has two rows with the same id and different `source`).",
          f"- By status: {', '.join(f'{k} {v}' for k, v in c['by_status'].items())}.",
+         f"- By `status_via`: {', '.join(f'{k} {v}' for k, v in c['by_via_status'].items())}.",
          f"- By origin (provenance overlay): {', '.join(f'{k} {v}' for k, v in c['by_origin'].items())}.",
          f"- By `overridable_via`: {', '.join(f'{k} {v}' for k, v in c['by_via'].items())}.",
          f"- Rows with no `upgrade_question` (no question in the repo would upgrade them): **{c['no_question']}**.",
@@ -94,12 +96,12 @@ def render_md(ledger, items, exceptions):
          f"- Coverage scan of the {len(lc.SCAN_MODULES)} modules that feed published keys: **{c['items']}** numeric items ({', '.join(f'{k} {v}' for k, v in c['by_kind'].items())}); "
          f"**{c['items'] - c['exceptions']}** are PARAMETERs (every one is a ledger row) and **{c['exceptions']}** are listed exceptions ({', '.join(f'{k} {v}' for k, v in c['by_class'].items())}).", "",
          "## The ledger", "",
-         "| ledger_id | value | unit | status | origin | source_line | range_low | range_high | via | file_line | consumers | upgrade_question | source | note |",
-         "|" + "---|" * 14]
+         "| ledger_id | value | unit | status | status_via | origin | source_line | range_low | range_high | via | file_line | consumers | upgrade_question | source | note |",
+         "|" + "---|" * 15]
     esc = lambda s: str(s).replace("|", "/").replace("\n", " ")
     for r in ledger:
         L.append("| " + " | ".join(esc(x) for x in (
-            r["ledger_id"], _v(r["value"]), r["unit"], r["status"], r["origin"], r["source_line"] or "", _v(r["range_low"]), _v(r["range_high"]), r["overridable_via"], r["file_line"],
+            r["ledger_id"], _v(r["value"]), r["unit"], r["status"], r["status_via"], r["origin"], r["source_line"] or "", _v(r["range_low"]), _v(r["range_high"]), r["overridable_via"], r["file_line"],
             _cons(r), r["upgrade_question"] or "", r["source"], r["note"])) + " |")
     L += ["", "## Exceptions (numeric constants that are not parameters)", "",
           "| key | class | reason |", "|---|---|---|"]
