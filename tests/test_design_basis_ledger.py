@@ -295,6 +295,43 @@ def test_the_ui_status_counts_are_unchanged():
         assert (t["total_real_data_points"], t["total_category_slots"], t["confirmed_category_slots"], t["estimated_category_slots"], t["missing_category_slots"]) == expected[name], name
 
 
+# ------------------------------------------------------------------ (A3b 2.1) the D2 exemption stays narrow
+
+def test_the_d2_exemption_list_is_exactly_the_four_listed_phrase_pairs():
+    """tests/_d2_wording.py may map back ONLY these phrases and only inside these three snapshot entries. Adding a pair or an entry fails here; a new one needs a decision."""
+    assert _d2_wording.PAIRS == (
+        ("registry '>98% removal efficiency' (Unverified (registry), not DOK-ING-confirmed)", "own Confirmed '>98% removal efficiency'"),
+        ("registry >90% efficiency (>d50=15um; Unverified (registry))", "own Confirmed >90% efficiency (>d50=15um)"),
+        ("ACTUAL/DOK-ING VALUE: Unverified (registry), not DOK-ING-confirmed -- 20 kW", "ACTUAL/DOK-ING VALUE: Confirmed -- 20 kW"),
+        ("Unverified (registry), not DOK-ING-confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own", "Confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own"),
+    )
+    assert _d2_wording.ENTRIES == ("FE-002|", "GC-001|", "EU-008|")
+    src = open(os.path.join(ROOT, "tests", "_d2_wording.py"), encoding="utf-8").read()
+    assert src.count(".replace(") == 1, "undo() maps through PAIRS only; no second replacement rule"
+
+
+def test_undo_changes_nothing_but_those_phrases():
+    probe = {"FE-002|X": {"a": "Confirmed -- 30 kW", "b": ["own Confirmed text", 1.5, None], "c": {"d": "Unverified (registry)"}},
+             "HB-001|X": {"a": _d2_wording.PAIRS[0][0]}}                          # outside ENTRIES: never touched
+    assert _d2_wording.undo(probe) == probe
+    inside = {"FE-002|X": {"a": _d2_wording.PAIRS[0][0] + " tail"}}
+    assert _d2_wording.undo(inside) == {"FE-002|X": {"a": _d2_wording.PAIRS[0][1] + " tail"}}
+
+
+@pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
+def test_the_persisted_text_differences_are_exactly_these_four_fields(runs, main_snap, mode, fixture_key):
+    new, old = _ser(runs[mode]), main_snap[fixture_key]
+    differing = set()
+    for k in old:
+        if k == "GA-001-INPUT|tail_gas_mode":
+            continue
+        r = _same(old[k], new[k])
+        if r is not True:
+            differing |= {(k, path) for path in r}
+    assert differing == {("EU-008|RecommendedCapacityEstimate", "/confidence_note"), ("EU-008|RecommendedCapacityEstimate", "/value/actual_dokking_value"),
+                         ("FE-002|TrampMetalReject", "/missing_reason"), ("GC-001|Dust", "/missing_reason")}, differing
+
+
 # ------------------------------------------------------------------ (E) export freshness, offline
 
 def _export_module():
