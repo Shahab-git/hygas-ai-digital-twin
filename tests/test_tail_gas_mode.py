@@ -22,7 +22,8 @@ from python import tab1_integration as t1
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_71e92cc.json.gz")
 NEW_KEYS = {"GA-001-INPUT|tail_gas_mode", "GA-001|EnergyBalance",
-            "GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting"}      # the last two come from the carbon-bookkeeping task
+            "GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting",      # the two before come from the carbon-bookkeeping task
+            "PLANT|HeatIntegration"}      # HEAT INTEGRATION (deliberate edit): the read-only heat inventory key is one more new key against the 71e92cc fixture; every OLD entry is still compared unchanged
 N = 20          # the tail-gas recycle has converged by cycle 20
 MID = "DOK-ING midpoint (Assumed point)"
 

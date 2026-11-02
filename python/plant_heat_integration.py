@@ -44,8 +44,9 @@ from . import plant_status as ps
 KEY = ("PLANT", "HeatIntegration")
 # every key (GA-001 inputs, tail_gas_mode, FE-005, HB-005) that balance_audit.gasifier_energy / (GA-001, EnergyBalance) read, plus what this key reads itself; the new key is a LEAF, so
 # these are edges INTO it only: no existing model gains a dependency
-DEPENDS_ON = list(dict.fromkeys(list(eb.DEPENDS_ON) + [("GA-001", "EnergyBalance"), ("GA-001", "CarbonAccounting"), ("GC-013", "Gas"), ("WGS", "Composition"), ("HB-001", "HTS"),
-                                                       ("HB-004", "LTS"), ("SA-011", "Reading")]))
+# It does NOT depend on the (GA-001, EnergyBalance) entry: it calls ga001_energy_balance.energy_balance on the same inputs (the one function, so the four demands cannot drift),
+# which keeps (GA-001, EnergyBalance) a leaf that nothing depends on.
+DEPENDS_ON = list(dict.fromkeys(list(eb.DEPENDS_ON) + [("GA-001", "CarbonAccounting"), ("GC-013", "Gas"), ("WGS", "Composition"), ("HB-001", "HTS"), ("HB-004", "LTS"), ("SA-011", "Reading")]))
 LAGGED = list(eb.LAGGED)
 
 # --- constants -----------------------------------------------------------------------------------------------------------------------------
@@ -162,14 +163,15 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
         A[k]["value"] = float(v)
     a = {k: v["value"] for k, v in A.items()}
     view = eb._View(lambda k: ({"status": ps.STATUS_MISSING} if get(k) is None else get(k)))
-    need_keys = [("GA-001", "Outputs"), ("GA-001", "EnergyBalance"), ("GA-001-INPUT", "operating_temperature_C"), ("GA-001-INPUT", "dry_feed_rate_kg_h"), ("GC-013", "Gas"),
+    need_keys = [("GA-001", "Outputs"), ("GA-001-INPUT", "operating_temperature_C"), ("GA-001-INPUT", "dry_feed_rate_kg_h"), ("GC-013", "Gas"),
                  ("WGS", "Composition"), ("HB-001", "HTS"), ("HB-004", "LTS")]
     absent = [k for k in need_keys if get(k) is None]
     if absent:
         return {"missing_reason": f"required published state is Missing: {absent}"}
-    ebv = get(("GA-001", "EnergyBalance"))["value"]
+    eb_entry = eb.energy_balance(lambda k: get(k) or {"value": None, "unit": None, "status": ps.STATUS_MISSING, "missing_reason": f"{k} is Missing"})
+    ebv = eb_entry["value"]
     if ebv is None:
-        return {"missing_reason": "(GA-001, EnergyBalance) has no value"}
+        return {"missing_reason": eb_entry.get("missing_reason") or "ga001_energy_balance.energy_balance has no value"}
     mode = ebv["tail_gas_mode"]
     t_gas = float(get(("GA-001-INPUT", "operating_temperature_C"))["value"])
     out = get(("GA-001", "Outputs"))["value"]
@@ -235,14 +237,14 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
     cb = get(("GA-001", "CarbonAccounting"))
     cb_kg_h = float(cb["value"]["carbon_black_kg_h"]) if cb is not None and cb["value"] is not None else None
     cp_s = ba.SOLIDS_CP_KJ_KGK[0]
-    ash_kw = ash_kg_h * cp_s * (t_gas - a["ash_discharge_temperature_c"]) * ba.KW_PER_KJ_H
+    ash_kw = max(0.0, ash_kg_h * cp_s * (t_gas - a["ash_discharge_temperature_c"]) * ba.KW_PER_KJ_H)         # cooling cannot release heat when the discharge is hotter than the bed
     sources.append(_src("ash sensible heat (bed temperature -> discharge)", ash_kw, t_gas, a["ash_discharge_temperature_c"], ps.STATUS_ASSUMED,
                         f"{ash_kg_h:.2f} kg/h x cp {cp_s} kJ/kg.K (Assumed, no solids cp in the repo) x temperature drop; the ash fraction is the code's 10 %", "recovery_ash", grade="low"))
     if cb_kg_h is None:
         sources.append(_src("carbon-black sensible heat", None, CARBON_BLACK_COLLECTION_C, a["carbon_black_final_c"], ps.STATUS_MISSING, "(GA-001, CarbonAccounting) is Missing: no carbon-black flow, so no heat is stated",
                             "recovery_ash", counted=False, grade="low"))
     else:
-        sources.append(_src("carbon-black sensible heat (collection -> packaging)", cb_kg_h * cp_s * (CARBON_BLACK_COLLECTION_C - a["carbon_black_final_c"]) * ba.KW_PER_KJ_H,
+        sources.append(_src("carbon-black sensible heat (collection -> packaging)", max(0.0, cb_kg_h * cp_s * (CARBON_BLACK_COLLECTION_C - a["carbon_black_final_c"]) * ba.KW_PER_KJ_H),
                             CARBON_BLACK_COLLECTION_C, a["carbon_black_final_c"], ps.STATUS_ASSUMED, f"{cb_kg_h:.3f} kg/h from (GA-001, CarbonAccounting) x cp {cp_s} (Assumed)", "recovery_ash", grade="low"))
     tail_species = (ebv.get("tail_gas") or {}).get("species_nm3_h") or {}
     chem, flue, t_ad, flue_kw, stack_loss = _flue(tail_species, a["excess_air_ratio"], a["stack_temperature_c"])
