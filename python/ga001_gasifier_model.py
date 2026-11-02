@@ -1183,6 +1183,9 @@ def register_ga001(engine):
     ga001_energy_balance.register(engine)
     from . import ga001_carbon_accounting
     ga001_carbon_accounting.register(engine)
+    # Read-only plant heat source / sink inventory (("PLANT", "HeatIntegration"), a leaf like the two above; heat-integration stage 1).
+    from . import plant_heat_integration
+    plant_heat_integration.register(engine)
 
 
 # --- Uncertainty propagation: the seventh uncertainty class ---------------
