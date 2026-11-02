@@ -5,7 +5,8 @@
   "PHYSICAL CONSTANT",
   "NUMERICAL",
   "PRESENTATION",
-  "SELF-TEST FIXTURE"
+  "SELF-TEST FIXTURE",
+  "PUBLISHED CORRELATION COEFFICIENT"
  ],
  "entries": [
   {
@@ -328,6 +329,62 @@
    "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
    "function": "feed_atoms_mol_h",
    "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|0.0151",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of N in the Channiwala & Parikh (2002), Fuel 81 HHV correlation HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH (as named in the docstring of balance_audit.feedstock_lhv_estimates; S = 0 in the code, so 0.1005 is not coded)",
+   "function": "feedstock_lhv_estimates",
+   "value": "0.0151"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|0.0211",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of ash in the Channiwala & Parikh (2002), Fuel 81 HHV correlation HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH (as named in the docstring of balance_audit.feedstock_lhv_estimates; S = 0 in the code, so 0.1005 is not coded)",
+   "function": "feedstock_lhv_estimates",
+   "value": "0.0211"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|0.1034",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of O in the Channiwala & Parikh (2002), Fuel 81 HHV correlation HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH (as named in the docstring of balance_audit.feedstock_lhv_estimates; S = 0 in the code, so 0.1005 is not coded)",
+   "function": "feedstock_lhv_estimates",
+   "value": "0.1034"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|0.3383",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of C in the Dulong HHV correlation HHV = 0.3383 C + 1.443 (H - O/8) (named 'Dulong' in the docstring of balance_audit.feedstock_lhv_estimates; the publication is not cited: source NOT STATED in repo)",
+   "function": "feedstock_lhv_estimates",
+   "value": "0.3383"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|0.3491",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of C in the Channiwala & Parikh (2002), Fuel 81 HHV correlation HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH (as named in the docstring of balance_audit.feedstock_lhv_estimates; S = 0 in the code, so 0.1005 is not coded)",
+   "function": "feedstock_lhv_estimates",
+   "value": "0.3491"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|1.1783",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of H in the Channiwala & Parikh (2002), Fuel 81 HHV correlation HHV = 0.3491 C + 1.1783 H + 0.1005 S - 0.1034 O - 0.0151 N - 0.0211 ASH (as named in the docstring of balance_audit.feedstock_lhv_estimates; S = 0 in the code, so 0.1005 is not coded)",
+   "function": "feedstock_lhv_estimates",
+   "value": "1.1783"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|1.443",
+   "file": "python/balance_audit.py",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of H - O/8 in the Dulong HHV correlation HHV = 0.3383 C + 1.443 (H - O/8) (named 'Dulong' in the docstring of balance_audit.feedstock_lhv_estimates; the publication is not cited: source NOT STATED in repo)",
+   "function": "feedstock_lhv_estimates",
+   "value": "1.443"
   },
   {
    "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|100.0",
@@ -692,16 +749,16 @@
   {
    "key": "lit|python/ga001_gasifier_model.py|_wgs_keq|4.33",
    "file": "python/ga001_gasifier_model.py",
-   "class": "PHYSICAL CONSTANT",
-   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33)",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33), Moe (1962) (as named in the docstring of _wgs_keq); full citation: ga001_gasifier_model.py module docstring point 2",
    "function": "_wgs_keq",
    "value": "4.33"
   },
   {
    "key": "lit|python/ga001_gasifier_model.py|_wgs_keq|4577.8",
    "file": "python/ga001_gasifier_model.py",
-   "class": "PHYSICAL CONSTANT",
-   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33) (thermodynamic correlation; the same one is in kinetics._keq)",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33), Moe (1962) (as named in the docstring of _wgs_keq); full citation: ga001_gasifier_model.py module docstring point 2",
    "function": "_wgs_keq",
    "value": "4577.8"
   },
@@ -1244,16 +1301,16 @@
   {
    "key": "lit|python/kinetics.py|_keq|4.33",
    "file": "python/kinetics.py",
-   "class": "PHYSICAL CONSTANT",
-   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33)",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33), Moe (1962) (as named in the docstring of _keq); full citation: ga001_gasifier_model.py module docstring point 2",
    "function": "_keq",
    "value": "4.33"
   },
   {
    "key": "lit|python/kinetics.py|_keq|4577.8",
    "file": "python/kinetics.py",
-   "class": "PHYSICAL CONSTANT",
-   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33) (same as ga001_gasifier_model._wgs_keq)",
+   "class": "PUBLISHED CORRELATION COEFFICIENT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33), Moe (1962) (as named in the docstring of _keq); full citation: ga001_gasifier_model.py module docstring point 2",
    "function": "_keq",
    "value": "4577.8"
   },

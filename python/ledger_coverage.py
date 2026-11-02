@@ -11,8 +11,9 @@ that feed published keys (SCAN_MODULES):
 Every item has a stable key:  const / composite -> "const|<file>|<NAME>";  literal -> "lit|<file>|<function>|<value>" (all occurrences of the same value in one function are
 ONE item, so "1000.0 in this function" is classified once).
 
-An item is accounted for if (a) a ledger row lists it in its `covers`, or (b) `data/ledger_exceptions.json` lists it with a class (PHYSICAL CONSTANT, NUMERICAL, PRESENTATION or
-SELF-TEST FIXTURE) and a one-line reason. Whatever is neither is an unregistered PARAMETER: `uncovered()` returns it, and a test fails.
+An item is accounted for if (a) a ledger row lists it in its `covers`, or (b) `data/ledger_exceptions.json` lists it with a class (PHYSICAL CONSTANT, NUMERICAL, PRESENTATION,
+SELF-TEST FIXTURE or PUBLISHED CORRELATION COEFFICIENT) and a one-line reason. A PUBLISHED CORRELATION COEFFICIENT names the correlation and its source as the repo names it (author and
+year), or says `source NOT STATED in repo`; the rule is enforced by exception_problems(). Whatever is neither is an unregistered PARAMETER: `uncovered()` returns it, and a test fails.
 
 Nothing here is imported by the engine, the runtime or the app.
 """
@@ -34,7 +35,9 @@ CLASS_PHYSICAL = "PHYSICAL CONSTANT"
 CLASS_NUMERICAL = "NUMERICAL"
 CLASS_PRESENTATION = "PRESENTATION"
 CLASS_FIXTURE = "SELF-TEST FIXTURE"
-EXCEPTION_CLASSES = (CLASS_PHYSICAL, CLASS_NUMERICAL, CLASS_PRESENTATION, CLASS_FIXTURE)
+CLASS_CORRELATION = "PUBLISHED CORRELATION COEFFICIENT"      # a coefficient of a published empirical correlation (not a physical constant, not a model parameter)
+EXCEPTION_CLASSES = (CLASS_PHYSICAL, CLASS_NUMERICAL, CLASS_PRESENTATION, CLASS_FIXTURE, CLASS_CORRELATION)
+NO_SOURCE = "source NOT STATED in repo"
 
 
 def rel_path(module):
@@ -193,6 +196,12 @@ def exception_problems(entries):
             bad.append((e.get("key"), "class %r is not one of %s" % (e.get("class"), EXCEPTION_CLASSES)))
         if not str(e.get("reason", "")).strip():
             bad.append((e.get("key"), "no reason"))
+        if e.get("class") == CLASS_CORRELATION:
+            reason = str(e.get("reason", ""))
+            if "correlation" not in reason.lower():
+                bad.append((e.get("key"), "a correlation coefficient must name the correlation"))
+            if NO_SOURCE not in reason and not re.search(r"\((19|20)\d\d\)", reason):
+                bad.append((e.get("key"), "a correlation coefficient must name its source with a year, e.g. 'Moe (1962)', or say '%s'" % NO_SOURCE))
     return bad
 
 

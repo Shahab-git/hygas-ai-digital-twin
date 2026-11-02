@@ -232,8 +232,7 @@ _c("FE-005.dryer_operating_C", "balance_audit", "FE005_DRYER_OPERATING_C", "degC
 _c("GC-004.quench_out_C", "balance_audit", "GC004_QUENCH_OUT_C", "degC", ("GC-004", "Outlet gas temperature (design)"))
 _c("GA-008.operating_C", "balance_audit", "GA008_OPERATING_C", "degC", ("GA-008", "Operating temperature"))
 _c("PLANT.solids_cp_kj_kgk", "balance_audit", "SOLIDS_CP_KJ_KGK", "kJ/(kg.K)", None, None, "Tuple (point, low, high), Assumed: no solids heat capacity exists anywhere in the repo.")
-_l("PLANT.hhv_correlation_coefficients", "balance_audit", "feedstock_lhv_estimates", [0.3491, 1.1783, 0.1034, 0.0151, 0.0211, 0.3383, 1.443], "MJ/kg per mass-%", None, Q_LHV,
-   "Coefficients of two literature HHV correlations (a C/H/O/N/ash correlation and a Dulong-type one) that give the 'model composition' LHV case; the code does not name the papers, so no source is claimed here.")
+# The HHV correlation coefficients (balance_audit.feedstock_lhv_estimates) are NOT a row: they are PUBLISHED CORRELATION COEFFICIENTs in data/ledger_exceptions.json (task A3b 2.3).
 _l("PLANT.audit_vent_and_knockout_temperature_C", "balance_audit", "plant_energy", [40.0], "degC", None, None, "Default vent and knock-out temperatures of the plant energy audit (parameters vent_temp_c, knockout_temp_c).")
 _l("PLANT.audit_quench_inlet_temperature_C", "balance_audit", "plant_energy", [860.0], "degC", ("GC-004", "Inlet gas temperature"), None, "A second hard-coded copy of the GC-004 inlet temperature (gc_gas_cleaning_chain gc004_cooling_duty holds the first).")
 _l("PLANT.audit_lts_steam_temperature_C", "balance_audit", "plant_energy", [220.0], "degC", ("HB-004", "Inlet temperature (design)"), None, "Unreacted steam leaves the LTS at >= its 220 degC inlet (code comment).")

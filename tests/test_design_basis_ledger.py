@@ -136,7 +136,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 360 and len(exceptions) == 184 and len(items) - len(exceptions) == 176
+    assert len(items) == 360 and len(exceptions) == 191 and len(items) - len(exceptions) == 169     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions (184 -> 191, 176 -> 169)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -165,6 +165,50 @@ def test_an_exception_needs_a_class_and_a_reason():
     bad = [{"key": "k1", "class": "PHYSICAL CONSTANT", "reason": ""}, {"key": "k2", "class": "PHYSICAL CONSTANT", "reason": "   "}, {"key": "k3", "class": "TUNING", "reason": "x"}]
     assert {k for k, _ in lc.exception_problems(bad)} == {"k1", "k2", "k3"}
     assert lc.exception_problems([{"key": "ok", "class": "NUMERICAL", "reason": "a tolerance"}]) == []
+
+
+# ------------------------------------------------------------------ (A3b 2.3) published correlation coefficients
+
+CORRELATION_KEYS = {
+    "lit|python/ga001_gasifier_model.py|_wgs_keq|4577.8", "lit|python/ga001_gasifier_model.py|_wgs_keq|4.33", "lit|python/kinetics.py|_keq|4577.8", "lit|python/kinetics.py|_keq|4.33",
+    "lit|python/balance_audit.py|feedstock_lhv_estimates|0.3491", "lit|python/balance_audit.py|feedstock_lhv_estimates|1.1783", "lit|python/balance_audit.py|feedstock_lhv_estimates|0.1034",
+    "lit|python/balance_audit.py|feedstock_lhv_estimates|0.0151", "lit|python/balance_audit.py|feedstock_lhv_estimates|0.0211", "lit|python/balance_audit.py|feedstock_lhv_estimates|0.3383",
+    "lit|python/balance_audit.py|feedstock_lhv_estimates|1.443"}
+
+
+def test_the_wgs_and_hhv_coefficients_are_published_correlation_coefficients_and_nothing_else_is(built):
+    exceptions = built[2]
+    mine = {e["key"] for e in exceptions if e["class"] == lc.CLASS_CORRELATION}
+    assert mine == CORRELATION_KEYS
+    assert lc.CLASS_CORRELATION == "PUBLISHED CORRELATION COEFFICIENT" and lc.CLASS_CORRELATION in lc.EXCEPTION_CLASSES
+    assert lc.exception_problems([e for e in exceptions if e["class"] == lc.CLASS_CORRELATION]) == []
+    ledger_covers = {k for r in lr.build_rows() for k in r["covers"]}
+    assert not (ledger_covers & CORRELATION_KEYS), "a coefficient is never both a ledger row and a correlation exception"
+    assert not any("PLANT.hhv" in r["tag"] for r in built[0])
+
+
+def test_every_correlation_reason_names_the_correlation_and_its_source_as_the_code_does(built):
+    by = {e["key"]: e["reason"] for e in built[2] if e["class"] == lc.CLASS_CORRELATION}
+    assert all("Moe (1962)" in by[k] for k in CORRELATION_KEYS if "4577.8" in k or k.endswith("|4.33"))
+    assert all("Channiwala & Parikh (2002), Fuel 81" in by[k] for k in CORRELATION_KEYS if k.rsplit("|", 1)[1] in ("0.3491", "1.1783", "0.1034", "0.0151", "0.0211"))
+    dulong = [by[k] for k in CORRELATION_KEYS if k.rsplit("|", 1)[1] in ("0.3383", "1.443")]
+    assert len(dulong) == 2 and all("Dulong" in r and lc.NO_SOURCE in r for r in dulong), "the repo names Dulong but cites no publication: the entry says so"
+    for r in by.values():
+        assert "physical constant" not in r.lower() and "parameter" not in r.lower()
+    # the names really are in the code (a rewritten docstring would make the reason stale)
+    ba = open(os.path.join(ROOT, "python", "balance_audit.py"), encoding="utf-8").read()
+    assert "Channiwala & Parikh (2002), Fuel 81" in ba and "Dulong:" in ba
+    assert "Moe, J.M. (1962)" in open(os.path.join(ROOT, "python", "ga001_gasifier_model.py"), encoding="utf-8").read()
+    assert "Moe (1962)" in open(os.path.join(ROOT, "python", "kinetics.py"), encoding="utf-8").read()
+
+
+def test_a_correlation_entry_without_a_correlation_name_or_a_source_is_refused():
+    base = {"key": "k", "class": lc.CLASS_CORRELATION}
+    assert lc.exception_problems([dict(base, reason="a coefficient")])                         # names neither
+    assert lc.exception_problems([dict(base, reason="coefficient of a correlation")])          # names no source
+    assert lc.exception_problems([dict(base, reason="a coefficient of Moe (1962)")])           # does not say it is a correlation
+    assert lc.exception_problems([dict(base, reason="coefficient of the Moe (1962) correlation")]) == []
+    assert lc.exception_problems([dict(base, reason="coefficient of a published correlation; source NOT STATED in repo")]) == []
 
 
 # ------------------------------------------------------------------ (C.3) status rules
@@ -241,7 +285,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none      # constants nothing in the code uses
-    assert len(ledger) == 172
+    assert len(ledger) == 171                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
