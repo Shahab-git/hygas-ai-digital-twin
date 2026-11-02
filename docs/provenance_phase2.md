@@ -52,10 +52,10 @@ Nothing in the engine, the snapshot (120 keys), the runtime, the dynamics layer,
 | slots (the app's three-way split) | before | now |
 |---|---|---|
 | Confirmed | 262 | **13** |
-| not confirmed (was "Engineering Estimate") | 48 | **297** |
+| Not DOK-ING-confirmed (was "Engineering Estimate") | 48 | **297** |
 | Missing Data — Required | 236 | 236 |
 
-Of the 297 not-confirmed slots, by the strongest evidence in the slot: Unverified (registry) 237, Engineering Estimate fills 48, Assumed 9, Calculated 2, Estimated (literature-informed) 1.
+Of the 297 not DOK-ING-confirmed slots, by the strongest evidence in the slot: Unverified (registry) 237, Engineering Estimate fills 48, Assumed 9, Calculated 2, Estimated (literature-informed) 1.
 
 ## 4. What the labels mean
 
@@ -71,7 +71,7 @@ Caption in the app: "Confirmed means a DOK-ING source is cited; unverified rows 
 
 ## 5. What changed in the app (labels and counts only)
 
-The honest-count cards (each section tab) and the all-sections cards show Confirmed (DOK-ING-sourced), Not confirmed and Missing, plus a breakdown of the not-confirmed slots by evidence label. The per-slot badge shows the best row's label. Captions and tags that called a registry row "Confirmed" now read the resolved status: GA-008 and GA-009 capacities (KPI cards, flow cards, the aggregate caption) now read "Unverified (registry)"; GC-008 / GC-009 removal-efficiency targets, HB-006 55 % feed-H₂ target (banner, bar, finding), HB-012 motor rating, EU-008 cooling duty (tag, metric, banner, bar), FE-001 live capacity, FE-005 moisture rows, GC-013 motor power, GA-001 technology. No layout, tab, chart, flow-diagram or what-if change.
+The honest-count cards (each section tab) and the all-sections cards show Confirmed (DOK-ING-sourced), Not DOK-ING-confirmed and Missing, plus a breakdown of the not-confirmed slots by evidence label. The per-slot badge shows the best row's label. Captions and tags that called a registry row "Confirmed" now read the resolved status: GA-008 and GA-009 capacities (KPI cards, flow cards, the aggregate caption) now read "Unverified (registry)"; GC-008 / GC-009 removal-efficiency targets, HB-006 55 % feed-H₂ target (banner, bar, finding), HB-012 motor rating, EU-008 cooling duty (tag, metric, banner, bar), FE-001 live capacity, FE-005 moisture rows, GC-013 motor power, GA-001 technology. No layout, tab, chart, flow-diagram or what-if change.
 
 **Not converted (still static prose that says "Confirmed"):** about 14 explanatory paragraphs (for example the section intros "real registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate" at `app.py` ~5639, 6820, 7654, 8651, 9647, 10569, and EU-008 / HB-012 narrative at ~8072, 9046, 9562, 9673). They describe the section in general terms and do not read a single row; they are the next batch.
 

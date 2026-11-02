@@ -2075,7 +2075,7 @@ def _render_equipment_honest_count(summary, n_items):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Real data points", summary["total_real_data_points"])
     c2.metric("Confirmed (DOK-ING-sourced)", summary["confirmed_category_slots"])
-    c3.metric("Not confirmed", summary["estimated_category_slots"])
+    c3.metric("Not DOK-ING-confirmed", summary["estimated_category_slots"])
     c4.metric("Missing Data — Required", summary["missing_category_slots"],
                delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
                delta_color="inverse")
@@ -2084,7 +2084,7 @@ def _render_equipment_honest_count(summary, n_items):
         f"{summary['total_real_data_points']} real parameter values are on file across these "
         f"{n_items} items, across {summary['total_category_slots']} possible (item × category) "
         f"slots: **{summary['confirmed_category_slots']} Confirmed** (at least one row cites a DOK-ING source), "
-        f"**{summary['estimated_category_slots']} not confirmed** (broken down above by the strongest evidence in the slot: Calculated, "
+        f"**{summary['estimated_category_slots']} not DOK-ING-confirmed** (broken down above by the strongest evidence in the slot: Calculated, "
         f"Estimated from similar plants, the existing Engineering Estimate fills, Assumed, or Unverified — no stated origin yet), and "
         f"**{summary['missing_category_slots']} Missing Data — Required** — reported as separate, honest numbers, never blended into one "
         f"\"populated\" figure that would overstate how solid a value actually is. "
@@ -10802,7 +10802,7 @@ with tab9:
     g2.metric("Total real data points", _all_summary["total_real_data_points"])
     g3.metric("Confirmed (DOK-ING-sourced) slots",
               f"{_all_summary['confirmed_category_slots']} / {_all_summary['total_category_slots']}")
-    g4.metric("Not-confirmed slots",
+    g4.metric("Not DOK-ING-confirmed slots",
               f"{_all_summary['estimated_category_slots']} / {_all_summary['total_category_slots']}")
     g5.metric("Missing Data — Required",
               f"{_all_summary['missing_category_slots']} / {_all_summary['total_category_slots']}")
@@ -10817,7 +10817,7 @@ with tab9:
             f"**{_all_summary['confirmed_category_slots']} Confirmed** "
             f"({_all_summary['confirmed_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"at least one row cites a DOK-ING source), "
-            f"**{_all_summary['estimated_category_slots']} not confirmed** "
+            f"**{_all_summary['estimated_category_slots']} not DOK-ING-confirmed** "
             f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"strongest evidence in the slot is Calculated, Estimated from similar plants, an Engineering Estimate fill, Assumed, or Unverified (no stated origin yet) — "
             f"spanning all 7 sections now that the full registry-wide pass is complete: FE-001 "
