@@ -141,6 +141,8 @@ def test_product_gas_cooling_by_hand_through_the_whole_function(runs):
     v = phi.compute(get, assumptions={"gas_cooler_outlet_c": 350.0}, lhv_cases={"x": 17.5})
     src = next(s for s in v["sources"] if s["name"].startswith("product-gas sensible heat"))
     assert src["kw_available"] == pytest.approx(1000.0 * ba.CP_J_MOLK["N2"] * 100.0 / 3.6e6, rel=1e-12) == pytest.approx(0.85, abs=1e-12) and (src["t_low_c"], src["t_high_c"]) == (350.0, 450.0)
+    case = v["cases"]["x"]["by_source"][src["name"]]
+    assert case["kw_recovered"] == pytest.approx(0.85 * phi.ASSUMED["recovery_gas_cooler"]["value"], rel=1e-12), "the recovery fraction (0.7) is applied exactly once"
 
 
 # ------------------------------------------------------------------ (b) the energy sums close
@@ -155,6 +157,12 @@ def test_the_energy_sums_close_in_every_case(runs, mode):
         assert sum(x["kw_recovered"] for x in c["by_source"].values()) == pytest.approx(c["source_recovered_counted_kw"], abs=1e-9)
         assert c["supplementary_fuel_kw"] == c["unmet_kw"] and c["supplementary_fuel_as_h2_kg_day"] == pytest.approx(c["unmet_kw"] * 24.0 / phi.H2_LHV_KWH_PER_KG, rel=1e-12)
         assert c["temperature_level_mismatch_kw"] == pytest.approx(min(c["unmet_kw"], c["unused_source_kw"]), abs=1e-12)
+    ass = {x["name"]: x["value"] for x in v["assumed_inputs"]}
+    for src in v["sources"]:
+        for c in v["cases"].values():
+            got = c["by_source"][src["name"]]["kw_recovered"]
+            want = src["kw_available"] * ass[src["recovery_key"]] if src["counted"] and src["recoverable_in_principle"] and src["recovery_key"] else 0.0
+            assert got == pytest.approx(want, rel=1e-12, abs=1e-15), (src["name"], "recovered = available x its recovery fraction, applied once")
     sinks = {s["name"]: s["kw"] for s in v["sinks"]}
     assert v["energy_balance_demand_kw"] == pytest.approx(sum(list(sinks.values())[:4]), abs=1e-12)
     eb = runs[mode][("GA-001", "EnergyBalance")]["value"]["cases"][MID]
@@ -211,7 +219,18 @@ def test_computing_the_key_mutates_no_state(runs):
     before = json.dumps(_ser(snap), sort_keys=True)
     phi.compute(getter(snap))
     phi.compute(getter(snap), assumptions={"recovery_gas_cooler": 0.9})
+    phi.heat_integration(getter(snap))                                  # the registered model function, not only compute()
     assert json.dumps(_ser(snap), sort_keys=True) == before
+
+
+def test_the_key_does_not_depend_on_the_energybalance_entry_so_that_stays_a_leaf():
+    engine = se.SimulationEngine(sps.SharedPlantState())
+    from python import ga001_gasifier_model as ga001
+    ga001.register_ga001(engine)
+    spec = engine._models[("PLANT", "HeatIntegration")]
+    eb_key = ("GA-001", "EnergyBalance")
+    assert eb_key not in phi.DEPENDS_ON and eb_key not in spec["depends_on"] and eb_key not in spec["lagged_depends_on"]
+    assert list(spec["depends_on"]) == phi.DEPENDS_ON and list(spec["lagged_depends_on"]) == phi.LAGGED
 
 
 def test_nothing_reads_the_key_and_no_model_depends_on_it():
