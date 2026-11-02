@@ -21,7 +21,9 @@ from python import tab1_integration as t1
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_198bfcb.json.gz")
-NEW_KEYS = {"GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting"}
+# HEAT INTEGRATION (deliberate edit): "PLANT|HeatIntegration" is one more new key against the 198bfcb fixture, and it moves with the split because it reads (GA-001, CarbonAccounting)'s carbon-black flow
+# for its ash / carbon-black heat source (a fraction of a kW); no gas-side entry moves, which is what these tests pin.
+NEW_KEYS = {"GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting", "PLANT|HeatIntegration"}
 ACC = ("GA-001", "CarbonAccounting")
 N, NP = 5, 4          # the sweeps run the engine's default five-cycle state (and the cycle before it, for the lagged recycle)
 

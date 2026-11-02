@@ -158,6 +158,6 @@ def test_the_snapshot_and_its_persisted_key_count_are_unchanged():
     fake = FakeSupabase()
     with patched_supabase(fake):
         snap, _state, _engine = t1.build_live_snapshot(2)
-    assert len(snap) == 120 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)
+    assert len(snap) == 121 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key
     assert not [k for k in snap if re.search(r"wording|overlay|provenance|unverified", " ".join(k), re.I)]
     assert fake.calls == []
