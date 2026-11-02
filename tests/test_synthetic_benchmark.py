@@ -51,6 +51,9 @@ def test_the_error_grows_with_the_noise_level(result):
 def test_the_report_says_it_measures_the_code_and_lists_the_modules_without_a_benchmark(sb, result):
     text = sb.render(result)
     assert "This measures the code, not any plant." in text and "not instrument specifications" in text
+    assert "Inverse crime" in text and "guaranteed by construction" in text and "model-form error, instrument bias or any plant" in text
+    assert "Inverse crime" in open(os.path.join(ROOT, "docs", "maturity_and_readiness_gates.md"), encoding="utf-8").read()
+    assert "INVERSE CRIME" in sb.__doc__ and "TEST INPUTS, NOT instrument" in sb.__doc__
     from python import maturity as mt
     assert set(sb.NO_BENCHMARK) == set(mt.MATURITY) - {"predictive_maintenance"} and all(sb.NO_BENCHMARK.values())
     assert all(f"| {m} |" in text for m in sb.NO_BENCHMARK)
