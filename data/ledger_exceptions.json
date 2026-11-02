@@ -1,0 +1,1453 @@
+{
+ "format": 1,
+ "meaning": "scanned numeric constants that are NOT design / operating / model PARAMETERs, each with its class and a one-line reason (python/ledger_coverage.py)",
+ "classes": [
+  "PHYSICAL CONSTANT",
+  "NUMERICAL",
+  "PRESENTATION",
+  "SELF-TEST FIXTURE"
+ ],
+ "entries": [
+  {
+   "key": "const|python/balance_audit.py|FORMULA",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atoms of each element per molecule of each species (chemical formulae)",
+   "name": "FORMULA"
+  },
+  {
+   "key": "const|python/balance_audit.py|HF_KJ_MOL",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "standard enthalpies of formation, kJ/mol (NIST-JANAF / CRC, as the module comment states)",
+   "name": "HF_KJ_MOL"
+  },
+  {
+   "key": "const|python/balance_audit.py|KW_PER_KJ_H",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: kJ/h -> kW (1/3600)",
+   "name": "KW_PER_KJ_H"
+  },
+  {
+   "key": "const|python/balance_audit.py|LHV_KJ_MOL",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "lower heating values per mole of H2, CO, CH4, C, kJ/mol (derived from the standard enthalpies of formation)",
+   "name": "LHV_KJ_MOL"
+  },
+  {
+   "key": "const|python/balance_audit.py|TOL_NUMERICAL",
+   "file": "python/balance_audit.py",
+   "class": "NUMERICAL",
+   "reason": "closure tolerance for numerical round-off in the audit (1e-6)",
+   "name": "TOL_NUMERICAL"
+  },
+  {
+   "key": "const|python/balance_audit.py|TOL_STATED",
+   "file": "python/balance_audit.py",
+   "class": "NUMERICAL",
+   "reason": "tolerance within which a closure is reported as closed (1e-3); a reporting threshold, not a plant parameter",
+   "name": "TOL_STATED"
+  },
+  {
+   "key": "const|python/balance_audit.py|T_REF_C",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "thermodynamic reference temperature 25 degC (standard state for enthalpies of formation)",
+   "name": "T_REF_C"
+  },
+  {
+   "key": "const|python/chp.py|UNIT_TYPES",
+   "file": "python/chp.py",
+   "class": "NUMERICAL",
+   "reason": "integer code per CHP unit type for the dispatch search genome (an enumeration)",
+   "name": "UNIT_TYPES"
+  },
+  {
+   "key": "const|python/eu_utilities_chp.py|SYNGAS_SPECIES_LHV_MJ_PER_NM3",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "lower heating value of H2, CO, CH4 per Nm3, MJ/Nm3 (code comment: standard values)",
+   "name": "SYNGAS_SPECIES_LHV_MJ_PER_NM3"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|AIR_N2_PER_O2",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "N2 per O2 in dry air, 0.79 / 0.21 (standard air composition, mol/mol)",
+   "name": "AIR_N2_PER_O2"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_C",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atomic mass of carbon, g/mol (IUPAC standard atomic weight)",
+   "name": "M_C"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_FE2O3",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar mass of Fe2O3, g/mol",
+   "name": "M_FE2O3"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_FE3O4",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar mass of Fe3O4, g/mol",
+   "name": "M_FE3O4"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_H",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atomic mass of hydrogen, g/mol (IUPAC standard atomic weight)",
+   "name": "M_H"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_H2O",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar mass of water, g/mol",
+   "name": "M_H2O"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_N",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atomic mass of nitrogen, g/mol (IUPAC standard atomic weight)",
+   "name": "M_N"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_O",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atomic mass of oxygen, g/mol (IUPAC standard atomic weight)",
+   "name": "M_O"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|M_O2",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar mass of O2, g/mol",
+   "name": "M_O2"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|NM3_PER_MOL",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar volume of an ideal gas at 0 degC and 1 atm, Nm3/mol (0.022414)",
+   "name": "NM3_PER_MOL"
+  },
+  {
+   "key": "const|python/ga001_gasifier_model.py|_RECYCLE_SPECIES_ATOMS",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atoms of C, H, O, N per molecule of H2, CO and CH4 (chemical formulae)",
+   "name": "_RECYCLE_SPECIES_ATOMS"
+  },
+  {
+   "key": "const|python/gc_gas_cleaning_chain.py|CP_MEAN_J_MOLK",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "mean molar heat capacity of H2, CO, CO2, CH4, N2, H2O over 300-1200 K, J/(mol.K): material property data",
+   "name": "CP_MEAN_J_MOLK"
+  },
+  {
+   "key": "const|python/hb_remaining_chain.py|_HB014_MASS_BALANCE_CALL_COUNT",
+   "file": "python/hb_remaining_chain.py",
+   "class": "NUMERICAL",
+   "reason": "mutable call counter used by the module's self-test, not a parameter",
+   "name": "_HB014_MASS_BALANCE_CALL_COUNT"
+  },
+  {
+   "key": "const|python/hb_wgs_psa_storage_chain.py|CP_WATER_KJ_KGK",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "specific heat capacity of liquid water, kJ/(kg.K) (code comment: standard value)",
+   "name": "CP_WATER_KJ_KGK"
+  },
+  {
+   "key": "const|python/hb_wgs_psa_storage_chain.py|M_H2",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "molar mass of H2, g/mol",
+   "name": "M_H2"
+  },
+  {
+   "key": "const|python/hb_wgs_psa_storage_chain.py|R_GAS_CONSTANT",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "universal gas constant, J/(mol.K)",
+   "name": "R_GAS_CONSTANT"
+  },
+  {
+   "key": "const|python/kinetics.py|R",
+   "file": "python/kinetics.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "universal gas constant, J/(mol.K)",
+   "name": "R"
+  },
+  {
+   "key": "const|python/plant_heat_integration.py|STEAM_6BAR",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "saturated-steam table values at 6 bar abs (T_sat 158.83 degC, h_fg 2085.8 kJ/kg)",
+   "name": "STEAM_6BAR"
+  },
+  {
+   "key": "const|python/reference_feeds.py|ATOMIC_MASS",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atomic masses of C, H, O, N, Cl, g/mol (IUPAC standard atomic weights)",
+   "name": "ATOMIC_MASS"
+  },
+  {
+   "key": "const|python/reference_feeds.py|KJ_PER_KCAL",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: kJ per kcal (4.184)",
+   "name": "KJ_PER_KCAL"
+  },
+  {
+   "key": "const|python/reference_feeds.py|LATENT_HEAT_WATER_MJ_KG",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "latent heat of vaporisation of water, MJ/kg (2.442 at 25 degC)",
+   "name": "LATENT_HEAT_WATER_MJ_KG"
+  },
+  {
+   "key": "const|python/reference_feeds.py|STOICHIOMETRIC",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "atoms of C and H per monomer of PE, PP, PS, PET, PVC (chemical formulae)",
+   "name": "STOICHIOMETRIC"
+  },
+  {
+   "key": "lit|python/balance_audit.py|_kg_to_mol_water|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_kg_to_mol_water",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|_liquid_water_kw|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_liquid_water_kw",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|_sens_kw|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_sens_kw",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|_vapour_water_kw|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_vapour_water_kw",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|atom_balance_like_verify|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "atom_balance_like_verify",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|closure|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "closure",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|closure|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "closure",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|efficiency_check|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "efficiency_check",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|efficiency_check|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "efficiency_check",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|efficiency_check|3.6",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "efficiency_check",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/balance_audit.py|explain_carbon_residual|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "explain_carbon_residual",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|explain_plant_mass_residual|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "explain_plant_mass_residual",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feed_atoms_mol_h|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "feed_atoms_mol_h",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "feedstock_lhv_estimates",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|8.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "Dulong formula: oxygen is taken as bound to 1/8 of its mass of hydrogen",
+   "function": "feedstock_lhv_estimates",
+   "value": "8.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|feedstock_lhv_estimates|9.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "mass of water per mass of hydrogen burned (9, from 2H2 + O2 -> 2H2O)",
+   "function": "feedstock_lhv_estimates",
+   "value": "9.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|ga001_carbon_detail|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "ga001_carbon_detail",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|ga001_terms|0.21",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "O2 fraction of dry air (0.21; same as ga001_gasifier_model.AIR_N2_PER_O2)",
+   "function": "ga001_terms",
+   "value": "0.21"
+  },
+  {
+   "key": "lit|python/balance_audit.py|ga001_terms|0.79",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "N2 fraction of dry air (0.79; same as ga001_gasifier_model.AIR_N2_PER_O2)",
+   "function": "ga001_terms",
+   "value": "0.79"
+  },
+  {
+   "key": "lit|python/balance_audit.py|ga001_terms|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "ga001_terms",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|ga001_terms|4.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: O2 per C is 1 + x/4 - y/2 (mirrors ga001_gasifier_model.stoichiometric_o2_per_molc)",
+   "function": "ga001_terms",
+   "value": "4.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|gas_species_mol_h|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "gas_species_mol_h",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|gasifier_energy|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "gasifier_energy",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|gasifier_energy|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gasifier_energy",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|gasifier_energy|3.6",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "gasifier_energy",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/balance_audit.py|heat_demands|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "heat_demands",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|lhv_cases|0.5",
+   "file": "python/balance_audit.py",
+   "class": "NUMERICAL",
+   "reason": "arithmetic mean of the range ends (the midpoint case)",
+   "function": "lhv_cases",
+   "value": "0.5"
+  },
+  {
+   "key": "lit|python/balance_audit.py|make_term|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "make_term",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|plant_energy|100.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "plant_energy",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|plant_energy|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "plant_energy",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/balance_audit.py|plant_energy|3.6",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "plant_energy",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/balance_audit.py|plant_terms|0.5",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: 0.5 mol O2 per mol H2 or CO burned",
+   "function": "plant_terms",
+   "value": "0.5"
+  },
+  {
+   "key": "lit|python/balance_audit.py|plant_terms|1000.0",
+   "file": "python/balance_audit.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "plant_terms",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_get_input_2|30.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _get_input_2, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_get_input_2",
+   "value": "30.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_get_input_2|50.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _get_input_2, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_get_input_2",
+   "value": "50.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_get_input_3|50.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _get_input_3, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_get_input_3",
+   "value": "50.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_get_input_3|80.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _get_input_3, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_get_input_3",
+   "value": "80.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_h2_budget_kw|1000.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_h2_budget_kw",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_h2_budget_kw|3.6",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "_h2_budget_kw",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_mock_synthetic|100.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_synthetic, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_synthetic",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_mock_synthetic|1000.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_synthetic, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_synthetic",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_mock_synthetic|15.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_synthetic, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_synthetic",
+   "value": "15.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_mock_synthetic|3.6",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_synthetic, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_synthetic",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_mock_synthetic|60.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_synthetic, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_synthetic",
+   "value": "60.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_syngas_lhv_mj_per_nm3|100.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "_syngas_lhv_mj_per_nm3",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|_total_syngas_energy_kw|3.6",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "_total_syngas_energy_kw",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|eu006_fuel_cell|3.6",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "eu006_fuel_cell",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|eu009_grid_balance|1000.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "eu009_grid_balance",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|eu011_heat_recovery|3600.0",
+   "file": "python/eu_utilities_chp.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: s per h (3600)",
+   "function": "eu011_heat_recovery",
+   "value": "3600.0"
+  },
+  {
+   "key": "lit|python/eu_utilities_chp.py|eu_chp_dispatch|42",
+   "file": "python/eu_utilities_chp.py",
+   "class": "NUMERICAL",
+   "reason": "random seed of the dispatch search (reproducibility)",
+   "function": "eu_chp_dispatch",
+   "value": "42"
+  },
+  {
+   "key": "lit|python/fe_feed_handling.py|fe001_inventory|1000.0",
+   "file": "python/fe_feed_handling.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "fe001_inventory",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/fe_feed_handling.py|fe004_shredder_power|1000.0",
+   "file": "python/fe_feed_handling.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "fe004_shredder_power",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_carbon_accounting.py|carbon_accounting|1000.0",
+   "file": "python/ga001_carbon_accounting.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "carbon_accounting",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_energy_balance.py|energy_balance|3.6",
+   "file": "python/ga001_energy_balance.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: MJ/h <-> kW (1 kW = 3.6 MJ/h)",
+   "function": "energy_balance",
+   "value": "3.6"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_moisture_water_moles|1000.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_moisture_water_moles",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_solve_physical_quadratic_root|1e-09",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "feasibility tolerance of a root",
+   "function": "_solve_physical_quadratic_root",
+   "value": "1e-09"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_solve_physical_quadratic_root|1e-12",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "degenerate-quadratic tolerance",
+   "function": "_solve_physical_quadratic_root",
+   "value": "1e-12"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_solve_physical_quadratic_root|4",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "the 4 in the quadratic discriminant b*b - 4*a*c",
+   "function": "_solve_physical_quadratic_root",
+   "value": "4"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_wgs_keq|4.33",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33)",
+   "function": "_wgs_keq",
+   "value": "4.33"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|_wgs_keq|4577.8",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33) (thermodynamic correlation; the same one is in kinetics._keq)",
+   "function": "_wgs_keq",
+   "value": "4577.8"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|elemental_atomic_ratios|1000.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "elemental_atomic_ratios",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|feedstock_composition_dokink_cross_check|100.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: fraction -> percent (100)",
+   "function": "feedstock_composition_dokink_cross_check",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|ga001_model|100.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "ga001_model",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|ga001_model|1000.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "ga001_model",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|ga001_model|273.15",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "ga001_model",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|oxygen_carrier_circulation_estimate|1000.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "oxygen_carrier_circulation_estimate",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|run_ga001_uncertainty|100.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "run_ga001_uncertainty",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|run_ga001_uncertainty|1000",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "default number of Monte Carlo runs",
+   "function": "run_ga001_uncertainty",
+   "value": "1000"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|run_ga001_uncertainty|1000.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "run_ga001_uncertainty",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|run_ga001_uncertainty|273.15",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "run_ga001_uncertainty",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|run_ga001_uncertainty|42",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "default random seed of the Monte Carlo",
+   "function": "run_ga001_uncertainty",
+   "value": "42"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|solve_product_gas|0.21",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "O2 fraction of dry air (0.21; same as AIR_N2_PER_O2)",
+   "function": "solve_product_gas",
+   "value": "0.21"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|solve_product_gas|0.79",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "N2 fraction of dry air (0.79; same as AIR_N2_PER_O2)",
+   "function": "solve_product_gas",
+   "value": "0.79"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|solve_product_gas|1e-09",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "feasibility tolerance of a mole count",
+   "function": "solve_product_gas",
+   "value": "1e-09"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|solve_product_gas|4.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: 4 H atoms per CH4 in the hydrogen balance",
+   "function": "solve_product_gas",
+   "value": "4.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|stoichiometric_o2_per_molc|4.0",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: O2 per C is 1 + x/4 - y/2",
+   "function": "stoichiometric_o2_per_molc",
+   "value": "4.0"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|summarize_ga001_uncertainty|5",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "5th percentile reported",
+   "function": "summarize_ga001_uncertainty",
+   "value": "5"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|summarize_ga001_uncertainty|95",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "95th percentile reported",
+   "function": "summarize_ga001_uncertainty",
+   "value": "95"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|verify_atom_balance|1e-08",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "NUMERICAL",
+   "reason": "default tolerance of the atom-balance check",
+   "function": "verify_atom_balance",
+   "value": "1e-08"
+  },
+  {
+   "key": "lit|python/ga001_gasifier_model.py|verify_atom_balance|4",
+   "file": "python/ga001_gasifier_model.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: 4 H atoms per CH4 in the atom-balance check",
+   "function": "verify_atom_balance",
+   "value": "4"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|_perturbed_er|0.35",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _perturbed_er, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_perturbed_er",
+   "value": "0.35"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|_species_dry_mole_fractions|100.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "_species_dry_mole_fractions",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc004_condensed_water|1000.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gc004_condensed_water",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc004_cooling_duty|1000.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gc004_cooling_duty",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc004_cooling_duty|3600.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: s per h (3600)",
+   "function": "gc004_cooling_duty",
+   "value": "3600.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc007_blowdown|1000.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gc007_blowdown",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc008_blowdown|1000.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gc008_blowdown",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc009_blowdown|1000.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "gc009_blowdown",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc013_fan_power|100.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "gc013_fan_power",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc013_fan_power|3600.0",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: s per h (3600)",
+   "function": "gc013_fan_power",
+   "value": "3600.0"
+  },
+  {
+   "key": "lit|python/gc_gas_cleaning_chain.py|gc014_blower_pressure|0.5",
+   "file": "python/gc_gas_cleaning_chain.py",
+   "class": "NUMERICAL",
+   "reason": "cross-check tolerance (50 % of the smaller design pressure); a verdict threshold, not a plant parameter",
+   "function": "gc014_blower_pressure",
+   "value": "0.5"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs_alt|0.05",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs_alt, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs_alt",
+   "value": "0.05"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs_alt|0.1",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs_alt, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs_alt",
+   "value": "0.1"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs_alt|0.3",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs_alt, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs_alt",
+   "value": "0.3"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs_alt|0.45",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs_alt, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs_alt",
+   "value": "0.45"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs|0.018",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs",
+   "value": "0.018"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs|0.13",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs",
+   "value": "0.13"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs|0.2",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs",
+   "value": "0.2"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs|0.25",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs",
+   "value": "0.25"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|_mock_wgs|0.4",
+   "file": "python/hb_remaining_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_wgs, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_wgs",
+   "value": "0.4"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|hb011_electrolyser|1000.0",
+   "file": "python/hb_remaining_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "hb011_electrolyser",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|hb014_mass_balance|100.0",
+   "file": "python/hb_remaining_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "hb014_mass_balance",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|0.2",
+   "file": "python/hb_remaining_chain.py",
+   "class": "PRESENTATION",
+   "reason": "lower bound of the PASS verdict ratio (presentation of a cross-check result; it feeds no value)",
+   "function": "hb016_kinetics_baseline",
+   "value": "0.2"
+  },
+  {
+   "key": "lit|python/hb_remaining_chain.py|hb016_kinetics_baseline|60.0",
+   "file": "python/hb_remaining_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: min -> h (60)",
+   "function": "hb016_kinetics_baseline",
+   "value": "60.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_mock_with_fuel_cell|10.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _mock_with_fuel_cell, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_mock_with_fuel_cell",
+   "value": "10.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_synthetic_gc013_original_design_point|20.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _synthetic_gc013_original_design_point, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_synthetic_gc013_original_design_point",
+   "value": "20.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_synthetic_gc013_original_design_point|28.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _synthetic_gc013_original_design_point, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_synthetic_gc013_original_design_point",
+   "value": "28.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_synthetic_gc013_original_design_point|30.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _synthetic_gc013_original_design_point, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_synthetic_gc013_original_design_point",
+   "value": "30.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_synthetic_gc013_original_design_point|50.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "SELF-TEST FIXTURE",
+   "reason": "input of _synthetic_gc013_original_design_point, which only the module's __main__ self-test calls; it is never registered in the live engine",
+   "function": "_synthetic_gc013_original_design_point",
+   "value": "50.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|_wgs_mass_balance|100.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "_wgs_mass_balance",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb001_hts_conversion|100.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "hb001_hts_conversion",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb001_hts_conversion|273.15",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "hb001_hts_conversion",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb003_heat_exchanger|1000.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "hb003_heat_exchanger",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb003_heat_exchanger|3600.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: s per h (3600)",
+   "function": "hb003_heat_exchanger",
+   "value": "3600.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb004_lts_conversion|273.15",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "hb004_lts_conversion",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb005_steam_generation|100.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "hb005_steam_generation",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb005_steam_generation|1000.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "hb005_steam_generation",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb012_compressor|1000.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "hb012_compressor",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb012_compressor|100000.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: bar -> Pa (1e5)",
+   "function": "hb012_compressor",
+   "value": "100000.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb012_compressor|273.15",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "hb012_compressor",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb012_compressor|3600.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: s per h (3600)",
+   "function": "hb012_compressor",
+   "value": "3600.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|hb013_storage_level|1000.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "hb013_storage_level",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|verify_wgs_atom_balance|100.0",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "verify_wgs_atom_balance",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/hb_wgs_psa_storage_chain.py|verify_wgs_atom_balance|1e-09",
+   "file": "python/hb_wgs_psa_storage_chain.py",
+   "class": "NUMERICAL",
+   "reason": "default tolerance of the WGS atom-balance check",
+   "function": "verify_wgs_atom_balance",
+   "value": "1e-09"
+  },
+  {
+   "key": "lit|python/kinetics.py|_integrate_conversion|0.999",
+   "file": "python/kinetics.py",
+   "class": "NUMERICAL",
+   "reason": "upper clamp of the integrated CO conversion (numerical, keeps the rate finite)",
+   "function": "_integrate_conversion",
+   "value": "0.999"
+  },
+  {
+   "key": "lit|python/kinetics.py|_integrate_conversion|1e-09",
+   "file": "python/kinetics.py",
+   "class": "NUMERICAL",
+   "reason": "guard against dividing by an empty steam concentration",
+   "function": "_integrate_conversion",
+   "value": "1e-09"
+  },
+  {
+   "key": "lit|python/kinetics.py|_integrate_conversion|20000",
+   "file": "python/kinetics.py",
+   "class": "NUMERICAL",
+   "reason": "number of integration steps of the plug-flow integral",
+   "function": "_integrate_conversion",
+   "value": "20000"
+  },
+  {
+   "key": "lit|python/kinetics.py|_keq|4.33",
+   "file": "python/kinetics.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33)",
+   "function": "_keq",
+   "value": "4.33"
+  },
+  {
+   "key": "lit|python/kinetics.py|_keq|4577.8",
+   "file": "python/kinetics.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "coefficient of the water-gas-shift equilibrium-constant correlation Keq = exp(4577.8/T - 4.33) (same as ga001_gasifier_model._wgs_keq)",
+   "function": "_keq",
+   "value": "4577.8"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|_flue|0.5",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "stoichiometry: 0.5 mol O2 per mol H2 or CO burned",
+   "function": "_flue",
+   "value": "0.5"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|_flue|1000.0",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "_flue",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|_uniform|0.5",
+   "file": "python/plant_heat_integration.py",
+   "class": "NUMERICAL",
+   "reason": "bin midpoint (arithmetic)",
+   "function": "_uniform",
+   "value": "0.5"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|_uniform|200",
+   "file": "python/plant_heat_integration.py",
+   "class": "NUMERICAL",
+   "reason": "maximum number of temperature bins when a duty is spread over an interval",
+   "function": "_uniform",
+   "value": "200"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|compute|100.0",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "compute",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|compute|1000.0",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "compute",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|compute|24.0",
+   "file": "python/plant_heat_integration.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: h per day (24)",
+   "function": "compute",
+   "value": "24.0"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|match|1e-09",
+   "file": "python/plant_heat_integration.py",
+   "class": "NUMERICAL",
+   "reason": "temperature comparison tolerance of the matching",
+   "function": "match",
+   "value": "1e-09"
+  },
+  {
+   "key": "lit|python/plant_heat_integration.py|match|1e-15",
+   "file": "python/plant_heat_integration.py",
+   "class": "NUMERICAL",
+   "reason": "energy comparison tolerance of the matching",
+   "function": "match",
+   "value": "1e-15"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|blend|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "blend",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|blend|1000.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "blend",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|derived|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "derived",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|derived|1000.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "derived",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|dry_basis|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "dry_basis",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|lhv_from_hhv|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "lhv_from_hhv",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|lhv_from_hhv|1000.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor 1000 (g/kg, L/m3, J/kJ, W/kW or mol/kmol, as used in that expression)",
+   "function": "lhv_from_hhv",
+   "value": "1000.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|lhv_from_hhv|9.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "mass of water per mass of hydrogen burned (9, from 2H2 + O2 -> 2H2O)",
+   "function": "lhv_from_hhv",
+   "value": "9.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|model_composition|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "model_composition",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/reference_feeds.py|stoichiometric|100.0",
+   "file": "python/reference_feeds.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit factor: percent <-> fraction (100)",
+   "function": "stoichiometric",
+   "value": "100.0"
+  },
+  {
+   "key": "lit|python/uncertainty.py|run_monte_carlo|1000",
+   "file": "python/uncertainty.py",
+   "class": "NUMERICAL",
+   "reason": "default number of Monte Carlo runs",
+   "function": "run_monte_carlo",
+   "value": "1000"
+  },
+  {
+   "key": "lit|python/uncertainty.py|run_monte_carlo|273.15",
+   "file": "python/uncertainty.py",
+   "class": "PHYSICAL CONSTANT",
+   "reason": "unit offset: degC -> K",
+   "function": "run_monte_carlo",
+   "value": "273.15"
+  },
+  {
+   "key": "lit|python/uncertainty.py|run_monte_carlo|42",
+   "file": "python/uncertainty.py",
+   "class": "NUMERICAL",
+   "reason": "default random seed of the Monte Carlo",
+   "function": "run_monte_carlo",
+   "value": "42"
+  },
+  {
+   "key": "lit|python/uncertainty.py|summarize|5",
+   "file": "python/uncertainty.py",
+   "class": "NUMERICAL",
+   "reason": "5th percentile reported",
+   "function": "summarize",
+   "value": "5"
+  },
+  {
+   "key": "lit|python/uncertainty.py|summarize|95",
+   "file": "python/uncertainty.py",
+   "class": "NUMERICAL",
+   "reason": "95th percentile reported",
+   "function": "summarize",
+   "value": "95"
+  }
+ ]
+}
