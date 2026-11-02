@@ -115,3 +115,30 @@ def render_questions(ledger):
     for tag, (refs, why) in lq.CONSIDERED.items():
         L.append(f"| {tag} | {', '.join(refs)} | {esc(why)} |")
     return L
+
+
+def render_confirmed():
+    """The 'Confirmed mentions' section: lines of the 18 engine modules that mention "confirmed", by class and file (the guard that pins these counts is in tests/test_design_basis_ledger.py)."""
+    from . import ledger_coverage as lc
+    mentions = lc.confirmed_mentions()
+    counts = lc.mention_counts(mentions)
+    L = ["## Confirmed mentions in the engine modules", "",
+         f"{len(mentions)} lines of the {len(lc.CONFIRMED_SCOPE)} engine modules mention \"confirmed\". They are classified by `python/ledger_coverage.classify_mention` and the counts per class and file are pinned by a test, so a new "
+         "REGISTRY-STATED use fails. They are not rewritten here. `DOK-ING-SOURCED`: the line or one of the next 3 lines names a DOK-ING source (an RFI or a DOK-ING answer); `GENERIC`: explanatory use "
+         "that states no value as Confirmed (a negation, the status vocabulary, an identifier, a line that says Unverified); `REGISTRY-STATED`: the word is used for a registry value with no DOK-ING source named next to it.", "",
+         "| file | DOK-ING-SOURCED | GENERIC | REGISTRY-STATED | total |", "|---|---|---|---|---|"]
+    tot = {c: 0 for c in lc.MENTION_CLASSES}
+    for file in sorted(counts):
+        c = counts[file]
+        L.append(f"| {file} | {c[lc.MENTION_SOURCED]} | {c[lc.MENTION_GENERIC]} | {c[lc.MENTION_REGISTRY]} | {sum(c.values())} |")
+        for k in tot:
+            tot[k] += c[k]
+    L.append(f"| **all** | {tot[lc.MENTION_SOURCED]} | {tot[lc.MENTION_GENERIC]} | {tot[lc.MENTION_REGISTRY]} | {sum(tot.values())} |")
+    where = {}
+    for m in mentions:
+        where.setdefault(m["class"], {}).setdefault(m["where"], 0)
+        where[m["class"]][m["where"]] += 1
+    L += ["", "By kind of line (a `string` is a literal that can be published or shown; a `docstring` or `comment` is not):", ""]
+    for k in lc.MENTION_CLASSES:
+        L.append(f"- {k}: " + ", ".join(f"{w} {n}" for w, n in sorted(where.get(k, {}).items())))
+    return L

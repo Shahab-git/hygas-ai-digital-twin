@@ -243,3 +243,101 @@ def status_problems(rows):
         if status == "Calculated" and not _FORMULA.search(str(r.get("note") or "") + " " + str(r.get("source_line") or "")):
             bad.append((rid, "Calculated without a formula in note or source_line"))
     return bad
+
+
+# --- the "Confirmed" mention guard (task A3b 2.2) --------------------------------------------------------------------------------------------------
+# Every line of the engine modules that mentions "confirmed" (case-insensitive) is classified, and tests/test_design_basis_ledger.py pins the counts per class and file, so a NEW
+# REGISTRY-STATED use fails. The ~450 existing mentions are not rewritten here. Classes (the line decides; the sentence and the next 3 lines are looked at for a source):
+#   DOK-ING-SOURCED  the line or one of the next 3 lines names a DOK-ING source: an RFI (RFI / RFI #n / dokink_rfi_answers / rfi_dokink), a DOK-ING answer, response, reply or email;
+#   GENERIC          explanatory use that states no value as Confirmed: a negation ("not confirmed", "none of this is confirmed"), the status vocabulary ("Confirmed / Calculated",
+#                    "status is Confirmed", STATUS_CONFIRMED, set_confirmed, a name such as HB010_CONFIRMED_*), a line that itself says Unverified, or the verb ("confirmed by", "(confirmed:");
+#   REGISTRY-STATED  everything else: the word is used for a value or a design figure that the registry states, with no DOK-ING source named next to it.
+# `where` says what the line is: docstring, comment, string (a literal that may be published or shown) or code (an identifier).
+CONFIRMED_SCOPE = SCAN_MODULES + ("tab1_integration",)
+MENTION_SOURCED, MENTION_GENERIC, MENTION_REGISTRY = "DOK-ING-SOURCED", "GENERIC", "REGISTRY-STATED"
+MENTION_CLASSES = (MENTION_SOURCED, MENTION_GENERIC, MENTION_REGISTRY)
+_RFI = re.compile(r"\bRFI\b|dokink_rfi|rfi_dokink|rfi_answers|Ankica|DOK-ING'?s? (?:own |real |verbatim )?(?:answer|response|reply|email)|data/dokink", re.IGNORECASE)
+_NEG = re.compile(r"\b(?:not|never|no|none|nor|without|hasn't|isn't|doesn't|cannot|can't)\b[^.\n]{0,70}\bconfirm|\bunconfirm|\bnon-?confirm|DOK-ING-confirmed|DOK-ING confirmed\?", re.IGNORECASE)
+_CODE_NAME = re.compile(r"STATUS_CONFIRMED|set_confirmed|clear_confirmed|get_confirmed|_confirmed\b|confirmed_|[A-Z0-9]_CONFIRMED|CONFIRMED_[A-Z]|confirmation_loop|is_confirmed")
+_VOCAB = re.compile(r"Confirmed\s*[/,|]\s*(?:Calculated|Estimate|Assumed|Missing|Unverified)|(?:Calculated|Estimate\w*|Assumed|Missing|Unverified)\s*[/,|]\s*Confirmed|"
+                    r"\bConfirmed\b\s*(?:means|=)|status\s+(?:is\s+|of\s+)?Confirmed|Unverified", re.IGNORECASE)
+_VERB = re.compile(r"\bconfirmed\s+(?:by|that|via)\b|\(confirmed:|\b(?:was|were|been) confirmed\b", re.IGNORECASE)
+
+
+def classify_mention(lines, i):
+    """Class of the mention on line index `i` (0-based) of `lines`; the line and the next 3 lines are searched for a DOK-ING source."""
+    if _RFI.search("\n".join(lines[i:i + 4])):
+        return MENTION_SOURCED
+    cur = lines[i]
+    if _NEG.search(cur) or _CODE_NAME.search(cur) or _VOCAB.search(cur) or _VERB.search(cur):
+        return MENTION_GENERIC
+    return MENTION_REGISTRY
+
+
+def _line_kinds(text):
+    """(docstring lines, string-literal lines, comment lines) of a source text."""
+    import io
+    import tokenize
+    tree = ast.parse(text)
+    doc, strs, comments = set(), set(), set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            b = node.body
+            if b and isinstance(b[0], ast.Expr) and isinstance(getattr(b[0], "value", None), ast.Constant) and isinstance(b[0].value.value, str):
+                doc.update(range(b[0].lineno, b[0].end_lineno + 1))
+        if isinstance(node, ast.JoinedStr) or (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            strs.update(range(node.lineno, node.end_lineno + 1))
+    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+        if tok.type == tokenize.COMMENT:
+            comments.add(tok.start[0])
+    return doc, strs - doc, comments
+
+
+def confirmed_mentions(sources=None):
+    """Every line of the CONFIRMED_SCOPE modules that mentions "confirmed": [{file, line, text, class, where}]. `sources` = {relative file: text} replaces a file (tests)."""
+    out = []
+    for mod in CONFIRMED_SCOPE:
+        file = rel_path(mod)
+        text = (sources or {}).get(file)
+        if text is None:
+            with open(os.path.join(_ROOT, file), encoding="utf-8") as f:
+                text = f.read()
+        text = text.replace("\r\n", "\n")
+        lines = text.split("\n")
+        doc, strs, comments = _line_kinds(text)
+        for i, line in enumerate(lines):
+            if re.search("confirmed", line, re.IGNORECASE):
+                n = i + 1
+                where = "docstring" if n in doc else "string" if n in strs else "comment" if n in comments else "code"
+                out.append({"file": file, "line": n, "text": line.strip(), "class": classify_mention(lines, i), "where": where})
+    return out
+
+
+def mention_counts(mentions=None):
+    """{file: {class: n}} of confirmed_mentions()."""
+    counts = {}
+    for m in (mentions if mentions is not None else confirmed_mentions()):
+        counts.setdefault(m["file"], {c: 0 for c in MENTION_CLASSES})[m["class"]] += 1
+    return counts
+
+
+_QUOTED = re.compile(r"""(?:[fFrRbBuU]{0,2})("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')""")
+
+
+def persisted_mentions(mentions, texts):
+    """The mentions that are published: those on a string-literal line whose literal text around the word "confirmed" (the parts between f-string fields, at least 8 characters) occurs
+    in one of `texts` (the strings of a live snapshot, joined). A mention can be published without being found here only if its text is assembled from several literals on other lines."""
+    blob = "\n".join(texts)
+    out = []
+    for m in mentions:
+        if m["where"] != "string":
+            continue
+        hit = False
+        for q in _QUOTED.finditer(m["text"]):
+            body = q.group(1)[1:-1].replace('\\"', '"').replace("\\'", "'")
+            for part in re.split(r"\{[^{}]*\}", body):
+                if re.search("confirmed", part, re.IGNORECASE) and len(part.strip()) >= 8 and part.strip() in blob:
+                    hit = True
+        if hit:
+            out.append(m)
+    return out

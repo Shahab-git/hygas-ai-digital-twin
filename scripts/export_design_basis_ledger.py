@@ -103,7 +103,7 @@ def render_md(ledger, items, exceptions):
         L.append("| " + " | ".join(esc(x) for x in (
             r["ledger_id"], _v(r["value"]), r["unit"], r["status"], r["status_via"], r["origin"], r["source_line"] or "", _v(r["range_low"]), _v(r["range_high"]), r["overridable_via"], r["file_line"],
             _cons(r), "; ".join(r["upgrade_question"]), r["source"], r["note"])) + " |")
-    L += [""] + ledger_notes.render_questions(ledger) + [""] + ledger_notes.render_prose()
+    L += [""] + ledger_notes.render_questions(ledger) + [""] + ledger_notes.render_prose() + [""] + ledger_notes.render_confirmed()
     L += ["", "## Exceptions (numeric constants that are not parameters)", "",
           "| key | class | reason |", "|---|---|---|"]
     for e in exceptions:

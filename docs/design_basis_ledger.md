@@ -317,6 +317,32 @@ Ledger rows with no consumer. They are reported, not removed.
 - Hidden by the tolerance: Yes: balance_audit.TOL_STATED = 1e-3 (balance_audit.py:43, used at balance_audit.py:165) classes a mass residual below 1e-3 as 'closes to a stated tolerance', and 3.2e-5 is far below it, so the verdict does not show it. Not fixed.
 
 
+## Confirmed mentions in the engine modules
+
+476 lines of the 18 engine modules mention "confirmed". They are classified by `python/ledger_coverage.classify_mention` and the counts per class and file are pinned by a test, so a new REGISTRY-STATED use fails. They are not rewritten here. `DOK-ING-SOURCED`: the line or one of the next 3 lines names a DOK-ING source (an RFI or a DOK-ING answer); `GENERIC`: explanatory use that states no value as Confirmed (a negation, the status vocabulary, an identifier, a line that says Unverified); `REGISTRY-STATED`: the word is used for a registry value with no DOK-ING source named next to it.
+
+| file | DOK-ING-SOURCED | GENERIC | REGISTRY-STATED | total |
+|---|---|---|---|---|
+| python/balance_audit.py | 1 | 3 | 5 | 9 |
+| python/eu_utilities_chp.py | 6 | 14 | 38 | 58 |
+| python/fe_feed_handling.py | 5 | 10 | 21 | 36 |
+| python/ga001_energy_balance.py | 1 | 0 | 0 | 1 |
+| python/ga001_gasifier_model.py | 15 | 20 | 44 | 79 |
+| python/gasifier_mass_balance.py | 2 | 0 | 1 | 3 |
+| python/gc_gas_cleaning_chain.py | 0 | 12 | 85 | 97 |
+| python/hb_remaining_chain.py | 1 | 25 | 72 | 98 |
+| python/hb_wgs_psa_storage_chain.py | 2 | 0 | 35 | 37 |
+| python/reference_feeds.py | 1 | 1 | 2 | 4 |
+| python/tab1_integration.py | 12 | 4 | 8 | 24 |
+| python/uncertainty.py | 0 | 26 | 4 | 30 |
+| **all** | 46 | 115 | 315 | 476 |
+
+By kind of line (a `string` is a literal that can be published or shown; a `docstring` or `comment` is not):
+
+- DOK-ING-SOURCED: code 1, comment 9, docstring 13, string 23
+- GENERIC: code 10, comment 9, docstring 31, string 65
+- REGISTRY-STATED: code 1, comment 62, docstring 125, string 127
+
 ## Exceptions (numeric constants that are not parameters)
 
 | key | class | reason |

@@ -389,6 +389,68 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
         assert len(code_lines) == 1, (name, hits)
 
 
+# ------------------------------------------------------------------ (A3b 2.2) the "Confirmed" mention guard
+
+# {file: (DOK-ING-SOURCED, GENERIC, REGISTRY-STATED)}: lines of the 18 engine modules that mention "confirmed" (case-insensitive), classified by python/ledger_coverage.classify_mention.
+# The existing mentions are NOT rewritten. Any change to these numbers (a new mention, a removed one, a reworded one that moves class) fails here and must be made on purpose; a new
+# REGISTRY-STATED use is the case this guard exists for: say where the value comes from (name the DOK-ING source) or do not call it Confirmed.
+CONFIRMED_PIN = {
+    "ga001_gasifier_model.py": (15, 20, 44), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 12, 85),
+    "hb_wgs_psa_storage_chain.py": (2, 0, 35), "hb_remaining_chain.py": (1, 25, 72), "eu_utilities_chp.py": (6, 14, 38), "balance_audit.py": (1, 3, 5), "fe_feed_handling.py": (5, 10, 21),
+    "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 8),
+}
+PERSISTED_REGISTRY_STATED = 88      # REGISTRY-STATED mentions on a string-literal line whose text occurs in a persisted note of the live snapshot (both tail_gas_modes); see the A3b report
+
+
+def test_the_confirmed_mentions_are_pinned_per_class_and_file():
+    mentions = lc.confirmed_mentions()
+    got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
+    assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
+    assert len(mentions) == 476 and len(lc.CONFIRMED_SCOPE) == 18
+    assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
+
+
+def test_a_new_registry_stated_confirmed_mention_changes_the_counts():
+    src = open(os.path.join(ROOT, "python", "psa.py"), encoding="utf-8").read()
+    before = lc.mention_counts(lc.confirmed_mentions())
+    for added, klass in (("# the value is HB-006's own Confirmed 75 % recovery\n", lc.MENTION_REGISTRY),
+                         ("# the value is HB-006's own Confirmed 75 % recovery (DOK-ING RFI #1 answer)\n", lc.MENTION_SOURCED),
+                         ("# this is not a confirmed figure\n", lc.MENTION_GENERIC)):
+        after = lc.mention_counts(lc.confirmed_mentions(sources={"python/ga001_gasifier_model.py": open(os.path.join(ROOT, "python", "ga001_gasifier_model.py"), encoding="utf-8").read() + "\n" + added}))
+        f = "python/ga001_gasifier_model.py"
+        assert after[f] != before[f] and after[f][klass] == before[f][klass] + 1, (added, after[f], before[f])
+    assert src
+
+
+def test_the_classifier_on_the_three_kinds_of_sentence():
+    c = lc.classify_mention
+    assert c(["GC-001's own Confirmed registry outlet temperature (880 degC), read directly."], 0) == lc.MENTION_REGISTRY
+    assert c(["# the rate is Confirmed", "# DOK-ING RFI #1 answer, data/dokink_rfi_answers.md"], 0) == lc.MENTION_SOURCED
+    assert c(["# the rate is Confirmed", "#", "#", "#", "# RFI #1 answer, four lines down"], 0) == lc.MENTION_REGISTRY, "the source must be within the next 3 lines"
+    assert c(["None of this is confirmed anywhere in this project."], 0) == lc.MENTION_GENERIC
+    assert c(["status = ps.STATUS_CONFIRMED"], 0) == lc.MENTION_GENERIC
+    assert c(["# Confirmed / Calculated / Estimated are the project's statuses"], 0) == lc.MENTION_GENERIC
+    assert c(["HB010_CONFIRMED_RECOVERY = 0.85   # registry-stated [Unverified (registry)]"], 0) == lc.MENTION_GENERIC
+
+
+def test_the_registry_stated_mentions_that_reach_a_persisted_note_are_counted(runs):
+    texts = []
+
+    def walk(x):
+        if isinstance(x, str):
+            texts.append(x)
+        elif isinstance(x, dict):
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, (list, tuple)):
+            for v in x:
+                walk(v)
+    for mode in ("default", "heat_only"):
+        walk(_ser(runs[mode]))
+    hits = [m for m in lc.persisted_mentions(lc.confirmed_mentions(), texts) if m["class"] == lc.MENTION_REGISTRY]
+    assert len(hits) == PERSISTED_REGISTRY_STATED, (len(hits), "a persisted REGISTRY-STATED wording changed: if it was reworded, lower the pin on purpose (and extend tests/_d2_wording.py only with a decision)")
+
+
 # ------------------------------------------------------------------ (C.3) status rules
 
 def test_the_ledger_obeys_the_status_rules(built):
@@ -506,6 +568,10 @@ def test_the_runtime_shrink_guard_accepts_the_persisted_set(runs, main_snap):
     assert mod.check_shrink(stored, new[:100]) is not None, "the guard itself is live: a persisted set that lost 21 keys is refused"
 
 
+# A3b 1 (correction of the A3 report): the numbers pinned here, 6 / 249 / 291 over 756 data points, are what equipment_datasheet.summarize() returns with NO argument, i.e. the registry rows
+# resolved against the overlay and nothing else. They are NOT what the app displays: app.py builds `_eq_datasheets` from the registry PLUS the RFI fills PLUS the engineering estimates
+# (resolved), and every "Honest count" and the all-sections cards use summarize(_eq_datasheets...), which is 13 / 297 / 236 over 814 data points (pinned by tests/test_apply_provenance.py and
+# tests/test_apply_wording.py). The test below is named for the A3 report's wording and kept; test_the_app_counts_are_the_resolved_chain_not_the_summarize_default states the difference.
 def test_the_ui_status_counts_are_unchanged():
     s = ed.summarize()
     assert (s["total_real_data_points"], s["total_category_slots"], s["confirmed_category_slots"], s["estimated_category_slots"], s["missing_category_slots"]) == (756, 546, 6, 249, 291)
@@ -552,6 +618,19 @@ def test_the_persisted_text_differences_are_exactly_these_four_fields(runs, main
             differing |= {(k, path) for path in r}
     assert differing == {("EU-008|RecommendedCapacityEstimate", "/confidence_note"), ("EU-008|RecommendedCapacityEstimate", "/value/actual_dokking_value"),
                          ("FE-002|TrampMetalReject", "/missing_reason"), ("GC-001|Dust", "/missing_reason")}, differing
+
+
+def test_the_app_counts_are_the_resolved_chain_not_the_summarize_default():
+    from python import equipment_engineering_estimates as eee, equipment_rfi_fills as erf
+    default = ed.summarize()
+    app = ed.summarize(ed.resolve_datasheets(eee.apply_estimates(erf.apply_rfi_fills(ed.build_all_datasheets()))))
+    assert (default["confirmed_category_slots"], default["estimated_category_slots"], default["missing_category_slots"], default["total_real_data_points"]) == (6, 249, 291, 756)
+    assert (app["confirmed_category_slots"], app["estimated_category_slots"], app["missing_category_slots"], app["total_real_data_points"]) == (13, 297, 236, 814)
+    assert default["total_category_slots"] == app["total_category_slots"] == 546
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read().replace("\r\n", "\n")
+    chain = ("_eq_datasheets = equipment_datasheet.resolve_datasheets(\n    equipment_engineering_estimates.apply_estimates(\n        equipment_rfi_fills.apply_rfi_fills(equipment_datasheet.build_all_datasheets())\n    )\n)")
+    assert chain in src, "app.py builds its datasheets from the registry + RFI fills + estimates, resolved"
+    assert src.count("equipment_datasheet.summarize(_eq_datasheets") >= 9 and "equipment_datasheet.summarize()" not in src, "every count in the app uses the app's chain, none the no-argument default"
 
 
 # ------------------------------------------------------------------ (E) export freshness, offline
