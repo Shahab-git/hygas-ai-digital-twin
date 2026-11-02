@@ -39,9 +39,10 @@ MATURITY = {
                   "fixed question patterns over the current slider values; no learning, no plant data."),
     "optimizer": _e(PHYSICS_ESTIMATE, "\"Single-shot setpoint optimizer ... this is NOT real MPC ... using kinetics.py/psa.py themselves as the model being optimized against\"", 4,
                     "HONEST SCOPING: this is NOT real MPC", "one-shot search over the steady-state physics with Assumed inputs; not MPC, not tuned on plant data."),
-    "predictive_maintenance": _e(PHYSICS_ESTIMATE, "\"catalyst activity monitoring via inverse kinetics ... a diagnostic layered on top of kinetics.py, not a physics model in its own right\"; the thresholds are "
-                                 "the app's own assumed defaults", 2, "Predictive maintenance v1",
-                                 "inverse of the steady-state kinetics; the 0.95 / 0.85 thresholds are our own defaults; a diagnostic of one reading, not a failure prediction; no plant data."),
+    "predictive_maintenance": _e(RULE_BASED, "inverts the twin's own kinetics from a typed-in conversion and labels the result with our own thresholds (0.95 / 0.85); no plant data. Docstring: \"catalyst "
+                                 "activity monitoring via inverse kinetics ... a diagnostic layered on top of kinetics.py, not a physics model in its own right\". Two classes fit (PHYSICS_ESTIMATE for the "
+                                 "inversion, RULE_BASED for the status thresholds); the lower is taken", 2, "Predictive maintenance v1",
+                                 "inverts the twin's own kinetics from a typed-in conversion and labels it with our own 0.95 / 0.85 thresholds; a diagnostic of one reading, not a failure prediction; no plant data."),
     "root_cause": _e(RULE_BASED, "\"rule-based reasoning over numbers that kinetics.py, uncertainty.py, and predictive_maintenance.py already compute ... NOT a new inference engine, not a statistical "
                      "or Bayesian model\"", 7, "SCOPE, stated explicitly like copilot.py's v1: this is rule-based",
                      "fixed rules over the predictive-maintenance numbers; orders explanations, does not identify the true cause."),
@@ -75,7 +76,8 @@ MATURITY = {
                               "architecture items and relabelled code; nothing is learned and the plant is not controlled."),
     "uncertainty": _e(PHYSICS_ESTIMATE, "\"Monte Carlo uncertainty propagation for the six design-basis assumptions DOK-ING has not yet confirmed ... not measurement noise or numerical/model error\"", 2,
                       "Monte Carlo uncertainty propagation", "Monte Carlo over Assumed ranges through the steady-state physics; not measurement noise, not model error."),
-    "operator_setpoints": _e(RULE_BASED, "\"Builds ONLY the mechanism ... a durable table ... plus the tiny reader-factory function the continuous runtime's own driver script uses\"", 5,
+    "operator_setpoints": _e(RULE_BASED, "request mechanism, not an AI method; included because it is a path towards plant setpoints. Docstring: \"Builds ONLY the mechanism ... a durable table ... plus the tiny "
+                             "reader-factory function the continuous runtime's own driver script uses\"", 5,
                              "Builds ONLY the mechanism", "a setpoint-request mechanism, not an AI method."),
 }
 

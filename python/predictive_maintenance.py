@@ -30,7 +30,7 @@ Thresholds below are OUR OWN reasonable defaults, explicitly NOT sourced
 from any real catalyst degradation data — there isn't any in this project
 yet. Replace them the moment real degradation-curve data exists.
 
-MATURITY: PHYSICS_ESTIMATE — inverse of the steady-state kinetics; the 0.95 / 0.85 thresholds are our own defaults; a diagnostic of one reading, not a failure prediction; no plant data.
+MATURITY: RULE_BASED — inverts the twin's own kinetics from a typed-in conversion and labels it with our own 0.95 / 0.85 thresholds; a diagnostic of one reading, not a failure prediction; no plant data.
 """
 from scipy.optimize import brentq
 
