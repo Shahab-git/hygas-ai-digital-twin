@@ -14,6 +14,7 @@ A missing, unreadable or malformed overlay file means every row is "Unverified (
 
 This module imports nothing from the project (equipment_datasheet imports it). Display only: nothing in the engine, the snapshot or the runtime reads it. Python 3.11-compatible.
 """
+import hashlib
 import json
 import os
 
@@ -66,17 +67,20 @@ def entry_problem(entry):
 
 
 def load_overlay(path=None):
-    """(entries, header). Entries that break their own rule are dropped; a missing / unreadable / malformed file gives ({}, {"error": ...}) = everything Unverified. Cached per file mtime."""
+    """(entries, header). Entries that break their own rule are dropped; a missing / unreadable / malformed file gives ({}, {"error": ...}) = everything Unverified.
+    Cached per file CONTENT (sha256 of the bytes read), not per timestamp: a rewrite within one timestamp tick, with the same size, is still re-read."""
     path = os.path.abspath(path or OVERLAY_PATH)
     try:
-        stamp = os.stat(path).st_mtime_ns
+        os.stat(path)
     except OSError:
         return {}, {"error": f"{os.path.basename(path)} not found"}
-    if _cache.get(path, (None,))[0] == stamp:
-        return _cache[path][1], _cache[path][2]
     try:
-        with open(path, encoding="utf-8") as f:
-            doc = json.load(f)
+        with open(path, "rb") as f:
+            data = f.read()
+        stamp = hashlib.sha256(data).hexdigest()
+        if _cache.get(path, (None,))[0] == stamp:
+            return _cache[path][1], _cache[path][2]
+        doc = json.loads(data.decode("utf-8"))
         raw = doc["entries"]
         header = doc.get("header", {})
         if not isinstance(raw, dict):
