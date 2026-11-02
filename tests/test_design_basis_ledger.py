@@ -374,6 +374,91 @@ def test_no_borrowing_crosses_a_design_row_and_a_typical_or_operating_row():
     assert crossing == [], crossing
 
 
+# ------------------------------------------------------------------ (A3c 4) the widened isolation guards: the ledger modules are not part of the engine, the runtime or the app
+# Three existing guards were widened for named ledger files (tests/test_data_layer.py: the export script and this file may import parameter_table; tests/test_plant_heat_integration.py and
+# tests/test_reference_feeds.py: python/ledger_coverage.py and python/ledger_rows.py may name the modules plant_heat_integration / reference_feeds), plus scripts/make_provenance_worksheet.py
+# (NOT_ENGINE lists the ledger module names). What those guards protect is that nothing in the engine, the runtime or the app reads these modules. These tests assert it for the ledger modules.
+
+LEDGER_MODULES = ("ledger_rows", "ledger_coverage", "ledger_consumers", "ledger_questions", "ledger_notes", "ledger_anchors")
+LEDGER_OWN = {"python/" + m + ".py" for m in LEDGER_MODULES} | {"python/parameter_table.py"}          # parameter_table.build_ledger imports them lazily, inside the function
+LEDGER_USERS = {"scripts/export_design_basis_ledger.py"}                                           # the generator of the committed files
+NAMES_ONLY = {"scripts/make_provenance_worksheet.py"}                                              # NOT_ENGINE lists the names as strings; it must not import them
+
+
+def _repo_sources(override=None):
+    out = {}
+    for folder in ("python", "scripts"):
+        for name in sorted(os.listdir(os.path.join(ROOT, folder))):
+            if name.endswith(".py"):
+                out[folder + "/" + name] = open(os.path.join(ROOT, folder, name), encoding="utf-8").read()
+    out["app.py"] = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    out.update(override or {})
+    return out
+
+
+def _imported_names(src):
+    import ast
+    names = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ImportFrom):
+            names.add(node.module or "")
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(a.name for a in node.names)
+    return names
+
+
+def _ledger_offenders(sources):
+    """Files outside the ledger that import a ledger module, or name one in any way (a string, importlib, a comment): the engine, the runtime, run_continuous_cycle.py, app.py and every other script."""
+    bad = []
+    for rel, src in sources.items():
+        if rel in LEDGER_OWN or rel in LEDGER_USERS:
+            continue
+        imports = {n.split(".")[-1] for n in _imported_names(src)}
+        if imports & set(LEDGER_MODULES):
+            bad.append((rel, "imports", sorted(imports & set(LEDGER_MODULES))))
+        elif rel not in NAMES_ONLY and re.search(r"\bledger_(?:%s)\b" % "|".join(m[7:] for m in LEDGER_MODULES), src):
+            bad.append((rel, "names", None))
+    return bad
+
+
+def test_no_engine_runtime_script_or_app_file_imports_or_names_a_ledger_module():
+    sources = _repo_sources()
+    assert "app.py" in sources and "scripts/run_continuous_cycle.py" in sources and "python/tab1_integration.py" in sources and "python/simulation_engine.py" in sources
+    assert len([r for r in sources if r.startswith("python/")]) > 50
+    assert _ledger_offenders(sources) == []
+
+
+def test_a_ledger_module_imported_or_named_by_the_engine_the_runtime_or_the_app_would_be_caught():
+    s = _repo_sources()
+    for rel, add in (("python/tab1_integration.py", chr(10) + "from . import ledger_rows" + chr(10)),
+                     ("python/simulation_engine.py", chr(10) + "import python.ledger_coverage" + chr(10)),
+                     ("scripts/run_continuous_cycle.py", chr(10) + "m = importlib.import_module('python.ledger_anchors')" + chr(10)),
+                     ("app.py", chr(10) + "from python.ledger_notes import render_refused" + chr(10)),
+                     ("python/hb_remaining_chain.py", chr(10) + "# reads ledger_questions" + chr(10))):
+        assert _ledger_offenders(_repo_sources({rel: s[rel] + add})), rel
+    assert _ledger_offenders(_repo_sources({"scripts/make_provenance_worksheet.py": s["scripts/make_provenance_worksheet.py"] + chr(10) + "from python import ledger_rows" + chr(10)}))
+
+
+def test_the_widened_data_layer_guard_still_keeps_parameter_table_out_of_the_engine_the_runtime_and_the_app():
+    users = {rel for rel, src in _repo_sources().items() if any(n.split(".")[-1] == "parameter_table" for n in _imported_names(src))}
+    # the data-layer task's own files (measurement_replay, run_residual_report) plus the one file the ledger added to the allow-list
+    assert users == {"python/measurement_replay.py", "scripts/run_residual_report.py", "scripts/export_design_basis_ledger.py"}, users
+    assert "scripts/export_design_basis_ledger.py" not in {u for u in _repo_sources() if u != "scripts/export_design_basis_ledger.py" and "export_design_basis_ledger" in _repo_sources()[u]}, "nothing imports the export script"
+
+
+def test_the_two_ledger_modules_allowed_to_name_plant_heat_integration_and_reference_feeds_do_not_read_their_outputs():
+    for rel in ("python/ledger_coverage.py", "python/ledger_rows.py"):
+        src = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+        assert "HeatIntegration" not in src and "get_input" not in src and "build_live_snapshot" not in src, rel + ": it must not read the heat-integration key or any engine output"
+        assert not re.search(r"from\s+(?:python|\.)\s+import[^" + chr(10) + r"]*\b(?:plant_heat_integration|reference_feeds)\b", src), rel + ": no static import of the two modules (constants are read with importlib/getattr or the ast)"
+    # and nobody else in python/ or the repo root names them besides their own modules and the ledger (the original guards, restated with the ledger names listed)
+    named_ph = sorted(rel for rel, src in _repo_sources().items() if re.search(r"plant_heat_integration|HeatIntegration", src) and not rel.startswith("scripts/"))
+    assert named_ph == ["python/ga001_gasifier_model.py", "python/ledger_coverage.py", "python/ledger_rows.py", "python/plant_heat_integration.py"], named_ph
+    named_rf = sorted(rel for rel, src in _repo_sources().items() if "reference_feeds" in src and not rel.startswith("scripts/"))
+    assert named_rf == ["python/ledger_coverage.py", "python/ledger_rows.py"], named_rf
+
+
 # ------------------------------------------------------------------ (A3b 3) upgrade_question is a list of references to questions that exist
 
 def test_rfi2_is_in_the_repo_unchanged_with_its_24_questions():
