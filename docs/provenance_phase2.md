@@ -52,10 +52,10 @@ Nothing in the engine, the snapshot (120 keys), the runtime, the dynamics layer,
 | slots (the app's three-way split) | before | now |
 |---|---|---|
 | Confirmed | 262 | **13** |
-| not confirmed (was "Engineering Estimate") | 48 | **297** |
+| Not DOK-ING-confirmed (was "Engineering Estimate") | 48 | **297** |
 | Missing Data — Required | 236 | 236 |
 
-Of the 297 not-confirmed slots, by the strongest evidence in the slot: Unverified (registry) 237, Engineering Estimate fills 48, Assumed 9, Calculated 2, Estimated (literature-informed) 1.
+Of the 297 not DOK-ING-confirmed slots, by the strongest evidence in the slot: Unverified (registry) 237, Engineering Estimate fills 48, Assumed 9, Calculated 2, Estimated (literature-informed) 1.
 
 ## 4. What the labels mean
 
@@ -71,7 +71,7 @@ Caption in the app: "Confirmed means a DOK-ING source is cited; unverified rows 
 
 ## 5. What changed in the app (labels and counts only)
 
-The honest-count cards (each section tab) and the all-sections cards show Confirmed (DOK-ING-sourced), Not confirmed and Missing, plus a breakdown of the not-confirmed slots by evidence label. The per-slot badge shows the best row's label. Captions and tags that called a registry row "Confirmed" now read the resolved status: GA-008 and GA-009 capacities (KPI cards, flow cards, the aggregate caption) now read "Unverified (registry)"; GC-008 / GC-009 removal-efficiency targets, HB-006 55 % feed-H₂ target (banner, bar, finding), HB-012 motor rating, EU-008 cooling duty (tag, metric, banner, bar), FE-001 live capacity, FE-005 moisture rows, GC-013 motor power, GA-001 technology. No layout, tab, chart, flow-diagram or what-if change.
+The honest-count cards (each section tab) and the all-sections cards show Confirmed (DOK-ING-sourced), Not DOK-ING-confirmed and Missing, plus a breakdown of the not-confirmed slots by evidence label. The per-slot badge shows the best row's label. Captions and tags that called a registry row "Confirmed" now read the resolved status: GA-008 and GA-009 capacities (KPI cards, flow cards, the aggregate caption) now read "Unverified (registry)"; GC-008 / GC-009 removal-efficiency targets, HB-006 55 % feed-H₂ target (banner, bar, finding), HB-012 motor rating, EU-008 cooling duty (tag, metric, banner, bar), FE-001 live capacity, FE-005 moisture rows, GC-013 motor power, GA-001 technology. No layout, tab, chart, flow-diagram or what-if change.
 
 **Not converted (still static prose that says "Confirmed"):** about 14 explanatory paragraphs (for example the section intros "real registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate" at `app.py` ~5639, 6820, 7654, 8651, 9647, 10569, and EU-008 / HB-012 narrative at ~8072, 9046, 9562, 9673). They describe the section in general terms and do not read a single row; they are the next batch.
 
@@ -108,3 +108,88 @@ The **4 UNKNOWN rows** (the owner's note: "from similar plants; plant/paper sour
 - The default was applied only at `python/equipment_datasheet.py:512` (`r.get("status", STATUS_CONFIRMED)`), with a second copy at `parameter_table.py:208`. Consumers: `summarize()` (`:543-545`), the app header and honest-count cards, the per-slot badge, the all-sections cards, `equipment_data_requests.py` (uses `populated_category_slots`, unaffected by the split), `provenance_overlay.effect`.
 - **The engine, snapshot and runtime never read the datasheet status**: `tab1_integration.py`, `simulation_engine.py`, `shared_plant_state.py`, `scripts/run_continuous_cycle.py`, `ga001_gasifier_model.py`, `dynamics.py` and `plant_status.py` mention the datasheet only in comments (a test checks this). So no snapshot key, persisted key count or shrink-guard input can change.
 - Risk handled: `data_precedence` has six rank statuses and the table now has "Unverified (registry)", so `dry_run` ranks an Unverified row as the weakest valued candidate (Assumed); `PRECEDENCE` itself is unchanged.
+
+## 10. Wording follow-up (UI text only)
+
+Branch `wording-followup`, from `origin/main` 2d9720b. Source: after phase 2 the counts followed the resolved status, but the slot card was still labelled "Not confirmed" and about 14 static paragraphs of `app.py` still used "Confirmed" about registry data in general terms, contradicting the counts above them. **Text only:** no status logic, resolver, overlay, count, engine, snapshot (120 keys), runtime, what-if tab, default or registry value changed. A test compares the syntax tree of `app.py` with every string neutralised against `origin/main` and requires it to be identical.
+
+- **Label:** the slot-level "Not confirmed" is now **"Not DOK-ING-confirmed"** (cards, the all-sections card, captions, this document). Internal keys (`estimated_category_slots`, `Engineering Estimate (non-Confirmed)`) are unchanged.
+- **Rule used for the paragraphs:** "Confirmed" means a DOK-ING source is cited. A general sentence that called registry values Confirmed now says they are *registry entries whose origin is stated in the provenance worksheet* (counts at the top of Section 7); a sentence about one named row says "registry" or reads the resolved status (`_caption_status`); the four "Regression check" sentences drop the stale "27 Confirmed + 7 Engineering Estimate" style splits (they contradicted the counts) and point to the counts; honesty caveats are kept.
+- **Left as written (true under the rule):** statements about DOK-ING's RFI answers (Design Basis tab), the confirmation tracker, "confirmed directly" (meaning checked in code), and sentences that say no Confirmed target exists.
+- **Not changed (engine text):** five sentences live inside engine modules and are part of the snapshot's confidence notes, so they were not touched: `python/fe_feed_handling.py:204` (FE-002 ">98% removal efficiency"), `python/gc_gas_cleaning_chain.py:145` (GC-002 ">90% efficiency"), `python/eu_utilities_chp.py:717` and `python/tab1_integration.py:323` ("ACTUAL/DOK-ING VALUE: Confirmed 20 kW"), `python/tab1_integration.py:340` ("exceeds its Confirmed 20kW rating"). A test lists them explicitly, so a new such sentence fails it.
+
+Before / after (the part of the source line that changed):
+
+| app.py line | before | after |
+|---|---|---|
+| 3090 | c2.metric("Clipped to confirmed [29,50] kg/h range?", "Yes" if e["value"]["cli | c2.metric("Clipped to the FE-003 registry range [29,50] kg/h?", "Yes" if e["value"]["cli |
+| 3110 | f'&nbsp; vs Confirmed nameplate {_fe004_nameplate | f'&nbsp; vs registry nameplate {_fe004_nameplate |
+| 3299 | r: 0–{inlet_frac*100:.0f}% (Confirmed inlet) with a marker at the Confirmed " | r: 0–{inlet_frac*100:.0f}% (registry inlet value) with a marker at the registry " |
+| 3310 | late else '△ differs from'} Confirmed nameplate " | late else '△ differs from'} registry nameplate " |
+| 3412 | outlet moisture is a fixed Confirmed design parameter in this " | outlet moisture is a fixed registry design parameter in this " |
+| 4081 | ad_registry()' directly — real registry/vendor/" | ad_registry()' directly — registry entries " |
+| 4082 | "DOK-ING data (Confirmed) or a stated engineering es | "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering es |
+| 4279 | "fault_status_as_specified (Confirmed 20kW basis) = **FAULT**; " | "fault_status_as_specified ({_caption_status('EU-008', 'Cooling duty')} 20kW basis) = **FAULT**; " |
+| 4300 | ying agent per GA-001's own Confirmed technology " | ying agent per GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) " |
+| 4648 | kdown("**Gauges — against real, already-Confirmed bounds only:**") | kdown("**Gauges — against registry bounds only (their provenance status is in the Section 7 counts):**") |
+| 4725 | "Every Confirmed data point below is read " | "Every data point below (its provenance status is in the Section 7 counts) is read " |
+| 5389 | etrics above model only the real, confirmed air/steam " | etrics above model only the air/steam (ER Estimated (literature-informed) and steam ratio Assumed in the provenance worksheet; not DOK-ING-confirmed) " |
+| 5455 | this cycle. {eq_id}'s own real Confirmed/Estimate registry parameters are in " | this cycle. {eq_id}'s own registry parameters, each with its provenance status, are in " |
+| 5638 | f GA-001 through GA-010 — real " | f GA-001 through GA-010 — registry entries " |
+| 5639 | "registry/vendor/DOK-ING data (Confirmed) or a stated engineering es | "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering es |
+| 5785 | "confirmed ash/carbon-black mass fra | "ported ash/carbon-black mass fra |
+| 6450 | "calc fills -- GC-004's own Confirmed remarks state a real, non-t | "calc fills -- GC-004's own registry remarks state a real, non-t |
+| 6704 | "rates match these Confirmed/Assumed design-basis figures | "rates match these registry / Assumed design-basis figures |
+| 6820 | "GC-001 through GC-015 — real registry/vendor/DOK-ING data (Confirmed) or a stated " | "GC-001 through GC-015 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated " |
+| 6938 | ze this train's own already-confirmed gas-flow chain and inlet/ | ze this train's own already-stated gas-flow chain and inlet/ |
+| 6940 | int (the quench tower's own confirmed gas-volume " | int (the quench tower's own registry-stated gas-volume " |
+| 6960 | data points, 34/48 populated — 27 Confirmed + 7 " | data points, 34/48 populated) and GA (100 real data " |
+| 6961 | "Engineering Estimate) and GA (100 real data points, 41/60 populated — 31 Confirmed + " | "points, 41/60 populated) are both unchanged by adding this Gas Cleaning section " |
+| 6962 | "10 Engineering Estimate) are both unchanged by adding this Gas Cleaning section." | "(the Confirmed / Not DOK-ING-confirmed split is shown in the counts above)." |
+| 7167 | ive upstream tap -- reads a real Confirmed static ' | ive upstream tap -- reads a static registry ' |
+| 7207 | ive upstream tap -- reads a real Confirmed static design constant instead (SA | ive upstream tap -- reads a static registry design constant instead (SA |
+| 7346 | ke SA-001..010, they read a Confirmed design constant " | ke SA-001..010, they read a static registry design constant " |
+| 7443 | `_fe_tag_html("confirmed", "Assumed — reads a Confirmed static design constant")` | `_fe_tag_html("estimate", "Assumed — reads a static registry design constant")` (green tag becomes the amber one) |
+| 7449 | "this is the SAME \"Confirmed design constant as live pla | "this is the SAME \"registry design constant as live pla |
+| 7472 | Nm³ reading is GC-006's own Confirmed reference constant " | Nm³ reading is GC-006's own registry reference constant " |
+| 7473 | e-sourced from GC-007's own Confirmed 0.5 g/Nm³ " | e-sourced from GC-007's own registry 0.5 g/Nm³ " |
+| 7566 | "Confirmed constant their live reading | "registry constant their live reading |
+| 7654 | "through SA-012 — real registry/vendor/DOK-ING data (Confirmed) or a stated engineering " | "through SA-012 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering " |
+| 7684 | low) — SA-011/SA-012 read a Confirmed static design constant " | low) — SA-011/SA-012 read a static registry design constant " |
+| 7701 | ve tap at all — they read a real Confirmed static design " | ve tap at all — they read a static registry design " |
+| 7999 | no live key of their own — Confirmed static constants used directly.", | no live key of their own — static registry constants used directly.", |
+| 8072 | "separately-stated Confirmed motor rating; HB-013's stor | "separately-stated registry motor rating; HB-013's stor |
+| 8212 | registered for it (its own Confirmed 4:1 steam-to-" | registered for it (its own registry 4:1 steam-to-" |
+| 8278 | t, consistent with GA-001's Confirmed steam-blown technology desc | t, consistent with GA-001's registry steam-blown technology desc |
+| 8298 | uses HB-006's/HB-012's own Confirmed 8.0/1.2 bar(a) " | uses HB-006's/HB-012's own registry-derived 8.0/1.2 bar(a) " |
+| 8479 | d\" modeled as HB-018's own Confirmed max rated throughput — an A | d\" modeled as HB-018's own registry max rated throughput — an A |
+| 8526 | c3.metric("HB-003's own Confirmed 'Design heat duty'", "5 kW" | c3.metric(f"HB-003's own {_caption_status('HB-003', 'Design heat duty')} 'Design heat duty'", "5 kW" |
+| 8536 | st.markdown("**(c)/(d) Confirmed-rating cross-checks — HB-01 | st.markdown("**(c)/(d) Registry-rating cross-checks — HB-01 |
+| 8544 | tly reproduces HB-011's own Confirmed " | tly reproduces HB-011's own registry " |
+| 8651 | "HB-001 through HB-018 — real registry/vendor/DOK-ING data (Confirmed) or a stated " | "HB-001 through HB-018 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated " |
+| 8771 | n arithmetic on two already-Confirmed " | n arithmetic on two already-stated " |
+| 8793 | "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 " | "Regression check: FE (78/34), GA (100/41), GC (122/59) and SA (86/27) — all real data " |
+| 8794 | "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering " | "points/populated categories — are unchanged by adding this Hydrogen & BoP section " |
+| 8795 | "Estimate), and SA (86/27 — 26 Confirmed + 1 Engineering Estimate) — all real data " | "(the Confirmed / Not DOK-ING-confirmed split is shown in the counts above)." |
+| 8796 | "points/populated categories — are unchanged by adding this Hydrogen & BoP section." | "" |
+| 9046 | ation exceeding 150% of its Confirmed rating — reusing the SAME a | ation exceeding 150% of its registry rating — reusing the SAME a |
+| 9142 | "(Calculated, EU-008's real Confirmed 20kW basis) vs 'fault_statu | "(Calculated, EU-008's registry 20kW basis) vs 'fault_statu |
+| 9173 | ne has a genuinely separate Confirmed target to compare a live va | ne has a genuinely separate registry target to compare a live va |
+| 9176 | "separately-stated Confirmed capacity exists to compare | "separately-stated registry capacity exists to compare |
+| 9562 | is substantially above its Confirmed 20kW rating — see Section 2 | is substantially above its registry 20kW rating — see Section 2 |
+| 9646 | f EU-001 through EU-013 — real " | f EU-001 through EU-013 — registry entries " |
+| 9647 | "registry/vendor/DOK-ING data (Confirmed) or a stated engineering es | "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering es |
+| 9673 | d substantially exceeds its Confirmed 20kW rating (**Section " | d substantially exceeds its registry 20kW rating (**Section " |
+| 9788 | "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 " | "Regression check: FE (78/34), GA (100/41), GC (122/59), SA (86/27) and HB (168/70) — all " |
+| 9789 | "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering " | "real data points/populated categories — are unchanged by adding this Electrical & " |
+| 9790 | "Estimate), SA (86/27 — 26 Confirmed + 1 Engineering Estimate), and HB (168/70 — 57 " | "Utilities section (the Confirmed / Not DOK-ING-confirmed split is shown in the " |
+| 9791 | "Confirmed + 13 Engineering Estimate) — all real data points/populated categories — " | "counts above)." |
+| 9792 | "are unchanged by adding this Electrical & Utilities section." | "" |
+| 10568 | f AI-001 through AI-015 — real " | f AI-001 through AI-015 — registry entries " |
+| 10569 | "registry/vendor/DOK-ING data (Confirmed) or a stated engineering es | "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering es |
+| 10740 | "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 " | "Regression check: FE (78/34), GA (100/41), GC (122/59), SA (86/27), HB (168/70) and EU (123/54) — " |
+| 10741 | "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering " | "all real data points/populated categories — are unchanged by adding this Automation & " |
+| 10742 | "Estimate), SA (86/27 — 26 Confirmed + 1 Engineering Estimate), HB (168/70 — 57 " | "Instrumentation section (the Confirmed / Not DOK-ING-confirmed split is shown in the counts " |
+| 10743 | "Confirmed + 13 Engineering Estimate), and EU (123/54 — 46 Confirmed + 8 Engineering " | "above)." |
+| 10744 | "Estimate) — all real data points/populated categories — are unchanged by adding this " | "" |
+| 10745 | "Automation & Instrumentation section." | "" |

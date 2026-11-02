@@ -2075,7 +2075,7 @@ def _render_equipment_honest_count(summary, n_items):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Real data points", summary["total_real_data_points"])
     c2.metric("Confirmed (DOK-ING-sourced)", summary["confirmed_category_slots"])
-    c3.metric("Not confirmed", summary["estimated_category_slots"])
+    c3.metric("Not DOK-ING-confirmed", summary["estimated_category_slots"])
     c4.metric("Missing Data — Required", summary["missing_category_slots"],
                delta=f"{summary['missing_category_slots'] / summary['total_category_slots'] * 100:.0f}% of all category slots",
                delta_color="inverse")
@@ -2084,7 +2084,7 @@ def _render_equipment_honest_count(summary, n_items):
         f"{summary['total_real_data_points']} real parameter values are on file across these "
         f"{n_items} items, across {summary['total_category_slots']} possible (item × category) "
         f"slots: **{summary['confirmed_category_slots']} Confirmed** (at least one row cites a DOK-ING source), "
-        f"**{summary['estimated_category_slots']} not confirmed** (broken down above by the strongest evidence in the slot: Calculated, "
+        f"**{summary['estimated_category_slots']} not DOK-ING-confirmed** (broken down above by the strongest evidence in the slot: Calculated, "
         f"Estimated from similar plants, the existing Engineering Estimate fills, Assumed, or Unverified — no stated origin yet), and "
         f"**{summary['missing_category_slots']} Missing Data — Required** — reported as separate, honest numbers, never blended into one "
         f"\"populated\" figure that would overstate how solid a value actually is. "
@@ -3087,7 +3087,7 @@ def _render_fe_live_results(snap):
         _fe_result_card_header("FE-003", "meas", "FE-003 — Weighing Conveyor", changed=changed, note=note)
         c1, c2 = st.columns(2)
         c1.metric("Weighed flow rate (as-received, wet)", f"{e['value']['confirmed_wet_feed_kg_h']:.2f} kg/h")
-        c2.metric("Clipped to confirmed [29,50] kg/h range?", "Yes" if e["value"]["clipped"] else "No")
+        c2.metric("Clipped to the FE-003 registry range [29,50] kg/h?", "Yes" if e["value"]["clipped"] else "No")
         with st.expander("Full status & traceability"):
             st.caption(f"Status: {e['status']} · {e['confidence_note']}")
 
@@ -3107,7 +3107,7 @@ def _render_fe_live_results(snap):
         )
         st.markdown(
             _fe_inline_bar_svg(_fe004_bar_frac, "#1D4ED8", target_frac=1.0) +
-            f'&nbsp; vs Confirmed nameplate {_fe004_nameplate_kwh_per_t:.1f} kWh/t',
+            f'&nbsp; vs registry nameplate {_fe004_nameplate_kwh_per_t:.1f} kWh/t',
             unsafe_allow_html=True,
         )
         with st.expander("Full status & traceability"):
@@ -3296,7 +3296,7 @@ def _render_fe_live_kpis(snap):
             raw=fe006["moisture_fraction"], text=f"{fe006['moisture_fraction']*100:.2f}%",
             skey="tab3_kpi_delta__moisture", entry=fe006_entry,
             compare=(
-                f"Bar: 0–{inlet_frac*100:.0f}% (Confirmed inlet) with a marker at the Confirmed "
+                f"Bar: 0–{inlet_frac*100:.0f}% (registry inlet value) with a marker at the registry "
                 f"target <{target_moist_frac*100:.0f}% -- same values as Section 1's gauge."
             ),
             bar=_fe_inline_bar_svg(moist_bar_frac, "#15803D", target_frac=moist_target_pos),
@@ -3307,7 +3307,7 @@ def _render_fe_live_kpis(snap):
             raw=live_kwh_per_t, text=f"{live_kwh_per_t:.1f} kWh/t",
             skey="tab3_kpi_delta__specific_energy", entry=fe004_entry,
             compare=(
-                f"{'✓ matches' if matches_nameplate else '△ differs from'} Confirmed nameplate "
+                f"{'✓ matches' if matches_nameplate else '△ differs from'} registry nameplate "
                 f"({fe.FE004_MOTOR_KW:.0f} kW / {fe.FE004_THROUGHPUT_T_H:.1f} t/h = "
                 f"{nameplate_kwh_per_t:.1f} kWh/t)"
             ),
@@ -3409,7 +3409,7 @@ def _render_fe_gauges(snap):
             unsafe_allow_html=True,
         )
         st.caption(
-            "Honest note: FE-005's outlet moisture is a fixed Confirmed design parameter in this "
+            "Honest note: FE-005's outlet moisture is a fixed registry design parameter in this "
             "model, not independently computed each cycle from other live inputs — so this gauge "
             "genuinely reads exactly at its own target every cycle; it is shown for real reference, "
             "not because it varies."
@@ -4078,8 +4078,8 @@ def _render_fe_simulation_status(snap):
         "**Source, by section:** Sections 1–6 above all read live output from `fe_feed_handling.py`'s "
         "own registered FE-001..008 models, via the Digital Twin engine (`simulation_engine.py` + "
         "`shared_plant_state.py`) — a real simulation result, not a static figure. Section 7 below "
-        "instead reads `equipment_registry.load_registry()` directly — real registry/vendor/"
-        "DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation output. The "
+        "instead reads `equipment_registry.load_registry()` directly — registry entries "
+        "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering estimate, never a simulation output. The "
         "two are never blended: every value on this tab is clearly one or the other, labeled at the "
         "point it's shown."
     )
@@ -4276,7 +4276,7 @@ def _plant_overview_active_findings(snap):
         findings.append({
             "severity": "fault", "tab": "Electrical & Utilities (Tab 8)", "id": "EU-008 / EU-009",
             "title": "Cooling-tower capacity fault — dual-scenario",
-            "detail": f"fault_status_as_specified (Confirmed 20kW basis) = **FAULT**; "
+            "detail": f"fault_status_as_specified ({_caption_status('EU-008', 'Cooling duty')} 20kW basis) = **FAULT**; "
                       f"fault_status_if_resized (Internal-model-derived {baseline} basis) = "
                       f"**{resized_val}** — both real, separately-provenanced AI-004 entries, the "
                       f"SAME dual-scenario treatment Tab 8's own Section 2 shows.",
@@ -4297,7 +4297,7 @@ def _plant_overview_active_findings(snap):
                               f"documented at the project level in `docs/master_open_questions.md` "
                               f"item 5, root cause: the registry's own 'Expected' table assumes a "
                               f"near-N₂-free steam-blown process; the live model correctly uses an "
-                              f"air-containing gasifying agent per GA-001's own Confirmed technology "
+                              f"air-containing gasifying agent per GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) "
                               f"description.",
                     "banner_html": None,
                 })
@@ -4645,7 +4645,7 @@ with tab3:
     try:
         _fe_snap_for_kpis = _tab1_integration_snapshot()
         _render_fe_live_kpis(_fe_snap_for_kpis)
-        st.markdown("**Gauges — against real, already-Confirmed bounds only:**")
+        st.markdown("**Gauges — against registry bounds only (their provenance status is in the Section 7 counts):**")
         _render_fe_gauges(_fe_snap_for_kpis)
     except Exception as _fe_kpis_exc:
         st.error(f"Live KPIs failed to render: {_fe_kpis_exc}")
@@ -4722,7 +4722,7 @@ with tab3:
         "Analysers, Hydrogen & BoP, Electrical & Utilities, and Automation & Instrumentation tabs "
         "for GA-001–010, GC-001–015, SA-001–012, HB-001–018, EU-001–013, and AI-001–015 — all 91 "
         "registry items are now covered, one section per tab, not appended into a single one). "
-        "Every Confirmed data point below is read "
+        "Every data point below (its provenance status is in the Section 7 counts) is read "
         "directly from `equipment_registry.load_registry()` — the same loader Vendor Sourcing "
         "(Tab 1) already uses, not a re-derived or simplified copy. **This is also the pilot "
         "section for engineering estimates**: DOK-ING has confirmed it cannot answer some "
@@ -5386,7 +5386,7 @@ def _render_ga_live_results(snap):
         st.caption(
             f"GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) is Bubbling Fluidized Bed (BFB), "
             "steam-blown, Fe₂O₃/Fe₃O₄ chemical-looping oxygen carrier — not a conventional simple "
-            "air-blown gasifier. The metrics above model only the real, confirmed air/steam "
+            "air-blown gasifier. The metrics above model only the air/steam (ER Estimated (literature-informed) and steam ratio Assumed in the provenance worksheet; not DOK-ING-confirmed) "
             "partial-oxidation portion, closed with standard elemental/WGS-equilibrium stoichiometry; "
             "the oxygen carrier's own separate reduction/regeneration chemistry and circulation loop "
             "is explicitly NOT modeled — no oxygen-carrier capacity, conversion degree, or circulation "
@@ -5452,7 +5452,7 @@ def _render_ga_live_results(snap):
                     f"gasifier_mass_balance.byproduct_mass_flows() (a ported design-basis calculation, "
                     f"the SAME one equipment_engineering_estimates.py's own registry ESTIMATE fills for "
                     f"this item already use) applied to GA-001's own real, live dry_feed_rate_kg_h input "
-                    f"this cycle. {eq_id}'s own real Confirmed/Estimate registry parameters are in "
+                    f"this cycle. {eq_id}'s own registry parameters, each with its provenance status, are in "
                     f"Section 7 — Existing Data below."
                     + (f" The carbon black part is instead the engine's value: {flows['carbon_black_status_line']}"
                        if flows is not None and flows.get("carbon_black_source") == "engine" and value_kind in ("combined", "carbon_black_kg_h") else "")
@@ -5635,8 +5635,8 @@ def _render_ga_simulation_status(snap):
         "have NO live registered model (confirmed directly, Section 3/4 above) — their kg/h values are "
         "DERIVED from GA-001's own live feed rate via `gasifier_mass_balance.py`'s own ported "
         "design-basis calculation, clearly labeled as such throughout. Section 7 below instead reads "
-        "`equipment_registry.load_registry()` directly for ALL of GA-001 through GA-010 — real "
-        "registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation "
+        "`equipment_registry.load_registry()` directly for ALL of GA-001 through GA-010 — registry entries "
+        "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering estimate, never a simulation "
         "output. The three (live / derived / static registry) are never blended: every value on this "
         "tab is clearly one of the three, labeled at the point it's shown."
     )
@@ -5782,7 +5782,7 @@ def _render_ga_tab():
         "correlation/mass-balance/comparable-system basis — tagged **Engineering Estimate (Not "
         "Vendor/DOK-ING Confirmed)**, visually distinct below, never presented as confirmed data. "
         "The strongest fills are computed live from `python/gasifier_mass_balance.py`'s own "
-        "confirmed ash/carbon-black mass fractions, deliberately checked against two conflation "
+        "ported ash/carbon-black mass fractions, deliberately checked against two conflation "
         "traps (feedstock elemental carbon vs. carbon-black yield; raw byproduct generation vs. "
         "actual recovered/processed mass) so as not to repeat an error already avoided once. The "
         "other 19 gaps have no defensible basis and stay **Missing Data — Required**. See "
@@ -6447,7 +6447,7 @@ def _render_gc_live_results(snap):
             "**Real, separately-known finding (static registry layer, `equipment_engineering_"
             "estimates.py`):** a static-registry Outputs (post-quench gas flow) estimate for "
             "GC-004 was checked and explicitly DECLINED, unlike most of this train's other exact-"
-            "calc fills -- GC-004's own Confirmed remarks state a real, non-trivial gas-volume "
+            "calc fills -- GC-004's own registry remarks state a real, non-trivial gas-volume "
             "change (\"~70% contraction\" cooling from 860 to 65 °C), and assuming outlet flow "
             "equals inlet flow would rest on an unstated, physically unsound assumption this "
             "project has no confirmed water-vapor/condensation data to actually calculate -- so "
@@ -6701,7 +6701,7 @@ def _render_gc_mass_energy_balance(snap):
             "deliberately excluded, correcting this item's own pre-existing mislabeled remark "
             "(module docstring, mislabel correction 2). This confirms the 5-source summation is "
             "wired and arithmetically correct -- it does NOT confirm the real plant's own blowdown "
-            "rates match these Confirmed/Assumed design-basis figures.",
+            "rates match these registry / Assumed design-basis figures.",
             icon="⚠️",
         )
 
@@ -6817,7 +6817,7 @@ def _render_gc_simulation_status(snap):
         "py`'s own registered GC models for 13 of the 15 GC items (every item except GC-002/GC-011, "
         "confirmed directly, Section 3/4 above) — a real simulation result, not a static figure. "
         "Section 7 below instead reads `equipment_registry.load_registry()` directly for ALL of "
-        "GC-001 through GC-015 — real registry/vendor/DOK-ING data (Confirmed) or a stated "
+        "GC-001 through GC-015 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated "
         "engineering estimate, never a simulation output. The two are never blended: every value on "
         "this tab is clearly one or the other, labeled at the point it's shown."
     )
@@ -6935,9 +6935,9 @@ def _render_gc_tab():
         "section is mostly specific equipment-performance specs (cut sizes, removal efficiencies, "
         "instrument accuracies) that only exist once a vendor/model is chosen, so a notably lower "
         "fill rate here is the honest, correct outcome, not a shortfall in effort. The fills "
-        "prioritize this train's own already-confirmed gas-flow chain and inlet/outlet "
+        "prioritize this train's own already-stated gas-flow chain and inlet/outlet "
         "concentrations over external lookups, and one was deliberately declined after checking it "
-        "against a real physical constraint (the quench tower's own confirmed gas-volume "
+        "against a real physical constraint (the quench tower's own registry-stated gas-volume "
         "contraction) rather than presenting a number built on an unsound assumption. See "
         "`python/equipment_engineering_estimates.py` for the full per-gap reasoning, including two "
         "apparent mislabeled cross-references found in this section's own pre-existing remarks and "
@@ -6957,9 +6957,9 @@ def _render_gc_tab():
     if (_fe_summary["total_real_data_points"] == 78 and _fe_summary["populated_category_slots"] == 34
             and _ga_summary["total_real_data_points"] == 100 and _ga_summary["populated_category_slots"] == 41):
         st.success(
-            "Regression check: FE (78 real data points, 34/48 populated — 27 Confirmed + 7 "
-            "Engineering Estimate) and GA (100 real data points, 41/60 populated — 31 Confirmed + "
-            "10 Engineering Estimate) are both unchanged by adding this Gas Cleaning section."
+            "Regression check: FE (78 real data points, 34/48 populated) and GA (100 real data "
+            "points, 41/60 populated) are both unchanged by adding this Gas Cleaning section "
+            "(the Confirmed / Not DOK-ING-confirmed split is shown in the counts above)."
         )
     else:
         st.error(
@@ -7164,7 +7164,7 @@ def _sa_schematic_svg(snap):
         )
     parts.append(
         f'<text x="{tap_x[("GC-013","Gas")]}" y="{backbone_y+40+box_h+22}" text-anchor="middle" font-size="9" '
-        f'font-style="italic" fill="#6B7280">↑ no live upstream tap -- reads a real Confirmed static '
+        f'font-style="italic" fill="#6B7280">↑ no live upstream tap -- reads a static registry '
         f'design constant instead (dotted)</text>'
     )
 
@@ -7204,7 +7204,7 @@ def _sa_schematic_legend_svg():
     parts.append(
         f'<text x="{x0}" y="{note_y}" font-size="11" fill="#111827">'
         f'Dashed line: a real virtual-sensor tap of an already-live upstream GC value. Dotted line: '
-        f'no live upstream tap -- reads a real Confirmed static design constant instead (SA-011/012).</text>'
+        f'no live upstream tap -- reads a static registry design constant instead (SA-011/012).</text>'
     )
     parts.append(
         f'<text x="{x0}" y="{note_y+line_h}" font-size="11" fill="#111827">'
@@ -7343,7 +7343,7 @@ def _render_sa_status_table(snap):
     st.caption(
         "All 12 real SA items are live-registered (confirmed directly, no true \"Static/no live "
         "model\" sub-items exist here) — SA-011/SA-012 are marked with a small \"reads Assumed "
-        "static constant\" note since, unlike SA-001..010, they read a Confirmed design constant "
+        "static constant\" note since, unlike SA-001..010, they read a static registry design constant "
         "rather than a live upstream tap (see Section 1's schematic and Section 4 below)."
     )
 
@@ -7440,13 +7440,13 @@ def _render_sa_live_results(snap):
             unit = units[eq_id]
             if entry["status"] == ps.STATUS_ASSUMED:
                 st.markdown(
-                    _fe_tag_html("confirmed", "Assumed — reads a Confirmed static design constant")
+                    _fe_tag_html("estimate", "Assumed — reads a static registry design constant")
                     + f" &nbsp; **{v:.1f} {unit}**",
                     unsafe_allow_html=True,
                 )
                 st.caption(
                     "No live upstream MODEL exists at this point in the train (module docstring) — "
-                    "this is the SAME \"Confirmed design constant as live placeholder\" treatment "
+                    "this is the SAME \"registry design constant as live placeholder\" treatment "
                     "`gc_gas_cleaning_chain.py`'s own GC-001/GC-003 temperature functions already use, "
                     "not a fabricated live thermal/pressure model."
                 )
@@ -7469,8 +7469,8 @@ def _render_sa_live_results(snap):
         "it further) — comparing it to the registry's own separate \"<50 mg/Nm³ clean\" figure "
         "(which describes the FINAL point, downstream of GC-007) would compare two different "
         "physical locations, so no comparison bar is shown for SA-007 above. Checked directly, not "
-        "assumed: the live 500 mg/Nm³ reading is GC-006's own Confirmed reference constant "
-        "(`gc006_tar_outlet()`, status Assumed, re-sourced from GC-007's own Confirmed 0.5 g/Nm³ "
+        "assumed: the live 500 mg/Nm³ reading is GC-006's own registry reference constant "
+        "(`gc006_tar_outlet()`, status Assumed, re-sourced from GC-007's own registry 0.5 g/Nm³ "
         "inlet figure per the already-documented mislabel correction) — SA-007 is a virtual sensor "
         "reading that SAME stored constant BY CONSTRUCTION, not an independently computed value."
     )
@@ -7563,7 +7563,7 @@ def _render_sa_mass_energy_balance(snap):
         "boundaries (≈0.09999996 ppm vs <0.1 ppm; 5.0 mg/Nm³ vs GC-010's own <5 mg/Nm³ target) — "
         "genuinely meeting target, at the edge, not a shortfall. SA-011/SA-012 are excluded from "
         "this table's deviation column — their own registry \"expected\" figure IS the same "
-        "Confirmed constant their live reading returns (by construction, not an independent check)."
+        "registry constant their live reading returns (by construction, not an independent check)."
     )
 
 
@@ -7651,7 +7651,7 @@ def _render_sa_simulation_status(snap):
         "own registered SA models for all 12 SA items (confirmed directly — every one is live-"
         "registered, none Static/no-model) — a real simulation result, not a static figure. Section "
         "7 below instead reads `equipment_registry.load_registry()` directly for ALL of SA-001 "
-        "through SA-012 — real registry/vendor/DOK-ING data (Confirmed) or a stated engineering "
+        "through SA-012 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering "
         "estimate, never a simulation output. The two are never blended: every value on this tab is "
         "clearly one or the other, labeled at the point it's shown."
     )
@@ -7681,7 +7681,7 @@ def _render_sa_tab():
         "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
         "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
         "which one THIS page load used. All 12 SA items are live-registered virtual sensors "
-        "(audited in Section 5/6 below) — SA-011/SA-012 read a Confirmed static design constant "
+        "(audited in Section 5/6 below) — SA-011/SA-012 read a static registry design constant "
         "(no live upstream model exists at this specific point), all 10 others tap an already-live "
         "upstream GC value."
     )
@@ -7698,7 +7698,7 @@ def _render_sa_tab():
         "UNLIKE FE/GA/GC (a real sequential process chain), SA-001..012 are independent instruments "
         "tapping FOUR real points of the already-built gas train — GC-006 (tar), GC-010 (dust), "
         "GC-012 (H₂S/COS) and GC-013 (clean gas, the busiest tap — 7 of the 12 items). SA-011/"
-        "SA-012 (below, dotted) have no live tap at all — they read a real Confirmed static design "
+        "SA-012 (below, dotted) have no live tap at all — they read a static registry design "
         "constant instead."
     )
     try:
@@ -7996,7 +7996,7 @@ def _hb_schematic_legend_svg():
         "simulation_engine.py's own automatic Missing-propagation, cascading from item X's own "
         "Missing status, confirmed directly (an instrumented call-counter proves it).",
         "HB-002/HB-008 (small italic labels): real registry sub-items of the SAME physical unit as "
-        "HB-001/HB-006, with no live key of their own — Confirmed static constants used directly.",
+        "HB-001/HB-006, with no live key of their own — static registry constants used directly.",
     ):
         parts.append(f'<text x="{x0}" y="{y}" font-size="10.5" fill="#111827">{line}</text>')
         y += line_h
@@ -8069,7 +8069,7 @@ def _render_hb_live_kpis(snap):
         "validation (75.0%/85.0% at the ORIGINAL synthetic design point) is a different check, "
         "already covered in Section 5/6, not a live-vs-target bar here (this cycle's live y_CO_in "
         "genuinely differs from that design point — see Section 4). HB-012's bar compares a real, "
-        "separately-stated Confirmed motor rating; HB-013's storage level has no separate target "
+        "separately-stated registry motor rating; HB-013's storage level has no separate target "
         "(50 kg IS its own capacity, a trivial ceiling, not a design point to compare against)."
     )
 
@@ -8209,7 +8209,7 @@ def _render_hb_live_results(snap):
             c2.metric("HTS conversion X", f"{v['X_hts']*100:.2f}%")
             _hb_live_expander("HB-001 HTS", hb001)
         st.caption("**HB-002 (WGS Reactor HTS, CO Conv.)** — real registry sub-item of this SAME "
-                   "physical unit; no live model registered for it (its own Confirmed 4:1 steam-to-"
+                   "physical unit; no live model registered for it (its own registry 4:1 steam-to-"
                    "CO ratio is used directly as a constant, HB-002's/HB-005's own STEAM_TO_CO_MOLAR_RATIO).")
 
     # -- HB-005/HB-003 (built in dependency order, shown together) -----------
@@ -8275,7 +8275,7 @@ def _render_hb_live_results(snap):
                 st.caption(
                     "Root cause: the SAME registry/live-model composition mismatch as the N₂ finding — "
                     "HB-006's own 55% target traces to the registry's own pre-live-model gas-composition "
-                    "chart, consistent with GA-001's Confirmed steam-blown technology description; the "
+                    "chart, consistent with GA-001's registry steam-blown technology description; the "
                     "live model's own necessary air/steam simplification legitimately produces a more "
                     "N₂-heavy (lower-H₂) gas instead. See `docs/master_open_questions.md` item 5's own "
                     "2026-09-08 UPDATE for the full root-cause writeup."
@@ -8295,7 +8295,7 @@ def _render_hb_live_results(snap):
             "**HB-007 (PSA Unit, H₂ Recovery)** and **HB-008 (PSA Unit, Pressure)** are real registry "
             "sub-items of this SAME physical PSA unit — HB-007's OWN registry aspect (recovery "
             "efficiency) IS covered live above (`recovery`, from `psa.psa_recovery()`, unchanged); "
-            "HB-008's own pressure aspect uses HB-006's/HB-012's own Confirmed 8.0/1.2 bar(a) "
+            "HB-008's own pressure aspect uses HB-006's/HB-012's own registry-derived 8.0/1.2 bar(a) "
             "constants directly, no live model. **The SEPARATELY-registered `('HB-007',"
             "'H2SplitFraction')` key below is a DIFFERENT quantity** — not this recovery efficiency, "
             "but whether/how much of the recovered H₂ diverts to the LOHC branch — permanently "
@@ -8476,7 +8476,7 @@ def _render_hb_live_results(snap):
             c1.metric("Dispensed", f"{v['dispensed_kg_h']:.3f} kg/h")
             c2.metric("Available storage (prev. cycle)", f"{v['available_storage_kg']:.3f} kg")
             c3.metric("Max rated throughput", f"{v['max_rated_kg_h']:.1f} kg/h")
-            st.caption("\"Demand\" modeled as HB-018's own Confirmed max rated throughput — an ASSUMED "
+            st.caption("\"Demand\" modeled as HB-018's own registry max rated throughput — an ASSUMED "
                        "full-utilization worst case, no real FCEV traffic schedule exists in this project "
                        "(stated explicitly in this item's own confidence_note).")
             _hb_live_expander("HB-018 Dispensing", hb018)
@@ -8523,7 +8523,7 @@ def _render_hb_mass_energy_balance(snap):
         c1, c2, c3 = st.columns(3)
         c1.metric("Hot-side (gas) duty", f"{v['Q_hot_side_kW']:.3f} kW")
         c2.metric("Cold-side (water) duty", f"{v['Q_cold_side_kW']:.3f} kW")
-        c3.metric("HB-003's own Confirmed 'Design heat duty'", "5 kW")
+        c3.metric(f"HB-003's own {_caption_status('HB-003', 'Design heat duty')} 'Design heat duty'", "5 kW")
         gap_pct = abs(v['Q_hot_side_kW'] - v['Q_cold_side_kW']) / max(v['Q_hot_side_kW'], v['Q_cold_side_kW']) * 100
         st.caption(f"Hot/cold sides differ by {gap_pct:.1f}% — a genuine, NOT-forced-to-match cross-check "
                    f"(reported honestly either way, same discipline as this project's other real "
@@ -8533,7 +8533,7 @@ def _render_hb_mass_energy_balance(snap):
         st.warning("HB-003's own duty cross-check is unavailable this cycle.")
 
     st.divider()
-    st.markdown("**(c)/(d) Confirmed-rating cross-checks — HB-011 Electrolyser & HB-012 Compressor**")
+    st.markdown("**(c)/(d) Registry-rating cross-checks — HB-011 Electrolyser & HB-012 Compressor**")
     hb011 = snap.get(("HB-011", "Electrolyser"))
     hb012 = snap.get(("HB-012", "Compressor"))
     c1, c2 = st.columns(2)
@@ -8541,7 +8541,7 @@ def _render_hb_mass_energy_balance(snap):
         v = hb011["value"]
         with c1:
             st.metric("HB-011 load fraction / power", f"{v['load_fraction']*100:.1f}% / {v['power_kw']:.2f} kW")
-            st.caption("At load=1.0 this module's own formula exactly reproduces HB-011's own Confirmed "
+            st.caption("At load=1.0 this module's own formula exactly reproduces HB-011's own registry "
                        "55.000 kWh/Nm³ SEC (verified in this module's own self-test) — a real, "
                        "by-design exact match, not a coincidence.")
     if hb012 is not None and hb012.get("status") != ps.STATUS_MISSING:
@@ -8648,7 +8648,7 @@ def _render_hb_simulation_status(snap):
         "py`'s and `hb_remaining_chain.py`'s own registered HB models for the items with a live key "
         "(confirmed directly, Section 3/4 above) — a real simulation result, not a static figure. "
         "Section 7 below instead reads `equipment_registry.load_registry()` directly for ALL of "
-        "HB-001 through HB-018 — real registry/vendor/DOK-ING data (Confirmed) or a stated "
+        "HB-001 through HB-018 — registry entries whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated "
         "engineering estimate, never a simulation output. The two are never blended: every value on "
         "this tab is clearly one or the other, labeled at the point it's shown."
     )
@@ -8768,7 +8768,7 @@ def _render_hb_tab():
         "honestly rather than forced to match). The strongest fill in this whole project comes from "
         "here: HB-004's LTS-stage conversion efficiency (40%) is read directly from "
         "`python/kinetics.py`'s own live, independently-validated physics model, not an external "
-        "correlation, and cross-checked exactly by plain arithmetic on two already-Confirmed "
+        "correlation, and cross-checked exactly by plain arithmetic on two already-stated "
         "registry values. Five more apparent mislabeled cross-references were found in this "
         "section's own pre-existing remarks (bringing the running total to eight, across GC/SA/HB) "
         "and explicitly not relied upon — see `python/equipment_engineering_estimates.py` for the "
@@ -8790,10 +8790,10 @@ def _render_hb_tab():
             and _gc_summary["total_real_data_points"] == 122 and _gc_summary["populated_category_slots"] == 59
             and _sa_summary["total_real_data_points"] == 86 and _sa_summary["populated_category_slots"] == 27):
         st.success(
-            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 "
-            "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering "
-            "Estimate), and SA (86/27 — 26 Confirmed + 1 Engineering Estimate) — all real data "
-            "points/populated categories — are unchanged by adding this Hydrogen & BoP section."
+            "Regression check: FE (78/34), GA (100/41), GC (122/59) and SA (86/27) — all real data "
+            "points/populated categories — are unchanged by adding this Hydrogen & BoP section "
+            "(the Confirmed / Not DOK-ING-confirmed split is shown in the counts above)."
+            ""
         )
     else:
         st.error(
@@ -9043,7 +9043,7 @@ def _eu_schematic_legend_svg():
         "— a documented architectural feature (module docstring), not a simple linear flow and not an "
         "oversight.",
         "EU-009's own badge turns red (\"FAULT\") when AI-004's own real PLC interlock trips — EU-008's "
-        "cooling utilization exceeding 150% of its Confirmed rating — reusing the SAME alarm treatment "
+        "cooling utilization exceeding 150% of its registry rating — reusing the SAME alarm treatment "
         "the Plant Operations Header already shows for this exact condition.",
         "EU-001 (small italic label): a real registry sub-item of EU-002's own physical unit, no live "
         "key of its own — an instrumentation setpoint, not a live-computable process quantity.",
@@ -9139,7 +9139,7 @@ def _render_eu_live_kpis(snap):
                             f"{_ga_status_pill_html('fault' if rsz_val=='FAULT' else 'running' if rsz_val=='RUNNING' else 'missing')}",
                             unsafe_allow_html=True)
             st.caption("Both real, separately-provenanced AI-004 entries — `fault_status_as_specified` "
-                       "(Calculated, EU-008's real Confirmed 20kW basis) vs `fault_status_if_resized` "
+                       "(Calculated, EU-008's registry 20kW basis) vs `fault_status_if_resized` "
                        "(Estimated, evaluated against the same Internal-model-derived baseline above) — "
                        "never blended into one verdict.")
         else:
@@ -9170,10 +9170,10 @@ def _render_eu_live_kpis(snap):
 
     st.caption(
         "No comparison bar on net electrical balance/CHP dispatch total/district heating output/UPS "
-        "SOC — none has a genuinely separate Confirmed target to compare a live value against (net "
+        "SOC — none has a genuinely separate registry target to compare a live value against (net "
         "balance and SOC are simply what they are; the CHP/district-heat ~0kW findings above are "
         "audited in Section 5, not compared to a target). EU-008's own bar is the one place a real, "
-        "separately-stated Confirmed capacity exists to compare against."
+        "separately-stated registry capacity exists to compare against."
     )
 
 
@@ -9559,7 +9559,7 @@ def _render_eu_mass_energy_balance(snap):
     st.divider()
     st.error(
         "**(d) Cooling demand vs. supply — an AUDIT FINDING, not a closing balance.** EU-008's own "
-        "live demand is substantially above its Confirmed 20kW rating — see Section 2's/Section 4's "
+        "live demand is substantially above its registry 20kW rating — see Section 2's/Section 4's "
         "own headline treatment above for the full Section-8 (ACTUAL/DOK-ING VALUE vs DIGITAL TWIN "
         "ENGINEERING BASELINE) structure. This is not something that \"closes\" the way (a)/(c) above "
         "do — it is a real, open sizing question for DOK-ING, reported honestly, not smoothed over.",
@@ -9643,8 +9643,8 @@ def _render_eu_simulation_status(snap):
         "**Source, by section:** Sections 1–5 above read live output from `eu_utilities_chp.py`'s own "
         "registered EU models for the items with a live key (confirmed directly, Section 3/4 above) — "
         "a real simulation result, not a static figure. Section 7 below instead reads "
-        "`equipment_registry.load_registry()` directly for ALL of EU-001 through EU-013 — real "
-        "registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate, never a simulation "
+        "`equipment_registry.load_registry()` directly for ALL of EU-001 through EU-013 — registry entries "
+        "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering estimate, never a simulation "
         "output. The two are never blended: every value on this tab is clearly one or the other, "
         "labeled at the point it's shown."
     )
@@ -9670,7 +9670,7 @@ def _render_eu_tab():
         "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
         "fresh in-process engine run otherwise — see **Section 6 — Simulation Status** below for "
         "which one THIS page load used. **Two real findings, surfaced prominently, not buried:** "
-        "EU-008's own live cooling demand substantially exceeds its Confirmed 20kW rating (**Section "
+        "EU-008's own live cooling demand substantially exceeds its registry 20kW rating (**Section "
         "2/4/5**, the Missing Parameter Resolution Protocol's own already-documented finding, read "
         "live here) — and, separately, CHP's real electrical dispatch is genuinely ~0kW under this "
         "project's own current 100%-syngas-priority wiring (**Section 2/4/5**), a real, honest "
@@ -9785,11 +9785,11 @@ def _render_eu_tab():
             and _sa_summary["total_real_data_points"] == 86 and _sa_summary["populated_category_slots"] == 27
             and _hb_summary["total_real_data_points"] == 168 and _hb_summary["populated_category_slots"] == 70):
         st.success(
-            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 "
-            "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering "
-            "Estimate), SA (86/27 — 26 Confirmed + 1 Engineering Estimate), and HB (168/70 — 57 "
-            "Confirmed + 13 Engineering Estimate) — all real data points/populated categories — "
-            "are unchanged by adding this Electrical & Utilities section."
+            "Regression check: FE (78/34), GA (100/41), GC (122/59), SA (86/27) and HB (168/70) — all "
+            "real data points/populated categories — are unchanged by adding this Electrical & "
+            "Utilities section (the Confirmed / Not DOK-ING-confirmed split is shown in the "
+            "counts above)."
+            ""
         )
     else:
         st.error(
@@ -10565,8 +10565,8 @@ def _render_ai_simulation_status(snap):
         "**Source, by section:** Sections 1–5 above read live output from `ai_automation_layer.py`'s "
         "own registered AI models for the items with a live key (confirmed directly, Section 3/4 "
         "above) — a real simulation result, not a static figure. Section 7 below instead reads "
-        "`equipment_registry.load_registry()` directly for ALL of AI-001 through AI-015 — real "
-        "registry/vendor/DOK-ING data (Confirmed) or a stated engineering estimate, never a "
+        "`equipment_registry.load_registry()` directly for ALL of AI-001 through AI-015 — registry entries "
+        "whose origin is stated in the provenance worksheet (counts at the top of Section 7) or a stated engineering estimate, never a "
         "simulation output. The two are never blended: every value on this tab is clearly one or the "
         "other, labeled at the point it's shown."
     )
@@ -10737,12 +10737,12 @@ def _render_ai_tab():
             and _hb_summary["total_real_data_points"] == 168 and _hb_summary["populated_category_slots"] == 70
             and _eu_summary["total_real_data_points"] == 123 and _eu_summary["populated_category_slots"] == 54):
         st.success(
-            "Regression check: FE (78/34 — 27 Confirmed + 7 Engineering Estimate), GA (100/41 — 31 "
-            "Confirmed + 10 Engineering Estimate), GC (122/59 — 52 Confirmed + 7 Engineering "
-            "Estimate), SA (86/27 — 26 Confirmed + 1 Engineering Estimate), HB (168/70 — 57 "
-            "Confirmed + 13 Engineering Estimate), and EU (123/54 — 46 Confirmed + 8 Engineering "
-            "Estimate) — all real data points/populated categories — are unchanged by adding this "
-            "Automation & Instrumentation section."
+            "Regression check: FE (78/34), GA (100/41), GC (122/59), SA (86/27), HB (168/70) and EU (123/54) — "
+            "all real data points/populated categories — are unchanged by adding this Automation & "
+            "Instrumentation section (the Confirmed / Not DOK-ING-confirmed split is shown in the counts "
+            "above)."
+            ""
+            ""
         )
     else:
         st.error(
@@ -10802,7 +10802,7 @@ with tab9:
     g2.metric("Total real data points", _all_summary["total_real_data_points"])
     g3.metric("Confirmed (DOK-ING-sourced) slots",
               f"{_all_summary['confirmed_category_slots']} / {_all_summary['total_category_slots']}")
-    g4.metric("Not-confirmed slots",
+    g4.metric("Not DOK-ING-confirmed slots",
               f"{_all_summary['estimated_category_slots']} / {_all_summary['total_category_slots']}")
     g5.metric("Missing Data — Required",
               f"{_all_summary['missing_category_slots']} / {_all_summary['total_category_slots']}")
@@ -10817,7 +10817,7 @@ with tab9:
             f"**{_all_summary['confirmed_category_slots']} Confirmed** "
             f"({_all_summary['confirmed_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"at least one row cites a DOK-ING source), "
-            f"**{_all_summary['estimated_category_slots']} not confirmed** "
+            f"**{_all_summary['estimated_category_slots']} not DOK-ING-confirmed** "
             f"({_all_summary['estimated_category_slots'] / _all_summary['total_category_slots'] * 100:.1f}%, "
             f"strongest evidence in the slot is Calculated, Estimated from similar plants, an Engineering Estimate fill, Assumed, or Unverified (no stated origin yet) — "
             f"spanning all 7 sections now that the full registry-wide pass is complete: FE-001 "

@@ -74,7 +74,7 @@ def test_the_rendered_app_shows_the_new_counts_and_the_captions_follow_the_resol
     metrics = {}
     for m in at.metric:
         metrics.setdefault(m.label, []).append(m.value)
-    assert metrics["Confirmed (DOK-ING-sourced) slots"] == ["13 / 546"] and metrics["Not-confirmed slots"] == ["297 / 546"]
+    assert metrics["Confirmed (DOK-ING-sourced) slots"] == ["13 / 546"] and metrics["Not DOK-ING-confirmed slots"] == ["297 / 546"]
     assert str(s["evidence_label_slots"]["Unverified (registry)"]) in metrics["Unverified (registry)"]
     text = _texts(at)
     assert "Confirmed means a DOK-ING source is cited; unverified rows have no stated origin yet." in text
