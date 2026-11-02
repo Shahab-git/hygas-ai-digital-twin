@@ -145,21 +145,19 @@ def _value(module, name):
     return getattr(importlib.import_module("python." + module), name)
 
 
-def render_refused():
+def render_refused(ledger):
     """The 'Refused borrowings' section: every row that has a registry row nearby but does not take its status, with both values side by side, the registry row's resolved status and the reason."""
     from . import ledger_rows as lr
-    from . import parameter_table as pt
     esc = lambda s: str(s).replace("|", "/").replace(chr(10), " ")
-    table = {r["tag"]: r for r in pt.build_table()}
-    rows = {n["tag"]: n for n in lr.build_rows()}
-    reg_of = {tag: n["reg"] for tag, n in rows.items() if n["reg"]}
+    rows = {r["tag"]: r for r in ledger}                      # the rows of parameter_table.build_ledger(), passed in by the export (this module does not import parameter_table)
+    reg_of = {n["tag"]: n["reg"] for n in lr.build_rows() if n["reg"]}
     reg_of["GA-001.ash_fraction"] = ("GA-005", "Ash discharge rate (design)")
     L = ["## Refused borrowings", "",
          "A row takes the status of a registry row only for the SAME quantity in the SAME basis (`status_via`). These rows have a registry row nearby and do not: they are Assumed. "
          "One line each: the engine value, the registry value as written in the registry, the registry row's resolved status, and why.", "",
          "| ledger row | engine value | registry row | registry value | registry status | kind | reason |", "|---|---|---|---|---|---|---|"]
     for tag in lr.NOT_BORROWED:
-        src = rows.get(tag) or table[tag]
+        src = rows[tag]
         item, param = reg_of[tag]
         res, p = lr._registry_status((item, param))
         L.append(f"| {tag} | {esc(src['value'])} {esc(src['unit'])} | {item} / {esc(param)} | {esc(p['value'])} {esc(p['unit'])} | {res['status']} | {lr.REFUSAL_KIND[tag]} | {esc(lr.NOT_BORROWED[tag])} |")
