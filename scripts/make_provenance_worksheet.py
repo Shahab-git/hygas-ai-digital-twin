@@ -32,7 +32,8 @@ NAMED_UNITS = ("GA-001", "GA-003", "GA-004", "GA-005", "GA-006", "GA-007", "GA-0
 SA_EXPECTED = ("SA-001", "SA-002", "SA-003", "SA-004", "SA-005")
 # modules that only carry registry text (not engine models) are not evidence that the ENGINE refers to a row
 NOT_ENGINE = {"equipment_datasheet", "equipment_rfi_fills", "equipment_engineering_estimates", "parameter_table", "equipment_registry", "equipment_data_requests",
-              "equipment_request_routing", "design_basis", "provenance_overlay", "data_precedence", "measurement_replay"}
+              "equipment_request_routing", "design_basis", "provenance_overlay", "data_precedence", "measurement_replay",
+              "ledger_rows", "ledger_coverage", "ledger_consumers"}      # LEDGER (task A3): the design-basis ledger names registry fields; it is not an engine module
 
 
 def _load_audit():

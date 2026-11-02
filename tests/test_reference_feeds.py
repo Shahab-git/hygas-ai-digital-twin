@@ -141,5 +141,6 @@ def test_nothing_in_the_engine_or_the_app_reads_the_reference_feeds():
     for folder in ("python", "."):
         for name in os.listdir(os.path.join(ROOT, folder)):
             path = os.path.join(ROOT, folder, name)
-            if name.endswith(".py") and name != "reference_feeds.py" and os.path.isfile(path):
+            # LEDGER (task A3, deliberate edit): python/ledger_coverage.py lists the module in its scan and python/ledger_rows.py reads its constants for the ledger; neither is the engine or the app
+            if name.endswith(".py") and name not in ("reference_feeds.py", "ledger_coverage.py", "ledger_rows.py") and os.path.isfile(path):
                 assert "reference_feeds" not in open(path, encoding="utf-8").read(), name
