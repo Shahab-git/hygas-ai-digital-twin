@@ -142,7 +142,7 @@ def gc001_particulate(get_input):
         "missing_reason": (
             "No raw particulate/ash carryover loading exists anywhere in this project for the "
             "gasifier's own raw syngas -- GA-001's model tracks gas-phase composition, not "
-            "entrained solids. GC-002's own Confirmed >90% efficiency (>d50=15um) cannot be "
+            "entrained solids. GC-002's registry >90% efficiency (>d50=15um; Unverified (registry)) cannot be "
             "applied without a real inlet to apply it to; not back-calculated from GC-003's own "
             "downstream figure, which would be circular reasoning presented as a forward calc."
         ),

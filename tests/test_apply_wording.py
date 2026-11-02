@@ -39,7 +39,7 @@ KNOWN_ENGINE_STRINGS = (
     (r"FE-002's own Confirmed '>98% removal", "own Confirmed '>98% removal efficiency", "python/fe_feed_handling.py"),
     (r"GC-002's own Confirmed >90% efficiency", "own Confirmed >90% efficiency", "python/gc_gas_cleaning_chain.py"),
     (r"ACTUAL/DOK-ING VALUE: Confirmed", "ACTUAL/DOK-ING VALUE: Confirmed", "python/eu_utilities_chp.py"),
-    (r"exceeds its Confirmed 20kW rating", "exceeds its Confirmed 20kW rating", "python/tab1_integration.py"),
+    # LEDGER D2 (deliberate edit): the tab1_integration.py sentence ("exceeds its Confirmed 20kW rating") was reworded and is computed live, so it no longer renders: entry removed
 )
 CLAIM = re.compile(r"(?:\b(?:own|its|real|a|an|already)[ -]Confirmed\b|ACTUAL/DOK-ING VALUE: Confirmed|\(Confirmed\)|\d+ Confirmed \+|Confirmed[ -](?:rating|nameplate|capacity|target|technology|inlet|motor|design|reference|static|constant|bounds|remarks))")
 
@@ -99,7 +99,9 @@ def test_no_static_sentence_calls_registry_data_confirmed_without_the_dokink_qua
     assert unexplained == [], unexplained
     for pattern, phrase, rel in KNOWN_ENGINE_STRINGS:              # the allow-list entries really are engine-module text (and still there)
         assert any(re.search(pattern, c) for c in remaining), f"{pattern!r} no longer renders: remove it from KNOWN_ENGINE_STRINGS"
-        assert phrase in open(os.path.join(ROOT, rel), encoding="utf-8").read(), (phrase, rel)
+        # LEDGER D2 (deliberate edit): these sentences were reworded in the engine modules (task A3 item D); they still render here only because the committed sample
+        # snapshot (tests/fixtures/sample_snapshot.json) is a frozen copy of the OLD text. So the old phrase must be gone from the engine file (it used to be asserted present).
+        assert phrase not in open(os.path.join(ROOT, rel), encoding="utf-8").read(), (phrase, rel)
 
 
 def test_the_reworded_paragraphs_say_what_the_overlay_supports(rendered):

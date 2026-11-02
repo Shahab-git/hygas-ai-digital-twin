@@ -658,7 +658,7 @@ def eu008_recommended_capacity_estimate(get_input):
         "value": {
             # Section 8 structure --------------------------------------------------
             "actual_dokking_value": (
-                f"Confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own "
+                f"Unverified (registry), not DOK-ING-confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own "
                 f"registry remark: \"{EU008_REGISTRY_REMARK}\")"
             ),
             "actual_dokking_value_kw": EU008_RATED_CAPACITY_KW,
@@ -714,7 +714,7 @@ def eu008_recommended_capacity_estimate(get_input):
         "inputs": [("EU-008", "CoolingSupply"), ("EU-008", "RecommendedCapacityEstimate")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"ACTUAL/DOK-ING VALUE: Confirmed -- 20 kW, scoped to EU-004 jacket cooling only "
+            f"ACTUAL/DOK-ING VALUE: Unverified (registry), not DOK-ING-confirmed -- 20 kW, scoped to EU-004 jacket cooling only "
             f"(registry remark: \"{EU008_REGISTRY_REMARK}\"). DIGITAL TWIN ENGINEERING BASELINE: "
             f"approximately {baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW (Internal-model-"
             f"derived; peak demand {peak_range[0]:.0f}-{peak_range[1]:.0f} kW x 15% margin). "

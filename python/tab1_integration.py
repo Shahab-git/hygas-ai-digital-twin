@@ -320,7 +320,7 @@ def compute_tab1_kpis(snapshot):
             else "n/a"
         )
         alarms.append(
-            f"EU-008 cooling capacity -- ACTUAL/DOK-ING VALUE: Confirmed 20kW, scoped to EU-004 "
+            f"EU-008 cooling capacity -- ACTUAL/DOK-ING VALUE: Unverified (registry) 20kW, scoped to EU-004 "
             f"jacket cooling only (status={as_specified['status']}, fault_status_as_specified="
             f"{as_specified['value']}); DIGITAL TWIN ENGINEERING BASELINE: {baseline_text}, "
             f"Internal-model-derived (status={if_resized['status']}, fault_status_if_resized="
@@ -337,7 +337,7 @@ def compute_tab1_kpis(snapshot):
         if util > 1.0:
             bottlenecks.append(
                 f"EU-008 (Cooling Tower): real demand approximately {peak_lo:.0f}-{peak_hi:.0f}kW "
-                f"exceeds its Confirmed 20kW rating -- but that 20kW figure is itself scoped to "
+                f"exceeds its registry 20kW rating (Unverified (registry)) -- but that 20kW figure is itself scoped to "
                 f"EU-004 jacket cooling only (per EU-008's own registry remark), not necessarily "
                 f"the three-consumer load (GC-004/005+HB-003+HB-012) this model aggregates onto it. "
                 f"Real open question, not yet resolved: does the real plant have a separate cooling "

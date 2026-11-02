@@ -201,7 +201,7 @@ def fe002_tramp_metal_reject(get_input):
         "validation_basis": ps.VALIDATION_NA,
         "missing_reason": (
             "No feedstock tramp-metal (ferrous/non-ferrous) loading data exists anywhere in this "
-            "project -- FE-002's own Confirmed '>98% removal efficiency' describes the SEPARATOR's "
+            "project -- FE-002's registry '>98% removal efficiency' (Unverified (registry), not DOK-ING-confirmed) describes the SEPARATOR's "
             "own performance spec, not the actual metal content of DOK-ING's feedstock, which is "
             "unconfirmed. Not approximated, not fabricated."
         ),

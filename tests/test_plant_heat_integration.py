@@ -16,6 +16,7 @@ import subprocess
 
 import pytest
 
+import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
 from python import balance_audit as ba
 from python import plant_heat_integration as phi
@@ -38,7 +39,8 @@ def _const(v):
 
 
 def _ser(snapshot):
-    return {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()}
+    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this test's fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
+    return _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()})
 
 
 def _same(a, b, path=""):
@@ -252,7 +254,8 @@ def test_nothing_reads_the_key_and_no_model_depends_on_it():
             text = open(os.path.join(base, name), encoding="utf-8").read()
             if re.search(r"plant_heat_integration|HeatIntegration", text):
                 hits.append(rel)
-    assert hits == ["python/ga001_gasifier_model.py"], hits               # only the registration line reaches it
+    # LEDGER (deliberate edit): python/ledger_coverage.py names the module in its scan list and python/ledger_rows.py reads its ASSUMED constants for the design-basis ledger; neither reads the KEY
+    assert hits == ["python/ga001_gasifier_model.py", "python/ledger_coverage.py", "python/ledger_rows.py"], hits               # the registration line + the two ledger modules that name the module
 
 
 # ------------------------------------------------------------------ (f) nothing else moved, (g) the key count rises by exactly one

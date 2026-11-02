@@ -11,6 +11,7 @@ import os
 
 import pytest
 
+import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
 from python import balance_audit as ba
 from python import cycle_clock
@@ -44,7 +45,8 @@ SWEEPS = {
 
 
 def _ser(snapshot):
-    return {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()}
+    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this test's fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
+    return _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()})
 
 
 def _same(a, b, path=""):
