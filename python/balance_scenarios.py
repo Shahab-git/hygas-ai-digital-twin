@@ -2,7 +2,7 @@
 Closure audit of scenario snapshots (task A5) -- READ-ONLY. Pure functions over published snapshots; no engine edit, no balancing term, no tolerance.
 
 balance_audit.audit_snapshot() can be called on ANY snapshot unchanged, including those of the gasifying-agent scenarios (scripts/run_agent_comparison.py) and the
-reference feeds (python/reference_feeds.py + scripts/run_feed_comparison.py): none of them needs an engine edit, and no blocking Missing input appears. But the stock audit
+reference feeds (the reference-feed layer, via scripts/run_feed_comparison.py): none of them needs an engine edit, and no blocking Missing input appears. But the stock audit
 re-derives the oxidant as AIR (N2 = O2 x 0.79 / 0.21). In the scenarios that swap the oxidant's N2 (O2-enriched air, pure oxygen, carrier oxygen) that inflow is simply not the
 scenario's, so the stock N and mass rows show an artefact (relative N residual 0.99 for pure oxygen), not a model residual. `audit_case` therefore reports BOTH: the stock rows
 (unedited) and the rows with the scenario's own oxidant terms substituted for the audit's air terms, which is what the gasifying-agent study already did for its closure columns.
@@ -114,7 +114,7 @@ def audit_case(snapshot, previous, kpis, oxidant=OXIDANT_AIR, o2_fraction=None, 
         res["missing_inputs"].append(list(exc.args[0]))
     res["energy_gasifier"], res["energy_plant"] = gas, plant
     res["energy_missing_terms"] = {"gasifier": missing_g or [], "plant": missing_p or [], "scenario": list(SCENARIO_MISSING_TERMS[oxidant]),
-                                   "not_in_either_balance": ["stack and flue-gas losses beyond the Assumed ones (python/plant_heat_integration.py); start-up heat",
+                                   "not_in_either_balance": ["stack and flue-gas losses beyond the Assumed ones (the heat-integration inventory); start-up heat",
                                                              "heat of the oxidant supply (ASU) where the oxidant is not air"]}
     return res
 
