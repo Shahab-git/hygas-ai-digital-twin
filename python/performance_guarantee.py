@@ -45,6 +45,8 @@ mean recovery alone). Because run_monte_carlo() reads uncertainty.py's
 live bounds()/is_confirmed() state, every call here automatically
 reflects whatever confirmation_loop.py has (or hasn't) confirmed — no
 separate copy of that state exists in this module.
+
+MATURITY: PHYSICS_ESTIMATE — pricing from a Monte Carlo over Assumed ranges; the penalty rate is a placeholder.
 """
 import numpy as np
 

@@ -51,6 +51,8 @@ separate below — never conflated:
      reactors without adequate upstream cleaning (GC-008's job), the LTS
      catalyst's real sulfur tolerance is far tighter than the raw feed
      assumption.
+
+MATURITY: RULE_BASED — fixed comparisons with cited reference thresholds; not a hazard analysis.
 """
 from . import equipment_registry, uncertainty
 

@@ -34,6 +34,8 @@ reference or compute for a given equipment ID — not a plausible-sounding
 guess. Each record states its source module and the concrete reasoning
 for why that module counts as evidence for that lens, for that specific
 item. Judgment calls on lens assignment per module are stated inline.
+
+MATURITY: RULE_BASED — counts which registry items have code behind them; not a novelty judgment.
 """
 from . import equipment_registry
 

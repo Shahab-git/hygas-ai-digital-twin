@@ -37,6 +37,8 @@ Mechanism, step by step:
 This guarantees sum(allocations) <= the shared capacity exactly, by
 construction (a greedy fill against a hard cap), not by clipping an
 already-decided allocation after the fact.
+
+MATURITY: ILLUSTRATION — merit-order allocation among hypothetical plant variants; one real plant exists.
 """
 from . import dispatch_ga
 

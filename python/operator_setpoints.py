@@ -28,6 +28,8 @@ operator-input widget itself (a future, separate piece of work). This
 module and its own table are real and functional the moment any writer
 calls request_setpoint() or inserts a row directly -- nothing here
 depends on that future widget existing.
+
+MATURITY: RULE_BASED — a setpoint-request mechanism, not an AI method.
 """
 from datetime import datetime, timezone
 

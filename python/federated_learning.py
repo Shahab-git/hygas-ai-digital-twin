@@ -54,6 +54,8 @@ HONEST LIMITATION: 3 plants, non-IID only along temperature (each
 plant's local GHSV range is the full validated range). This demonstrates
 the MECHANISM, not a claim about how many real plants a production
 federated deployment would need.
+
+MATURITY: ILLUSTRATION — federated averaging across hypothetical plants whose data are sampled from the twin; there is no real fleet.
 """
 import numpy as np
 

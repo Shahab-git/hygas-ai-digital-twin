@@ -67,6 +67,8 @@ functions with sampled arguments):
     Inventing a numeric sensitivity coefficient for that pathway would be
     fabricating physics that isn't actually modeled here — flagged
     honestly instead, both here and in the app.py UI.
+
+MATURITY: PHYSICS_ESTIMATE — Monte Carlo over Assumed ranges through the steady-state physics; not measurement noise, not model error.
 """
 import random
 

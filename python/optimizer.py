@@ -41,6 +41,8 @@ setpoint, they recompute the result by calling kinetics.py/psa.py again,
 directly, independent of the search loop's internal bookkeeping, and
 assert it matches — guarding against the optimizer *reporting* a number
 that the real physics functions don't actually reproduce.
+
+MATURITY: PHYSICS_ESTIMATE — one-shot search over the steady-state physics with Assumed inputs; not MPC, not tuned on plant data.
 """
 import numpy as np
 from scipy.optimize import minimize

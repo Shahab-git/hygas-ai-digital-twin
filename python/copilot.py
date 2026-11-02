@@ -18,6 +18,8 @@ an honest "I don't cover that yet" instead of a guess.
     "dispatch": None | {"result": {unit_name: load_factor, ...},
                          "syngas_budget": float, "h2_budget": float},
 }
+
+MATURITY: RULE_BASED — fixed question patterns over the current slider values; no learning, no plant data.
 """
 import re
 
