@@ -30,6 +30,7 @@ publishes a mass, which is then used as published.
 """
 import math
 
+from . import balance_closure_kind
 from . import cycle_clock
 from . import design_basis
 from . import ga001_gasifier_model as ga001
@@ -859,4 +860,5 @@ def audit_snapshot(snapshot, previous_snapshot=None, kpis=None):
             out["efficiencies"] = efficiency_check(snapshot, previous_snapshot, kpis)
         except AuditInputMissing as exc:
             out["missing_inputs"].append(exc.args[0])
+    balance_closure_kind.annotate_audit(out)          # task A5: label each closure row ENFORCED / VERIFIED / PARTLY; no number is touched
     return out
