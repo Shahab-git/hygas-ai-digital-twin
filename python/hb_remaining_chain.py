@@ -165,9 +165,9 @@ AI001_ILLUSTRATIVE_AVAILABILITY_FRACTION = 0.6
 
 # --- HB-011 Electrolyser (PEM, Confirmed rated figures) -------------------
 HB011_RATED_POWER_KW = 10.0
-HB011_RATED_H2_NM3_H = 0.18                 # Confirmed, informational cross-check only
-HB011_SEC_RATED_KWH_PER_NM3 = 55.0          # HB-011's own Confirmed "System efficiency"
-HB011_WATER_L_PER_NM3 = 1.0                 # HB-011's own Confirmed "Water consumption"
+HB011_RATED_H2_NM3_H = 0.18                 # registry-stated [Unverified (registry)], informational cross-check only
+HB011_SEC_RATED_KWH_PER_NM3 = 55.0          # HB-011's own registry-stated [Unverified (registry)] "System efficiency"
+HB011_WATER_L_PER_NM3 = 1.0                 # HB-011's own registry-stated [Unverified (registry)] "Water consumption"
 HB011_MIN_LOAD_FRACTION = 0.10              # Assumed: literature-typical PEM stack turndown
                                              # (PEM commonly cited as stable down to ~5-10% of
                                              # rated current, unlike alkaline's ~20-40% -- HB-011's
@@ -179,10 +179,10 @@ HB011_BOP_POWER_FRACTION = 0.08             # Assumed: literature-typical balanc
                                              # project's registry.
 
 # --- HB-010 Membrane Separator ---------------------------------------------
-HB010_FEED_FLOW_NM3_H = 50.0                # Confirmed (matches the flow established plant-wide)
-HB010_CONFIRMED_RECOVERY = 0.85             # Confirmed (registry: "H2 recovery rate")
-HB010_CONFIRMED_PURITY_RANGE = (0.95, 0.98) # Confirmed (registry: "Permeate H2 purity", 95-98 vol%)
-HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION = 0.55  # Confirmed (registry: "Feed gas H2 partial pressure"
+HB010_FEED_FLOW_NM3_H = 50.0                # registry-stated [Unverified (registry)] (matches the flow established plant-wide)
+HB010_CONFIRMED_RECOVERY = 0.85             # registry-stated [Unverified (registry)] (registry: "H2 recovery rate")
+HB010_CONFIRMED_PURITY_RANGE = (0.95, 0.98) # registry-stated [Unverified (registry)] (registry: "Permeate H2 purity", 95-98 vol%)
+HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION = 0.55  # registry-stated [Unverified (registry)] (registry: "Feed gas H2 partial pressure"
                                              # remark states "55% H2 content (HB-006)" explicitly --
                                              # the SAME basis HB010_CONFIRMED_RECOVERY/_PURITY_RANGE
                                              # are themselves stated at, matching HB-006's own
@@ -196,9 +196,9 @@ HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION = 0.55  # Confirmed (registry: "Feed gas
 HB010_COMPARABLE_H2_CO2_SELECTIVITY = 20.2
 
 # --- HB-014/015/016/017 LOHC branch ----------------------------------------
-HB014_LOADING_EFFICIENCY_WT_PCT = 6.2       # Confirmed
-HB016_RELEASE_EFFICIENCY_WT_PCT = 6.0       # Confirmed
-HB017_RECOVERY_EFFICIENCY = 0.99            # Confirmed ">99%", point value used
+HB014_LOADING_EFFICIENCY_WT_PCT = 6.2       # registry-stated [Unverified (registry)]
+HB016_RELEASE_EFFICIENCY_WT_PCT = 6.0       # registry-stated [Unverified (registry)]
+HB017_RECOVERY_EFFICIENCY = 0.99            # registry-stated [Unverified (registry)] ">99%", point value used
 
 # HB-016 DEHYDROGENATION activation-energy range (kJ/mol) -- real, independently-verified
 # literature, both studies matching HB-016's own Confirmed Pt/Al2O3 catalyst AND its own
@@ -242,7 +242,7 @@ HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN = 0.0222  # Garidzirai et al. 2024, 
 HB014_HYDROGENATION_EA_KJ_PER_MOL_RANGE = (50.0, 90.0)
 
 # --- HB-018 Dispensing -------------------------------------------------------
-HB018_MAX_DISPENSE_RATE_KG_H = 1.2 * 60.0   # Confirmed 1.2 kg/min -> 72 kg/h
+HB018_MAX_DISPENSE_RATE_KG_H = 1.2 * 60.0   # registry-stated [Unverified (registry)] 1.2 kg/min -> 72 kg/h
 
 
 # ============================================================================

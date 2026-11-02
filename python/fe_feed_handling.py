@@ -106,7 +106,7 @@ FE004_SPECIFIC_ENERGY_KWH_PER_T = FE004_MOTOR_KW / FE004_THROUGHPUT_T_H  # = 150
 
 # --- FE-005 Feed Dryer (both Confirmed) -------------------------------------
 FE005_INLET_MOISTURE_FRACTION = 0.10
-FE005_OUTLET_MOISTURE_FRACTION = 0.01  # FE-005's own Confirmed "<1%" target, taken as ~1%,
+FE005_OUTLET_MOISTURE_FRACTION = 0.01  # FE-005's own registry-stated [Unverified (registry)] "<1%" target, taken as ~1%,
                                          # same treatment as the existing FE-007 static fill
 
 

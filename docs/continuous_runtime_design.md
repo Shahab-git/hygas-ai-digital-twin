@@ -1,8 +1,9 @@
 # Continuous Simulation Runtime Layer — Design
 
-**STATUS: DESIGN ONLY. Nothing in this document has been implemented.** No
-code, schema, or workflow file described here exists yet. This is a
-specification for review before any of it is built.
+**STATUS: the design below has been implemented in its main points** (`scripts/run_continuous_cycle.py`, `python/cycle_clock.py`,
+`.github/workflows/continuous_cycle.yml`, `data/plant_state_current_schema.sql`); later changes (the elapsed-time step, off-peak cron minute, store-read
+guard) are recorded in `docs/audit_2026-10-27.md`. Where the text below says "will be built" it is the original specification. Whether the schema was
+applied to a production database and how the scheduled runs behave there: NOT VERIFIED from the repo.
 
 ## 0. Purpose and scope
 

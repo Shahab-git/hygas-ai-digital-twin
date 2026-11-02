@@ -158,13 +158,13 @@ from . import hb_wgs_psa_storage_chain as hbchain
 from . import plant_status as ps
 
 # --- Real physical/Confirmed constants --------------------------------------
-SYNGAS_LHV_MJ_PER_NM3 = 9.8    # Confirmed STATIC design-point figure (EU-003/EU-005, matches
+SYNGAS_LHV_MJ_PER_NM3 = 9.8    # registry-stated [Unverified (registry)] STATIC design-point figure (EU-003/EU-005, matches
                                  # SA-006 directly) -- used ONLY as an honest cross-check
                                  # reference below, NOT for the live budget calc itself; see
                                  # _syngas_lhv_mj_per_nm3().
 SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": 10.783, "CO": 12.622, "CH4": 35.883}  # standard
                                  # combustion-engineering reference values (ideal-gas, 25C)
-H2_LHV_MJ_PER_NM3 = 10.8       # Confirmed (EU-006's own stated basis)
+H2_LHV_MJ_PER_NM3 = 10.8       # EU-006's own stated basis [Assumed; no DOK-ING source line]
 
 # EU-004 Gas Engine thermal split (both Confirmed).
 EU004_JACKET_KWTH_RATED = 12.0
@@ -204,7 +204,7 @@ EU008_SIZING_MARGIN_FRACTION = 0.15              # Estimated: standard HVAC/proc
 EU010_RATED_KVA = 10.0
 EU010_BACKUP_HOURS = 30.0 / 60.0
 EU010_CAPACITY_KWH = EU010_RATED_KVA * EU010_BACKUP_HOURS  # 5.0 kWh, derived, not assumed
-EU010_ROUNDTRIP_EFFICIENCY = 0.94                            # midpoint of Confirmed ~92-96%
+EU010_ROUNDTRIP_EFFICIENCY = 0.94                            # midpoint of the ~92-96% range quoted in the code [Assumed; no DOK-ING source line]
 
 # EU-011 Heat Recovery: cp back-derived from EU-011's own stated design point
 # (9 kWth at 150 Nm3/h exhaust, 280->120 degC) -- a standard combustion-exhaust

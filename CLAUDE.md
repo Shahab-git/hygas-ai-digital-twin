@@ -16,11 +16,11 @@ Two parallel implementations are planned and should both be maintained:
   physics, used as the backend for a live Streamlit dashboard, since
   Streamlit Cloud can't run Simulink.
 
-`/matlab` doesn't exist yet in this repo. `/python` now exists, but only
-covers the WGS/PSA/CHP/dispatch subset below — the gasifier, gas cleaning,
-and interstage HX are not yet implemented in either language. When adding
-a new physics module, implement it in both languages and cross-check that
-they agree numerically before considering it done.
+`/matlab` doesn't exist in this repo (checked 2026-11-02). `/python` covers the WGS/PSA/CHP/dispatch subset below and also feed handling,
+the GA-001 gasifier, the gas-cleaning train, the hydrogen and utilities chains and the sensors (`python/*_chain.py`, `ga001_*`,
+`eu_utilities_chp.py`, `sa_virtual_sensors.py`); none of it is cross-checked against MATLAB/Simulink or plant data (NOT VERIFIED: no such
+comparison is in the repo). When adding a new physics module, implement it in both languages and cross-check that they agree
+numerically before considering it done.
 
 ## Repository structure (verified against actual code)
 
@@ -594,21 +594,24 @@ Only what the 2026-10-27 audit measured; nothing here is a new claim.
 - **Registry status now comes from the owner's provenance answers, not a default (`docs/provenance_phase2.md`, `python/registry_status.py`, `data/registry_status_overlay.json`):** a row is Confirmed only with a cited DOK-ING source (16 rows / 13 of 546 slots; before: 766 / 262), 737 rows are 'Unverified (registry)' (no stated origin yet, including 4 UNKNOWN rows), and `equipment_datasheet.slot_status` has no default to Confirmed. Display and parameter-table only: no model reads it. About 14 static explanatory paragraphs in `app.py` still say 'Confirmed' in general terms.
 - **No plant heat integration exists; `(PLANT, HeatIntegration)` is a read-only inventory (`docs/plant_heat_integration.md`, `python/plant_heat_integration.py`):** the engine has no boiler, burner, stack or heat recovery. The key lists the heat sources and sinks by temperature level with Assumed recovery fractions (nothing reads it, nothing is tuned): at the defaults the heat deficit is 52 kW (37.6 kg/day hydrogen-equivalent) with `regasify` and 13 kW (9.5 kg/day) with `heat_only` at DOK-ING's midpoint LHV; the shortfall is energy, not temperature level. Burner efficiency, ASU heat, losses and tar energy are Missing; DOK-ING's stack, steam-generator fuel and gas-cooler data would settle the Assumed constants.
 
-## Not yet built (the actual current state)
+## Not yet built (status checked against the repo on 2026-11-02)
 
-`python/kinetics.py`, `python/psa.py`, `python/chp.py`,
-`python/dispatch_ga.py`, and `app.py` exist and are verified (see above).
-Still missing:
+`python/kinetics.py`, `python/psa.py`, `python/chp.py`, `python/dispatch_ga.py` and `app.py` exist and are verified (see above). The list below was
+written when only those existed; each item now says what the repo holds.
 
-1. `/matlab` — the physics model itself; nothing in this repo has been
-   cross-checked against Simulink yet, only against the documented targets.
-2. Gasifier, gas cleaning, and interstage HX — no Python or MATLAB
-   implementation yet.
-3. Digital twin data layer — time-series logging of simulation runs.
-4. MPC controller (central optimiser / AI reasoning layer).
-5. AI agents — start with operator copilot and vendor-sourcing agent.
-6. Everything in the "Rare methods" category above.
-7. Monte Carlo uncertainty propagation for the 6 unconfirmed assumptions.
+1. `/matlab` — the physics model itself; still absent. Nothing in this repo has been cross-checked against Simulink, only against the
+   documented targets.
+2. Gasifier, gas cleaning, and interstage HX — implemented in Python only (`python/ga001_gasifier_model.py`, `python/gc_gas_cleaning_chain.py`,
+   HB-003 in `python/hb_wgs_psa_storage_chain.py`); no MATLAB version, no validation against plant data.
+3. Digital twin data layer — partly: `scripts/run_continuous_cycle.py` writes the latest plant state to Supabase
+   (`data/plant_state_current_schema.sql`) and `python/measurement_replay.py` is a synthetic-data replay validator. Whether a time-series
+   history table exists or is deployed: NOT VERIFIED from the repo.
+4. MPC controller — not built. `python/optimizer.py` is a single-shot setpoint optimiser; its own docstring says it is not MPC.
+5. AI agents — the operator copilot (`python/copilot.py`) is rule-based with no LLM; `python/vendor_log.py` is a manual quote tracker; a web-search
+   sourcing agent is not built.
+6. "Rare methods" — illustrative modules exist (`python/federated_learning.py`, `multi_agent_negotiation.py`, `pinn_kinetics.py`,
+   `tda_analysis.py`); their docstrings state they use hypothetical plants or synthetic data, so none is a validated result.
+7. Monte Carlo uncertainty propagation for the 6 unconfirmed assumptions — `python/uncertainty.py` exists (its ranges are Assumed, see `docs/design_basis_ledger.md`).
 8. Liquid-carrier H2 storage (room temperature/pressure) — DOK-ING's real
    RFI response (data/dokink_rfi_answers.md, RFI #8) confirms this exists
    as an alternative to the compressed-gas route (HB-013's 875 bar(g)

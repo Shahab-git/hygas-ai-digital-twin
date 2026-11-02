@@ -1,14 +1,15 @@
 """
 Loader for the real MSW equipment registry (91 items).
 
-Source of truth: data/MSW_Equipment_Datasheets_Interactive.xlsx (the actual
-DOK-ING equipment datasheet workbook). data/equipment_registry.json is a
-one-time flattened extract of that workbook (see scripts/build_registry.py),
+Source: data/MSW_Equipment_Datasheets_Interactive.xlsx, a workbook whose authorship and DOK-ING status are an open
+question (the provenance worksheet records, row by row, which values DOK-ING stated; the rest resolve to "Unverified
+(registry)" - see python/registry_status.py). data/equipment_registry.json is a flattened extract of that workbook;
+the script named in earlier versions of this note, scripts/build_registry.py, is not in the repo (NOT VERIFIED how the extract was made),
 committed so the deployed app doesn't need openpyxl/pandas as a runtime
 dependency just to read a static registry.
 
-Every item already carries real technical parameters from the source
-workbook. What's genuinely NOT known for any of the 91 items (except one,
+Every item carries technical parameters from the source
+workbook (their DOK-ING status is per row, not per workbook). What's genuinely NOT known for any of the 91 items (except one,
 SA-005, which is explicitly marked not applicable) is vendor/model and a
 datasheet reference — that gap is exactly what python/vendor_log.py tracks.
 """

@@ -9095,7 +9095,7 @@ def _render_eu_live_kpis(snap):
                        delta=f"{delta:+.3f} kW" if delta is not None else note, delta_color="off", help=note)
             if chp_total_kw < 1e-6:
                 st.caption("⚠️ Genuinely ~0kW — a real, documented consequence of this project's own "
-                           "100% WGS/PSA syngas claim (DOK-ING's own confirmed priority), not a bug. "
+                           "100% WGS/PSA syngas claim (a model choice: DOK-ING states hydrogen is the primary product and CHP is optional, data/dokink_rfi_answers.md RFI answer 10), not a bug. "
                            "See Section 5.")
         else:
             st.warning("EU-CHP Dispatch unavailable this cycle.")
