@@ -23,8 +23,10 @@ APP = os.path.join(ROOT, "app.py")
 RENDERED = ("copilot", "optimizer", "predictive_maintenance", "pinn_kinetics", "federated_learning", "multi_agent_negotiation", "multi_module_orchestration", "sim_to_real", "tda_analysis",
             "novelty_audit", "safety_flags", "regulatory_drafting", "performance_guarantee", "sa_virtual_sensors", "ai_automation_layer", "uncertainty")
 CONDITIONAL = ("root_cause", "time_series_sim")
+BANNED_VALIDATION_CLAIM = re.compile(r"already[- ]validated|live[- ]validated|independently[- ]validated|genuinely validated", re.I)
 REMOVED_PHRASES = ("already validated exactly", "from a live sensor", "range this project has already validated", "own validated physics-informed loss", "on this project's own validated physics",
-                   "live-registered virtual sensors")
+                   "live-registered virtual sensors", "already-validated WGS reaction kinetics", "live-validated SOFC part-load efficiency curve", "independently-validated physics model",
+                   "chp.py's own already-validated physics", "what's genuinely validated")
 
 
 @pytest.fixture(scope="module")
@@ -94,6 +96,33 @@ def test_the_lines_that_implied_more_than_the_module_does_are_gone(app):
     for phrase in REMOVED_PHRASES:
         assert phrase not in src, phrase
     assert "typed in by hand (%) — no live sensor is connected" in blob
+
+
+def _flat(text):
+    """Source text with string-literal joins removed, so a sentence split over several literals can be searched."""
+    return " ".join(re.sub(r'"\s*\n\s*"', "", text).split())
+
+
+def test_no_validation_claim_without_evidence_in_app_py_or_in_the_rendered_app(app):
+    """A10b: 'already-validated', 'live-validated', 'independently-validated', 'genuinely validated' are gone from every string and comment of app.py and from the rendered text; the
+    replacements name the documented target (kinetics.py's header: 75.0 % / 40.0 % design targets) or say there is no comparison data (the CHP part-load shape)."""
+    with open(APP, encoding="utf-8") as fh:
+        src = fh.read()
+    assert BANNED_VALIDATION_CLAIM.findall(src) == []
+    assert BANNED_VALIDATION_CLAIM.findall("\n".join(_texts(app[0]))) == []
+    flat = _flat(src)
+    assert "reproduces the 75.0 % / 40.0 % design targets quoted from prior MATLAB/Simulink work, with no comparison with plant data" in flat
+    assert "checked only at full load, where it reproduces the rated 55 %; no comparison data exists for the part-load shape" in flat
+
+
+def test_the_datasheet_fill_texts_no_longer_claim_validation():
+    with open(os.path.join(ROOT, "python", "equipment_engineering_estimates.py"), encoding="utf-8") as fh:
+        text = fh.read()
+    flat = _flat(text)
+    for phrase in ("kinetics.py's own live-validated lts_conversion() output", "independently-validated lts_conversion() output", "chp.py's own live-validated part-load correlation",
+                   "chp.py's own live, independently-validated part-load correlation for SOFC"):
+        assert phrase not in flat, phrase
+    assert "it reproduces the 40.0% design target; no plant data" in flat and "checked only at full load" in flat
 
 
 def test_no_maturity_caption_or_ai_section_claims_validation_learning_or_real_time_control(app):

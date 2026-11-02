@@ -983,7 +983,7 @@ with tab1:
         "thresholds, mass-balance chain-of-custody, and more. This repo cannot implement that "
         "process or make that legal determination, and makes no such claim. What this **does** "
         "do: organize the plant's actual data into the checklist shape a real audit would start "
-        "from, and clearly separate what's genuinely validated from what's still an assumption "
+        "from, and clearly separate what the twin's own physics or a DOK-ING source supports from what's still an assumption "
         "or undocumented.",
         icon="⚠️",
     )
@@ -8772,7 +8772,7 @@ def _render_hb_tab():
         "Cleaning's GC-001–015, Sensors & Analysers' SA-001–012, Electrical & Utilities' "
         "EU-001–013, and Automation & Instrumentation's AI-001–015 each have their own tab — all "
         "91 registry items are now covered, one section per tab). This is the section "
-        "containing the already-validated WGS reaction kinetics (HB-001/HB-004) this project relies "
+        "containing the WGS reaction kinetics (HB-001/HB-004) — `kinetics.py` reproduces the 75.0 % / 40.0 % design targets quoted from prior MATLAB/Simulink work, with no comparison with plant data — this project relies "
         "on elsewhere — checked specifically that HB-002's steam-to-CO ratio, GHSV, and conversion "
         "efficiency, and HB-004's catalyst sulfur tolerance already cited in `safety_flags.py`, all "
         "land in sensible categories, not silently dropped or miscategorized. Same real registry "
@@ -8784,7 +8784,7 @@ def _render_hb_tab():
         "extension said 52 — checked directly against live data, the real count is 51, reported "
         "honestly rather than forced to match). The strongest fill in this whole project comes from "
         "here: HB-004's LTS-stage conversion efficiency (40%) is read directly from "
-        "`python/kinetics.py`'s own live, independently-validated physics model, not an external "
+        "`python/kinetics.py`'s own live physics model (it reproduces the 40.0 % design target; no plant data), not an external "
         "correlation, and cross-checked exactly by plain arithmetic on two already-stated "
         "registry values. Five more apparent mislabeled cross-references were found in this "
         "section's own pre-existing remarks (bringing the running total to eight, across GC/SA/HB) "
@@ -8881,7 +8881,7 @@ with tab7:
 # this is the intended headline, not something previously hidden). No
 # OTHER EU item carries a comparable unflagged gap -- EU-002/003/005/006's
 # own part-load efficiency figures below their own rated values are normal
-# curve behavior (chp.py's own already-validated physics), not a target
+# curve behavior (chp.py's own part-load curve, checked only at full load), not a target
 # miss, so none of them gets a shortfall banner.
 # =============================================================================
 
@@ -9776,7 +9776,7 @@ def _render_eu_tab():
         "heat-duty and medium-naming fields into Performance Indicators). **This is the sixth "
         "section (after the FE pilot and the GA/GC/SA/HB extensions) to receive engineering "
         "estimates**: 8 of EU's 32 remaining gaps are filled — including this section's own "
-        "strongest fill, `python/chp.py`'s live-validated SOFC part-load efficiency curve (the "
+        "strongest fill, `python/chp.py`'s SOFC part-load efficiency curve (checked only at full load, where it reproduces the rated 55 %; no comparison data exists for the part-load shape; the "
         "same discipline as HB-004's kinetics.py fill), plus two heat-exchanger-effectiveness "
         "calculations that reach OPPOSITE conclusions (one filled, one declined) depending on "
         "whether the underlying streams' heat-capacity rates are actually confirmed equal — a "

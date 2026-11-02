@@ -103,3 +103,40 @@ None of the 19 modules writes plant state, setpoints or the database on its own,
 `digital_twin_cycle_log`; its only caller is guarded by `vendor_log.db_writes_allowed()`); `operator_setpoints.request_setpoint` (upsert, no guard, no caller in the repository) and
 `mark_setpoint_applied` (guarded); `performance_guarantee.price_with_confirmation_scenario` changes `uncertainty.ASSUMPTIONS` in process and restores it in a `finally`; `sa_virtual_sensors` and
 `ai_automation_layer` register engine models and so publish entries by design.
+
+
+## 9. Wording audit of "validated" (A10b)
+
+Basis found in the repo: `python/kinetics.py:2-4` ("at design conditions ... reproduces the established targets of 75.0% and 40.0% relative conversion exactly"; the targets are quoted from prior
+MATLAB/Simulink work in CLAUDE.md "Validated milestones"; the Simulink model is not in the repo; no plant data). `python/chp.py:2-4` ("at load_factor=1.0, each curve reduces exactly to its rated
+efficiency"): the only comparison is at full load; the part-load coefficients have no cited source and no comparison data exists in the repo.
+
+Reworded (user-visible text, or a comment repeating it):
+
+| where | before | after |
+|---|---|---|
+| app.py, HB tab intro | "the already-validated WGS reaction kinetics (HB-001/HB-004)" | "the WGS reaction kinetics (HB-001/HB-004) — `kinetics.py` reproduces the 75.0 % / 40.0 % design targets quoted from prior MATLAB/Simulink work, with no comparison with plant data" |
+| app.py, HB tab intro | "kinetics.py's own live, independently-validated physics model" | "kinetics.py's own live physics model (it reproduces the 40.0 % design target; no plant data)" |
+| app.py, EU tab intro | "chp.py's live-validated SOFC part-load efficiency curve" | "chp.py's SOFC part-load efficiency curve (checked only at full load, where it reproduces the rated 55 %; no comparison data exists for the part-load shape" |
+| app.py, Compliance | "separate what's genuinely validated from what's still an assumption" | "separate what the twin's own physics or a DOK-ING source supports from what's still an assumption" |
+| app.py, comment | "chp.py's own already-validated physics" | "chp.py's own part-load curve, checked only at full load" |
+| datasheet remark + source, HB-004 LTS conversion | "kinetics.py's own live, independently-validated lts_conversion() output" | "kinetics.py's own live lts_conversion() output (it reproduces the 40.0% design target; no plant data)" |
+| datasheet remark + source, EU-001 SOFC part-load range | "chp.py's own live, independently-validated part-load correlation for SOFC" | "chp.py's own live part-load correlation for SOFC (checked only at full load; no comparison data for the part-load shape)" |
+| equipment_engineering_estimates.py docstrings / comments (5) | "live, independently-validated", "already-validated" | "design-target-checked (no plant data)" / "checked only at full load" |
+
+Every other occurrence of "validated" in `app.py` and `python/*.py` (78 in all, before this change), with its verdict. "Persisted" = text inside a published snapshot entry: not changed (every persisted value is bit-identical
+to `origin/main`). "Docstring / comment" = not shown to users.
+
+| file:line | verdict | note |
+|---|---|---|
+| app.py:568, 8855; eu_utilities_chp.py:88 | TRUE AS WRITTEN | names CLAUDE.md's "Validated milestones" table, whose header says the rows are targets from prior MATLAB/Simulink work |
+| app.py:1875; dynamics.py:85; ga001_gasifier_model.py:854; literature_reference.py:21; reference_feeds.py:25; tda_analysis.py:58, 62; pinn_kinetics.py:52; ui_transient_sim.py:20, 38, 65, 70, 73, 75; ui_transient_tab.py:13 | TRUE AS WRITTEN | negated ("not validated ...") |
+| data_precedence.py:59; shared_plant_state.py:125; regulatory_drafting.py:80; fe_feed_handling.py:37; ga001_gasifier_model.py:208, 593 | TRUE AS WRITTEN | input validation, a self-test, a sort, or a cross-check against DOK-ING's confirmed ranges |
+| equipment_datasheet.py:30; ga001_gasifier_model.py:390; hb_wgs_psa_storage_chain.py:159, 309, 367 (persisted) | TRUE AS WRITTEN | "design-target validated (75.0 % ...)" names the target |
+| literature_reference.py:179, 182 | TRUE AS WRITTEN | reports a source paper's own claim ("validated against lab-scale transient tests"), attributed |
+| eu_utilities_chp.py:670, 685, 689 (persisted EU-008 baseline basis) | NEEDS REWORDING, not changed | "independently-validated real duties": persisted text |
+| eu_utilities_chp.py:1396, 1401; equipment_engineering_estimates.py:2677 | NEEDS REWORDING, not changed | self-test output ("already-validated models", "doubly validated"), not shown in the app |
+| compliance.py:36, 44, 74; equipment_datasheet.py:20; equipment_engineering_estimates.py:65, 72, 239, 300, 1127; equipment_rfi_fills.py:108; federated_learning.py:12, 54, 185; gc_gas_cleaning_chain.py:84; hb_wgs_psa_storage_chain.py:5; novelty_audit.py:14; pinn_kinetics.py:35, 49, 67, 163, 200; predictive_maintenance.py:6; sim_to_real.py:23, 107; time_series_sim.py:12, 65; uncertainty.py:15 | NEEDS REWORDING, not changed | docstrings and comments ("already-validated", "validated domain", "validated source of truth") that mean "reproduces its design target" or "checked against kinetics.py"; not shown to users; left for a later wording pass |
+
+The phrases that were reworded cannot return: `tests/test_ai_maturity_ui.py` scans `app.py`, the rendered text and `equipment_engineering_estimates.py` for "already-validated", "live-validated",
+"independently-validated" and "genuinely validated".

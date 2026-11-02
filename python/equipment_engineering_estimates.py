@@ -218,7 +218,7 @@ Filter) is the actual, exact match. Neither mislabeled reference is
 relied upon by anything filled here.
 
 HB-SPECIFIC DISCIPLINE (task requirements 2-5): task requirement 2's
-explicit priority — check kinetics.py/psa.py's own already-validated
+explicit priority — check kinetics.py/psa.py's own design-target-checked (no plant data)
 physics FIRST, since it's independently verified, not an external
 correlation — produced this whole project's SINGLE STRONGEST fill:
 HB-004 (WGS Reactor LTS) Performance Indicators (40% relative
@@ -1137,7 +1137,7 @@ FILLED — 13 of 51:
     gas stream, HB-002's outlet IS HB-004's inlet directly.
 
   HB-004 Performance Indicators: LTS-stage relative CO conversion,
-    40%. Basis: kinetics.py's own live, independently-validated
+    40%. Basis: kinetics.py's own live (design-target-checked, no plant data)
     lts_conversion() output (this project's single strongest possible
     basis — verified physics, not a correlation), cross-checked by
     plain arithmetic on two values ALREADY Confirmed in the registry
@@ -1360,7 +1360,7 @@ FILLED — 8 of 32:
   EU-001 (SOFC Stack, Temp) Performance Indicators: SOFC electrical
     efficiency ranges from ~39.4% (chp.py's own defined near-zero-load
     floor, x=0.01) up to the rated 55% at full load (x=1.0). Basis:
-    chp.py's own live, independently-validated part-load correlation
+    chp.py's own live part-load correlation (checked only at full load)
     for SOFC specifically (this project's single strongest possible
     basis for this section, the same discipline as HB-004's kinetics.py
     fill) — genuinely NEW information, since the registry only ever
@@ -1650,7 +1650,7 @@ def _source_ai(basis_label):
 
 _GC_TRAIN_GAS_FLOW_NM3_H = 50  # GC-003's/GC-009's/GC-013's own independently confirmed design gas flow rate, held constant across the whole downstream train per those items' own remarks
 
-# HB-004's own strongest-possible fill: kinetics.py's live, independently-validated
+# HB-004's own strongest-possible fill: kinetics.py's live (design-target-checked, no plant data)
 # lts_conversion(), fed the ACTUAL upstream HTS outlet (HB-002's own confirmed 7 vol% CO),
 # not re-derived from scratch. Cross-verified below in the self-test against plain
 # arithmetic on HB-002's/HB-004's own confirmed registry values.
@@ -1660,7 +1660,7 @@ _HB_LTS_RELATIVE_CONVERSION_PCT = kinetics.lts_conversion(y_CO_in=_HB_HTS_OUTLET
 
 _HB_DBT_DENSITY_KG_M3 = 1040.0  # standard physical property of Dibenzyltoluene (DBT), not a design assumption -- used for every LOHC carrier-throughput fill below
 
-# EU-001's own strongest-possible fill: chp.py's live, independently-validated part-load
+# EU-001's own strongest-possible fill: chp.py's live part-load (checked only at full load)
 # efficiency correlation for SOFC specifically -- genuinely new information (the registry
 # only states the single rated-load point, already Confirmed at EU-002).
 _EU_SOFC_EFF_MIN_PCT = chp.chp_efficiency(0.01, "SOFC") * 100.0
@@ -2151,8 +2151,8 @@ ESTIMATE_FILLS = {
                 "parameter": "Estimated LTS-stage relative CO conversion",
                 "value": f"~{_HB_LTS_RELATIVE_CONVERSION_PCT:.1f}", "unit": "%",
                 "remarks": (
-                    f"This project's single strongest possible basis: kinetics.py's own live, "
-                    f"independently-validated lts_conversion() output ({_HB_LTS_RELATIVE_CONVERSION_PCT:.2f}% "
+                    f"This project's single strongest possible basis: kinetics.py's own live "
+                    f"lts_conversion() output (it reproduces the 40.0% design target; no plant data) ({_HB_LTS_RELATIVE_CONVERSION_PCT:.2f}% "
                     f"at the design point), fed the actual upstream HTS outlet composition "
                     f"({_HB_HTS_OUTLET_CO_PCT:.2f} vol% CO, computed from kinetics.py's own "
                     f"hts_conversion() and matching HB-002's own confirmed 7 vol% figure exactly) "
@@ -2169,7 +2169,7 @@ ESTIMATE_FILLS = {
                     f"specific energy."
                 ),
                 "status": _Q.STATUS_ESTIMATE,
-                "source": _source_hb("kinetics.py's own live-validated lts_conversion() output, cross-checked by direct arithmetic on this project's own confirmed registry values"),
+                "source": _source_hb("kinetics.py's own live lts_conversion() output (reproduces the 40.0% design target; no plant data), cross-checked by direct arithmetic on this project's own confirmed registry values"),
             },
         ],
     },
@@ -2361,7 +2361,7 @@ ESTIMATE_FILLS = {
                 "parameter": "Estimated part-load efficiency range",
                 "value": f"~{_EU_SOFC_EFF_MIN_PCT:.1f}-{_EU_SOFC_EFF_RATED_PCT:.1f}", "unit": "%",
                 "remarks": (
-                    f"chp.py's own live, independently-validated part-load correlation for SOFC "
+                    f"chp.py's own live part-load correlation for SOFC (checked only at full load; no comparison data for the part-load shape) "
                     f"specifically (this project's strongest possible basis for this section, the "
                     f"same discipline as HB-004's kinetics.py fill): electrical efficiency ranges "
                     f"from ~{_EU_SOFC_EFF_MIN_PCT:.1f}% at chp.py's own defined near-zero-load floor "
@@ -2371,7 +2371,7 @@ ESTIMATE_FILLS = {
                     f"at EU-002, the efficiency-aspect sibling item for this same physical stack)."
                 ),
                 "status": _Q.STATUS_ESTIMATE,
-                "source": _source_eu("chp.py's own live-validated part-load correlation for SOFC, cross-checked against EU-002's own confirmed rated efficiency"),
+                "source": _source_eu("chp.py's own live part-load correlation for SOFC (checked only at full load), cross-checked against EU-002's own confirmed rated efficiency"),
             },
         ],
     },
