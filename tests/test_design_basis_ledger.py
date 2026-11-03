@@ -687,24 +687,114 @@ def test_every_code_row_has_the_function_that_names_it(built):
 
 # ------------------------------------------------------------------ (F.4) the engine is unchanged
 
+def _assert_only_the_d2_phrases_differ(old, new, mode):
+    """`old` = the origin/main fixture entries, `new` = the serialised live snapshot. Every entry must equal the fixture (floats within 1e-12 relative, everything else exactly) once the
+    four D2 phrase pairs are mapped back, and the only entries that differ at all are those that can carry the D2 phrases.
+
+    The float tolerance applies to BOTH checks. The fixture was made on Python 3.14. Python 3.12 changed the builtin sum() of floats to compensated (Neumaier) summation; Python 3.11,
+    which the hourly job and CI run, adds left to right. Values that pass through sum() (storage levels, heat-integration kW, adiabatic temperatures, ...) therefore differ in the last one or
+    two bits on 3.11 (largest relative difference measured with a 3.11-style sum(): 4.4e-14). A bit-exact `old[k] != new[k]` made this test fail on 3.11 and pass on 3.12 although nothing had
+    changed; the tolerance is the one the first check already used. A real change (1e-9 relative, one character of text, a D2 phrase in another entry) still fails:
+    test_the_persisted_comparison_still_catches_a_real_change."""
+    undone = _d2_wording.undo(new)
+    diffs = {k: _same(old[k], undone[k]) for k in old if k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default"}
+    bad = {k: v for k, v in diffs.items() if v is not True}
+    assert bad == {}, bad
+    changed = [k for k in old if k != "GA-001-INPUT|tail_gas_mode" and _same(old[k], new[k]) is not True]
+    assert all(k.startswith(_d2_wording.ENTRIES) for k in changed), changed
+
+
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
 def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes(runs, main_snap, mode, fixture_key):
     new = _ser(runs[mode])
     old = main_snap[fixture_key]
     assert set(new) == set(old) and len(new) == 121, "same persisted keys, same count"
     new_wording = {k: v for k, v in new.items() if k.startswith(_d2_wording.ENTRIES)}
-    undone = _d2_wording.undo(new)
-    diffs = {k: _same(old[k], undone[k]) for k in old if k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default"}
-    bad = {k: v for k, v in diffs.items() if v is not True}
-    assert bad == {}, bad
+    _assert_only_the_d2_phrases_differ(old, new, mode)
     # the one deliberate text change is really there (and only in the entries that can carry it)
     text = json.dumps(new_wording)
     assert "registry '>98% removal efficiency' (Unverified (registry), not DOK-ING-confirmed)" in text
     assert "registry >90% efficiency (>d50=15um; Unverified (registry))" in text
     assert "ACTUAL/DOK-ING VALUE: Unverified (registry), not DOK-ING-confirmed -- 20 kW" in text
     assert "ACTUAL/DOK-ING VALUE: Confirmed" not in json.dumps(new)
-    changed = [k for k in old if old[k] != new[k] and k != "GA-001-INPUT|tail_gas_mode"]
-    assert all(k.startswith(_d2_wording.ENTRIES) for k in changed), changed
+
+
+def _first_float_leaf(x, path=()):
+    """(path, value) of the first float leaf that is not zero."""
+    if isinstance(x, float) and x != 0.0:
+        return path, x
+    if isinstance(x, dict):
+        for k in sorted(x):
+            r = _first_float_leaf(x[k], path + (k,))
+            if r:
+                return r
+    if isinstance(x, list):
+        for i, v in enumerate(x):
+            r = _first_float_leaf(v, path + (i,))
+            if r:
+                return r
+    return None
+
+
+def _first_string_leaf(x, path=()):
+    if isinstance(x, str) and len(x) > 5:
+        return path, x
+    if isinstance(x, dict):
+        for k in sorted(x):
+            r = _first_string_leaf(x[k], path + (k,))
+            if r:
+                return r
+    if isinstance(x, list):
+        for i, v in enumerate(x):
+            r = _first_string_leaf(v, path + (i,))
+            if r:
+                return r
+    return None
+
+
+def _set(x, path, value):
+    for step in path[:-1]:
+        x = x[step]
+    x[path[-1]] = value
+
+
+def test_the_persisted_comparison_still_catches_a_real_change(runs, main_snap):
+    import copy
+    old = main_snap["default|20"]
+    new = _ser(runs["default"])
+    _assert_only_the_d2_phrases_differ(old, new, "default")                        # the real, unperturbed condition passes
+    key = "HB-013|Storage"                                                        # an entry outside the D2 prefixes
+    assert not key.startswith(_d2_wording.ENTRIES)
+
+    ulp = copy.deepcopy(new)                                                      # a last-bit difference (what Python 3.11 produces) is tolerated
+    path, v = _first_float_leaf(ulp[key]["value"])
+    _set(ulp[key]["value"], path, v * (1.0 + 1e-13))
+    _assert_only_the_d2_phrases_differ(old, ulp, "default")
+
+    number = copy.deepcopy(new)                                                   # 1) one non-D2 numeric leaf moved by 1e-9 relative
+    _set(number[key]["value"], path, v * (1.0 + 1e-9))
+    with pytest.raises(AssertionError):
+        _assert_only_the_d2_phrases_differ(old, number, "default")
+
+    text = copy.deepcopy(new)                                                     # 2) one non-D2 string changed by one character
+    spath, s = _first_string_leaf(text[key])
+    _set(text[key], spath, s + "x")
+    with pytest.raises(AssertionError):
+        _assert_only_the_d2_phrases_differ(old, text, "default")
+
+    phrase = copy.deepcopy(new)                                                   # 3) a D2 phrase appearing in an entry that may not carry it
+    _set(phrase[key], spath, _d2_wording.PAIRS[0][0])
+    assert _d2_wording.undo(phrase)[key] == phrase[key], "undo() does not touch entries outside the D2 prefixes, so it cannot hide this"
+    with pytest.raises(AssertionError):
+        _assert_only_the_d2_phrases_differ(old, phrase, "default")
+
+    d2 = copy.deepcopy(new)                                                       # 4) a numeric change INSIDE an entry that may carry D2 text is caught too
+    target = next((k for k in sorted(d2) if k.startswith(_d2_wording.ENTRIES) and _first_float_leaf(d2[k])), None)
+    assert target is not None, "at least one D2 entry has a float leaf"
+    path2, v2 = _first_float_leaf(d2[target])
+    _set(d2[target], path2, v2 * (1.0 + 1e-9))
+    with pytest.raises(AssertionError):
+        _assert_only_the_d2_phrases_differ(old, d2, "default")
 
 
 def test_the_runtime_shrink_guard_accepts_the_persisted_set(runs, main_snap):
