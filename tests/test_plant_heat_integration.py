@@ -39,8 +39,7 @@ def _const(v):
 
 
 def _ser(snapshot):
-    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this test's fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
-    return _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()})
+    return {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()}
 
 
 def _same(a, b, path=""):
@@ -262,7 +261,10 @@ def test_nothing_reads_the_key_and_no_model_depends_on_it():
 
 @pytest.mark.parametrize("label,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
 def test_every_entry_of_origin_main_is_unchanged_in_both_modes(runs, main_snap, label, fixture_key):
-    new, old = _ser(runs[label]), main_snap[fixture_key]
+    new = _ser(runs[label])
+    # LEDGER D2 / WORDING W1 (deliberate edit): notes were reworded after this fixture was made. forward() applies the old -> new pairs of tests/_d2_wording.py to the FIXTURE, so the live
+    # snapshot is compared as it is and an old phrase returning in it is a difference.
+    old = _d2_wording.forward(main_snap[fixture_key])
     assert len(old) == 120 and set(old) <= set(new)
     skip = {"GA-001-INPUT|tail_gas_mode"} if label == "heat_only" else set()          # in heat_only the switch's own entry is this test's override (its model name differs)
     bad = {k: _same(old[k], new[k]) for k in old if k not in skip}

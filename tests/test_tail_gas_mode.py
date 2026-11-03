@@ -40,8 +40,7 @@ def _mode(m):
 
 
 def _ser(snapshot):
-    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this test's fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
-    return _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()})
+    return {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()}
 
 
 def _same(a, b, path=""):
@@ -97,7 +96,9 @@ def baseline():
 @pytest.mark.parametrize("label,n", [("default5", "5"), ("default30", "30")])
 def test_default_mode_snapshot_equals_origin_main_for_every_existing_entry(runs, baseline, label, n):
     new = _ser(runs[label][0])
-    old = baseline[n]
+    # LEDGER D2 / WORDING W1 (deliberate edit): notes were reworded after this fixture was made. forward() applies the old -> new pairs of tests/_d2_wording.py to the FIXTURE, so the live
+    # snapshot is compared as it is and an old phrase returning in it is a difference.
+    old = _d2_wording.forward(baseline[n])
     assert len(old) == 116
     assert set(old) <= set(new), sorted(set(old) - set(new))
     assert set(new) - set(old) == NEW_KEYS
