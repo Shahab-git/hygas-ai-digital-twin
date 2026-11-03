@@ -5,8 +5,8 @@ ONE exemption list. Every pair is (new phrase, old phrase). `forward(entries)` a
 old phrase returns or any other text changes; `undo(entries)` maps new -> old (the reverse) for the tests that still compare with an older fixture. Only the entries listed in ENTRIES are touched.
 
   PAIRS_D2   4 pairs in 3 entry prefixes, added by task A3 item D2 (commit ac4fe79).
-  PAIRS_W1   89 pairs in 43 entries, added by the commit "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1; see git log).
-  W1.2 pairs (the EU-008 "independently validated" notes) are added to PAIRS_W1 by the commit "Wording W1.2: ..." that follows it."""
+  PAIRS_W1   89 pairs in 43 entries, added by commit 0420d32 "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1).
+  The 3 pairs of the EU-008 "independently validated" notes (W1.2) are part of PAIRS_W1; they were added by commit 87e4950 "Wording W1.2: EU-008 ... notes say what the repo supports"."""
 import hashlib
 import json
 
