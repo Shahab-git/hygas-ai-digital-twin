@@ -123,7 +123,7 @@ None of the 19 modules writes plant state, setpoints or the database on its own,
 ## 9. Wording audit of "validated" (A10b)
 
 Basis found in the repo: `python/kinetics.py:2-4` ("at design conditions ... reproduces the established targets of 75.0% and 40.0% relative conversion exactly"; the targets are quoted from prior
-MATLAB/Simulink work in CLAUDE.md "Validated milestones"; the Simulink model is not in the repo; no plant data). `python/chp.py:2-4` ("at load_factor=1.0, each curve reduces exactly to its rated
+MATLAB/Simulink work in CLAUDE.md "Completed milestones"; the Simulink model is not in the repo; no plant data). `python/chp.py:2-4` ("at load_factor=1.0, each curve reduces exactly to its rated
 efficiency"): the only comparison is at full load; the part-load coefficients have no cited source and no comparison data exists in the repo.
 
 Reworded (user-visible text, or a comment repeating it):
@@ -144,7 +144,7 @@ to `origin/main`). "Docstring / comment" = not shown to users.
 
 | file:line | verdict | note |
 |---|---|---|
-| app.py:568, 8855; eu_utilities_chp.py:88 | TRUE AS WRITTEN | names CLAUDE.md's "Validated milestones" table, whose header says the rows are targets from prior MATLAB/Simulink work |
+| app.py:568, 8855; eu_utilities_chp.py:88 | TRUE AS WRITTEN | names CLAUDE.md's "Completed milestones" table, whose header says the rows are targets from prior MATLAB/Simulink work |
 | app.py:1875; dynamics.py:85; ga001_gasifier_model.py:854; literature_reference.py:21; reference_feeds.py:25; tda_analysis.py:58, 62; pinn_kinetics.py:52; ui_transient_sim.py:20, 38, 65, 70, 73, 75; ui_transient_tab.py:13 | TRUE AS WRITTEN | negated ("not validated ...") |
 | data_precedence.py:59; shared_plant_state.py:125; regulatory_drafting.py:80; fe_feed_handling.py:37; ga001_gasifier_model.py:208, 593 | TRUE AS WRITTEN | input validation, a self-test, a sort, or a cross-check against DOK-ING's confirmed ranges |
 | equipment_datasheet.py:30; ga001_gasifier_model.py:390; hb_wgs_psa_storage_chain.py:159, 309, 367 (persisted) | TRUE AS WRITTEN | "design-target validated (75.0 % ...)" names the target |
