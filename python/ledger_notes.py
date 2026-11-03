@@ -142,7 +142,12 @@ def render_confirmed():
           "\"Unverified (registry), not DOK-ING-confirmed\", or name the DOK-ING source next to the word), so those lines left the registry-stated class (most became generic, because the new text "
           "says \"not DOK-ING-confirmed\"); W1.2 reworded the EU-008 capacity notes that called their input duties validated. The 14 persisted lines that remain are pinned in `tests/test_design_basis_ledger.py` "
           "(`PERSISTED_REGISTRY_STATED`) and none calls a registry value Confirmed (DOK-ING's confirmed composition ranges with RFI #2 named, negations, questions to DOK-ING, a self-test message, a code check). "
-          "The 241 registry-stated lines that remain do not reach a persisted note in the live snapshot (docstrings, comments, other strings) and were not rewritten."]
+          "The registry-stated lines that remain (241 after W1, 232 after A3d) do not reach a persisted note in the live snapshot (docstrings, comments, other strings) and were not rewritten, "
+          "except for the lines A3d names.",
+          "", "**The pinned counts changed again in task A3d (Gate 5 wording).** Lines mentioning \"confirmed\": 449 to 436; DOK-ING-sourced 49 to 44, generic 159 to 160, registry-stated 241 to 232 "
+          "(hb_wgs_psa_storage_chain 3/6/27 to 2/6/26, eu_utilities_chp 5/19/34 to 2/20/26, fe_feed_handling 6/12/18 to 5/12/18). Why: A3d reworded comments and docstrings that called an Assumed or "
+          "Unverified (registry) constant Confirmed (EU-003, EU-004, EU-005, EU-006, EU-007, EU-008, EU-010, FE-001) so that each states the status the ledger gives, and reworded two persisted notes "
+          "(HB-012 discharge pressure; the 100 % WGS / PSA claim fraction). The registry-stated lines that reach a persisted note stay at the pinned count."]
     return L
 
 
@@ -173,8 +178,7 @@ def render_refused(ledger):
           "`data/dokink_rfi_answers.md:11` (RFI answer 1: 'Nominal capacity fixed at 1 tonne/day (1,000 kg/day) for continuous 24/7 operation'). They are not one quantity in one basis that differ by a unit conversion: "
           "(1) the registry row is the rate at which the plant FEEDS the process, the engine value is the rate at which feed is DELIVERED to the hopper (the hopper level changes by delivery minus feed, `fe001_inventory`); "
           "DOK-ING's answer is the processing capacity and says nothing about deliveries; (2) the basis of the 1,000 kg/day (as received or dry) is not stated in DOK-ING's line and is an open question "
-          "(`docs/master_open_questions.md` Section 1 item 2) while the code comment says AS-RECEIVED; (3) 0.042 t/h x 1000 = 42 kg/h, not 41.67: the registry value is the same number rounded to two digits, so the engine value "
-          "is not a unit conversion of it either (1,000 kg/day / 24 h = 41.667). The row stays Assumed.", "",
+          "(`docs/master_open_questions.md` Section 1 item 2) while the code comment says AS-RECEIVED. The row stays Assumed.", "",
           "### GA-002 typical pressure", "",
           f"Engine: `GA002_TYPICAL_PRESSURE_MBAR_G` = {_value('gc_gas_cleaning_chain', 'GA002_TYPICAL_PRESSURE_MBAR_G')} mbar(g), the typical gasifier pressure used by the suction cross-check of GC-014. Registry rows of the gasifier vessel: "
           "GA-001 'Design pressure' 500 mbar(g) (a design quantity); GA-001 'Operating pressure (typical)' 100 mbar(g) (remark: 'Matches ~1.1 bar absolute already used in the pressure profile chart'); "

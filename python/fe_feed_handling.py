@@ -88,7 +88,7 @@ from . import plant_status as ps
 # --- FE-001 Hopper (Confirmed figures) --------------------------------------
 FE001_TOTAL_CAPACITY_T = 2.0
 FE001_LIVE_CAPACITY_T = 1.7
-FE001_DEFAULT_DELIVERY_RATE_KG_H = 41.67  # Confirmed, DOK-ING RFI #1, 1,000 kg/day AS-RECEIVED
+FE001_DEFAULT_DELIVERY_RATE_KG_H = 41.67  # Assumed model default, set equal to the FE-003 nominal rate (DOK-ING RFI #1, 1,000 kg/day); the as-received basis is a project decision
 
 # --- FE-002 Magnetic & Eddy Current Separator (Confirmed) -------------------
 FE002_REMOVAL_EFFICIENCY = 0.98  # informational; a polishing duty, negligible mass removed

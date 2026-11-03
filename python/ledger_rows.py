@@ -98,7 +98,9 @@ _c("GC-005.blowdown_to_circulation_ratio", "gc_gas_cleaning_chain", "QUENCH_BLOW
 _c("GC-014.design_discharge_mbar_g", "gc_gas_cleaning_chain", "GC014_DESIGN_DISCHARGE_MBAR_G", "mbar(g)", ("GC-014", "Design discharge pressure"))
 _c("GC-014.design_suction_mbar_g", "gc_gas_cleaning_chain", "GC014_DESIGN_SUCTION_MBAR_G", "mbar(g)", ("GC-014", "Design suction pressure"))
 _c("GA-002.typical_pressure_mbar_g", "gc_gas_cleaning_chain", "GA002_TYPICAL_PRESSURE_MBAR_G", "mbar(g)", ("GA-001", "Operating pressure (typical)"), None,
-   "100 mbar(g) is the middle of GA-002's registry range 50-150 mbar(g); used as a consistency check on GC-014's suction pressure.")
+   "100 mbar(g) is the middle of GA-002's registry range 50-150 mbar(g); used as a consistency check on GC-014's suction pressure. "
+   "The registry counterpart is GA-001 'Operating pressure (typical)' (100 mbar(g), the reactor-vessel entry of the same gasifier); GA-002 holds the 50-150 mbar(g) band, "
+   "whose remark takes 100 as typical (a self-reference, not independent evidence); the tag prefix GA-002 is naming only.")
 _c("GC-015.ambient_temp_C", "gc_gas_cleaning_chain", "GC015_AMBIENT_TEMP_C", "degC", ("GC-005", "Water supply temperature"), None, "Lower bound of GC-015's operating-temperature range.")
 _c("GC.stage_delta_p_mbar", "gc_gas_cleaning_chain", "_STAGE_DELTA_P_MBAR", "mbar", None, None,
    "Design pressure drop of GC-002, 003, 006, 007, 011, 012, summed for the GC-013 fan cross-check; the code comment calls them 'Confirmed' (registry), quoted not relied on.")
@@ -135,7 +137,10 @@ _c("HB-003.cold_outlet_C", "hb_wgs_psa_storage_chain", "HB003_COLD_OUTLET_C", "d
 _c("HB-008.psa_adsorption_pressure_bar_a", "hb_wgs_psa_storage_chain", "PSA_ADSORPTION_PRESSURE_BAR_A", "bar(a)", ("HB-008", "Adsorption pressure (design)"), None, "Registry 7 bar(g) + about 1 atm.")
 _c("HB-008.psa_regen_pressure_bar_a", "hb_wgs_psa_storage_chain", "PSA_REGEN_PRESSURE_BAR_A", "bar(a)", ("HB-008", "Regeneration pressure"), None, "Registry 0.2 bar(g) + about 1 atm.")
 _c("HB-012.suction_bar_a", "hb_wgs_psa_storage_chain", "COMPRESSOR_SUCTION_BAR_A", "bar(a)", ("HB-012", "Inlet pressure"), None, "Registry 7 bar(g) + about 1 atm.")
-_c("HB-012.discharge_bar_a", "hb_wgs_psa_storage_chain", "COMPRESSOR_DISCHARGE_BAR_A", "bar(a)", ("HB-012", "Discharge pressure (design)"), None, "Registry 700 bar(g) + about 1 atm.")
+_c("HB-012.discharge_bar_a", "hb_wgs_psa_storage_chain", "COMPRESSOR_DISCHARGE_BAR_A", "bar(a)", ("HB-012", "Discharge pressure (design)"), None,
+   "Three layers. DOK-ING states a magnitude of 700 bar (RFI answer 8, data/dokink_rfi_answers.md:35-36: 'compression to 350/700 bar for mobility dispensing/tube trailers'), "
+   "with no gauge or absolute basis. The registry designates it bar(g) (HB-012 'Discharge pressure (design)'). The gauge basis taken from that designation and the +1 bar offset "
+   "(atmosphere taken as 1 bar, not 1.01325) that gives 701.0 bar(a) are this project's conversions. The Confirmed status covers the stated 700 bar magnitude only.")
 _c("HB-012.polytropic_n", "hb_wgs_psa_storage_chain", "COMPRESSOR_POLYTROPIC_N", "-", None, Q_POLY, "Literature-typical value for a well-intercooled multistage compressor, not HB-012's own data (docs/master_open_questions.md).")
 _c("HB-013.storage_capacity_kg", "hb_wgs_psa_storage_chain", "H2_STORAGE_CAPACITY_KG", "kg H2", ("HB-013", "Storage capacity"))
 _c("PLANT.assumed_hours_per_cycle", "hb_wgs_psa_storage_chain", "ASSUMED_HOURS_PER_CYCLE", "h", None, Q_CYCLE,
@@ -178,7 +183,7 @@ _c("EU-008.fan_motor_power_kw", "eu_utilities_chp", "EU008_FAN_MOTOR_POWER_KW", 
 _c("EU-008.overload_penalty_C_per_unit_util", "eu_utilities_chp", "EU008_OVERLOAD_PENALTY_C_PER_UNIT_UTIL", "degC per unit utilisation", None, Q_EU008, "Code comment: Assumed, a standard order-of-magnitude figure.")
 _c("EU-008.damping", "eu_utilities_chp", "EU008_DAMPING", "-", None, None, "Per-cycle damping of the tower water (code comment: Assumed).")
 _c("EU-008.adequacy_derogation_span_C", "eu_utilities_chp", "EU008_ADEQUACY_DEROGATION_SPAN_C", "degC", None, Q_EU008, "Code comment: Assumed.")
-_c("EU-008.sizing_margin_fraction", "eu_utilities_chp", "EU008_SIZING_MARGIN_FRACTION", "-", None, Q_SIZING, "Code comment: Estimated, a standard HVAC / process-cooling design margin (10-20 %, 15 % used).")
+_c("EU-008.sizing_margin_fraction", "eu_utilities_chp", "EU008_SIZING_MARGIN_FRACTION", "-", None, Q_SIZING, "Code comment: Assumed, a standard HVAC / process-cooling design margin (10-20 %, 15 % used).")
 _c("EU-010.rated_kva", "eu_utilities_chp", "EU010_RATED_KVA", "kVA", ("EU-010", "Rated power"))
 _c("EU-010.backup_hours", "eu_utilities_chp", "EU010_BACKUP_HOURS", "h", ("EU-010", "Backup duration at full load"), None, "Registry 30 min = 0.5 h.")
 _c("EU-010.roundtrip_efficiency", "eu_utilities_chp", "EU010_ROUNDTRIP_EFFICIENCY", "-", None, None, "Midpoint of a registry range quoted in the code comment (about 92-96 %); no equal-value registry row was found.")
@@ -197,12 +202,17 @@ _c("FE-001.live_capacity_t", "fe_feed_handling", "FE001_LIVE_CAPACITY_T", "t", (
 _c("FE-001.default_delivery_rate_kg_h", "fe_feed_handling", "FE001_DEFAULT_DELIVERY_RATE_KG_H", "kg/h", ("FE-003", "Nominal feed rate"), Q_FEED,
    "41.67 kg/h = 1,000 kg/day as received; the status is that of the FE-003 'Nominal feed rate' row, which the owner's worksheet marks DOK-ING.")
 _c("FE-002.removal_efficiency", "fe_feed_handling", "FE002_REMOVAL_EFFICIENCY", "-", ("FE-002", "Removal efficiency"), None, "Registry '>98'; informational in the code.")
-_c("FE-003.nominal_kg_h", "fe_feed_handling", "FE003_NOMINAL_KG_H", "kg/h", ("FE-003", "Nominal feed rate"), Q_FEED, "Registry 0.042 t/h.")
+_c("FE-003.nominal_kg_h", "fe_feed_handling", "FE003_NOMINAL_KG_H", "kg/h", ("FE-003", "Nominal feed rate"), Q_FEED,
+   "Registry 0.042 t/h. DOK-ING's 1,000 kg/day (RFI answer 1, data/dokink_rfi_answers.md:11) does not state wet or dry; 'as-received (wet)' is a project decision "
+   "(the module docstring of python/fe_feed_handling.py, docs/master_open_questions.md Section 1 item 2); the kg/h figure is 1,000/24 arithmetic.")
 _c("FE-003.min_kg_h", "fe_feed_handling", "FE003_MIN_KG_H", "kg/h", ("FE-003", "Min feed rate"), None, "Registry 0.029 t/h.")
 _c("FE-003.max_kg_h", "fe_feed_handling", "FE003_MAX_KG_H", "kg/h", ("FE-003", "Max feed rate"), None, "Registry 0.05 t/h.")
 _c("FE-004.motor_kw", "fe_feed_handling", "FE004_MOTOR_KW", "kW", ("FE-004", "Drive motor power"))
 _c("FE-004.throughput_t_h", "fe_feed_handling", "FE004_THROUGHPUT_T_H", "t/h", ("FE-004", "Throughput capacity"))
-_c("FE-005.inlet_moisture_fraction", "fe_feed_handling", "FE005_INLET_MOISTURE_FRACTION", "-", ("FE-005", "Inlet moisture (design)"), Q_COMP)
+_c("FE-005.inlet_moisture_fraction", "fe_feed_handling", "FE005_INLET_MOISTURE_FRACTION", "-", ("FE-005", "Inlet moisture (design)"), Q_COMP,
+   "Registry says '10 % moisture' with no basis stated; the code applies it as a wet (as-received) mass fraction (fe_feed_handling.fe005_moisture_balance, dry = wet x (1 - 0.10)). "
+   "DOK-ING supplied a RANGE, 'Moisture 5-15(20)%' (data/dokink_rfi_answers.md:15; the '(dry basis)' label there follows the LHV), not a confirmed 10 % point value; "
+   "10 % is the registry's midpoint.")
 _c("FE-005.outlet_moisture_fraction", "fe_feed_handling", "FE005_OUTLET_MOISTURE_FRACTION", "-", ("FE-005", "Outlet moisture (target)"), Q_COMP, "Registry '<1 %' (stored as -1); about 1 % is used.")
 _l("FE-001.initial_level_fraction", "fe_feed_handling", "fe001_inventory", [0.5], "-", None, None, "Hopper level assumed when there is no previous cycle (fraction of live capacity).")
 # kinetics (WGS) and PSA defaults

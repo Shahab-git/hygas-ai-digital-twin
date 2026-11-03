@@ -117,8 +117,8 @@ what remains open is a narrower, more specific question.
   nominal feed-rate figure (RFI #1) — **basis: wet/as-received, or dry?**
 - **The question:** *DOK-ING's RFI #1 answer confirms 1,000 kg/day as the
   plant's nominal feed rate, but does not state whether this is the
-  as-delivered (wet, ~10% moisture per FE-005's own Confirmed inlet
-  moisture) mass or the dry-solids mass. This project found the two
+  as-delivered (wet, ~10% moisture per the FE-005 registry value, Unverified
+  (registry); DOK-ING gave a 5-15(20) % range) mass or the dry-solids mass. This project found the two
   existing internal treatments of this number actually disagreed:
   `equipment_engineering_estimates.py`'s own FE-007 static fill already
   treated it as WET, deriving ~37.5 kg/h dry; an earlier recalibration
