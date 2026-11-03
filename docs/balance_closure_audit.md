@@ -219,6 +219,89 @@ The task that was planned (energy balance and gasifier temperature) is justified
 - Solids cp (1.0 kJ/kg.K), the 25 degC temperature of the feed and the recycle gas, the 220 degC entry of the knock-out water and the 40 degC knock-out / vent temperatures are Assumed; a +/-15 degC change in the knock-out or vent temperature moves the result by about 1 kW and 0.4 kW, and +/-20 degC at the knock-out entry by 0.7 kW.
 - Tar, heat loss, S and Cl, argon are Missing, so every "closes" above is closure of the modelled terms only.
 
+## 9. Scenario coverage and closure kind (task A5, branch `closure-scenarios`)
+
+Read-only; no result changed. `docs/balance_audit_baseline.json` keeps its `cases` byte-identical and gains a top-level key `scenario_cases` (30 cases, 30-cycle and 5-cycle state, written by
+`python scripts/run_balance_audit.py --scenarios --write-baseline`; the full report is `outputs/balance/scenario_audit.md` and `.csv`, git-ignored).
+
+### 9.1 What was run
+
+* **Agent scenarios** S0, S1a, S1b, S2, S3, S4a, S4b of `scripts/run_agent_comparison.py` (its `overrides_for`; GA-001 is not edited) and **reference feeds** from `python/reference_feeds.py`
+  (default stand-in, cotton, wool, PE, PP, PS, PET, blend M1; the override of `scripts/run_feed_comparison.py`), each in both `tail_gas_mode`s and in the 30-cycle (recycle converged) and
+  5-cycle state. S3 keeps the study's label: equivalent to S2 by construction (same oxygen, no N2). The original baseline uses 40 cycles for its converged state; the scenario cases use 30
+  like the agent and feed studies (the recycle has converged by cycle ~25).
+* `balance_audit.audit_snapshot` runs on all of them **unchanged**; no case has a blocking Missing input (section 6 of the report is empty).
+* **One substitution, stated:** the stock audit re-derives the oxidant as air (N2 = O2 x 0.79 / 0.21). Where the study swaps the oxidant's N2 (S1a, S1b, S2, S3) that inflow is not the scenario's: the
+  stock GA-001 N residual is 0.38 / 0.73 / 0.99 / 0.99 (relative) and the mass residual 0.15 to 0.41, an artefact of the audit's air assumption, not a model residual. `python/balance_scenarios.py` replaces
+  the two inflow terms (air O2, air N2) by the scenario's O2 and N2 and reports both. Nothing is added to make a case pass.
+* Energy: the gasifier implied duty is `gasifier_energy` with only the oxidant's sensible heat replaced; the plant energy residual is `plant_energy` unchanged. The default agent at feed LHV 15 / 17.5 / 20 MJ/kg
+  is the S0 rows of the energy table in the report (DOK-ING low / midpoint / high); the feeds are evaluated at their own LHV.
+
+### 9.2 Result (converged state; largest relative residual of the group; energy at the DOK-ING midpoint or the feed's own LHV)
+
+| case | GA-001 C,H,O,N | loop C,H,O,N | loop mass | plant C,N | plant H,O | plant mass | gasifier implied duty kW | plant energy residual kW |
+|---|---|---|---|---|---|---|---|---|
+| S0 current: air ER 0.25 + steam 0.4 / regasify | 3.7e-16 | 1.6e-16 | 1.5e-05 | 1.3e-16 | 1.2e-04 | 5.3e-05 | -3.3 | +23.7 |
+| S0 current: air ER 0.25 + steam 0.4 / heat_only | 2.4e-16 | 1.8e-16 | 1.3e-05 | 0.0e+00 | 1.4e-04 | 6.3e-05 | +0.6 | +65.0 |
+| S1a O2-enriched air, 30 % O2 + steam 0.4 / regasify | 1.8e-16 | 2.0e-16 | 1.7e-05 | 2.0e-16 | 1.2e-04 | 6.0e-05 | -7.6 | +28.6 |
+| S1a O2-enriched air, 30 % O2 + steam 0.4 / heat_only | 2.4e-16 | 1.6e-16 | 1.4e-05 | 1.6e-16 | 1.4e-04 | 6.9e-05 | -2.7 | +70.2 |
+| S1b O2-enriched air, 50 % O2 + steam 0.4 / regasify | 3.2e-16 | 4.5e-16 | 1.8e-05 | 4.5e-16 | 1.2e-04 | 6.7e-05 | -11.8 | +33.6 |
+| S1b O2-enriched air, 50 % O2 + steam 0.4 / heat_only | 1.5e-16 | 3.2e-16 | 1.6e-05 | 3.2e-16 | 1.4e-04 | 7.5e-05 | -5.8 | +75.9 |
+| S2 oxygen-blown + steam 0.4 (same O2 as S0) / regasify | 2.9e-16 | 3.2e-16 | 2.0e-05 | 3.2e-16 | 1.3e-04 | 7.5e-05 | -15.2 | +37.7 |
+| S2 oxygen-blown + steam 0.4 (same O2 as S0) / heat_only | 1.2e-16 | 1.5e-16 | 1.7e-05 | 1.5e-16 | 1.4e-04 | 8.0e-05 | -8.1 | +81.1 |
+| S3 chemical-looping equivalent (carrier oxygen = S0's O2, no N2, + steam 0.4) / regasify | 2.9e-16 | 3.2e-16 | 2.0e-05 | 3.2e-16 | 1.3e-04 | 7.5e-05 | -14.4 | +37.7 |
+| S3 chemical-looping equivalent (carrier oxygen = S0's O2, no N2, + steam 0.4) / heat_only | 1.2e-16 | 1.5e-16 | 1.7e-05 | 1.5e-16 | 1.4e-04 | 8.0e-05 | -7.5 | +81.1 |
+| S4a steam only (allothermal), steam 0.4 / regasify | 3.6e-16 | 2.9e-16 | 3.2e-05 | 2.9e-16 | 1.0e-04 | 5.8e-05 | +53.8 | -45.0 |
+| S4a steam only (allothermal), steam 0.4 / heat_only | 1.6e-16 | 0.0e+00 | 2.6e-05 | 0.0e+00 | 1.2e-04 | 6.5e-05 | +42.2 | +28.9 |
+| S4b steam only (allothermal), steam 0.8 / regasify | 1.7e-16 | 2.9e-16 | 2.3e-05 | 2.9e-16 | 1.0e-04 | 6.4e-05 | +57.5 | -47.0 |
+| S4b steam only (allothermal), steam 0.8 / heat_only | 1.8e-16 | 1.6e-16 | 1.6e-05 | 1.6e-16 | 1.2e-04 | 7.2e-05 | +45.8 | +27.3 |
+| feed: default stand-in (C/H/O/N 0.50/0.06/0.43/0.01 daf, ash 0.10) / regasify | 3.7e-16 | 1.6e-16 | 1.5e-05 | 1.3e-16 | 1.2e-04 | 5.3e-05 | +14.9 | +5.5 |
+| feed: default stand-in (C/H/O/N 0.50/0.06/0.43/0.01 daf, ash 0.10) / heat_only | 2.4e-16 | 1.8e-16 | 1.3e-05 | 0.0e+00 | 1.4e-04 | 6.3e-05 | +18.8 | +46.8 |
+| feed: cotton / regasify | 1.8e-16 | 3.4e-16 | 1.4e-05 | 3.4e-16 | 1.3e-04 | 5.8e-05 | +23.2 | -1.5 |
+| feed: cotton / heat_only | 3.6e-16 | 5.2e-16 | 1.2e-05 | 5.2e-16 | 1.5e-04 | 6.8e-05 | +27.0 | +38.0 |
+| feed: wool / regasify | 2.2e-16 | 1.9e-16 | 2.0e-05 | 1.9e-16 | 9.9e-05 | 3.6e-05 | +26.8 | -12.5 |
+| feed: wool / heat_only | 3.6e-16 | 3.6e-16 | 1.8e-05 | 3.6e-16 | 1.1e-04 | 4.3e-05 | +31.9 | +38.6 |
+| feed: polyethylene (PE) / regasify | 2.1e-16 | 2.1e-16 | 2.2e-05 | 2.1e-16 | 5.9e-05 | 1.3e-05 | +50.5 | -36.7 |
+| feed: polyethylene (PE) / heat_only | 3.4e-16 | 1.9e-16 | 2.1e-05 | 1.9e-16 | 6.7e-05 | 1.8e-05 | +59.8 | +46.0 |
+| feed: polypropylene (PP) / regasify | 4.2e-16 | 4.3e-16 | 2.2e-05 | 4.3e-16 | 6.0e-05 | 1.3e-05 | +14.6 | -0.7 |
+| feed: polypropylene (PP) / heat_only | 3.4e-16 | 1.7e-16 | 2.1e-05 | 1.4e-16 | 6.8e-05 | 1.8e-05 | +23.8 | +81.2 |
+| feed: polystyrene (PS) / regasify | 4.6e-16 | 4.6e-16 | 2.5e-05 | 4.6e-16 | 6.1e-05 | 1.1e-05 | +30.4 | -22.4 |
+| feed: polystyrene (PS) / heat_only | 5.5e-16 | 1.7e-16 | 2.4e-05 | 1.5e-16 | 6.9e-05 | 1.5e-05 | +39.2 | +59.2 |
+| feed: PET / regasify | 2.1e-16 | 1.3e-16 | 2.0e-05 | 1.3e-16 | 1.0e-04 | 3.7e-05 | +6.2 | +8.1 |
+| feed: PET / heat_only | 5.7e-16 | 2.7e-16 | 1.9e-05 | 2.7e-16 | 1.2e-04 | 4.4e-05 | +10.9 | +59.0 |
+| feed: blend M1 (illustrative: 40 PE / 25 PP / 15 PS / 10 PET / 10 PVC) / regasify | 1.3e-16 | 1.9e-16 | 2.3e-05 | 1.9e-16 | 6.2e-05 | 1.4e-05 | +48.2 | -35.3 |
+| feed: blend M1 (illustrative: 40 PE / 25 PP / 15 PS / 10 PET / 10 PVC) / heat_only | 5.2e-16 | 1.6e-16 | 2.2e-05 | 0.0e+00 | 7.1e-05 | 1.9e-05 | +56.9 | +43.8 |
+
+* GA-001 and the loop close C, H, O, N to round-off (<= 7e-16) in all 30 cases and both states. The plant closes C and N to round-off; H and O close to 1.5e-4 and 1.2e-4 at most (the electrolyser
+  draws 1 L/Nm3 of water while 2 H2O -> 2 H2 + O2 needs 0.80, and no stream carries the excess: the finding of section 4 of this document, unchanged by the scenario). Loop and plant mass close to 3e-5 and 8e-5
+  (the water molar-mass basis, 18.015 versus 18.016, plus the same electrolyser water). **No row in any case exceeds the module's stated tolerance (1e-3 of the inflow).**
+* The **energy does not close in any of the 72 case-states** (converged state; the 5-cycle state is the same size): the plant energy residual ranges from -73 to +107 kW, the gasifier implied duty from -41 to +84 kW.
+  The Missing terms (listed, never zero) keep it from being explained: heat loss from vessels and piping, tar, ash sensible heat, nameplate loads outside EU-009 and FE-004, boiler / trim fuel for steam raising and
+  drying, make-up water and cooling-tower evaporation; for the gasifier tar, refractory and shell loss, feed and recycle sensible heat; per oxidant, the ASU heat or electricity (S1a, S1b, S2), the carrier loop's heat
+  and circulation power (S3) and the heat supply of the allothermal duty (S4a, S4b); in neither balance, stack losses beyond the Assumed ones and start-up heat.
+
+### 9.3 Enforced versus verified
+
+`closure_kind` is now a field of every closure row (`python/balance_closure_kind.py`; the judgement, its one-line `why` and its file:line are in each row's `closure_why` / `closure_refs`):
+
+* **ENFORCED** (9 of 21 rows): the outflow is derived from the inflow by the equation under test, or is a remainder, or both sides use the same constant. **Closes by construction: not evidence.** GA-001 C, H, O, N, ash
+  and mass (`solve_product_gas` solves the H and O balances and N2 = fuel N + air N2; the gas carbon is `conversion` x the carbon read and the carbon black and its remainder are the rest), the ash rows of the loop and the plant,
+  and the gasifier implied heat duty (it IS the remainder sum out - sum in).
+* **VERIFIED** (4): the two sides come from independent modules. Loop and plant N (the inert N2 passes GC-013, the WGS and the PSA species split with no solver and no remainder, so a module that drops or scales it shows),
+  the HB-013 storage clamp (level against the level recomputed from the published flows), and the plant energy residual (the heat the balance says must be rejected against the heat rejection the engine reports).
+* **PARTLY** (8): loop and plant C, H, O and mass: the gas path (GC-004, GC-013, WGS with its own atom check, PSA) is independent, the carbon black, its remainder, the condensate (wet - dry) and the in-transit recycle term are
+  enforced; for the plant H and O the electrolyser water is the independent stream and the source of the residual.
+* Per element (GA-001 / loop / plant): C ENFORCED / PARTLY / PARTLY; H ENFORCED / PARTLY / PARTLY; O ENFORCED / PARTLY / PARTLY; N ENFORCED / VERIFIED / VERIFIED; ash ENFORCED x3; mass ENFORCED / PARTLY / PARTLY.
+* Empirically, the ENFORCED rows stay at round-off in all 30 cases and both states and the only rows that leave it (plant H, O, mass; loop mass) are PARTLY, i.e. the evidence in this audit sits in the plant N row, the gas path
+  of the C / H / O rows, the electrolyser water, the storage clamp and the energy residual.
+
+### 9.4 What the numbers do not show
+
+A closed element balance does not validate the model: most of the closures above hold by construction and would hold for any ER, steam ratio, composition or oxidant. The scenarios show that the pass-through of an
+inert (N2) survives swapping the oxidant, and that the gas path conserves the elements when the gas composition changes; they say nothing about whether the gas composition is right. Carbon closes because the carbon
+black and its remainder are derived from the same conversion; tar, S, Cl and the destination of the unconverted carbon remain Missing. Energy closure is blocked by the Missing terms above; the implied gasifier duty is a
+remainder, not a measurement. The scenario sections of the baseline are measured values, not a CI gate.
+
 ## Appendix: measured tables
 
 Generated by `scripts/run_balance_audit.py` at the commit named in `docs/balance_audit_baseline.json`; regenerating on the same code gives the same numbers.
