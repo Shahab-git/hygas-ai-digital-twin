@@ -1,5 +1,9 @@
 """Nothing moved (task A10): the maturity labels, the gate and the captions change no persisted value. Every entry of both tail_gas_modes equals the unmodified origin/main snapshot
-(tests/fixtures/snapshot_origin_main_701de71.json.gz), the persisted key count is unchanged, and no database or network call is made. Offline: counting fake store."""
+(tests/fixtures/snapshot_origin_main_701de71.json.gz), the persisted key count is unchanged, and no database or network call is made. Offline: counting fake store.
+
+D2 (task A3, merged): four phrase pairs in three entries (EU-008|RecommendedCapacityEstimate, FE-002|TrampMetalReject, GC-001|Dust) were reworded because they called Unverified registry values
+"Confirmed". The 701de71 fixture is the OLD text, so the comparison is made against the fixture with exactly those four pairs applied FORWARD (old text -> new text, tests/_d2_wording.PAIRS).
+The live snapshot must equal that expectation: if an old phrase comes back, or any other text or number changes, the comparison fails (test_the_mapped_comparison_fails_...)."""
 import gzip
 import json
 import math
@@ -7,6 +11,7 @@ import os
 
 import pytest
 
+import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
 from python import plant_status as ps
 from python import tab1_integration as t1
@@ -49,21 +54,84 @@ def _same(a, b, path=""):
     return True if a == b else [path]
 
 
+def _forward(x):
+    """The fixture text with the four D2 pairs applied old -> new (strings only; everything else untouched)."""
+    if isinstance(x, str):
+        for new, old in _d2_wording.PAIRS:
+            x = x.replace(old, new)
+        return x
+    if isinstance(x, dict):
+        return {k: _forward(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_forward(v) for v in x]
+    return x
+
+
+def _expected(old):
+    """The 701de71 entries as they must read now: the D2 pairs applied in the entries that carry them, every other entry exactly as stored."""
+    return {k: (_forward(v) if k.startswith(_d2_wording.ENTRIES) else v) for k, v in old.items()}
+
+
+def _differences(expected, new):
+    bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode"}
+    return {k: v for k, v in bad.items() if v is not True}
+
+
 @pytest.fixture(scope="module")
 def fake():
     return FakeSupabase()
 
 
-@pytest.mark.parametrize("mode,key", [("default", "default|20"), ("heat_only", "heat_only|20")])
-def test_every_persisted_entry_equals_origin_main_and_the_key_count_is_unchanged(fake, mode, key):
-    with gzip.open(FIXTURE, "rb") as fh:
-        old = json.loads(fh.read().decode("utf-8"))[key]
+def _live(fake, mode):
     with patched_supabase(fake):
         snap = t1.build_live_snapshot(20, overrides=None if mode == "default" else {("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")})[0]
-    new = _ser(snap)
+    return _ser(snap)
+
+
+def _old(key):
+    with gzip.open(FIXTURE, "rb") as fh:
+        return json.loads(fh.read().decode("utf-8"))[key]
+
+
+@pytest.mark.parametrize("mode,key", [("default", "default|20"), ("heat_only", "heat_only|20")])
+def test_every_persisted_entry_equals_origin_main_and_the_key_count_is_unchanged(fake, mode, key):
+    old = _old(key)
+    new = _live(fake, mode)
     assert set(new) == set(old) and len(new) == 121
-    bad = {k: _same(old[k], new[k]) for k in old if k != "GA-001-INPUT|tail_gas_mode"}
-    assert {k: v for k, v in bad.items() if v is not True} == {}
+    expected = _expected(old)
+    text = json.dumps(expected)
+    assert all(n in text for n, _ in _d2_wording.PAIRS), "the mapping is not vacuous: each of the four new phrases is in the expectation"
+    assert not any(o in json.dumps(new) for _, o in _d2_wording.PAIRS), "no old phrase is in the live snapshot"
+    # OLD assertion: bad = {k: _same(old[k], new[k]) ...} == {} (the fixture as stored, before D2). NEW: the same comparison, against the fixture with the four D2 pairs applied.
+    assert _differences(expected, new) == {}
+
+
+def test_the_mapped_comparison_fails_if_the_old_phrase_returns_or_any_other_text_or_number_changes(fake):
+    import copy
+    old = _old("default|20")
+    new = _live(fake, "default")
+    expected = _expected(old)
+    assert _differences(expected, new) == {}
+
+    for n, o in _d2_wording.PAIRS:                                   # 1) each old phrase coming back
+        back = json.loads(json.dumps(new).replace(n, o))
+        assert back != new, n
+        assert _differences(expected, back), f"the old phrase {o!r} came back and the comparison did not notice"
+    assert _differences(expected, _d2_wording.undo(new))             # all four at once (what the old, unmapped fixture expected)
+
+    other = copy.deepcopy(new)                                       # 2) one character of other text, in a D2 entry and in a non-D2 entry
+    other["EU-008|RecommendedCapacityEstimate"]["confidence_note"] += "x"
+    assert _differences(expected, other)
+    other = copy.deepcopy(new)
+    other["HB-013|Storage"]["confidence_note"] += "x"
+    assert _differences(expected, other)
+
+    num = copy.deepcopy(new)                                         # 3) a number: 1e-9 relative fails, 1e-13 (a 3.11 last-bit difference) passes
+    v = num["HB-013|Storage"]["value"]["level_kg"]
+    num["HB-013|Storage"]["value"]["level_kg"] = v * (1.0 + 1e-9)
+    assert _differences(expected, num)
+    num["HB-013|Storage"]["value"]["level_kg"] = v * (1.0 + 1e-13)
+    assert _differences(expected, num) == {}
 
 
 def test_no_database_or_network_call_was_made(fake):
