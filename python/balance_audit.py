@@ -657,7 +657,7 @@ def gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg):
     cp_s = SOLIDS_CP_KJ_KGK[0]
     feed_chem = f * lhv_mj_kg / 3.6
     ins = [
-        _en("dry feed chemical energy (dry mass x LHV)", feed_chem, ps.STATUS_ASSUMED, "FE-005 dry solids x LHV; LHV in DOK-ING's Confirmed 15-20 MJ/kg dry range, point is a case",
+        _en("dry feed chemical energy (dry mass x LHV)", feed_chem, ps.STATUS_ASSUMED, "FE-005 dry solids x LHV; LHV in DOK-ING's Confirmed 15-20 MJ/kg dry range (RFI answer 2, data/dokink_rfi_answers.md:15-16), point is a case",
             "feed taken at 25 degC: its temperature after the dryer is not stated (cp of the feed is Missing)"),
         _en("residual moisture (liquid water, 25 degC)", _liquid_water_kw(by["residual moisture in dry feed"]["species"]["H2O"]), ps.STATUS_CALCULATED, "FE-005 residual_water_kg_h"),
         _en("air sensible heat (preheated to 200 degC)", _sens_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, GA004_AIR_PREHEAT_C), ps.STATUS_ESTIMATED,

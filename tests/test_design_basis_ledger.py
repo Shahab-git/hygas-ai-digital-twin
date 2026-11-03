@@ -545,18 +545,20 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
 # The existing mentions are NOT rewritten. Any change to these numbers (a new mention, a removed one, a reworded one that moves class) fails here and must be made on purpose; a new
 # REGISTRY-STATED use is the case this guard exists for: say where the value comes from (name the DOK-ING source) or do not call it Confirmed.
 CONFIRMED_PIN = {
-    "ga001_gasifier_model.py": (15, 20, 44), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 12, 85),
-    "hb_wgs_psa_storage_chain.py": (2, 0, 35), "hb_remaining_chain.py": (1, 25, 72), "eu_utilities_chp.py": (6, 14, 38), "balance_audit.py": (1, 3, 5), "fe_feed_handling.py": (5, 10, 21),
+    "ga001_gasifier_model.py": (16, 25, 36), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 60),
+    "hb_wgs_psa_storage_chain.py": (3, 6, 27), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (5, 19, 34), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (6, 12, 18),
     "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 8),
 }
-PERSISTED_REGISTRY_STATED = 88      # REGISTRY-STATED mentions on a string-literal line whose text occurs in a persisted note of the live snapshot (both tail_gas_modes); see the A3b report
+PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
+# blowdown figure is separately confirmed", "not Confirmed"), 2 negations ("is CONFIRMED ... anywhere", "not a DOK-ING/vendor-confirmed figure"), 2 questions that ask DOK-ING to confirm, one self-test assert
+# message, one status check in code. None of them calls a registry value Confirmed. See docs/design_basis_ledger.md and the W1 report.
 
 
 def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 476 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 449 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 
@@ -688,16 +690,16 @@ def test_every_code_row_has_the_function_that_names_it(built):
 # ------------------------------------------------------------------ (F.4) the engine is unchanged
 
 def _assert_only_the_d2_phrases_differ(old, new, mode):
-    """`old` = the origin/main fixture entries, `new` = the serialised live snapshot. Every entry must equal the fixture (floats within 1e-12 relative, everything else exactly) once the
-    four D2 phrase pairs are mapped back, and the only entries that differ at all are those that can carry the D2 phrases.
+    """`old` = the origin/main fixture entries, `new` = the serialised live snapshot. The fixture is mapped FORWARD (old phrase -> new phrase, tests/_d2_wording.PAIRS, only in the entries that
+    carry them); every entry of the live snapshot must then equal it: strings exactly, floats within 1e-12 relative. So an old phrase that returns, or any other text or number that changes,
+    fails. The entries that differ from the unmapped fixture at all must be entries that can carry the phrases.
 
     The float tolerance applies to BOTH checks. The fixture was made on Python 3.14. Python 3.12 changed the builtin sum() of floats to compensated (Neumaier) summation; Python 3.11,
-    which the hourly job and CI run, adds left to right. Values that pass through sum() (storage levels, heat-integration kW, adiabatic temperatures, ...) therefore differ in the last one or
-    two bits on 3.11 (largest relative difference measured with a 3.11-style sum(): 4.4e-14). A bit-exact `old[k] != new[k]` made this test fail on 3.11 and pass on 3.12 although nothing had
-    changed; the tolerance is the one the first check already used. A real change (1e-9 relative, one character of text, a D2 phrase in another entry) still fails:
-    test_the_persisted_comparison_still_catches_a_real_change."""
-    undone = _d2_wording.undo(new)
-    diffs = {k: _same(old[k], undone[k]) for k in old if k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default"}
+    which the hourly job and CI run, adds left to right. Values that pass through sum() therefore differ in the last one or two bits on 3.11 (largest relative difference measured with a
+    3.11-style sum(): 4.4e-14); a bit-exact comparison failed on 3.11 and passed on 3.12 although nothing had changed. A real change (1e-9 relative, one character of text, a phrase in another
+    entry, an old phrase back) still fails: test_the_persisted_comparison_still_catches_a_real_change."""
+    expected = _d2_wording.forward(old)
+    diffs = {k: _same(expected[k], new[k]) for k in old if k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default"}
     bad = {k: v for k, v in diffs.items() if v is not True}
     assert bad == {}, bad
     changed = [k for k in old if k != "GA-001-INPUT|tail_gas_mode" and _same(old[k], new[k]) is not True]
@@ -763,8 +765,14 @@ def test_the_persisted_comparison_still_catches_a_real_change(runs, main_snap):
     old = main_snap["default|20"]
     new = _ser(runs["default"])
     _assert_only_the_d2_phrases_differ(old, new, "default")                        # the real, unperturbed condition passes
-    key = "HB-013|Storage"                                                        # an entry outside the D2 prefixes
+    key = next(k for k in sorted(new) if not k.startswith(_d2_wording.ENTRIES) and k != "GA-001-INPUT|tail_gas_mode"          # an entry that carries no phrase at all
+               and _first_float_leaf(new[k].get("value")) and _first_string_leaf(new[k]))
     assert not key.startswith(_d2_wording.ENTRIES)
+    for n_, o_ in _d2_wording.PAIRS:                                              # 0) every old phrase coming back, one at a time, fails
+        back = json.loads(json.dumps(new).replace(n_, o_))
+        assert back != new, n_
+        with pytest.raises(AssertionError):
+            _assert_only_the_d2_phrases_differ(old, back, "default")
 
     ulp = copy.deepcopy(new)                                                      # a last-bit difference (what Python 3.11 produces) is tolerated
     path, v = _first_float_leaf(ulp[key]["value"])
@@ -825,17 +833,24 @@ def test_the_ui_status_counts_are_unchanged():
 
 # ------------------------------------------------------------------ (A3b 2.1) the D2 exemption stays narrow
 
-def test_the_d2_exemption_list_is_exactly_the_four_listed_phrase_pairs():
-    """tests/_d2_wording.py may map back ONLY these phrases and only inside these three snapshot entries. Adding a pair or an entry fails here; a new one needs a decision."""
-    assert _d2_wording.PAIRS == (
+W1_FINGERPRINT = "4e5882de6d9238043de35040338c675dca24ed36b0f6a495daf779447c1f23b5"      # sha256 of PAIRS_W1 + ENTRIES_W1 (tests/_d2_wording.w1_fingerprint()); changes when a W1 pair or entry is added, removed or reworded
+
+
+def test_the_exemption_list_is_exactly_the_listed_phrase_pairs():
+    """tests/_d2_wording.py is the ONE exemption list: the 4 D2 pairs in 3 entry prefixes, plus the W1 pairs in the listed entries. Adding a pair or an entry fails here; a new one needs a decision."""
+    assert _d2_wording.PAIRS_D2 == (
         ("registry '>98% removal efficiency' (Unverified (registry), not DOK-ING-confirmed)", "own Confirmed '>98% removal efficiency'"),
         ("registry >90% efficiency (>d50=15um; Unverified (registry))", "own Confirmed >90% efficiency (>d50=15um)"),
         ("ACTUAL/DOK-ING VALUE: Unverified (registry), not DOK-ING-confirmed -- 20 kW", "ACTUAL/DOK-ING VALUE: Confirmed -- 20 kW"),
         ("Unverified (registry), not DOK-ING-confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own", "Confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own"),
     )
-    assert _d2_wording.ENTRIES == ("FE-002|", "GC-001|", "EU-008|")
+    assert _d2_wording.ENTRIES_D2 == ("FE-002|", "GC-001|", "EU-008|")
+    assert _d2_wording.PAIRS == _d2_wording.PAIRS_D2 + _d2_wording.PAIRS_W1 and _d2_wording.ENTRIES == _d2_wording.ENTRIES_D2 + _d2_wording.ENTRIES_W1
+    assert (len(_d2_wording.PAIRS_W1), len(_d2_wording.ENTRIES_W1)) == (86, 42)
+    assert _d2_wording.w1_fingerprint() == W1_FINGERPRINT
+    assert all(isinstance(n, str) and isinstance(o, str) and n != o and n and o for n, o in _d2_wording.PAIRS)
     src = open(os.path.join(ROOT, "tests", "_d2_wording.py"), encoding="utf-8").read()
-    assert src.count(".replace(") == 1, "undo() maps through PAIRS only; no second replacement rule"
+    assert src.count(".replace(") == 2, "forward() and undo() map through PAIRS only (one replace each); no other replacement rule"
 
 
 def test_undo_changes_nothing_but_those_phrases():
@@ -846,18 +861,27 @@ def test_undo_changes_nothing_but_those_phrases():
     assert _d2_wording.undo(inside) == {"FE-002|X": {"a": _d2_wording.PAIRS[0][1] + " tail"}}
 
 
+def _differing_leaves(a, b, path=""):
+    """[(path, kind)] of every leaf at which two serialised entries differ (exactly, no tolerance)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        return [x for k in sorted(set(a) | set(b)) for x in _differing_leaves(a.get(k), b.get(k), f"{path}/{k}")]
+    if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+        return [x for i, (p, q) in enumerate(zip(a, b)) for x in _differing_leaves(p, q, f"{path}[{i}]")]
+    return [] if a == b else [(path, type(a).__name__)]
+
+
+EXPECTED_DIFFERING_LEAVES = (70, 45)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
+
+
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
-def test_the_persisted_text_differences_are_exactly_these_four_fields(runs, main_snap, mode, fixture_key):
-    new, old = _ser(runs[mode]), main_snap[fixture_key]
-    differing = set()
-    for k in old:
-        if k == "GA-001-INPUT|tail_gas_mode":
-            continue
-        r = _same(old[k], new[k])
-        if r is not True:
-            differing |= {(k, path) for path in r}
-    assert differing == {("EU-008|RecommendedCapacityEstimate", "/confidence_note"), ("EU-008|RecommendedCapacityEstimate", "/value/actual_dokking_value"),
-                         ("FE-002|TrampMetalReject", "/missing_reason"), ("GC-001|Dust", "/missing_reason")}, differing
+def test_the_persisted_text_differences_are_exactly_the_mapped_fields(runs, main_snap, mode, fixture_key):
+    old, new = main_snap[fixture_key], _ser(runs[mode])
+    mapped = _d2_wording.forward(old)
+    live = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" for p, kind in _differing_leaves(old[k], new[k]))
+    by_map = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" for p, kind in _differing_leaves(old[k], mapped[k]))
+    assert live == by_map, "the live snapshot differs from the fixture at exactly the fields the mapping changes, and nowhere else"
+    assert {kind for _, kind in live} == {"str"}, "no number, list length or key moved: text only"
+    assert (len(live), len({p.split("/")[0] for p, _ in live})) == EXPECTED_DIFFERING_LEAVES
 
 
 def test_the_app_counts_are_the_resolved_chain_not_the_summarize_default():

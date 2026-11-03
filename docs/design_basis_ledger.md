@@ -348,7 +348,7 @@ Ledger rows with no consumer. They are reported, not removed.
 
 ## Confirmed mentions in the engine modules
 
-476 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
+449 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
 
 | file | lines mentioning "confirmed" |
 |---|---|
@@ -356,15 +356,15 @@ Ledger rows with no consumer. They are reported, not removed.
 | python/eu_utilities_chp.py | 58 |
 | python/fe_feed_handling.py | 36 |
 | python/ga001_energy_balance.py | 1 |
-| python/ga001_gasifier_model.py | 79 |
+| python/ga001_gasifier_model.py | 77 |
 | python/gasifier_mass_balance.py | 3 |
-| python/gc_gas_cleaning_chain.py | 97 |
-| python/hb_remaining_chain.py | 98 |
-| python/hb_wgs_psa_storage_chain.py | 37 |
+| python/gc_gas_cleaning_chain.py | 88 |
+| python/hb_remaining_chain.py | 83 |
+| python/hb_wgs_psa_storage_chain.py | 36 |
 | python/reference_feeds.py | 4 |
 | python/tab1_integration.py | 24 |
 | python/uncertainty.py | 30 |
-| **all** | 476 |
+| **all** | 449 |
 
 ## Exceptions (numeric constants that are not parameters)
 

@@ -340,14 +340,14 @@ def eu_chp_dispatch(get_input):
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"total_syngas={total_syngas_kw:.3f}kW (GC-013's own real dry flow x a LIVE "
-            f"composition-weighted LHV={live_lhv:.3f} MJ/Nm3 -- vs EU-003's/EU-005's own static "
-            f"Confirmed {SYNGAS_LHV_MJ_PER_NM3} MJ/Nm3 design-point figure, a real, unforced "
+            f"composition-weighted LHV={live_lhv:.3f} MJ/Nm3 -- vs EU-003's/EU-005's own static registry-stated (Unverified (registry), not DOK-ING-confirmed) "
+            f"{SYNGAS_LHV_MJ_PER_NM3} MJ/Nm3 design-point figure, a real, unforced "
             f"cross-check, not tuned to match, see module docstring). ALLOCATED: wgs_psa_claim="
             f"{wgs_psa_claim_kw:.3f}kW ({WGS_PSA_SYNGAS_CLAIM_FRACTION*100:.0f}% -- DOK-ING's own "
             f"confirmed RFI #10 priority, 'H2 is primary; CHP ... optional, not fixed', see "
             f"WGS_PSA_SYNGAS_CLAIM_FRACTION's own docstring), leaving CHP's own real, non-double-"
             f"counted syngas_budget={syngas_budget_kw:.3f}kW. h2_budget={h2_budget_kw:.3f}kW "
-            f"(HB-013's own real storage level x H2's own Confirmed {H2_LHV_MJ_PER_NM3} MJ/Nm3 "
+            f"(HB-013's own real storage level x H2's own Assumed (not DOK-ING-confirmed) {H2_LHV_MJ_PER_NM3} MJ/Nm3 "
             f"LHV -- this storage level itself now correctly nets out EU-006's own H2 consumption, "
             f"see hb_wgs_psa_storage_chain.hb013_storage_level()'s own docstring). "
             f"dispatch_ga.run_dispatch_ga() and chp.chp_efficiency() both UNCHANGED -- real "
@@ -430,7 +430,7 @@ def eu005_microturbine(get_input):
         "confidence_note": (
             f"load={d['load_factor']*100:.1f}%, electrical={d['electrical_kw']:.3f}kW, "
             f"eta_actual={d['eta_actual']*100:.2f}% (rated 28%), exhaust flow="
-            f"{exhaust_flow_nm3_h:.2f} Nm3/h (EU-005's own Confirmed 150 Nm3/h rated x live load)."
+            f"{exhaust_flow_nm3_h:.2f} Nm3/h (EU-005's own registry 150 Nm3/h rated, Unverified (registry), not DOK-ING-confirmed, x live load)."
         ),
     }
 
@@ -496,7 +496,7 @@ def eu007_flare(get_input):
             f"combustible_in={combustible_nm3_h:.4f} Nm3/h (currently always 0 -- Phase 1d's own "
             f"GA-001 recycle claims 100% of HB-009's CO/H2/CH4 from this same stream), "
             f"inert_in={inert_nm3_h:.2f} Nm3/h (CO2+N2, never recycled, this flare's real routine "
-            f"feed). destroyed={destroyed_nm3_h:.4f} Nm3/h at EU-007's own Confirmed "
+            f"feed). destroyed={destroyed_nm3_h:.4f} Nm3/h at EU-007's own Assumed (not DOK-ING-confirmed; no registry row states it) "
             f"{EU007_DESTRUCTION_EFFICIENCY*100:.0f}% destruction efficiency -- see module "
             f"docstring for why this has no material routine effect under current wiring."
         ),
@@ -540,7 +540,7 @@ def eu008_cooling_supply(get_input):
         "confidence_note": (
             f"demand={demand_kw:.3f}kW (GC-004 quench {gc004_duty_kw:.3f} + HB-003 cold-side "
             f"{hb003['Q_cold_side_kW']:.3f} + HB-012 compressor {hb012['power_kW']:.3f}) vs "
-            f"EU-008's own Confirmed {EU008_RATED_CAPACITY_KW}kW capacity -> utilization="
+            f"EU-008's own registry (Unverified (registry), not DOK-ING-confirmed) {EU008_RATED_CAPACITY_KW}kW capacity -> utilization="
             f"{utilization*100:.1f}%. supply_temp={new_supply_temp_c:.3f}C (damped "
             f"{EU008_DAMPING} x prev + {1-EU008_DAMPING} x target({target_supply_temp_c:.3f}C)), "
             f"gap={gap_c:.4f}C from this cycle's target. Damping is PER-CYCLE (Assumed) -- "

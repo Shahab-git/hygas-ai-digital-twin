@@ -495,7 +495,7 @@ def _input_steam_to_feed_ratio(get_input):
         "confidence_note": (
             f"Read live from uncertainty.py ASSUMPTIONS['steam_to_feed_ratio'] "
             f"(point={point}, range=[{lo:.4g}, {hi:.4g}]). GA-003's own registry remark "
-            f"independently confirms 15 kg/h steam / 37.5 kg/h feed = 0.4 exactly, the same "
+            f"agrees arithmetically (it is itself 0.4 x 37.5, Assumed, so not an independent check) with 15 kg/h steam / 37.5 kg/h feed = 0.4 exactly, the same "
             f"physical ratio at the gasifier itself, not just the WGS-reactor scaling use "
             f"uncertainty.py's own docstring otherwise describes."
         ),
@@ -595,7 +595,7 @@ def _input_feedstock_composition(get_input):
             f"hardcoded): Carbon {c['value_pct']:.0f}% vs confirmed floor {c['constraint']} "
             f"({'PASS' if c['pass'] else 'FAIL'}); Hydrogen {h['value_pct']:.0f}% vs confirmed floor "
             f"{h['constraint']} ({'PASS' if h['pass'] else 'FAIL'}); Ash (ASH_FRACTION, a separate "
-            f"module constant, itself independently Confirmed from GA-005's own registry data) "
+            f"module constant, an Assumed value: GA-005's registry row is Unverified (registry), not DOK-ING-confirmed, and is a discharge rate, not this fraction) "
             f"{a['value_pct']:.0f}% vs confirmed range {a['constraint']} "
             f"({'PASS' if a['pass'] else 'FAIL'}). "
             + ("All checks PASS -- consistent with, but not derived from, DOK-ING's confirmed data."
@@ -633,7 +633,7 @@ def _input_operating_temperature_c(get_input):
         "value": GA001_OPERATING_TEMPERATURE_C, "status": ps.STATUS_ASSUMED,
         "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "GA-001's own Confirmed registry value ('Operating temperature (typical)' = "
+            "GA-001's own registry value (resolved status Assumed, not DOK-ING-confirmed; 'Operating temperature (typical)' = "
             "950 degC, data/equipment_registry.json), read directly. Used for the water-gas-"
             "shift equilibrium constant."
         ),
@@ -1043,7 +1043,7 @@ def oxygen_carrier_circulation_estimate(get_input):
             f"a more reactive carrier, but more aggressive than typically recommended for carrier "
             f"longevity over many redox cycles. A SEPARATE, structural caveat (see this parameter's "
             f"own docstring): the source ratio comes from a dual-CFB pilot, a fundamentally "
-            f"higher-solids-throughput configuration than GA-001's own confirmed BFB technology, so "
+            f"higher-solids-throughput configuration than GA-001's own registry-stated BFB technology (Unverified (registry), not DOK-ING-confirmed), so "
             f"the ratio itself may not transfer cleanly regardless of this utilization check."
         )
     )
@@ -1052,7 +1052,7 @@ def oxygen_carrier_circulation_estimate(get_input):
         "value": {
             # Section 8 structure --------------------------------------------------
             "actual_dokking_value": (
-                "MISSING / UNVERIFIED. GA-001's own registry data confirms the reactor TECHNOLOGY "
+                "MISSING / UNVERIFIED. GA-001's own registry data states (Unverified (registry), not DOK-ING-confirmed) the reactor TECHNOLOGY "
                 "is 'Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping oxygen "
                 "carrier' -- but no circulation rate, carrier inventory, or per-pass conversion "
                 "degree is stated anywhere in this project (design_basis.py's own RFI tracker and "
@@ -1067,7 +1067,7 @@ def oxygen_carrier_circulation_estimate(get_input):
                 "Graf et al. (2024, Energy & Fuels 38(19), 18660-18673) -- 1 MWth chemical-looping "
                 "GASIFICATION pilot plant, real reported oxygen-carrier-to-fuel mass ratios "
                 f"({ratio_lo}-{ratio_hi}x across 3 biomass feedstocks) x GA-001's own live, "
-                f"confirmed dry feed rate ({feed_rate:.2f} kg/h this cycle)"
+                f"dry feed rate (an Assumed input; DOK-ING RFI #1 gives 1,000 kg/day without saying wet or dry) ({feed_rate:.2f} kg/h this cycle)"
             ),
             "consistency_check": {"verdict": consistency_verdict, "note": consistency_note},
             # Section 6 metadata -----------------------------------------------------
@@ -1082,15 +1082,15 @@ def oxygen_carrier_circulation_estimate(get_input):
                 "engineering_basis": (
                     "Real, directly-reported oxygen-carrier-to-fuel mass ratio (18.4-44.7x, 3 "
                     "biomass feedstocks) from a 1 MWth chemical-looping gasification pilot plant, "
-                    "scaled to GA-001's own confirmed dry feed rate; cross-checked (not derived "
-                    "from) this project's own confirmed O2 demand and Fe2O3/Fe3O4's own computed "
+                    "scaled to GA-001's own dry feed rate (an Assumed input); cross-checked (not derived "
+                    "from) this project's own computed O2 demand and Fe2O3/Fe3O4's own computed "
                     "theoretical oxygen transport capacity (Ro=3.34%)"
                 ),
                 "uncertainty_or_range": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kg/h",
                 "confidence": (
                     "Medium -- the source ratio is a real, directly-reported, peer-reviewed pilot-"
                     "plant figure (not a single derived/assumed number), but the source carrier "
-                    "(ilmenite, dual-CFB) differs materially from GA-001's own confirmed technology "
+                    "(ilmenite, dual-CFB) differs materially from GA-001's own registry-stated technology (Unverified (registry), not DOK-ING-confirmed) "
                     "(pure Fe2O3/Fe3O4, BFB) -- see this entry's own consistency_check field for the "
                     "quantitative result of checking this range against GA-001's own O2 demand."
                 ),
@@ -1099,7 +1099,7 @@ def oxygen_carrier_circulation_estimate(get_input):
                     "least as an order-of-magnitude baseline, to GA-001's own different (pure "
                     "Fe2O3/Fe3O4) carrier chemistry -- NOT verified, flagged explicitly. (2) Their "
                     "dual-CFB reactor's own solids-circulation capability is assumed comparable to "
-                    "GA-001's own confirmed BFB -- a real, structural, unresolved caveat (CFB systems "
+                    "GA-001's own registry-stated BFB (Unverified (registry), not DOK-ING-confirmed) -- a real, structural, unresolved caveat (CFB systems "
                     "are generally capable of materially higher circulation than BFB). (3) Ignores "
                     "carrier attrition/makeup, particle size, and reactor residence-time constraints "
                     "entirely -- a genuine, stated simplification."

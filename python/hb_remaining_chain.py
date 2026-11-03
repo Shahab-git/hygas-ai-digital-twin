@@ -321,10 +321,10 @@ def hb011_electrolyser(get_input):
             f"load={load*100:.1f}% (from AI-001's own illustrative availability signal, see that "
             f"function's own confidence_note), power={power_kw:.3f}kW, SEC="
             f"{'n/a (not running)' if sec_kwh_per_nm3 is None else f'{sec_kwh_per_nm3:.3f} kWh/Nm3'}, "
-            f"H2={h2_nm3_h:.4f} Nm3/h. At load=1.0 this formula reproduces HB-011's own Confirmed "
+            f"H2={h2_nm3_h:.4f} Nm3/h. At load=1.0 this formula reproduces HB-011's own registry-stated (Unverified (registry), not DOK-ING-confirmed) "
             f"55.000 kWh/Nm3 SEC exactly (see this module's own self-test) -- the resulting H2 output "
             f"at that point ({HB011_RATED_POWER_KW/HB011_SEC_RATED_KWH_PER_NM3:.4f} Nm3/h) sits "
-            f"~1% above HB-011's own separately-Confirmed 'H2 production rate (rated)=0.18 Nm3/h' "
+            f"~1% above HB-011's own separately registry-stated (Unverified (registry)) 'H2 production rate (rated)=0.18 Nm3/h' "
             f"figure -- a minor, honestly-reported registry-internal rounding gap (10kW/0.18Nm3/h="
             f"55.56, not exactly 55), not forced to reconcile, same discipline as this project's "
             f"other real cross-checks (e.g. HB-003's heat-duty comparison)."
@@ -453,7 +453,7 @@ def hb010_selectivity_estimate(get_input):
     verdict = "PASS" if in_range else "FLAGGED"
     consistency_note = (
         f"Comparable-equipment consistency check: a real polyimide hollow-fiber membrane module "
-        f"(~39 GPU H2 permeance, closely matching HB-010's own Confirmed 50 GPU) reports a measured "
+        f"(~39 GPU H2 permeance, closely matching HB-010's own registry 50 GPU, Unverified (registry), not DOK-ING-confirmed) reports a measured "
         f"H2/CO2 selectivity of {comparable} -- {'falls INSIDE' if in_range else 'falls OUTSIDE'} the "
         f"internally-derived {baseline_range[0]:.1f}-{baseline_range[1]:.1f} range -- verdict: "
         f"{verdict}. "
@@ -469,7 +469,7 @@ def hb010_selectivity_estimate(get_input):
         "value": {
             # Section 8 structure --------------------------------------------------
             "actual_dokking_value": (
-                "MISSING / UNVERIFIED. HB-010's own registry confirms H2 permeance (50 GPU), "
+                "MISSING / UNVERIFIED. HB-010's own registry states H2 permeance (50 GPU), "
                 "recovery (85%), and permeate purity (95-98%) but states no membrane SELECTIVITY "
                 "directly -- design_basis.py's own RFI tracker and data/dokink_rfi_answers.md both "
                 "re-checked for this task, neither mentions it."
@@ -479,9 +479,9 @@ def hb010_selectivity_estimate(get_input):
             "status_of_baseline": "Estimated / Internal-model-derived, Comparable-equipment cross-checked",
             "uncertainty": f"{baseline_range[0]:.1f}-{baseline_range[1]:.1f}",
             "source_basis": (
-                f"Back-derived from HB-010's own Confirmed recovery (85%) and purity range "
-                f"(95-98%), AT the Confirmed design-point feed H2 fraction those figures are "
-                f"actually stated for ({x_f*100:.0f}%, matching HB-006's own Confirmed feed H2 "
+                f"Back-derived from HB-010's own registry recovery (85%; Unverified (registry), not DOK-ING-confirmed) and purity range "
+                f"(95-98%), AT the registry design-point feed H2 fraction (Unverified (registry)) those figures are "
+                f"actually stated for ({x_f*100:.0f}%, matching HB-006's own registry feed H2 "
                 f"content) -- NOT at this cycle's own live feed composition ({live_x_f*100:.1f}% "
                 f"H2, reported below for information only) -- via the standard 'low back-"
                 f"permeation' solution-diffusion approximation; cross-checked against a real "
@@ -500,19 +500,19 @@ def hb010_selectivity_estimate(get_input):
                 "source_reference": "python/hb_remaining_chain.py: hb010_selectivity_estimate()",
                 "engineering_basis": (
                     "Standard solution-diffusion 'low back-permeation' approximation applied to "
-                    "HB-010's own Confirmed recovery/purity design-point figures AT their own "
-                    "Confirmed 55% feed-H2 basis (NOT at the live, fluctuating feed composition -- "
+                    "HB-010's own registry recovery/purity design-point figures (Unverified (registry), not DOK-ING-confirmed) AT their own "
+                    "registry 55% feed-H2 basis (NOT at the live, fluctuating feed composition -- "
                     "a real design error caught and fixed by this module's own self-test, see this "
                     "function's own docstring); cross-checked against a real comparable polyimide "
                     "hollow-fiber membrane module's own measured H2/CO2 selectivity (~39 GPU, close "
-                    "to HB-010's own Confirmed 50 GPU) -- 'Recent advances in H2 purification and "
+                    "to HB-010's own registry 50 GPU, Unverified (registry), not DOK-ING-confirmed) -- 'Recent advances in H2 purification and "
                     "CO2 capture: Evolving from flat sheet to hollow fiber membranes,' ScienceDirect, "
                     "Oct. 2024, PII S2772656824001465 (full author/journal/volume details could not "
                     "be retrieved, paywalled -- cited by title/identifier/date only)"
                 ),
                 "uncertainty_or_range": f"{baseline_range[0]:.1f}-{baseline_range[1]:.1f}",
                 "confidence": (
-                    "Medium -- the derivation uses HB-010's OWN confirmed design-point numbers (not "
+                    "Medium -- the derivation uses HB-010's OWN registry design-point numbers, Unverified (registry), not DOK-ING-confirmed (not "
                     "a generic external analogy) via a standard, but simplified (low-back-permeation) "
                     "membrane relation, and independently converges with a real comparable module's "
                     "own measured figure; the approximation itself, and the 'lumped, not species-"
@@ -521,7 +521,7 @@ def hb010_selectivity_estimate(get_input):
                 "assumptions": (
                     "(1) The 'ideal selectivity, negligible back-permeation' approximation, not a "
                     "full multicomponent stage-cut solve (HB-010's own actual permeate-side pressure "
-                    "is not stated anywhere in this project). (2) Evaluated AT the Confirmed 55% "
+                    "is not stated anywhere in this project). (2) Evaluated AT the registry 55% "
                     "design-point feed H2 fraction the registry's own 85%/95-98% figures are actually "
                     "stated for, deliberately NOT at this cycle's own live, fluctuating feed "
                     "composition -- selectivity is treated as an approximately fixed material "
@@ -558,7 +558,7 @@ def hb010_selectivity_estimate(get_input):
         "confidence_note": (
             f"ACTUAL/DOK-ING VALUE: Missing/Unverified. DIGITAL TWIN ENGINEERING BASELINE: "
             f"approximately {baseline_range[0]:.1f}-{baseline_range[1]:.1f} (Internal-model-derived "
-            f"from HB-010's own Confirmed 85% recovery / 95-98% purity at their own Confirmed "
+            f"from HB-010's own registry 85% recovery / 95-98% purity (Unverified (registry), not DOK-ING-confirmed) at their own registry "
             f"{x_f*100:.0f}% design-point feed H2 -- this cycle's own LIVE feed H2 is "
             f"{live_x_f*100:.1f}%, reported for information only, deliberately NOT used in this "
             f"computation). {consistency_note} Does NOT feed hb010_separation()'s own calculation -- "
@@ -688,7 +688,7 @@ def hb014_kinetics_baseline(get_input):
     return {
         "value": {
             "actual_dokking_value": (
-                "MISSING / UNVERIFIED. HB-014's own registry confirms catalyst type (Pt/Pd/Al2O3), "
+                "MISSING / UNVERIFIED. HB-014's own registry states catalyst type (Pt/Pd/Al2O3), "
                 "operating temperature (170 degC), operating pressure (40 bar), and H2 loading "
                 "efficiency (6.2 wt%) -- but states no rate constant, activation energy, or "
                 "reaction order anywhere. design_basis.py, the RFI answers, and equipment_"
@@ -700,7 +700,7 @@ def hb014_kinetics_baseline(get_input):
             "uncertainty": f"{lo:.0f}-{hi:.0f} kJ/mol",
             "source_basis": (
                 "Liu, L., Zhu, T., Xia, M.W., Zhu, Y.Z., Ke, H.Z., Yang, M., Cheng, H.S., & Dong, Y. (2023), Inorganic Chemistry 62(42), 17390-17400 -- ~67.2 kJ/mol, "
-                "5 wt% Rh/Al2O3 (catalyst-metal mismatch vs. HB-014's own Confirmed Pt/Pd/Al2O3); "
+                "5 wt% Rh/Al2O3 (catalyst-metal mismatch vs. HB-014's own registry Pt/Pd/Al2O3, Unverified (registry), not DOK-ING-confirmed); "
                 "corroborated qualitatively (reaction studied at HB-014's own exact 170 degC/40 bar "
                 "conditions, specific Ea not independently re-verified) by Park, S. et al. (2023), "
                 "Chemical Engineering Journal 474, 145743 (Ru/Al2O3, Langmuir-Hinshelwood model)"
@@ -717,14 +717,14 @@ def hb014_kinetics_baseline(get_input):
                 "engineering_basis": (
                     "Real, published DBT hydrogenation kinetics literature, widened to reflect a "
                     "genuine catalyst-metal mismatch (source studies use Rh/Al2O3 or Ru/Al2O3, not "
-                    "HB-014's own Confirmed Pt/Pd/Al2O3) and an unretrievable exact figure from the "
+                    "HB-014's own registry Pt/Pd/Al2O3, Unverified (registry)) and an unretrievable exact figure from the "
                     "one T/P-exact-matched source (paywalled)"
                 ),
                 "uncertainty_or_range": f"{lo:.0f}-{hi:.0f} kJ/mol",
                 "confidence": (
                     "Low-Medium -- deliberately LOWER than HB-016's own dehydrogenation baseline: "
-                    "no source in this search directly matches BOTH HB-014's own Confirmed catalyst "
-                    "(Pt/Pd/Al2O3) AND its own Confirmed operating conditions (170 degC/40 bar) at "
+                    "no source in this search directly matches BOTH HB-014's own registry catalyst (Unverified (registry), not DOK-ING-confirmed) "
+                    "(Pt/Pd/Al2O3) AND its own registry operating conditions (170 degC/40 bar; Unverified (registry)) at "
                     "once; the two real, verified sources each match one dimension, not both."
                 ),
                 "assumptions": (
@@ -740,7 +740,7 @@ def hb014_kinetics_baseline(get_input):
             },
             "real_open_question": (
                 "What is DOK-ING's own actual, confirmed rate constant/activation energy for "
-                "HB-014's own specific Pt/Pd/Al2O3 catalyst batch, at its own confirmed 170 degC/40 "
+                "HB-014's own specific Pt/Pd/Al2O3 catalyst batch, at its own registry 170 degC/40 "
                 "bar operating point? None of this is confirmed anywhere in this project today."
             ),
         },
@@ -872,7 +872,7 @@ def hb016_kinetics_baseline(get_input):
     return {
         "value": {
             "actual_dokking_value": (
-                "MISSING / UNVERIFIED. HB-016's own registry confirms catalyst type (Pt/Al2O3), "
+                "MISSING / UNVERIFIED. HB-016's own registry states catalyst type (Pt/Al2O3), "
                 "operating temperature (300 degC), operating pressure (2 bar), and H2 release "
                 "efficiency (6.0 wt%) -- but states no rate constant, activation energy, or "
                 "reaction order anywhere. design_basis.py, the RFI answers, and equipment_"
@@ -884,9 +884,9 @@ def hb016_kinetics_baseline(get_input):
             "uncertainty": f"{lo:.0f}-{hi:.0f} kJ/mol",
             "source_basis": (
                 "Garidzirai, Modisha & Bessarabov (2024), Catalysts 14(1), 32 -- 205 kJ/mol, "
-                "Pt/Al2O3, first-order (k=0.0222/min), 300 degC (Confirmed match); Park, Naseem & "
+                "Pt/Al2O3, first-order (k=0.0222/min), 300 degC (matches the registry 300 degC, Unverified (registry)); Park, Naseem & "
                 "Lee (2021), Materials 14(24), 7613 -- 171 kJ/mol, Pt/Al2O3, 250-320 degC "
-                "(spans the Confirmed 300 degC)"
+                "(spans the registry 300 degC, Unverified (registry))"
             ),
             "consistency_check": {
                 "verdict": verdict,
@@ -906,8 +906,8 @@ def hb016_kinetics_baseline(get_input):
                 "source": "HB-014/HB-016 LOHC catalyst kinetics Missing Parameter Resolution Protocol task",
                 "source_reference": "python/hb_remaining_chain.py: hb016_kinetics_baseline()",
                 "engineering_basis": (
-                    "Two independent, peer-reviewed studies, both matching HB-016's own Confirmed "
-                    "catalyst (Pt/Al2O3) AND its own Confirmed 300 degC operating temperature "
+                    "Two independent, peer-reviewed studies, both matching HB-016's own registry "
+                    "catalyst (Pt/Al2O3) AND its own registry 300 degC operating temperature (both Unverified (registry), not DOK-ING-confirmed) "
                     "directly -- a materially stronger literature match than HB-014's own "
                     "hydrogenation baseline"
                 ),
@@ -921,9 +921,9 @@ def hb016_kinetics_baseline(get_input):
                 ),
                 "assumptions": (
                     "(1) The two cited studies' own catalyst preparation (commercial-grade Pt/Al2O3) "
-                    "is assumed broadly representative of HB-016's own Confirmed Pt/Al2O3 (exact "
+                    "is assumed broadly representative of HB-016's own registry Pt/Al2O3 (Unverified (registry); exact "
                     "loading/support not independently verified). (2) The consistency check treats "
-                    "HB-016's own confirmed round-trip efficiency ratio as a target CONVERSION "
+                    "HB-016's own registry round-trip efficiency ratio (6.0/6.2 wt%, Unverified (registry)) as a target CONVERSION "
                     "fraction, a reasonable but not literally-stated engineering interpretation."
                 ),
                 "date_established": "2026-09-03",
@@ -931,7 +931,7 @@ def hb016_kinetics_baseline(get_input):
             },
             "real_open_question": (
                 "What is DOK-ING's own actual, confirmed rate constant/activation energy for "
-                "HB-016's own specific Pt/Al2O3 catalyst batch, at its own confirmed 300 degC/2 "
+                "HB-016's own specific Pt/Al2O3 catalyst batch, at its own registry 300 degC/2 "
                 "bar operating point? None of this is confirmed anywhere in this project today."
             ),
         },
@@ -944,7 +944,7 @@ def hb016_kinetics_baseline(get_input):
             f"approximately {lo:.0f}-{hi:.0f} kJ/mol (Literature-based, two independently-verified "
             f"sources both matching this exact catalyst and temperature). Consistency check "
             f"({verdict}): Garidzirai et al.'s own real k={k_per_min:.4f}/min implies "
-            f"{implied_time_h:.2f}h to reach HB-016's own Confirmed {target_conversion*100:.1f}% "
+            f"{implied_time_h:.2f}h to reach HB-016's own registry-stated (Unverified (registry)) {target_conversion*100:.1f}% "
             f"round-trip efficiency target -- {ratio_to_reference:.2f}x that SAME paper's own "
             f"stated real {reference_batch_time_h:.0f}h batch reaction time, the same order of "
             f"magnitude, a genuine match, not forced. Does NOT feed hb016_reaction_kinetics()'s own "
@@ -1002,7 +1002,7 @@ def hb018_dispensing(get_input):
         "confidence_note": (
             f"dispensed = min(max_rate({HB018_MAX_DISPENSE_RATE_KG_H:.1f} kg/h) x "
             f"{dt_h} h/cycle, available storage({available_kg:.4f} kg)) = "
-            f"{dispensed_kg:.4f} kg this cycle. 'Demand' modeled as HB-018's own Confirmed max rated "
+            f"{dispensed_kg:.4f} kg this cycle. 'Demand' modeled as HB-018's own registry (Unverified (registry), not DOK-ING-confirmed) max rated "
             f"throughput (an ASSUMED full-utilization worst case -- no real FCEV traffic/demand "
             f"schedule exists anywhere in this project, see module docstring)."
         ),

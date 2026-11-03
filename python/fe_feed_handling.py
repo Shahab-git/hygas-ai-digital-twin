@@ -125,7 +125,7 @@ def fe001_msw_delivery_rate(get_input):
         "value": FE001_DEFAULT_DELIVERY_RATE_KG_H, "status": ps.STATUS_ASSUMED,
         "inputs": [], "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            f"DOK-ING's own confirmed nominal AS-RECEIVED delivery rate (RFI #1, 1,000 kg/day = "
+            f"The default delivery rate, set equal to DOK-ING's confirmed nominal capacity (RFI answer 1, data/dokink_rfi_answers.md:11; wet or dry not stated; 1,000 kg/day = "
             f"{FE001_DEFAULT_DELIVERY_RATE_KG_H} kg/h). The perturbable knob this phase's own "
             f"self-test uses to prove end-to-end propagation."
         ),
@@ -163,9 +163,9 @@ def fe001_inventory(get_input):
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"level = prev({prev_level_t:.4f} t) + (delivery({delivery_rate_kg_h:.3f} kg/h) - "
-            f"FE-003's own Confirmed nominal({FE003_NOMINAL_KG_H} kg/h)) x "
+            f"FE-003's own Confirmed (DOK-ING RFI answer 1, data/dokink_rfi_answers.md:11) nominal({FE003_NOMINAL_KG_H} kg/h)) x "
             f"{dt_h} h/cycle, clamped to [0, {FE001_LIVE_CAPACITY_T}t] "
-            f"(FE-001's own Confirmed live capacity). See this function's own docstring for the "
+            f"(FE-001's own registry live capacity: Unverified (registry), not DOK-ING-confirmed). See this function's own docstring for the "
             f"stated simplification (delivery feeds FE-002 onward directly, not this level)."
         ),
     }
@@ -229,7 +229,7 @@ def fe003_weighing(get_input):
         "inputs": [("FE-002", "MassBalance")], "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"confirmed={confirmed_kg_h:.3f} kg/h (inlet={inlet_kg_h:.3f}), clipped to FE-003's own "
-            f"Confirmed [{FE003_MIN_KG_H},{FE003_MAX_KG_H}] kg/h range"
+            f"registry (Unverified (registry), not DOK-ING-confirmed) [{FE003_MIN_KG_H},{FE003_MAX_KG_H}] kg/h range"
             f"{' -- CLIPPED this cycle' if clipped else ''}. This IS the AS-RECEIVED (WET) feed "
             f"rate -- see module docstring's resolved wet/dry basis finding."
         ),
