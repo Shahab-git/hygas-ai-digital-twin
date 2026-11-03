@@ -544,9 +544,11 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
 # {file: (DOK-ING-SOURCED, GENERIC, REGISTRY-STATED)}: lines of the 18 engine modules that mention "confirmed" (case-insensitive), classified by python/ledger_coverage.classify_mention.
 # The existing mentions are NOT rewritten. Any change to these numbers (a new mention, a removed one, a reworded one that moves class) fails here and must be made on purpose; a new
 # REGISTRY-STATED use is the case this guard exists for: say where the value comes from (name the DOK-ING source) or do not call it Confirmed.
+# Task A3d (Gate 5 wording) lowered three files ON PURPOSE (449 -> 436 lines; classes 49/159/241 -> 44/160/232): hb_wgs_psa_storage_chain (3, 6, 27) -> (2, 6, 26), eu_utilities_chp
+# (5, 19, 34) -> (2, 20, 26), fe_feed_handling (6, 12, 18) -> (5, 12, 18). Lines that called an Assumed / Unverified (registry) constant Confirmed now state its ledger status.
 CONFIRMED_PIN = {
     "ga001_gasifier_model.py": (16, 25, 36), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 60),
-    "hb_wgs_psa_storage_chain.py": (3, 6, 27), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (5, 19, 34), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (6, 12, 18),
+    "hb_wgs_psa_storage_chain.py": (2, 6, 26), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (2, 20, 26), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 18),
     "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 8),
 }
 PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
@@ -558,7 +560,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 449 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 436 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 
@@ -833,7 +835,9 @@ def test_the_ui_status_counts_are_unchanged():
 
 # ------------------------------------------------------------------ (A3b 2.1) the D2 exemption stays narrow
 
-W1_FINGERPRINT = "e35d0cf93220024a1e95cd20c8c3b800f4fb00b9c1d4b5f421f1621717326f1e"      # sha256 of PAIRS_W1 + ENTRIES_W1 (tests/_d2_wording.w1_fingerprint()); changes when a W1 pair or entry is added, removed or reworded
+W1_FINGERPRINT = "e3f4ed31fd00a9a06b3c85db5a1ee39d50425ffb9c79a56102fa130097cc411d"      # sha256 of PAIRS_W1 + ENTRIES_W1 (tests/_d2_wording.w1_fingerprint()); changes when a W1 pair or entry is added, removed or reworded
+# A3d (deliberate edit): was e35d0cf93220024a1e95cd20c8c3b800f4fb00b9c1d4b5f421f1621717326f1e. The HB-012 compressor pair moved from PAIRS_W1 (89 pairs) to PAIRS_A3D with the new wording of task A3d.
+A3D_FINGERPRINT = "790301514144c8871ef1a3a33a53329af3382621ed368a28c318d68d4b295e99"      # sha256 of PAIRS_A3D + ENTRIES_A3D (tests/_d2_wording.a3d_fingerprint())
 
 
 def test_the_exemption_list_is_exactly_the_listed_phrase_pairs():
@@ -845,9 +849,11 @@ def test_the_exemption_list_is_exactly_the_listed_phrase_pairs():
         ("Unverified (registry), not DOK-ING-confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own", "Confirmed -- 20 kW, scoped to EU-004 jacket cooling only (per EU-008's own"),
     )
     assert _d2_wording.ENTRIES_D2 == ("FE-002|", "GC-001|", "EU-008|")
-    assert _d2_wording.PAIRS == _d2_wording.PAIRS_D2 + _d2_wording.PAIRS_W1 and _d2_wording.ENTRIES == _d2_wording.ENTRIES_D2 + _d2_wording.ENTRIES_W1
-    assert (len(_d2_wording.PAIRS_W1), len(_d2_wording.ENTRIES_W1)) == (89, 43)
+    assert _d2_wording.PAIRS == _d2_wording.PAIRS_D2 + _d2_wording.PAIRS_W1 + _d2_wording.PAIRS_A3D and _d2_wording.ENTRIES == _d2_wording.ENTRIES_D2 + _d2_wording.ENTRIES_W1
+    assert (len(_d2_wording.PAIRS_W1), len(_d2_wording.ENTRIES_W1)) == (88, 43)
     assert _d2_wording.w1_fingerprint() == W1_FINGERPRINT
+    assert (len(_d2_wording.PAIRS_A3D), _d2_wording.ENTRIES_A3D) == (2, ("HB-012|Compressor", "EU-CHP|Dispatch")) and set(_d2_wording.ENTRIES_A3D) <= set(_d2_wording.ENTRIES_W1)
+    assert _d2_wording.a3d_fingerprint() == A3D_FINGERPRINT
     assert all(isinstance(n, str) and isinstance(o, str) and n != o and n and o for n, o in _d2_wording.PAIRS)
     src = open(os.path.join(ROOT, "tests", "_d2_wording.py"), encoding="utf-8").read()
     assert src.count(".replace(") == 2, "forward() and undo() map through PAIRS only (one replace each); no other replacement rule"

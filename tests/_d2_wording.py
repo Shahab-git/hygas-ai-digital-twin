@@ -5,8 +5,12 @@ ONE exemption list. Every pair is (new phrase, old phrase). `forward(entries)` a
 old phrase returns or any other text changes; `undo(entries)` maps new -> old (the reverse) for the tests that still compare with an older fixture. Only the entries listed in ENTRIES are touched.
 
   PAIRS_D2   4 pairs in 3 entry prefixes, added by task A3 item D2 (commit ac4fe79).
-  PAIRS_W1   89 pairs in 43 entries, added by commit 0420d32 "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1).
-  The 3 pairs of the EU-008 "independently validated" notes (W1.2) are part of PAIRS_W1; they were added by commit 87e4950 "Wording W1.2: EU-008 ... notes say what the repo supports"."""
+  PAIRS_W1   88 pairs in 43 entries (89 when added; 88 since A3d, see PAIRS_A3D), added by commit 0420d32 "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1).
+  The 3 pairs of the EU-008 "independently validated" notes (W1.2) are part of PAIRS_W1; they were added by commit 87e4950 "Wording W1.2: EU-008 ... notes say what the repo supports".
+  PAIRS_A3D  2 pairs, one entry each, added by task A3d (Gate 5 corrections, branch a3-gate5-wording): the HB-012 compressor note (P2 = 701 bar(a): the 350/700 bar is DOK-ING's, the bar(g) designation
+             is the registry's, the +1 bar offset is the project's) and the EU-CHP dispatch note (the 100 % WGS/PSA claim fraction is a model choice, DOK-ING's RFI #10 states only the priority).
+             The HB-012 pair REPLACES the W1 pair for the same sentence (its old phrase is the fixture's, so PAIRS_W1 went from 89 to 88 pairs); the EU-CHP pair is new. Each A3d pair is applied
+             only in its own entry (ENTRIES_A3D[i] for PAIRS_A3D[i]); both entries are also in ENTRIES_W1."""
 import hashlib
 import json
 
@@ -72,8 +76,6 @@ PAIRS_W1 = (
      "GC-005's own Confirmed blowdown rate (0.05 m3/h), read directly."),
     ('AND its own registry operating conditions (170 degC/40 bar; Unverified (registry)) at ',
      'AND its own Confirmed operating conditions (170 degC/40 bar) at '),
-    (", P2 = HB-012's Confirmed discharge pressure (700 bar(g) + 1; DOK-ING RFI answer 8, data/dokink_rfi_answers.md:35-36), P1 = HB-012's registry inlet pressure (7 bar(g) + 1; Unverified (registry), not DOK-ING-confirmed). Computed power: ",
-     ", both HB-008's/HB-012's own Confirmed values. Computed power: "),
     ("five real inflow streams' own registry (Unverified (registry))/interpolated source ",
      "five real inflow streams' own Confirmed/interpolated source "),
     ("HB-014's own registry states catalyst type (Pt/Pd/Al2O3), ",
@@ -197,7 +199,15 @@ PAIRS_W1 = (
     ('registry (Unverified (registry), not DOK-ING-confirmed) [',
      'Confirmed ['),
 )
-PAIRS = PAIRS_D2 + PAIRS_W1
+PAIRS_A3D = (
+    (", P2 = 701 bar(a): DOK-ING RFI answer 8 (data/dokink_rfi_answers.md:35-36) states 350/700 bar without gauge or absolute; the bar(g) designation is the registry's and the +1 bar offset is this project's assumption, "
+     "P1 = HB-012's registry inlet pressure (7 bar(g) + 1; Unverified (registry), not DOK-ING-confirmed). Computed power: ",
+     ", both HB-008's/HB-012's own Confirmed values. Computed power: "),
+    ("(100% -- a model choice (Assumed); DOK-ING's RFI #10 states only that 'H2 is primary; CHP ... optional, not fixed', see ",
+     "(100% -- DOK-ING's own confirmed RFI #10 priority, 'H2 is primary; CHP ... optional, not fixed', see "),
+)
+ENTRIES_A3D = ("HB-012|Compressor", "EU-CHP|Dispatch")          # PAIRS_A3D[i] is applied only in the snapshot entries whose key starts with ENTRIES_A3D[i]
+PAIRS = PAIRS_D2 + PAIRS_W1 + PAIRS_A3D
 ENTRIES_D2 = ("FE-002|", "GC-001|", "EU-008|")      # the snapshot keys (prefixes) whose text carries the D2 pairs
 ENTRIES_W1 = (
     'AI-003|BedPressureDrop',
@@ -252,18 +262,23 @@ def w1_fingerprint():
     return hashlib.sha256(json.dumps([PAIRS_W1, ENTRIES_W1]).encode("utf-8")).hexdigest()
 
 
+def a3d_fingerprint():
+    """sha256 of PAIRS_A3D and ENTRIES_A3D (task A3d), pinned the same way."""
+    return hashlib.sha256(json.dumps([PAIRS_A3D, ENTRIES_A3D]).encode("utf-8")).hexdigest()
+
+
 # forward (old -> new) is applied longest old phrase first, so that a phrase that contains a shorter one is not cut up; undo is the exact reverse order
-_FORWARD = sorted(PAIRS, key=lambda p: -len(p[1]))
+_FORWARD = sorted(PAIRS_D2 + PAIRS_W1, key=lambda p: -len(p[1]))
 
 
-def _forward_text(s):
-    for new, old in _FORWARD:
+def _forward_text(s, pairs=None):
+    for new, old in (_FORWARD if pairs is None else pairs):
         s = s.replace(old, new)
     return s
 
 
-def _undo_text(s):
-    for new, old in reversed(_FORWARD):
+def _undo_text(s, pairs=None):
+    for new, old in reversed(_FORWARD if pairs is None else pairs):
         s = s.replace(new, old)
     return s
 
@@ -278,11 +293,29 @@ def _walk(x, fn):
     return x
 
 
+def _a3d_for(key):
+    return [pair for pair, entry in zip(PAIRS_A3D, ENTRIES_A3D) if key.startswith(entry)]          # an A3d pair is only ever applied in its own entry
+
+
 def forward(serialised):
     """serialised = {"A|B": entry}, as stored in a fixture. Returns the same with the old phrases replaced by the new ones, in the entries that can carry them."""
-    return {k: (_walk(v, _forward_text) if k.startswith(ENTRIES) else v) for k, v in serialised.items()}
+    out = {}
+    for k, v in serialised.items():
+        if k.startswith(ENTRIES):
+            for pair in _a3d_for(k):
+                v = _walk(v, lambda s: _forward_text(s, (pair,)))
+            v = _walk(v, _forward_text)
+        out[k] = v
+    return out
 
 
 def undo(serialised):
     """serialised = {"A|B": entry}. Returns the same with the reworded phrases mapped back to the old text, in the entries that can carry them."""
-    return {k: (_walk(v, _undo_text) if k.startswith(ENTRIES) else v) for k, v in serialised.items()}
+    out = {}
+    for k, v in serialised.items():
+        if k.startswith(ENTRIES):
+            v = _walk(v, _undo_text)
+            for pair in reversed(_a3d_for(k)):
+                v = _walk(v, lambda s: _undo_text(s, (pair,)))
+        out[k] = v
+    return out

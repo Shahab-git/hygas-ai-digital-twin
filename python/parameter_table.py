@@ -106,7 +106,11 @@ def _engine_input_rows(keys):
          "(37.5 kg/h dry at the defaults), not this placeholder."),
         ("GA-001.ER", ("GA-001-INPUT", "equivalence_ratio"), ga001._input_equivalence_ratio, "-",
          (u, r'^\s*"air_equivalence_ratio": \{'), uncertainty.bounds("air_equivalence_ratio"),
-         "Range is uncertainty.py's default +/-15 % band (UNCERTAINTY_FRACTION, 'our own assumed default'), unless a confirmed range is set."),
+         "Range is uncertainty.py's default +/-15 % band (UNCERTAINTY_FRACTION, 'our own assumed default'), unless a confirmed range is set. "
+         "This ENGINE-INPUT row (anchor uncertainty:ASSUMPTIONS['air_equivalence_ratio'], function _input_equivalence_ratio, which returns STATUS_ASSUMED, in ga001_gasifier_model.py) "
+         "is Assumed and is the row the engine reads. The separate registry-counterpart row (registry:GA-003/Air-to-fuel equivalence ratio (ER), the overlay entry for that row in data/registry_status_overlay.json) "
+         "is Estimated (SIMILAR_PLANT: Parrillo et al. SSRN 4737155, ER 0.22-0.25; Sustainability 2023, 15(9), 7547, lab BFB, ER 0.25) and is not consumed by the engine; "
+         "the literature conditions differ from the model (pilot steam + O2-enriched air; lab rig), see the rows parrillo_er and mdpi_er_bed_temperature of the literature reference document under docs/."),
         ("GA-001.steam_to_feed_kg_kg", ("GA-001-INPUT", "steam_to_feed_ratio"), ga001._input_steam_to_feed_ratio, "kg/kg",
          (u, r'^\s*"steam_to_feed_ratio": \{'), uncertainty.bounds("steam_to_feed_ratio"),
          "Range is uncertainty.py's default +/-15 % band, unless a confirmed range is set."),

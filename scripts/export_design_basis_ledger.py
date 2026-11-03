@@ -95,7 +95,8 @@ def render_md(ledger, items, exceptions):
          "`get_input` for an engine input (an instrumented run), and the functions that name the constant otherwise (`ast`); `NONE FOUND` is reported, not hidden. "
          "`upgrade_question` is empty where the repo holds no question that would upgrade the row; no question was invented.", "",
          "## Counts", "",
-         f"- Rows: **{c['rows']}** ({c['ledger_ids']} distinct `ledger_id`; a quantity held in two places has two rows with the same id and different `source`).",
+         f"- Rows: **{c['rows']}** ({c['ledger_ids']} distinct `ledger_id`; a quantity held in two places has two rows with the same id and different `source`: one row for the engine's own value, one for the registry record; "
+         "the duplicates are intentional, so `ledger_id` is NOT unique and `anchor` is the unique row identifier, which a test asserts).",
          f"- By status: {', '.join(f'{k} {v}' for k, v in c['by_status'].items())}.",
          f"- By `status_via`: {', '.join(f'{k} {v}' for k, v in c['by_via_status'].items())}.",
          f"- By origin (provenance overlay): {', '.join(f'{k} {v}' for k, v in c['by_origin'].items())}.",

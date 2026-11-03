@@ -23,6 +23,7 @@ REQUIRED is the roadmap's Track D gate table, one row per capability (the minimu
   optimisation           validated model with uncertainty bounds; constraints taken from the Confirmed design basis; open-loop recommendations compared with operator actions (shadow mode)
   online_replacement     quality gate; drift monitoring; fallback to the last Confirmed value (needs a calibrated model, not necessarily a validated one)
 """
+import math
 from dataclasses import dataclass, replace
 from typing import Optional
 
@@ -95,9 +96,16 @@ def criterion_for(capability, item):
     return ITEM_CRITERION.get(item, (None, "flag"))
 
 
+def _valid_error(v):
+    """A held-out error is a real, finite number >= 0 (not a bool, NaN, infinity, negative value or non-number)."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0
+
+
 def _present(evidence, item):
     v = getattr(evidence, item)
-    if item in ("operating_range_coverage", "heldout_error"):
+    if item == "heldout_error":
+        return v is not None and _valid_error(v)
+    if item == "operating_range_coverage":
         return v is not None
     if isinstance(v, bool):
         return v
@@ -111,7 +119,10 @@ def _reasons(capability, evidence, criteria):
         field, direction = criterion_for(capability, item)
         have = _present(evidence, item)
         if not have:
-            reasons.append(f"missing evidence: {item}")
+            if item == "heldout_error" and getattr(evidence, item) is not None:
+                reasons.append(f"invalid evidence: heldout_error {getattr(evidence, item)!r} (must be a finite number >= 0)")
+            else:
+                reasons.append(f"missing evidence: {item}")
         if field is not None:
             limit = getattr(criteria, field)
             if limit is None:

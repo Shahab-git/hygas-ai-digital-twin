@@ -107,12 +107,12 @@ HB003_HOT_INLET_C = 400.0     # = HB-001's own registry-stated [Unverified (regi
 HB003_HOT_OUTLET_C = 220.0    # = HB-004's own real inlet (corrected)
 HB003_COLD_INLET_C = 20.0     # ambient BFW, registry-stated [Unverified (registry)]
 HB003_COLD_OUTLET_C = 150.0   # = HB-005's own real preheat input (corrected)
-# HB-008's own Confirmed PSA pressures.
+# HB-008 PSA pressures (registry rows; each constant's status is the design-basis ledger's).
 PSA_ADSORPTION_PRESSURE_BAR_A = 8.0   # 7 bar(g) + ~1 atm, registry-stated [Assumed per the provenance worksheet]
 PSA_REGEN_PRESSURE_BAR_A = 1.2         # 0.2 bar(g) + ~1 atm, registry-stated [Unverified (registry)]
-# HB-012's own Confirmed compressor pressures.
-COMPRESSOR_SUCTION_BAR_A = 8.0         # = HB-008's own registry-stated [Unverified (registry)] adsorption pressure
-COMPRESSOR_DISCHARGE_BAR_A = 701.0     # 700 bar(g) + ~1 atm, Confirmed [DOK-ING source cited: data/dokink_rfi_answers.md:36]
+# HB-012 compressor pressures (registry rows; each constant's status is the design-basis ledger's).
+COMPRESSOR_SUCTION_BAR_A = 8.0         # 7 bar(g) + ~1 atm, HB-012 'Inlet pressure' [Unverified (registry)]; the same 7 bar(g) as HB-008's adsorption pressure above, which the overlay calls Assumed
+COMPRESSOR_DISCHARGE_BAR_A = 701.0     # bar(a): DOK-ING RFI 8 (data/dokink_rfi_answers.md:35-36) states 350/700 bar with no gauge/absolute basis; bar(g) is the registry's designation and the +1 bar offset (atm taken as 1 bar) is this project's assumption [ledger: Confirmed for the stated 700 bar magnitude only]
 # Polytropic exponent -- ASSUMED, a real, standard, citable value for a
 # well-intercooled multistage reciprocating/diaphragm compressor (HB-012's
 # own Confirmed "4 stages" + "Interstage water/air cooling"); n=1.3 is a
@@ -473,7 +473,7 @@ def hb012_compressor(get_input):
             f"Polytropic compression work: W=(n/(n-1))*R*T1*[(P2/P1)^((n-1)/n)-1], n={n} "
             f"(Assumed, standard for a well-intercooled multistage compressor -- HB-012's own "
             f"registry 4-stage, intercooled design, Unverified (registry)). P1={P1/1e5:.1f}bar(a) -> "
-            f"P2={P2/1e5:.0f}bar(a), P2 = HB-012's Confirmed discharge pressure (700 bar(g) + 1; DOK-ING RFI answer 8, data/dokink_rfi_answers.md:35-36), P1 = HB-012's registry inlet pressure (7 bar(g) + 1; Unverified (registry), not DOK-ING-confirmed). Computed power: "
+            f"P2={P2/1e5:.0f}bar(a), P2 = 701 bar(a): DOK-ING RFI answer 8 (data/dokink_rfi_answers.md:35-36) states 350/700 bar without gauge or absolute; the bar(g) designation is the registry's and the +1 bar offset is this project's assumption, P1 = HB-012's registry inlet pressure (7 bar(g) + 1; Unverified (registry), not DOK-ING-confirmed). Computed power: "
             f"{power_W/1000.0:.3f} kW (HB-012's own registry motor rating: 10 kW, Unverified (registry), not DOK-ING-confirmed -- a real, "
             f"unforced cross-check, see this module's own self-test)."
         ),

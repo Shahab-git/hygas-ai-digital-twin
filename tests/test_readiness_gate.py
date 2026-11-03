@@ -236,3 +236,49 @@ def test_the_requirement_table_in_the_docs_is_the_generated_one():
     for cap in CAPS:
         assert f"`{cap}`" in text[a:b]
     assert text.count(rg.TABLE_START) == 1
+
+
+# --- invalid held-out error values (A10 Gate 5 defect): NaN, infinities, negative values and non-numbers must never pass or grant the top class ------------------------------------------------
+
+INVALID_ERRORS = [float("nan"), float("inf"), float("-inf"), -1.0, -1e-12, True, False, "0.05", [0.05]]
+
+
+@pytest.mark.parametrize("bad", INVALID_ERRORS, ids=repr)
+@pytest.mark.parametrize("cap", ("validation", "virtual_sensing"))
+def test_an_invalid_heldout_error_fails_the_gate_and_names_the_item(cap, bad):
+    r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, heldout_error=bad), CRIT)
+    assert r["passes"] is False
+    assert any(x.startswith("invalid evidence: heldout_error") for x in r["reasons"]), r["reasons"]
+    assert "missing evidence: heldout_error" not in r["reasons"]
+
+
+@pytest.mark.parametrize("bad", INVALID_ERRORS, ids=repr)
+def test_an_invalid_heldout_error_never_grants_the_top_class(bad):
+    for cap in CAPS:
+        r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, heldout_error=bad), CRIT)
+        assert r["maturity_allowed"] == mt.TRAINED_ON_PLANT_DATA, (cap, r)
+    assert rg.maturity_allowed(dataclasses.replace(COMPLETE, heldout_error=bad), CRIT) != mt.VALIDATED_ON_HELDOUT
+    assert rg.validation_passes(dataclasses.replace(COMPLETE, heldout_error=bad), CRIT) is False
+
+
+@pytest.mark.parametrize("bad", INVALID_ERRORS, ids=repr)
+def test_an_invalid_heldout_error_fails_even_when_the_criterion_is_none_with_both_reasons(bad):
+    r = rg.readiness_gate("validation", dataclasses.replace(COMPLETE, heldout_error=bad), rg.Criteria(min_heldout_campaigns=2))
+    assert r["passes"] is False and "criteria not set: max_heldout_error" in r["reasons"]
+    assert any(x.startswith("invalid evidence: heldout_error") for x in r["reasons"])
+
+
+def test_valid_finite_nonnegative_errors_keep_their_behaviour():
+    for ok in (0, 0.0, 0.05, 0.1):                                                        # zero and exactly the limit pass, as before
+        r = rg.readiness_gate("validation", dataclasses.replace(COMPLETE, heldout_error=ok), CRIT)
+        assert r == {"passes": True, "reasons": [], "maturity_allowed": mt.VALIDATED_ON_HELDOUT}, ok
+    r = rg.readiness_gate("validation", dataclasses.replace(COMPLETE, heldout_error=0.1001), CRIT)               # a valid failing value still fails, with the old reason
+    assert r["passes"] is False and r["reasons"] == ["above criterion: heldout_error 0.1001 > max_heldout_error 0.1", INCONSISTENT]   # the claimed flag no longer has a passing validation behind it
+    assert r["maturity_allowed"] == mt.TRAINED_ON_PLANT_DATA
+    r = rg.readiness_gate("validation", dataclasses.replace(COMPLETE, heldout_error=None), CRIT)                 # None is still plain "missing"
+    assert r["reasons"][0] == "missing evidence: heldout_error"
+
+
+def test_a_hand_set_claim_cannot_be_rescued_by_an_invalid_error():
+    r = rg.readiness_gate("optimisation", dataclasses.replace(COMPLETE, heldout_error=float("nan")), CRIT)
+    assert r["passes"] is False and INCONSISTENT in r["reasons"]

@@ -21,9 +21,9 @@ H2/CO/CH4 reference heating values, weighted by GC-013's own live mole
 fractions -- the same composition-weighting discipline
 gc_gas_cleaning_chain.py's own gc004_cooling_duty() already uses), cross-
 checked (honestly, not forced) against EU-003's/EU-005's own static
-Confirmed "9.8 MJ/Nm3" design-point figure (which matches SA-006 but
+registry-stated "9.8 MJ/Nm3" (Unverified (registry); the ledger holds the constant as Assumed) design-point figure (which matches SA-006 but
 doesn't respond to composition); H2 budget from HB-013's own real storage
-level this cycle x H2's own Confirmed volumetric LHV (10.8 MJ/Nm3,
+level this cycle x H2's own Assumed (not DOK-ING-confirmed) volumetric LHV (10.8 MJ/Nm3,
 EU-006's own stated basis). EU-001/EU-001's own
 "Stack operating temperature" row is instrumentation/setpoint data with no
 live-computable quantity of its own (a controlled temperature, not a
@@ -133,7 +133,7 @@ resource, simultaneously, every cycle. A SECOND, related bug: EU-006's PEM Fuel 
 (eu006_fuel_cell's own real h2_consumed_nm3_h) was computed but never subtracted back from HB-013's
 own storage level -- the stored inventory stayed artificially high after the Fuel Cell "spent" some
 of it. FIX: WGS_PSA_SYNGAS_CLAIM_FRACTION (below) encodes WGS/PSA's real, justified FIRST claim on
-the syngas stream (100%, per design_basis.py's own confirmed RFI #10 answer, "H2 is primary; CHP
+the syngas stream (a model choice, 100% (Assumed); DOK-ING's RFI #10 states only: "H2 is primary; CHP
 using excess heat/syngas is optional, not fixed" -- and independently confirmed by this project's
 own already-tested 100% tail-gas recycle wiring, EU-007 Flare's own zero-combustible-input self-test
 assertion); _syngas_budget_kw() now returns the real EXCESS after that claim. hb013_storage_level()
@@ -166,17 +166,17 @@ SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": 10.783, "CO": 12.622, "CH4": 35.883}  # s
                                  # combustion-engineering reference values (ideal-gas, 25C)
 H2_LHV_MJ_PER_NM3 = 10.8       # EU-006's own stated basis [Assumed; no DOK-ING source line]
 
-# EU-004 Gas Engine thermal split (both Confirmed).
+# EU-004 Gas Engine thermal split (both registry-stated, Unverified (registry)).
 EU004_JACKET_KWTH_RATED = 12.0
 EU004_EXHAUST_KWTH_RATED = 8.0
 
-# EU-005 Microturbine (Confirmed).
+# EU-005 Microturbine (registry-stated, Unverified (registry)).
 EU005_EXHAUST_FLOW_NM3_H_RATED = 150.0
 
-# EU-007 Flare (Confirmed, already established elsewhere in this project).
+# EU-007 Flare (Assumed: no registry row states the 0.98; the ledger holds it as Assumed).
 EU007_DESTRUCTION_EFFICIENCY = 0.98
 
-# EU-008 Cooling Tower (Confirmed rated figures + two Assumed engineering
+# EU-008 Cooling Tower (registry-stated rated figures, Unverified (registry), + two Assumed engineering
 # parameters, both flagged as such -- no HB/EU-item-specific data exists in
 # this project's registry for either).
 EU008_RATED_CAPACITY_KW = 20.0
@@ -193,14 +193,14 @@ EU008_DAMPING = 0.5                             # Assumed: represents the tower 
 EU008_ADEQUACY_DEROGATION_SPAN_C = 10.0          # Assumed: supply temp 10 degC above
                                                  # nominal -> effective duty derates to 0
                                                  # (a standard bounded linear approximation)
-EU008_SIZING_MARGIN_FRACTION = 0.15              # Estimated: standard HVAC/process-cooling
+EU008_SIZING_MARGIN_FRACTION = 0.15              # Assumed: standard HVAC/process-cooling
                                                  # design-margin convention is 10-20% over
                                                  # calculated peak duty; 15% used here as a
                                                  # representative mid-range point within
                                                  # that convention, not independently invented.
                                                  # See eu008_recommended_capacity_estimate().
 
-# EU-010 UPS/Battery (Confirmed rated figures; capacity DERIVED from them).
+# EU-010 UPS/Battery (registry-stated rated figures, Unverified (registry); capacity DERIVED from them).
 EU010_RATED_KVA = 10.0
 EU010_BACKUP_HOURS = 30.0 / 60.0
 EU010_CAPACITY_KWH = EU010_RATED_KVA * EU010_BACKUP_HOURS  # 5.0 kWh, derived, not assumed
@@ -242,7 +242,7 @@ def _syngas_lhv_mj_per_nm3(gc013_value):
     contribute 0), weighted by GC-013's own live dry mole fractions. Same
     composition-weighting discipline as gc_gas_cleaning_chain.py's own
     gc004_cooling_duty()/_cp_mix_avg(). Used here INSTEAD OF EU-003's/
-    EU-005's own static Confirmed '9.8 MJ/Nm3' design-point figure,
+    EU-005's own static registry-stated '9.8 MJ/Nm3' design-point figure (Unverified (registry); the ledger holds the constant as Assumed),
     because that fixed nameplate value doesn't respond to GA-001's own
     live composition the way a real digital twin needs it to (module
     docstring's own EU-001..006 section has the honest cross-check this
@@ -268,7 +268,7 @@ def _total_syngas_energy_kw(get_input):
 def _wgs_psa_syngas_claim_kw(get_input):
     """WGS/PSA's own real, justified first claim on the total syngas stream -- see
     WGS_PSA_SYNGAS_CLAIM_FRACTION's own module-level docstring above for the justification
-    (DOK-ING's own confirmed RFI #10 priority + this project's own already-verified 100%
+    (the priority is DOK-ING-stated, RFI #10; the 100% is a model choice (Assumed), backed by this project's own already-verified 100%
     tail-gas recycle wiring)."""
     return _total_syngas_energy_kw(get_input) * WGS_PSA_SYNGAS_CLAIM_FRACTION
 
@@ -343,8 +343,8 @@ def eu_chp_dispatch(get_input):
             f"composition-weighted LHV={live_lhv:.3f} MJ/Nm3 -- vs EU-003's/EU-005's own static registry-stated (Unverified (registry), not DOK-ING-confirmed) "
             f"{SYNGAS_LHV_MJ_PER_NM3} MJ/Nm3 design-point figure, a real, unforced "
             f"cross-check, not tuned to match, see module docstring). ALLOCATED: wgs_psa_claim="
-            f"{wgs_psa_claim_kw:.3f}kW ({WGS_PSA_SYNGAS_CLAIM_FRACTION*100:.0f}% -- DOK-ING's own "
-            f"confirmed RFI #10 priority, 'H2 is primary; CHP ... optional, not fixed', see "
+            f"{wgs_psa_claim_kw:.3f}kW ({WGS_PSA_SYNGAS_CLAIM_FRACTION*100:.0f}% -- a model choice (Assumed); "
+            f"DOK-ING's RFI #10 states only that 'H2 is primary; CHP ... optional, not fixed', see "
             f"WGS_PSA_SYNGAS_CLAIM_FRACTION's own docstring), leaving CHP's own real, non-double-"
             f"counted syngas_budget={syngas_budget_kw:.3f}kW. h2_budget={h2_budget_kw:.3f}kW "
             f"(HB-013's own real storage level x H2's own Assumed (not DOK-ING-confirmed) {H2_LHV_MJ_PER_NM3} MJ/Nm3 "
