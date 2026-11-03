@@ -387,7 +387,7 @@ def _enforce_ga001_confidence_label(validation_basis):
             "gasifier performance data exists anywhere in this project (engineering plan "
             "Section 2.2 / Section 10 limitation 1). This restriction is specific to GA-001; "
             "other items ARE allowed this validation basis once real data exists for them "
-            "(e.g. kinetics.py's WGS reactor, already validated against a stated design target)."
+            "(e.g. kinetics.py's WGS reactor, checked against the stated design target)."
         )
 
 

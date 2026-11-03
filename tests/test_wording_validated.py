@@ -9,7 +9,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 EXEMPT = {"python/maturity.py", "python/readiness_gate.py"}              # the vocabulary of the gates (VALIDATED_ON_HELDOUT, physical_model_validated, ...)
 
 UNSUPPORTED = re.compile(
-    r"already[- ]validated(?! (?:exactly against their|against a stated design target))|independently[- ]validated|independently real/validated|live[- ]validated|genuinely validated|"
+    r"already[- ]validated|independently[- ]validated|independently real/validated|live[- ]validated|genuinely validated|"
     r"real, validated number|repo's validated physics|a validated (?:physics|part-load)|own validated(?! HTS design target)|validated physics results|doubly validated|(?-i:validated RANGE)|modeled/validated|"
     r"full validated (?:domain|range)|(?-i:Validated physical range)|established and validated|that validated|the validated source of truth|already validated(?::| in )|validated output|ACTUAL data\W{1,4}validated",
     re.IGNORECASE)
@@ -25,11 +25,12 @@ REMOVED = (
     "real, already-validated steady-state", "without touching that validated module",
     "independently-validated real duties", "each independently already-validated", "independently real/validated",
     "own already-validated GC-004/HB-003/HB-012 models", "derived from this project's own already-validated models",
+    "kinetics.py's WGS reactor, already validated against a stated design target", "own math is deterministic and already validated exactly against their design targets",    # W2.4
 )
 KEPT = (   # correct uses that must NOT be flagged
     "design-target validated (75.0% at the original default composition",
-    "kinetics.py's WGS reactor, already validated against a stated design target",
-    "own math is deterministic and already validated exactly against their design targets",
+    "kinetics.py's WGS reactor, checked against the stated design target",
+    "own math is deterministic and checked against their stated design targets",
     "NOT validated against a DOK-ING-confirmed design point", "not validated against plant data", "tab limits, not validated ranges", "Cross-validated LIVE against DOK-ING's own",
     "validated against lab-scale transient tests", "VALIDATED_ON_HELDOUT", "physical_model_validated", "none validated against plant data", "kinetics.py's own validated HTS design target", "Tab limits, not a validated range",
 )
