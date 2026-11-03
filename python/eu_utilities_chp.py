@@ -85,7 +85,7 @@ invented. Tagged STATUS_ESTIMATED (never Measured or DOKINGDesignTarget) --
 per the five-way status framework, this is a real engineering judgment
 applied to a live computed number, not a strict pass-through calculation
 nor a vendor/DOK-ING-confirmed figure. Flagged in this project's own
-running DOK-ING data-request trackers (CLAUDE.md's "Validated milestones"
+running DOK-ING data-request trackers (CLAUDE.md's "Completed milestones"
 section and the engineering plan's Section 10, item 11) -- see both.
 
 === EU-009 (Electrical Metering/Grid), task requirement 4 ===

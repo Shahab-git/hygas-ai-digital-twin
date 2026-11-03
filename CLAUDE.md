@@ -27,7 +27,7 @@ numerically before considering it done.
 - `app.py` — Streamlit dashboard entry point. Interactive WGS kinetics
   and PSA recovery (recompute on every slider move), on-demand CHP
   dispatch GA (button-triggered, since 150 generations takes a few
-  seconds), and a static validated-milestones reference table.
+  seconds), and a static completed-milestones reference table.
 - `python/kinetics.py` — `hts_conversion()` / `lts_conversion()`. Finite
   volume integration of Arrhenius/Van't Hoff WGS kinetics (Moe 1962
   equilibrium correlation) for the Fe-Cr (HTS) and Cu/ZnO/Al2O3 (LTS)
@@ -44,7 +44,7 @@ numerically before considering it done.
   the 4 CHP units under separate syngas/H2 fuel budgets.
 - `requirements.txt` — `streamlit`, `numpy`.
 
-## Validated milestones
+## Completed milestones
 
 The WGS/PSA/CHP rows are now confirmed live in this repo's Python code
 (each module's `__main__` block reproduces its target exactly; `app.py`

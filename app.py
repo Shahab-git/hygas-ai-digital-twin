@@ -565,7 +565,7 @@ with tab1:
     st.divider()
 
     # ---------------------------------------------------------------------
-    # Section 4 — Validated milestones reference table
+    # Section 4 — Completed milestones reference table
     # ---------------------------------------------------------------------
     st.header("Milestones — targets from prior MATLAB/Simulink work")
     st.caption("Targets from prior MATLAB/Simulink work — the model files are not in this repository. "
@@ -8852,7 +8852,7 @@ with tab7:
 # EU-008's own live cooling demand is genuinely, substantially over its
 # Confirmed 20kW rating -- this is the SAME Missing Parameter Resolution
 # Protocol finding already documented in docs/missing_parameter_
-# protocol.md and CLAUDE.md's own "Validated milestones" section, read
+# protocol.md and CLAUDE.md's own "Completed milestones" section, read
 # LIVE here via eu008_recommended_capacity_estimate()'s own real Section-8
 # (ACTUAL/DOK-ING VALUE vs DIGITAL TWIN ENGINEERING BASELINE) structure --
 # not re-derived, not paraphrased. The DUAL-SCENARIO fault status
