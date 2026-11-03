@@ -217,7 +217,11 @@ def test_the_parameter_table_and_the_datasheet_resolve_every_shared_row_identica
     assert shared == 6
     ash = next(r for r in pt.build_table() if r["tag"] == "GA-001.ash_fraction")
     ga005 = next(x for rows_ in res["GA-005"]["datasheet"].values() for x in rows_ if x["parameter"] == "Ash discharge rate (design)")
-    assert ash["status"] == ga005["status"]
+    # LEDGER A3c (deliberate edit): ASH_FRACTION is a mass fraction of dry feed; GA-005 'Ash discharge rate (design)' = '10 % of feed' is a discharge rate whose own remark says it was set to match this
+    # model value, so it is NOT the same quantity in the same basis and its status is not borrowed: the table row is Assumed, GA-005 stays Unverified (registry). Old assertion:
+    # `ash["status"] == ga005["status"]` (it held because both were Unverified). Not weaker: both statuses are now pinned separately, so a change of either one fails here.
+    assert ash["status"] == "Assumed" and ga005["status"] == "Unverified (registry)"
+    assert "data/dokink_rfi_answers.md, line 15" in ash["note"] and "does NOT make the 10 % Confirmed" in ash["note"]
     assert not [r for r in pt.build_table() if r["status"] == "Confirmed"], "no table row is Confirmed: no parameter in it has a DOK-ING source in the worksheet"
 
 

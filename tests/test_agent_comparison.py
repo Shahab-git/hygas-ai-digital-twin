@@ -11,6 +11,7 @@ import subprocess
 
 import pytest
 
+import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
 from python import balance_audit as ba
 from python import cycle_clock
@@ -93,7 +94,8 @@ def test_the_wrapper_at_the_air_fraction_changes_nothing(mod, fake, main_snap):
     """The wrapper with f = 0.21 must give the main snapshot again (floats within 1e-12): it only swaps the oxidant N2, and air is the identity."""
     with patched_supabase(fake):
         snap = t1.build_live_snapshot(n_cycles=N, overrides={("GA-001", "Outputs"): mod.make_wrapper(mod.AIR_O2_FRACTION)})[0]
-    new = {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snap.items()}
+    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
+    new = _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snap.items()})
     bad = {}
     for k, old in main_snap.items():
         a, b = json.loads(json.dumps(old, sort_keys=True, default=str)), new[k]

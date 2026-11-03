@@ -416,7 +416,8 @@ def test_no_engine_runtime_or_app_file_imports_the_new_modules():
         dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "outputs", ".venv", "venv", "node_modules")]
         for name in files:
             rel = os.path.relpath(os.path.join(base, name), ROOT).replace(os.sep, "/")
-            if not name.endswith(".py") or rel in NEW_FILES:
+            # LEDGER (task A3, deliberate edit): the design-basis ledger EXTENDS parameter_table, so its export script and its test import it on purpose; neither is an engine, runtime or app file
+            if not name.endswith(".py") or rel in NEW_FILES or rel in ("scripts/export_design_basis_ledger.py", "tests/test_design_basis_ledger.py"):
                 continue
             with open(os.path.join(base, name), encoding="utf-8") as f:
                 src = f.read()

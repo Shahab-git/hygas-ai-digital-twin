@@ -73,7 +73,7 @@ defensible twin is the goal — not a visually complete one built on invented nu
 
 The task's Step 2/3 asked for 11 facets (Tab, equipment item, model type, inputs,
 data status, equations, outputs, states, dependencies, tab-level results, readiness)
-to be documented for every one of the 91 items and 9 tabs. Those 11 facets are not
+to be documented for every one of the 91 items and the 9 equipment tabs of the plan's time (the app now has 11 tabs, adding Plant Overview, Design Basis and Transient What-If). Those 11 facets are not
 11 separate top-level sections — they are the **columns of one combined per-item,
 per-tab analysis**, which is what Section 2 below actually is. The full numbered
 mapping:
@@ -1054,7 +1054,7 @@ moisture output, it has "last known value, holding."
 Section 4's dependency graph, topologically sorted: FE before GA before GC before
 (HB and EU-electrical) before EU-thermal, with SA/AI evaluated after their observed
 targets on each cycle (their outputs depend on this cycle's process values, not the
-reverse). This is a **directed graph walk, not a fixed nine-tab loop** — a tab like
+reverse). This is a **directed graph walk, not a fixed tab loop (nine tabs at the time of writing, 11 in the app now)** — a tab like
 Hydrogen & BoP contains items with different positions in the graph (HB-001 depends
 on GC-013; HB-013 depends on HB-012 AND HB-011 AND HB-017), so "tab" is a UI grouping
 for Sections 2/3, not the execution unit for Section 6. The execution unit is the

@@ -150,13 +150,15 @@ def _resolved_registry_status(item_id, parameter):
 
 def _code_only_rows():
     ash_lo, ash_hi = design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES["ash_pct"]
-    ash_status, ash_res = _resolved_registry_status("GA-005", "Ash discharge rate (design)")
     return [
-        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", ash_status,
+        _row("GA-001.ash_fraction", gasifier_mass_balance.ASH_FRACTION, "mass fraction of dry feed", ps.STATUS_ASSUMED,
              "module constant gasifier_mass_balance.ASH_FRACTION (reused by ga001 as ASH_FRACTION)",
              ash_lo / 100.0, ash_hi / 100.0, VIA_CODE, _loc("python/gasifier_mass_balance.py", r"^ASH_FRACTION\s*="),
-             "Status = the resolved status of its registry counterpart GA-005 'Ash discharge rate (design)' (" + ash_res["reason"] + "); the code comment on ASH_FRACTION calls "
-             "the 10 % 'Confirmed' ('GA-005: 10% ash content'), which the owner's worksheet does not support: only the 5-15 % band is a DOK-ING line (data/dokink_rfi_answers.md:15). "
+             _ASSIGNED + "the nearest registry row, GA-005 'Ash discharge rate (design)' = '10 % of feed' (remark: 'Matches the 10% ash content (dry basis) already used in the mass/energy balance'), "
+             "is the discharge rate of the bed-drain system with its basis ('of feed') not stated in the value, and its remark says it was set to match this model value; it is not the ash mass fraction "
+             "of the dry feed, so its status is not borrowed (task A3c; GA-005 is Unverified (registry) in any case). The 10 % value lies within the DOK-ING-stated range 5 to 15 % ash "
+             "(source: data/dokink_rfi_answers.md, line 15, 'Ash 5-15%'; the line does not state the basis of the ash figure: '(dry basis)' stands after the LHV on the next line), which does NOT make "
+             "the 10 % Confirmed. The code comment on ASH_FRACTION calls it 'Confirmed' ('GA-005: 10% ash content'); the owner's worksheet does not support that. "
              "Range = that DOK-ING ash band (design_basis.FEEDSTOCK_COMPOSITION_CONFIRMED_RANGES). NOT an engine input: a feed with another ash content cannot be represented "
              "without a code edit."),
         _row("HB-006.psa_K1", psa.K1, "-", ps.STATUS_ASSUMED, "module constant psa.K1", None, None, VIA_CODE, _loc("python/psa.py", r"^K1\s*="),
@@ -240,6 +242,80 @@ def build_table():
     keys = registered_engine_keys()
     rows = _engine_input_rows(keys) + _code_only_rows() + _dynamics_rows() + _registry_rows()
     return sorted(rows, key=lambda r: (r["tag"], r["source"]))
+
+
+# --- the design-basis ledger (task A3): the same rows plus the constants the table did not list, with five more columns ----------------
+# Additive: COLUMNS, build_table() and to_markdown() are unchanged; build_ledger() is the new, larger view.
+
+LEDGER_COLUMNS = COLUMNS + ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via", "anchor")
+NOT_STATED = "NOT STATED"
+_REG_SOURCE = re.compile(r"^registry (\S+) '(.+)'$")
+_ENGINE_SOURCE = re.compile(r"^engine input (\S+)/(\S+) via ")
+
+
+def _origin_of(res):
+    """(origin, source_line) from a registry_status.resolve_row result: the overlay's, or NOT STATED / empty when the owner's worksheet has no answer for the row."""
+    if res and res.get("origin"):
+        return res["origin"], res.get("citation") or ""
+    return NOT_STATED, ""
+
+
+def _read_source(rel):
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), rel), encoding="utf-8") as f:
+        return f.read()
+
+
+def _questions(tag, master):
+    """The upgrade_question references of a row: its master_open_questions reference (if any) plus the RFI questions of ledger_questions.RFI_MAP (A3b section 3)."""
+    from . import ledger_questions
+    refs = [master] if master else []
+    return refs + [r for r in ledger_questions.RFI_MAP.get(tag, ([], ""))[0] if r not in refs]
+
+
+def build_ledger(readers=None):
+    """The ledger: every row of build_table() plus ledger_rows.build_rows(), sorted by (tag, source), with LEDGER_COLUMNS as keys.
+
+    `readers` = {input key: [model keys]} from ledger_consumers.engine_input_readers (instrumented) or declared_readers (declared); default = declared.
+    consumers: an `engine input` row lists the model keys that read it; a `registry` row lists none (the engine does not read the registry); a code row lists the
+    functions that name the constant (ast); a hard-coded literal lists its function."""
+    from . import ledger_anchors, ledger_consumers, ledger_rows
+    readers = readers if readers is not None else ledger_consumers.declared_readers()
+    out = []
+    for r in build_table():
+        row = dict(r)
+        res = None
+        m = _REG_SOURCE.match(r["source"]) if r["overridable_via"] == VIA_REGISTRY else None
+        if m:
+            res = _resolved_registry_status(*m.groups())[1]
+        if r["overridable_via"] == VIA_ENGINE:
+            k = _ENGINE_SOURCE.match(r["source"])
+            consumers = [f"{a}|{b}" for a, b in readers.get((k.group(1), k.group(2)), [])] if k else []
+        elif r["overridable_via"] == VIA_REGISTRY:
+            consumers = []
+        else:
+            mod, name = ledger_rows.TABLE_TOKENS[r["tag"]]
+            consumers = ledger_consumers.referrers(mod, name)
+        row["consumers"] = consumers
+        row["upgrade_question"] = _questions(r["tag"], ledger_rows.UPGRADE.get(r["tag"]))
+        row["origin"], row["source_line"] = _origin_of(res)
+        row["status_via"] = ledger_rows.VIA_OWN
+        row["anchor"] = ledger_anchors.table_anchor(r, _read_source)
+        row["anchor_flags"] = set()
+        out.append(row)
+    for n in ledger_rows.build_rows():
+        mod, ref = n["reader"]
+        consumers = [f"{mod}.{ref}"] if n["kind"] == "l" else ledger_consumers.referrers(mod, ref)
+        row = {c: n[c] for c in COLUMNS}
+        row["consumers"], row["upgrade_question"] = consumers, _questions(n["tag"], (n["upgrade_question"] or [None])[0])
+        row["origin"], row["source_line"] = _origin_of(n["reg_res"])
+        row["status_via"] = n["status_via"]
+        row["anchor"], row["anchor_flags"] = n["anchor"], n["anchor_flags"]
+        out.append(row)
+    for row in out:
+        row["ledger_id"] = "LEDGER." + row["tag"]
+        if isinstance(row["consumers"], list) and row["consumers"] and isinstance(row["consumers"][0], tuple):
+            row["consumers"] = [f"{a}|{b}" for a, b in row["consumers"]]
+    return sorted(out, key=lambda r: (r["tag"], r["source"]))
 
 
 def code_only_rows(table=None):

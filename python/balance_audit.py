@@ -87,7 +87,7 @@ CP_LIQUID_WATER_J_MOLK = hbchain.CP_WATER_KJ_KGK * M_H2O_ENGINE   # hb_wgs_psa_s
 KW_PER_KJ_H = 1.0 / 3600.0
 
 # --- registry static values used as stream temperatures (data/equipment_registry.json) ---
-GA004_AIR_PREHEAT_C = 200.0          # GA-004 "Air preheat temperature" (registry, Confirmed static design value)
+GA004_AIR_PREHEAT_C = 200.0          # GA-004 "Air preheat temperature" (registry value; Unverified (registry): the provenance worksheet records no DOK-ING source for it)
 GA004_STEAM_C = 350.0                # GA-004 "Steam temperature (design)"
 FE005_DRYER_OPERATING_C = 100.0      # FE-005 "Operating temperature"
 GC004_QUENCH_OUT_C = 65.0            # gc_gas_cleaning_chain.py:295

@@ -103,16 +103,16 @@ HTS_GHSV = 2000.0
 # per the HB-004/HB-005 mislabel above -- see module docstring).
 LTS_GHSV = 2000.0
 # HB-003's own Confirmed hot/cold-side temperatures.
-HB003_HOT_INLET_C = 400.0     # = HB-001's own Confirmed outlet
+HB003_HOT_INLET_C = 400.0     # = HB-001's own registry-stated [Unverified (registry)] outlet
 HB003_HOT_OUTLET_C = 220.0    # = HB-004's own real inlet (corrected)
-HB003_COLD_INLET_C = 20.0     # ambient BFW, Confirmed
+HB003_COLD_INLET_C = 20.0     # ambient BFW, registry-stated [Unverified (registry)]
 HB003_COLD_OUTLET_C = 150.0   # = HB-005's own real preheat input (corrected)
 # HB-008's own Confirmed PSA pressures.
-PSA_ADSORPTION_PRESSURE_BAR_A = 8.0   # 7 bar(g) + ~1 atm, Confirmed
-PSA_REGEN_PRESSURE_BAR_A = 1.2         # 0.2 bar(g) + ~1 atm, Confirmed
+PSA_ADSORPTION_PRESSURE_BAR_A = 8.0   # 7 bar(g) + ~1 atm, registry-stated [Assumed per the provenance worksheet]
+PSA_REGEN_PRESSURE_BAR_A = 1.2         # 0.2 bar(g) + ~1 atm, registry-stated [Unverified (registry)]
 # HB-012's own Confirmed compressor pressures.
-COMPRESSOR_SUCTION_BAR_A = 8.0         # = HB-008's own Confirmed adsorption pressure
-COMPRESSOR_DISCHARGE_BAR_A = 701.0     # 700 bar(g) + ~1 atm, Confirmed
+COMPRESSOR_SUCTION_BAR_A = 8.0         # = HB-008's own registry-stated [Unverified (registry)] adsorption pressure
+COMPRESSOR_DISCHARGE_BAR_A = 701.0     # 700 bar(g) + ~1 atm, Confirmed [DOK-ING source cited: data/dokink_rfi_answers.md:36]
 # Polytropic exponent -- ASSUMED, a real, standard, citable value for a
 # well-intercooled multistage reciprocating/diaphragm compressor (HB-012's
 # own Confirmed "4 stages" + "Interstage water/air cooling"); n=1.3 is a
