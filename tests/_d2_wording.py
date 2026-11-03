@@ -5,7 +5,7 @@ ONE exemption list. Every pair is (new phrase, old phrase). `forward(entries)` a
 old phrase returns or any other text changes; `undo(entries)` maps new -> old (the reverse) for the tests that still compare with an older fixture. Only the entries listed in ENTRIES are touched.
 
   PAIRS_D2   4 pairs in 3 entry prefixes, added by task A3 item D2 (commit ac4fe79).
-  PAIRS_W1   86 pairs in 42 entries, added by the commit "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1; see git log).
+  PAIRS_W1   89 pairs in 43 entries, added by the commit "Wording W1.1: registry rows called Confirmed in persisted notes are named with their status" (task W1; see git log).
   W1.2 pairs (the EU-008 "independently validated" notes) are added to PAIRS_W1 by the commit "Wording W1.2: ..." that follows it."""
 import hashlib
 import json
@@ -22,6 +22,8 @@ PAIRS_W1 = (
      "DOK-ING's own confirmed nominal AS-RECEIVED delivery rate (RFI #1, 1,000 kg/day = "),
     ("GA-002's own registry 'Operating pressure range' (50-150 mbar(g); Unverified (registry), not DOK-ING-confirmed) midpoint, read ",
      "GA-002's own Confirmed 'Operating pressure range' (50-150 mbar(g)) midpoint, read "),
+    ('compressor power (each calculated from Unverified (registry) inputs; none validated against plant data), running peak x 15% margin',
+     'compressor power (each independently already-validated), running peak x 15% margin'),
     ("module constant, an Assumed value: GA-005's registry row is Unverified (registry), not DOK-ING-confirmed, and is a discharge rate, not this fraction) ",
      "module constant, itself independently Confirmed from GA-005's own registry data) "),
     ("SA-011's/SA-009's/SA-010's own registry temperature (Unverified (registry), not DOK-ING-confirmed) at this late-train ",
@@ -30,6 +32,8 @@ PAIRS_W1 = (
      "from HB-010's own Confirmed 85% recovery / 95-98% purity at their own Confirmed "),
     ("GC-003's own registry inlet (2 g/Nm3) and efficiency (>95% > 10um), both Unverified (registry), not DOK-ING-confirmed, ",
      "GC-003's own Confirmed inlet (2 g/Nm3) and Confirmed efficiency (>95% > 10um), "),
+    ("Sum of three duties calculated by this project's own models from Unverified (registry) inputs, none validated against plant data (GC-004 quench sensible heat, ",
+     'Sum of three independently-validated real duties (GC-004 quench sensible heat, '),
     ('agrees arithmetically (it is itself 0.4 x 37.5, Assumed, so not an independent check) with 15 kg/h steam / 37.5 kg/h feed = 0.4 exactly, the same ',
      'independently confirms 15 kg/h steam / 37.5 kg/h feed = 0.4 exactly, the same '),
     ("GC-001's own registry outlet temperature (880 degC; Unverified (registry), not DOK-ING-confirmed), read directly.",
@@ -54,6 +58,8 @@ PAIRS_W1 = (
      "HB-010's own Confirmed recovery/purity design-point figures AT their own "),
     ("SA-012's own registry pressure (50 mbar(g); Unverified (registry), not DOK-ING-confirmed), directly matching ",
      "SA-012's own Confirmed registry pressure (50 mbar(g)), directly matching "),
+    ("Medium -- each summed duty is calculated by this project's own model from Unverified (registry) inputs (none validated against plant data), and their ",
+     'Medium -- each summed duty is independently real/validated, but their '),
     ("closely matching HB-010's own registry 50 GPU, Unverified (registry), not DOK-ING-confirmed) reports a measured ",
      "closely matching HB-010's own Confirmed 50 GPU) reports a measured "),
     ("same 'registry design constant as live placeholder' treatment as ",
@@ -199,6 +205,7 @@ ENTRIES_W1 = (
     'EU-005|Microturbine',
     'EU-007|Flare',
     'EU-008|CoolingSupply',
+    'EU-008|RecommendedCapacityEstimate',
     'EU-CHP|Dispatch',
     'FE-001-INPUT|msw_delivery_rate_kg_h',
     'FE-001|Inventory',

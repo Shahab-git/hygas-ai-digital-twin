@@ -833,7 +833,7 @@ def test_the_ui_status_counts_are_unchanged():
 
 # ------------------------------------------------------------------ (A3b 2.1) the D2 exemption stays narrow
 
-W1_FINGERPRINT = "4e5882de6d9238043de35040338c675dca24ed36b0f6a495daf779447c1f23b5"      # sha256 of PAIRS_W1 + ENTRIES_W1 (tests/_d2_wording.w1_fingerprint()); changes when a W1 pair or entry is added, removed or reworded
+W1_FINGERPRINT = "e35d0cf93220024a1e95cd20c8c3b800f4fb00b9c1d4b5f421f1621717326f1e"      # sha256 of PAIRS_W1 + ENTRIES_W1 (tests/_d2_wording.w1_fingerprint()); changes when a W1 pair or entry is added, removed or reworded
 
 
 def test_the_exemption_list_is_exactly_the_listed_phrase_pairs():
@@ -846,7 +846,7 @@ def test_the_exemption_list_is_exactly_the_listed_phrase_pairs():
     )
     assert _d2_wording.ENTRIES_D2 == ("FE-002|", "GC-001|", "EU-008|")
     assert _d2_wording.PAIRS == _d2_wording.PAIRS_D2 + _d2_wording.PAIRS_W1 and _d2_wording.ENTRIES == _d2_wording.ENTRIES_D2 + _d2_wording.ENTRIES_W1
-    assert (len(_d2_wording.PAIRS_W1), len(_d2_wording.ENTRIES_W1)) == (86, 42)
+    assert (len(_d2_wording.PAIRS_W1), len(_d2_wording.ENTRIES_W1)) == (89, 43)
     assert _d2_wording.w1_fingerprint() == W1_FINGERPRINT
     assert all(isinstance(n, str) and isinstance(o, str) and n != o and n and o for n, o in _d2_wording.PAIRS)
     src = open(os.path.join(ROOT, "tests", "_d2_wording.py"), encoding="utf-8").read()
@@ -870,7 +870,7 @@ def _differing_leaves(a, b, path=""):
     return [] if a == b else [(path, type(a).__name__)]
 
 
-EXPECTED_DIFFERING_LEAVES = (70, 45)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
+EXPECTED_DIFFERING_LEAVES = (73, 45)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
 
 
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])

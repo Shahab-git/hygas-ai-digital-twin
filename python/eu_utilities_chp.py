@@ -667,7 +667,7 @@ def eu008_recommended_capacity_estimate(get_input):
             "status_of_baseline": "Internal-model-derived",
             "uncertainty": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
             "source_basis": (
-                "Sum of three independently-validated real duties (GC-004 quench sensible heat, "
+                "Sum of three duties calculated by this project's own models from Unverified (registry) inputs, none validated against plant data (GC-004 quench sensible heat, "
                 "HB-003 cold-side duty, HB-012 compressor power), running peak across ER=0.25-0.55, "
                 "x a 15% design margin (standard 10-20% HVAC/process-cooling convention)"
             ),
@@ -682,11 +682,11 @@ def eu008_recommended_capacity_estimate(get_input):
                 "source_reference": "python/eu_utilities_chp.py: eu008_cooling_supply(), eu008_recommended_capacity_estimate()",
                 "engineering_basis": (
                     "Sum of GC-004 quench sensible-heat duty + HB-003 cold-side duty + HB-012 "
-                    "compressor power (each independently already-validated), running peak x 15% margin"
+                    "compressor power (each calculated from Unverified (registry) inputs; none validated against plant data), running peak x 15% margin"
                 ),
                 "uncertainty_or_range": f"{baseline_range[0]:.0f}-{baseline_range[1]:.0f} kW",
                 "confidence": (
-                    "Medium -- each summed duty is independently real/validated, but their "
+                    "Medium -- each summed duty is calculated by this project's own model from Unverified (registry) inputs (none validated against plant data), and their "
                     "SIMULTANEOUS aggregation onto one cooling source is this project's own "
                     "modeling choice, not a DOK-ING-confirmed plant configuration"
                 ),
@@ -1393,12 +1393,12 @@ if __name__ == "__main__":
         assert field in meta, f"REGRESSION: Section 6 metadata missing required field {field!r}."
     assert meta["evidence_level"] == "Internal-model-derived", (
         f"REGRESSION: evidence_level should be Internal-model-derived (Section 7 -- this project's "
-        f"own already-validated GC-004/HB-003/HB-012 models, not a vendor/literature estimate), "
+        f"own GC-004/HB-003/HB-012 models, calculated from Unverified (registry) inputs and not validated against plant data, not a vendor/literature estimate), "
         f"got {meta['evidence_level']!r}."
     )
     assert meta["replaceable_with_actual_data"] is True
     print(f"  PASSED -- Section 6 metadata block complete, evidence_level=Internal-model-derived "
-          f"(Section 7's own hierarchy -- derived from this project's own already-validated models, "
+          f"(Section 7's own hierarchy -- derived from this project's own models (calculated from Unverified (registry) inputs, not validated against plant data), "
           f"the correct category, re-justified not defaulted), replaceable_with_actual_data=True.")
 
     print("\nAll eu_utilities_chp.py self-tests PASSED.")
