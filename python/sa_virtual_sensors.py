@@ -49,6 +49,8 @@ correctly inherits Missing by pointing it directly at a REAL, permanently-
 Missing entry already in this project (HB-010's own Separation, Phase 1d)
 -- honestly framed as a mechanism demonstration, not a claim about any SA
 item's real physical location.
+
+MATURITY: RULE_BASED — reads the twin's own calculated value at that point; not a measurement and not a model of an instrument.
 """
 from . import eu_utilities_chp as eu
 from . import plant_status as ps

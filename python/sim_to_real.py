@@ -53,6 +53,8 @@ sensor failure modes are far richer (drift over time, non-Gaussian
 outliers, cross-sensor correlation, GHSV/flow-meter error, etc.) — this
 is a first, deliberately narrow version of the idea, not a general
 robustness certification.
+
+MATURITY: ILLUSTRATION — synthetic 'real world' (twin values plus invented noise and offset); not a plant.
 """
 import numpy as np
 

@@ -12,6 +12,8 @@ that needs review by someone qualified — compliance/legal counsel, or an
 accredited RFNBO auditor — before it goes anywhere near a real
 submission. Nothing generated here is legal advice, and nothing here
 constitutes a compliance determination.
+
+MATURITY: RULE_BASED — a template over the compliance checklist; needs review by someone qualified.
 """
 from datetime import datetime, timezone
 

@@ -53,6 +53,8 @@ each module's own efficiency-vs-load curve has diminishing returns
 merit-order fill the way multi_agent_negotiation.py's flat-efficiency
 problem was; a general constrained solver is the simpler correct choice
 here, not the more complex one.
+
+MATURITY: ILLUSTRATION — optimisation across hypothetical modules of the same physics; there are no real parallel trains.
 """
 from scipy.optimize import minimize
 

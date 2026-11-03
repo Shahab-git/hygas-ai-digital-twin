@@ -58,6 +58,8 @@ HONEST LIMITATIONS: H0 only (see above); a first-pass illustrative
 pipeline on this repo's own SYNTHETIC time series, not validated against
 real plant sensor data; window size/reference-cloud choices are our own
 reasonable defaults, not tuned against any real degradation dataset.
+
+MATURITY: SYNTHETIC_BENCHMARK — analyses a twin-simulated trajectory; not validated against plant sensor data.
 """
 import numpy as np
 from scipy.sparse import csr_matrix

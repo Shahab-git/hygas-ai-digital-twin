@@ -115,6 +115,8 @@ conditional on HB-011's own live `running` flag (hb_remaining_chain.py,
 Phase 1d) -- not applicable when HB-011 isn't running this cycle, exactly
 matching HB-011's own Auxiliary/Optional status and AI-015's own registry
 scope statement.
+
+MATURITY: RULE_BASED — architecture items and relabelled code; nothing is learned and the plant is not controlled.
 """
 import datetime
 import pathlib

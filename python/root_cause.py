@@ -44,6 +44,8 @@ wires it into LTS directly — LTS's y_CO_in there is *derived* from HTS's
 own uncertain output, not independently varied). So the HTS band uses
 both assumptions; the LTS band uses steam_to_feed_ratio only, holding
 y_CO_in fixed at whatever value is actually feeding that stage.
+
+MATURITY: RULE_BASED — fixed rules over the predictive-maintenance numbers; orders explanations, does not identify the true cause.
 """
 from . import kinetics, predictive_maintenance, uncertainty
 

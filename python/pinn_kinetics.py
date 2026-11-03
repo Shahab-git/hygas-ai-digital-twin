@@ -48,6 +48,8 @@ LIMITATIONS, stated explicitly per the brief:
   - Does not generalize beyond the physical range this project has
     already validated: 300-400C, 1000-4000 GHSV. Predictions outside
     that box are extrapolation and are not represented as reliable.
+
+MATURITY: SYNTHETIC_BENCHMARK — trained only on twin-generated kinetics (HTS rate law); not validated against plant data.
 """
 import numpy as np
 from scipy.optimize import minimize
