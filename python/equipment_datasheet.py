@@ -17,7 +17,7 @@ below for the full accounting (item-count reconciliation, no duplicates,
 none missing, and the grand total real-data-point / populated-slot count
 across the whole registry).
 
-HB IS THE SECTION CONTAINING THE ALREADY-VALIDATED WGS REACTION KINETICS
+HB IS THE SECTION CONTAINING THE DESIGN-TARGET-CHECKED WGS REACTION KINETICS (NO PLANT DATA)
 (HB-001 HTS reactor, HB-004 LTS reactor) THIS PROJECT RELIES ON
 ELSEWHERE -- checked specifically, not just assumed to work out:
   - HB-002's "Steam-to-CO molar ratio" and "Space velocity (GHSV)" --

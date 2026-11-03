@@ -33,7 +33,7 @@ makes no such claim. This limitation statement is unchanged by the
 optionality correction above — it was already true regardless of whether
 RFNBO qualification is required or optional.
 
-What this module DOES do: organize the plant's ACTUAL data — validated
+What this module DOES do: organize the plant's ACTUAL data — model-calculated
 physics results, stated design assumptions with their real uncertainty
 ranges, and what documentation genuinely does or doesn't exist yet — into
 the checklist shape a real compliance review would start from. So a real
@@ -41,7 +41,7 @@ auditor's first questions get real, sourced answers (or an honest "not
 yet documented"), never invented placeholder data.
 
 Every checklist item carries one of four statuses:
-  - "Evidenced"                          — backed by a real, validated
+  - "Evidenced"                          — backed by a real
     number computed live from this repo's own physics functions.
   - "Confirmed"                          — a design assumption that
     confirmation_loop.py has recorded a real DOK-ING-confirmed range
@@ -71,7 +71,7 @@ NOT_DOCUMENTED = "Not yet documented"
 
 def _mass_energy_balance_items():
     """Live-computed conversion/recovery numbers — each a real function
-    call against this repo's validated physics, not a hardcoded literal."""
+    call against this repo's own physics, not a hardcoded literal."""
     X_hts = kinetics.hts_conversion()
     X_lts = kinetics.lts_conversion()
     overall = 1 - (1 - X_hts) * (1 - kinetics.lts_conversion(y_CO_in=0.28 * (1 - X_hts)))

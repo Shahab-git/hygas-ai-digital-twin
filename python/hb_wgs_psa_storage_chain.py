@@ -2,7 +2,7 @@
 WGS / PSA / H2-Storage Integration v1 -- Digital Twin Phase 1c.
 
 Implements the roadmap's Part 6 ("Existing hydrogen chain") and Part 1.5's
-HB-001..HB-013 rows: THIN ADAPTERS connecting the already-validated,
+HB-001..HB-013 rows: THIN ADAPTERS connecting the design-target-checked (no plant data),
 COMPLETELY UNTOUCHED `kinetics.hts_conversion()`/`kinetics.lts_conversion()`
 and `psa.psa_recovery()` to GC-013's real live output (Phase 1b), plus new
 mass-balance/thermodynamic engineering-calc models for HB-003/005/009/012/013,

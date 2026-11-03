@@ -9,7 +9,7 @@ delay, control-loop response, actual startup/upset trajectories) are
 explicitly out of scope for this repo — this is exactly the "zero
 Dynamics coverage" gap novelty_audit.py's own 8-lens framework already
 flags, and this module does not quietly try to close that gap. What it
-DOES do: call kinetics.py's/psa.py's real, already-validated steady-state
+DOES do: call kinetics.py's/psa.py's real, design-target-checked steady-state
 functions at a SEQUENCE of evolving (T, GHSV, catalyst activity, feed
 composition) operating points, producing a plausible-shaped multi-sensor
 trajectory for time_series_sim's actual purpose — giving tda_analysis.py
@@ -62,7 +62,7 @@ N_TOTAL = N_RAMP + N_NORMAL_1 + N_ANOMALY + N_RECOVERY + N_NORMAL_2
 # Kept deliberately short: predictive_maintenance.py's real root-finding
 # back-calculation (~110ms/call, called once per timestep below) dominates
 # runtime -- this length keeps a full run well under Streamlit Cloud's
-# free-tier patience for a button click, without touching that validated
+# free-tier patience for a button click, without touching that
 # module just to make this feature faster.
 
 # Design-point operating targets (matches this repo's own default slider positions)

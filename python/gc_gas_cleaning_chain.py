@@ -81,7 +81,7 @@ REAL EQUATIONS USED, cited (task requirement 1):
     to a REAL Confirmed inlet where one exists at that specific stage --
     the exact same exact-calculation pattern
     python/equipment_engineering_estimates.py's own GC-007/GC-010 static
-    fills already established and validated (this module's self-test
+    fills already established and cross-checked (this module's self-test
     cross-checks against those exact existing numbers).
   - Wet-scrubber blowdown (GC-007/008/009): circulating liquid rate =
     L/G ratio (Confirmed) x gas flow; blowdown = circulating rate x

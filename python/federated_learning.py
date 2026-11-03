@@ -9,7 +9,7 @@ HTS-temperature-variant stand-ins for a fleet — the same DEFAULT_MODULES
 pattern multi_module_orchestration.py already uses (335/350/365C-style
 variants) — not live data from real additional facilities. What IS real:
 genuine federated averaging of real model weights, trained with this
-project's own validated physics-informed loss (reused unchanged from
+project's own physics-informed loss (design-target checked, no plant data; reused unchanged from
 pinn_kinetics.py, not reimplemented).
 
 THE FEDERATED-LEARNING PREMISE, honestly implemented rather than just
@@ -51,7 +51,7 @@ THE THREE-WAY COMPARISON (the actual point of this module):
       actually saw the pooled raw data, only averaged weights.
 
 HONEST LIMITATION: 3 plants, non-IID only along temperature (each
-plant's local GHSV range is the full validated range). This demonstrates
+plant's local GHSV range is the full declared range). This demonstrates
 the MECHANISM, not a claim about how many real plants a production
 federated deployment would need.
 
@@ -182,7 +182,7 @@ def train_single_plant_alone(pdata, weights=None, seed=7, n_restarts=3, maxiter=
 def train_pooled_upper_bound(plant_data, weights=None, seed=999, n_restarts=3, maxiter=500):
     """HONEST UPPER-BOUND REFERENCE ONLY — explicitly labeled as such
     everywhere it's reported. Trains on every plant's raw data
-    concatenated together, spanning the full validated domain for its
+    concatenated together, spanning the full declared domain for its
     physics term too. This is exactly what federated learning exists to
     avoid (centralizing raw data for the data-privacy reason); it exists
     here purely so the federated model's performance can be judged

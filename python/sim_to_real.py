@@ -20,7 +20,7 @@ explicitly-labeled imperfections that a real deployment would face:
 
 Nothing here claims to validate against DOK-ING's actual plant. It
 demonstrates the MECHANISM of sim-to-real domain-gap evaluation and
-adaptation using this repo's own already-validated simulation physics
+adaptation using this repo's own simulation physics (design-target checked, no plant data)
 (kinetics.py) as the "simulation" side, and synthetic corruption as a
 stand-in for "reality" — a first version of the idea, not a claim that
 this project has real-world validation data.
@@ -104,7 +104,7 @@ def adapt(flat_weights, n_adapt=8, noise_std=DEFAULT_NOISE_STD, calib_offset_C=D
     """The actual transfer step: fine-tunes the simulation-trained PINN on
     a small number of noisy/shifted 'real-world' points, using
     pinn_kinetics.fine_tune — the identical physics-residual and boundary-
-    condition loss terms already validated in pinn_kinetics.py, just
+    condition loss terms already used in pinn_kinetics.py, just
     warm-started from the simulation weights and given the sensor's
     (biased T, noisy X) readings as the labeled-data term instead of clean
     simulation output."""

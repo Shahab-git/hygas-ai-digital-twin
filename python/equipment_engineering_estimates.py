@@ -62,14 +62,14 @@ have no material stream of their own to give an Inputs/Outputs figure
 at all — a near-zero fill rate here is the CORRECT, honest outcome,
 not a gap in effort. Of HB's 51 actual gaps, 13 get a genuine
 estimate; 38 stay missing — HB is the largest section and the most
-mixed in character: a validated physics core (WGS kinetics, PSA) that
+mixed in character: a design-target-checked physics core (WGS kinetics, PSA; no plant data) that
 yields the STRONGEST kind of fill this whole project has produced, a
 parallel/optional technology spread (membrane separation, electrolysis,
 LOHC) that is more genuinely vendor/design-dependent, and the usual
 recurring patterns (shared-physical-equipment sub-items, same-item
 recategorization risk) already established in every prior section. Of
 EU's 32 gaps, 8 get a genuine estimate; 24 stay missing — EU is CHP/
-electrical/utilities: a validated part-load physics correlation
+electrical/utilities: a part-load physics correlation (checked only at full load)
 (chp.py) that yields one genuine new fact beyond what's already
 Confirmed, several exact calculations from an item's own confirmed
 values (a cooling-tower range, an HX effectiveness with a clean,
@@ -236,7 +236,7 @@ EMPTY — unlike HB-002's own PI, already Confirmed at 75%) is filling a
 different, real gap with the same underlying fact, not restating
 something already present for THIS item — the same "exact calculation
 from confirmed inputs" pattern as FE-004's specific energy, just
-sourced from a validated physics module instead of two Parameters
+sourced from a design-target-checked physics module instead of two Parameters
 rows. HB-001/HB-002 and HB-006/HB-007/HB-008 are shared-physical-
 equipment sub-item groups (temperature/composition/pressure aspects of
 the SAME WGS-HTS reactor and the SAME PSA skid respectively) — the
@@ -297,7 +297,7 @@ none uses any of the 17 mismatched remarks as its stated basis; no
 previously-shipped estimate required correction or withdrawal.
 
 EU-SPECIFIC DISCIPLINE (task requirements 2-5): task requirement 2's
-explicit priority — check chp.py's/dispatch_ga.py's own validated
+explicit priority — check chp.py's/dispatch_ga.py's own computed
 outputs first, the same way HB-004 leveraged kinetics.py — was
 followed through completely, not just nominally: dispatch_ga.py was
 ruled OUT entirely (its output is a live, slider-dependent GA
@@ -1124,7 +1124,7 @@ DECLINED — 45 of 46, with the actual reason:
     additional KPI beyond its own already-Confirmed accuracy.
 
 HB REPORT (extension — every one of HB's 51 actual gaps, filled and
-declined). HB is the largest, most mixed section: a validated physics
+declined). HB is the largest, most mixed section: a design-target-checked physics
 core (HB-001 through HB-009, HB-012/013), a parallel membrane
 technology (HB-010), auxiliary/optional pathways (HB-011, HB-014
 through HB-017), and standardized dispensing (HB-018):
@@ -2674,7 +2674,7 @@ if __name__ == "__main__":
     )
     print(f"PASSED -- kinetics.py's live physics ({_HB_LTS_RELATIVE_CONVERSION_PCT:.2f}%) and plain arithmetic on "
           f"HB-002's/HB-004's own confirmed values ({arithmetic_check_pct:.2f}%) agree exactly -- HB-004's PI fill "
-          f"is doubly validated, not a single unchecked source.")
+          f"is checked twice (physics and arithmetic agree), not a single unchecked source.")
 
     print("\n=== HB-specific check: the two computed-then-declined gaps (HB-003 PI, HB-014 Inputs) were never actually filled ===")
     assert "Performance Indicators" not in ESTIMATE_FILLS.get("HB-003", {}), (
