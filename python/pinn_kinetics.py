@@ -32,7 +32,7 @@ network X_NN(T, tau; theta) to satisfy that SAME continuous ODE via a
 physics-residual loss evaluated at randomly sampled (T, tau) collocation
 points, plus the real boundary condition X(T,0)=0, anchored by only a
 FEW (5-10) labeled (T, GHSV) -> X points from kinetics.py's own
-validated output — not thousands. "HTS conversion at (T, GHSV)" is then
+design-target-checked output — not thousands. "HTS conversion at (T, GHSV)" is then
 X_NN evaluated at tau = 1/GHSV, the reactor's exit.
 
 Network: X_NN = sigmoid(W2 . tanh(W1 . [T_norm, tau_norm] + b1) + b2).
@@ -46,7 +46,7 @@ LIMITATIONS, stated explicitly per the brief:
   - Trained on ONE specific rate law: HTS only (kinetics.hts_conversion),
     not LTS, not PSA, not any other subsystem.
   - Does not generalize beyond the physical range this project has
-    already validated: 300-400C, 1000-4000 GHSV. Predictions outside
+    declared (not validated against plant data): 300-400C, 1000-4000 GHSV. Predictions outside
     that box are extrapolation and are not represented as reliable.
 
 MATURITY: SYNTHETIC_BENCHMARK — trained only on twin-generated kinetics (HTS rate law); not validated against plant data.
@@ -64,7 +64,7 @@ STEAM_TO_CO = 4.0
 K0_HTS = 5.7231e12
 EA_HTS = 111000.0
 
-# Validated physical range (matches this repo's own sliders/bounds elsewhere)
+# Declared physical range (not validated against plant data) (matches this repo's own sliders/bounds elsewhere)
 T_MIN_C, T_MAX_C = 300.0, 400.0
 GHSV_MIN, GHSV_MAX = 1000.0, 4000.0
 
@@ -160,7 +160,7 @@ def _dX_dtaunorm(flat, T_K, tau):
 def generate_labeled_data(n_points=8, seed=7, T_range=None, ghsv_range=None):
     """The FEW labeled anchor points — real kinetics.py output, not
     thousands of points. Called once at training start, not per-iteration.
-    T_range/ghsv_range default to the full validated domain (T_MIN_C..
+    T_range/ghsv_range default to the full declared domain (T_MIN_C..
     T_MAX_C, GHSV_MIN..GHSV_MAX); federated_learning.py passes a narrower
     range to sample each hypothetical plant's own local operating band."""
     T_lo, T_hi = T_range if T_range is not None else (T_MIN_C, T_MAX_C)
@@ -197,7 +197,7 @@ def train(n_labeled=8, n_collocation=200, n_bc=20, weights=None, seed=7, n_resta
 
     T_range/ghsv_range restrict where labeled data AND the physics
     collocation/boundary-condition points are sampled from — default is
-    the full validated domain, unchanged from before. labeled_data, if
+    the full declared domain, unchanged from before. labeled_data, if
     given, is an explicit (T_C, GHSV, X) tuple used INSTEAD of generating
     it internally — e.g. federated_learning.py's pooled-data upper-bound
     model, which trains on multiple hypothetical plants' data concatenated

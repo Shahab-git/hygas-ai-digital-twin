@@ -3,7 +3,7 @@ Predictive maintenance v1 — catalyst activity monitoring via inverse kinetics.
 
 Where this lives, and why: a NEW file, not an addition to kinetics.py.
 kinetics.py solves the FORWARD problem (given T, GHSV, and catalyst
-activity -> conversion) and is the validated source of truth for that
+activity -> conversion) and is this repo's source of truth for that
 physics. This module solves the INVERSE problem (given an *observed*
 conversion, T, and GHSV -> the catalyst activity that must be causing
 it) — a diagnostic layered on top of kinetics.py, not a physics model in

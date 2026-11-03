@@ -105,7 +105,7 @@ FILLED (10 rows, across 6 items):
     - Confirmed feedstock ash content range (RFI #2): "Ash 5-15%" —
       genuinely NEW information distinct from what's already in this
       item's own remarks ("10% ash content... already used in the
-      mass/energy balance"): the RFI gives a validated RANGE, not just
+      mass/energy balance"): the RFI gives a DOK-ING-confirmed RANGE, not just
       a restatement of the same single point value, so it tells the
       reader something the existing remark didn't — that the 10%
       design point sits safely inside DOK-ING's own confirmed range,

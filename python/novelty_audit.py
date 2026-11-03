@@ -11,7 +11,7 @@ Circularity) against what this repo can OBJECTIVELY VERIFY — which of
 the 91 equipment registry items actually have real, working Python code
 behind them in THIS codebase, and which don't yet.
 
-A high coverage score means "this item has real modeled/validated work
+A high coverage score means "this item has real modeled work
 behind it in this repo" — it does NOT mean "this item is more innovative"
 in any absolute sense, and says nothing about the equipment's real-world
 novelty. Real novelty analysis (the kind implied by the equipment

@@ -1,8 +1,8 @@
 """Nothing moved (task A10): the maturity labels, the gate and the captions change no persisted value. Every entry of both tail_gas_modes equals the unmodified origin/main snapshot
 (tests/fixtures/snapshot_origin_main_701de71.json.gz), the persisted key count is unchanged, and no database or network call is made. Offline: counting fake store.
 
-D2 (task A3, merged): four phrase pairs in three entries (EU-008|RecommendedCapacityEstimate, FE-002|TrampMetalReject, GC-001|Dust) were reworded because they called Unverified registry values
-"Confirmed". The 701de71 fixture is the OLD text, so the comparison is made against the fixture with exactly those four pairs applied FORWARD (old text -> new text, tests/_d2_wording.PAIRS).
+D2 (task A3, merged) and W1 (wording pass): phrase pairs in the entries listed in tests/_d2_wording.py were reworded because they called Unverified registry values "Confirmed" (or
+"independently validated"). The 701de71 fixture is the OLD text, so the comparison is made against the fixture with exactly those pairs applied FORWARD (old text -> new text, _d2_wording.forward).
 The live snapshot must equal that expectation: if an old phrase comes back, or any other text or number changes, the comparison fails (test_the_mapped_comparison_fails_...)."""
 import gzip
 import json
@@ -54,22 +54,9 @@ def _same(a, b, path=""):
     return True if a == b else [path]
 
 
-def _forward(x):
-    """The fixture text with the four D2 pairs applied old -> new (strings only; everything else untouched)."""
-    if isinstance(x, str):
-        for new, old in _d2_wording.PAIRS:
-            x = x.replace(old, new)
-        return x
-    if isinstance(x, dict):
-        return {k: _forward(v) for k, v in x.items()}
-    if isinstance(x, list):
-        return [_forward(v) for v in x]
-    return x
-
-
 def _expected(old):
-    """The 701de71 entries as they must read now: the D2 pairs applied in the entries that carry them, every other entry exactly as stored."""
-    return {k: (_forward(v) if k.startswith(_d2_wording.ENTRIES) else v) for k, v in old.items()}
+    """The 701de71 entries as they must read now: the phrase pairs of tests/_d2_wording applied forward (old -> new) in the entries that carry them, every other entry exactly as stored."""
+    return _d2_wording.forward(old)
 
 
 def _differences(expected, new):

@@ -137,6 +137,12 @@ def render_confirmed():
     for file in sorted(per):
         L.append(f"| {file} | {per[file]} |")
     L.append(f"| **all** | {len(mentions)} |")
+    L += ["", "**The pinned counts changed in the wording pass W1 (commits 0420d32 and 87e4950).** Lines mentioning \"confirmed\": 476 to 449; DOK-ING-sourced 46 to 49, generic 115 to 159, "
+          "registry-stated 315 to 241; registry-stated lines that reach a persisted note: 88 to 14. Why: W1.1 reworded the persisted notes that called a registry value Confirmed (they now say "
+          "\"Unverified (registry), not DOK-ING-confirmed\", or name the DOK-ING source next to the word), so those lines left the registry-stated class (most became generic, because the new text "
+          "says \"not DOK-ING-confirmed\"); W1.2 reworded the EU-008 capacity notes that called their input duties validated. The 14 persisted lines that remain are pinned in `tests/test_design_basis_ledger.py` "
+          "(`PERSISTED_REGISTRY_STATED`) and none calls a registry value Confirmed (DOK-ING's confirmed composition ranges with RFI #2 named, negations, questions to DOK-ING, a self-test message, a code check). "
+          "The 241 registry-stated lines that remain do not reach a persisted note in the live snapshot (docstrings, comments, other strings) and were not rewritten."]
     return L
 
 

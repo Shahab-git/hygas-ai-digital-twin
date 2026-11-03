@@ -15,6 +15,7 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
 from python import equipment_datasheet as eds
 from python import equipment_engineering_estimates as eee
@@ -163,3 +164,16 @@ def test_the_snapshot_and_its_persisted_key_count_are_unchanged():
     assert len(snap) == 121 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key
     assert not [k for k in snap if re.search(r"wording|overlay|provenance|unverified", " ".join(k), re.I)]
     assert fake.calls == []
+
+
+def test_no_reworded_phrase_has_come_back_in_the_live_snapshot():
+    """This file renders the app from a frozen sample snapshot (the OLD text), so it cannot see an engine note that goes back to the old wording. The live snapshot can: none of the
+    old phrases of tests/_d2_wording.py (ledger D2 and wording pass W1, the old side of every pair) may be in it. WORDING W2.3 (deliberate addition)."""
+    fake = FakeSupabase()
+    with patched_supabase(fake):
+        snap = t1.build_live_snapshot(20)[0]
+    text = json.dumps({f"{k[0]}|{k[1]}": v for k, v in snap.items()}, sort_keys=True, default=str)
+    assert sum(new in text for new, _ in _d2_wording.PAIRS) >= 89, "not vacuous: the new phrases are what the live snapshot says"
+    assert [old for _, old in _d2_wording.PAIRS if old in text] == []
+    assert [c for c in fake.calls if c[0] != "select"] == []
+

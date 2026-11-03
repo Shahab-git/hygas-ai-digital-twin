@@ -94,11 +94,13 @@ def test_the_wrapper_at_the_air_fraction_changes_nothing(mod, fake, main_snap):
     """The wrapper with f = 0.21 must give the main snapshot again (floats within 1e-12): it only swaps the oxidant N2, and air is the identity."""
     with patched_supabase(fake):
         snap = t1.build_live_snapshot(n_cycles=N, overrides={("GA-001", "Outputs"): mod.make_wrapper(mod.AIR_O2_FRACTION)})[0]
-    # LEDGER D2 (deliberate edit): three snapshot notes were reworded after this fixture was made; undo() maps exactly those phrases back (tests/_d2_wording.py)
-    new = _d2_wording.undo({f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snap.items()})
+    new = {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snap.items()}
+    # LEDGER D2 / WORDING W1 (deliberate edit): notes were reworded after this fixture was made. forward() applies the old -> new pairs of tests/_d2_wording.py to the FIXTURE, so the live
+    # snapshot is compared as it is and an old phrase returning in it is a difference.
+    expected = _d2_wording.forward({k: json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in main_snap.items()})
     bad = {}
-    for k, old in main_snap.items():
-        a, b = json.loads(json.dumps(old, sort_keys=True, default=str)), new[k]
+    for k, a in expected.items():
+        b = new[k]
         a, b = dict(a, confidence_note=""), dict(b, confidence_note="")           # the notes quote numbers to full repr; the values are compared to 1e-12
         r = _same(a, b)
         if r is not True:

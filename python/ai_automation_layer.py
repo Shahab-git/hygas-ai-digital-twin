@@ -188,9 +188,9 @@ def get_ai003_bed_pressure_drop(get_input):
         "value": AI003_CONFIRMED_BED_DP_MBAR, "status": ps.STATUS_ASSUMED,
         "inputs": [], "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "GA-002's own Confirmed 'Operating pressure range' (50-150 mbar(g)) midpoint, read "
+            "GA-002's own registry 'Operating pressure range' (50-150 mbar(g); Unverified (registry), not DOK-ING-confirmed) midpoint, read "
             "directly -- no live bed-hydrodynamics model exists anywhere in this project (module "
-            "docstring), same 'Confirmed design constant as live placeholder' treatment as "
+            "docstring), same 'registry design constant as live placeholder' treatment as "
             "SA-011/SA-012."
         ),
     }
@@ -351,7 +351,7 @@ def get_ai004_eu009_state_if_resized(get_input):
         f"HYPOTHETICAL/ESTIMATED SCENARIO, never the plant's actual current state. Same fault rule as "
         f"fault_status_as_specified (('AI-004','EU-009-State'), unchanged), evaluated against EU-008's "
         f"own Internal-model-derived engineering baseline (Missing Parameter Resolution Protocol, "
-        f"docs/missing_parameter_protocol.md) instead of its real Confirmed-but-narrower-scoped 20kW "
+        f"docs/missing_parameter_protocol.md) instead of its real registry (Unverified (registry), not DOK-ING-confirmed) narrower-scoped 20kW "
         f"rating (see EU-008's own RecommendedCapacityEstimate for why 20kW and this baseline aren't "
         f"necessarily in conflict -- different scopes, not a resolved discrepancy): {capacity_note}. "
         f"FAULT=EU-009 GridBalance Missing OR demand/baseline >150%; else STARTING(cycle 1)/RUNNING.",

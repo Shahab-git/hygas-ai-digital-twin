@@ -197,7 +197,7 @@ def get_sa011_reading(get_input):
         "value": SA011_CONFIRMED_TEMPERATURE_C, "status": ps.STATUS_ASSUMED,
         "inputs": [], "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "SA-011's/SA-009's/SA-010's own Confirmed registry temperature at this late-train "
+            "SA-011's/SA-009's/SA-010's own registry temperature (Unverified (registry), not DOK-ING-confirmed) at this late-train "
             "position (40 degC), read directly -- no live temperature-drop model exists here "
             "(module docstring), same treatment as GC-001's/GC-003's own temperature functions."
         ),
@@ -215,7 +215,7 @@ def get_sa012_reading(get_input):
         "value": SA012_CONFIRMED_PRESSURE_MBAR_G, "status": ps.STATUS_ASSUMED,
         "inputs": [], "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "SA-012's own Confirmed registry pressure (50 mbar(g)), directly matching GC-013's "
+            "SA-012's own registry pressure (50 mbar(g); Unverified (registry), not DOK-ING-confirmed), directly matching GC-013's "
             "own established discharge pressure, read directly -- no live absolute-pressure model "
             "exists here (module docstring)."
         ),

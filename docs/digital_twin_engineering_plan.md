@@ -1450,7 +1450,7 @@ Stated directly, per the task's own instruction not to paper over gaps:
     `("EU-008", "RecommendedCapacityEstimate")` in the Shared Plant State —
     `python/eu_utilities_chp.py`'s own docstring and self-test have the full
     derivation. **Flagged for DOK-ING** (also recorded in CLAUDE.md's own
-    "Validated milestones" section): recommend confirming the actual installed/
+    "Completed milestones" section): recommend confirming the actual installed/
     specified cooling capacity, or providing real operating data to check this
     model's own assumptions.
 

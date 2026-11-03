@@ -12,7 +12,7 @@ remain unconfirmed"):
 
 This reflects uncertainty in UNCONFIRMED DESIGN ASSUMPTIONS, not
 measurement noise or numerical/model error — kinetics.py and psa.py's
-own math is deterministic and already validated exactly against their
+own math is deterministic and checked against their stated
 design targets (see their own __main__ self-checks). What's uncertain
 here is whether the assumed *inputs* to that math (steam ratio, air
 ratio, feed contaminant levels, and the calibration behind the ~85%/~75%

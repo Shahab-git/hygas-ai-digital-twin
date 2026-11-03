@@ -2,7 +2,7 @@
 WGS / PSA / H2-Storage Integration v1 -- Digital Twin Phase 1c.
 
 Implements the roadmap's Part 6 ("Existing hydrogen chain") and Part 1.5's
-HB-001..HB-013 rows: THIN ADAPTERS connecting the already-validated,
+HB-001..HB-013 rows: THIN ADAPTERS connecting the design-target-checked (no plant data),
 COMPLETELY UNTOUCHED `kinetics.hts_conversion()`/`kinetics.lts_conversion()`
 and `psa.psa_recovery()` to GC-013's real live output (Phase 1b), plus new
 mass-balance/thermodynamic engineering-calc models for HB-003/005/009/012/013,
@@ -196,9 +196,9 @@ def hb005_steam_generation(get_input):
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
             f"Live steam mass balance: CO molar flow({co_mol_h:.3f} mol/h) x HB-002's own "
-            f"Confirmed 4:1 steam-to-CO ratio = {steam_mol_h:.3f} mol/h = {steam_kg_h:.3f} kg/h "
+            f"registry 4:1 steam-to-CO ratio (Unverified (registry), not DOK-ING-confirmed) = {steam_mol_h:.3f} mol/h = {steam_kg_h:.3f} kg/h "
             f"steam -- replaces the static registry figure (45 kg/h at the original design "
-            f"point) with a live-recomputed one. Preheat input = HB-003's own Confirmed 150 "
+            f"point) with a live-recomputed one. Preheat input = HB-003's own registry (Unverified (registry), not DOK-ING-confirmed) 150 "
             f"degC cold-side outlet, correcting HB-005's own self-reference mislabel "
             f"(CLAUDE.md item 20)."
         ),
@@ -308,7 +308,7 @@ def hb004_lts_conversion(get_input):
         "confidence_note": (
             f"kinetics.lts_conversion() itself UNCHANGED -- design-target validated (40.0% "
             f"relative / 85.0% overall at the original design point, see this module's own "
-            f"self-test). Inlet temperature = HB-003's own Confirmed 220 degC hot-side outlet, "
+            f"self-test). Inlet temperature = HB-003's own registry 220 degC hot-side outlet (Unverified (registry), not DOK-ING-confirmed), "
             f"correcting HB-004's own mislabeled 'HB-005's hot-side outlet' reference "
             f"(CLAUDE.md item 15)."
         ),
@@ -366,7 +366,7 @@ def hb006_psa_recovery(get_input):
         "confidence_note": (
             f"psa.psa_recovery() itself UNCHANGED -- design-target validated (75.0% at the "
             f"original default composition, see this module's own self-test). Live feed H2 "
-            f"fraction={y_h2*100:.2f}% (HB-006's own Confirmed target: 55 vol% -- a real, "
+            f"fraction={y_h2*100:.2f}% (HB-006's own registry target: 55 vol%, Unverified (registry), not DOK-ING-confirmed -- a real, "
             f"unforced cross-check, this project's own gasifier/GC/WGS chain did not exist "
             f"before this phase to derive it from)."
         ),
@@ -472,9 +472,9 @@ def hb012_compressor(get_input):
         "confidence_note": (
             f"Polytropic compression work: W=(n/(n-1))*R*T1*[(P2/P1)^((n-1)/n)-1], n={n} "
             f"(Assumed, standard for a well-intercooled multistage compressor -- HB-012's own "
-            f"Confirmed 4-stage, intercooled design). P1={P1/1e5:.1f}bar(a) -> "
-            f"P2={P2/1e5:.0f}bar(a), both HB-008's/HB-012's own Confirmed values. Computed power: "
-            f"{power_W/1000.0:.3f} kW (HB-012's own Confirmed motor rating: 10 kW -- a real, "
+            f"registry 4-stage, intercooled design, Unverified (registry)). P1={P1/1e5:.1f}bar(a) -> "
+            f"P2={P2/1e5:.0f}bar(a), P2 = HB-012's Confirmed discharge pressure (700 bar(g) + 1; DOK-ING RFI answer 8, data/dokink_rfi_answers.md:35-36), P1 = HB-012's registry inlet pressure (7 bar(g) + 1; Unverified (registry), not DOK-ING-confirmed). Computed power: "
+            f"{power_W/1000.0:.3f} kW (HB-012's own registry motor rating: 10 kW, Unverified (registry), not DOK-ING-confirmed -- a real, "
             f"unforced cross-check, see this module's own self-test)."
         ),
     }
@@ -562,7 +562,7 @@ def hb013_storage_level(get_input):
             f"+ electrolyser route {electrolyser_inflow_kg_h:.4f}) - outflow(dispensing "
             f"{dispensed_kg_h:.4f} + PEM Fuel Cell {fuel_cell_kg_h:.4f})] kg/h x ASSUMED "
             f"{dt_h} h/cycle, clamped to [0, {H2_STORAGE_CAPACITY_KG} kg] "
-            f"(HB-013's own Confirmed capacity). Electrolyser inflow, dispensing outflow, AND "
+            f"(HB-013's own registry capacity, Unverified (registry), not DOK-ING-confirmed). Electrolyser inflow, dispensing outflow, AND "
             f"Fuel Cell outflow (FIX, H2/syngas double-counting task -- see module docstring "
             f"addendum) all read the PREVIOUS cycle's value (lagged), zero when absent -- see this "
             f"function's own docstring. The hours-per-cycle mapping is a stated, explicit modeling "

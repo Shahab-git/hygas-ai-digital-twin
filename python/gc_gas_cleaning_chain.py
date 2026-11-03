@@ -81,7 +81,7 @@ REAL EQUATIONS USED, cited (task requirement 1):
     to a REAL Confirmed inlet where one exists at that specific stage --
     the exact same exact-calculation pattern
     python/equipment_engineering_estimates.py's own GC-007/GC-010 static
-    fills already established and validated (this module's self-test
+    fills already established and cross-checked (this module's self-test
     cross-checks against those exact existing numbers).
   - Wet-scrubber blowdown (GC-007/008/009): circulating liquid rate =
     L/G ratio (Confirmed) x gas flow; blowdown = circulating rate x
@@ -178,7 +178,7 @@ def gc001_temperature(get_input):
     Measured for a real future sensor)."""
     return {
         "value": 880.0, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
-        "confidence_note": "GC-001's own Confirmed registry outlet temperature (880 degC), read directly.",
+        "confidence_note": "GC-001's own registry outlet temperature (880 degC; Unverified (registry), not DOK-ING-confirmed), read directly.",
     }
 
 
@@ -213,7 +213,7 @@ def gc003_dust(get_input):
         "inputs": [],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            "GC-003's own Confirmed inlet (2 g/Nm3) and Confirmed efficiency (>95% > 10um), "
+            "GC-003's own registry inlet (2 g/Nm3) and efficiency (>95% > 10um), both Unverified (registry), not DOK-ING-confirmed, "
             "applied as outlet = inlet * (1 - efficiency). Standalone reference point, not "
             "derived from GC-001's own Missing dust output."
         ),
@@ -223,7 +223,7 @@ def gc003_dust(get_input):
 def gc003_temperature(get_input):
     return {
         "value": 870.0, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
-        "confidence_note": "GC-003's own Confirmed registry inlet temperature (870 degC), read directly.",
+        "confidence_note": "GC-003's own registry inlet temperature (870 degC; Unverified (registry), not DOK-ING-confirmed), read directly.",
     }
 
 
@@ -245,7 +245,7 @@ def gc004_quench_gas(get_input):
         "inputs": [("GA-001", "Outputs")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            "Quenching to the Confirmed 65 degC outlet target condenses essentially all process "
+            "Quenching to the registry 65 degC outlet target (GC-004, Unverified (registry), not DOK-ING-confirmed) condenses essentially all process "
             "water out of the gas phase -- gas-phase composition downstream is GA-001's own "
             "dry-basis result, read directly. A simplification: real residual water-vapor "
             "saturation at 65 degC is not modeled (small quantity, not confirmed anywhere)."
@@ -315,7 +315,7 @@ def gc005_blowdown(get_input):
     treatment used throughout this chain."""
     return {
         "value": 0.05, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
-        "confidence_note": "GC-005's own Confirmed blowdown rate (0.05 m3/h), read directly.",
+        "confidence_note": "GC-005's own registry blowdown rate (0.05 m3/h; Unverified (registry), not DOK-ING-confirmed), read directly.",
     }
 
 
@@ -336,7 +336,7 @@ def gc006_tar_outlet(get_input):
         "value": 500.0, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
             "GC-006's own outlet tar concentration (500 mg/Nm3 = 0.5 g/Nm3), correctly sourced "
-            "from GC-007's own Confirmed inlet figure -- GC-007's own remark mislabels this as "
+            "from GC-007's own registry inlet figure (Unverified (registry), not DOK-ING-confirmed) -- GC-007's own remark mislabels this as "
             "coming from 'GC-008' (the H2S scrubber, which has no tar duty); corrected here per "
             "CLAUDE.md's already-documented finding, not propagated. GC-006's own raw INLET "
             "stays genuinely Missing -- see this item's separate, permanently-Missing entry."
@@ -398,8 +398,8 @@ def gc007_blowdown(get_input):
         "value": blowdown_m3_h, "status": ps.STATUS_ASSUMED,
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Circulating liquid = L/G(2 L/Nm3, Confirmed) x flow({flow_nm3_h:.2f} Nm3/h) = "
-            f"{circulating_l_h:.2f} L/h; blowdown = circulating x GC-005's own Confirmed "
+            f"Circulating liquid = L/G(2 L/Nm3, registry, Unverified (registry)) x flow({flow_nm3_h:.2f} Nm3/h) = "
+            f"{circulating_l_h:.2f} L/h; blowdown = circulating x GC-005's own registry-stated (Unverified (registry), not DOK-ING-confirmed) "
             f"10% blowdown-to-circulation ratio. Assumed, not Calculated -- no blowdown figure "
             f"is separately confirmed for this item; the 10% ratio is reused from GC-005."
         ),
@@ -431,7 +431,7 @@ def gc008_h2s(get_input):
         "inputs": [],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"GC-008's OWN Confirmed inlet (200 ppm, itself flagged 'Estimate' in its own "
+            f"GC-008's OWN registry inlet (200 ppm, Unverified (registry), not DOK-ING-confirmed; itself flagged 'Estimate' in its own "
             f"remark) and outlet target (<1 ppm): efficiency = "
             f"({inlet:.0f}-{outlet_target:.0f})/{inlet:.0f} = {efficiency*100:.2f}%, matching "
             f"this item's own stated '>99.5%' target exactly. Deliberately NOT re-derived from "
@@ -450,8 +450,8 @@ def gc008_blowdown(get_input):
         "value": blowdown_m3_h, "status": ps.STATUS_ASSUMED,
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Circulating liquid = L/G(3 L/Nm3, Confirmed) x flow = {circulating_l_h:.2f} L/h; "
-            f"blowdown = circulating x GC-005's own Confirmed 10% ratio. Assumed, same basis as GC-007."
+            f"Circulating liquid = L/G(3 L/Nm3, registry, Unverified (registry)) x flow = {circulating_l_h:.2f} L/h; "
+            f"blowdown = circulating x GC-005's own registry-stated 10% ratio (Unverified (registry)). Assumed, same basis as GC-007."
         ),
     }
 
@@ -476,7 +476,7 @@ def gc009_hcl(get_input):
         "inputs": [],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"GC-009's OWN Confirmed inlet (150 ppm, itself flagged 'Estimate') and outlet "
+            f"GC-009's OWN registry inlet (150 ppm, Unverified (registry), not DOK-ING-confirmed; itself flagged 'Estimate') and outlet "
             f"target (<5 ppm): efficiency = ({inlet:.0f}-{outlet_target:.0f})/{inlet:.0f} = "
             f"{efficiency*100:.2f}% -- HONEST DISCREPANCY: this exact-calculated figure "
             f"({efficiency*100:.2f}%) is slightly BELOW this item's own stated '>97%' claim, "
@@ -495,8 +495,8 @@ def gc009_blowdown(get_input):
         "value": blowdown_m3_h, "status": ps.STATUS_ASSUMED,
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Circulating liquid = L/G(2.5 L/Nm3, Confirmed) x flow = {circulating_l_h:.2f} L/h; "
-            f"blowdown = circulating x GC-005's own Confirmed 10% ratio. Assumed, same basis as GC-007/008."
+            f"Circulating liquid = L/G(2.5 L/Nm3, registry, Unverified (registry)) x flow = {circulating_l_h:.2f} L/h; "
+            f"blowdown = circulating x GC-005's own registry-stated 10% ratio (Unverified (registry)). Assumed, same basis as GC-007/008."
         ),
     }
 
@@ -523,7 +523,7 @@ def gc010_dust(get_input):
         "inputs": [],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"GC-010's OWN Confirmed inlet (300 mg/Nm3) and outlet target (<5 mg/Nm3): "
+            f"GC-010's OWN registry inlet (300 mg/Nm3; Unverified (registry), not DOK-ING-confirmed) and outlet target (<5 mg/Nm3): "
             f"efficiency = {efficiency*100:.2f}% -- same exact-calc pattern as the existing "
             f"static fill (ESTIMATE_FILLS['GC-010'], ~98.3%). Standalone reference point, does "
             f"NOT reconcile with GC-003's own separately-computed outlet (module docstring, gap 2)."
@@ -552,7 +552,7 @@ def gc012_h2s_cos_polish(get_input):
         "inputs": [("GC-008", "H2S")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Inlet = GC-008's own computed outlet ({inlet:.2f} ppm); GC-012's own Confirmed "
+            f"Inlet = GC-008's own computed outlet ({inlet:.2f} ppm); GC-012's own registry-stated (Unverified (registry), not DOK-ING-confirmed) "
             f"outlet target (<0.1 ppm): efficiency = {efficiency*100:.2f}%. GC-009/GC-010 do not "
             f"remove H2S themselves (HCl-specific / dust-specific)."
         ),
@@ -610,10 +610,10 @@ def gc013_fan_power(get_input):
         "inputs": [("GC-013", "Gas")],
         "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
         "confidence_note": (
-            f"Cumulative dP = sum of every stage's own Confirmed design dP = {total_dp_mbar:.1f} "
+            f"Cumulative dP = sum of every stage's own registry design dP (Unverified (registry), not DOK-ING-confirmed) = {total_dp_mbar:.1f} "
             f"mbar (GC-013's own remark independently cites '~115+ mbar' for the whole train -- "
             f"cross-checked below, not forced to match). Hydraulic power = dP*Q = "
-            f"{hydraulic_power_w:.1f} W -- a LOWER BOUND on GC-013's own Confirmed 1.5 kW motor "
+            f"{hydraulic_power_w:.1f} W -- a LOWER BOUND on GC-013's own registry 1.5 kW motor (Unverified (registry), not DOK-ING-confirmed) "
             f"rating (motor power also covers fan/motor inefficiency, not modeled here)."
         ),
     }
@@ -689,19 +689,19 @@ def gc014_blower_pressure(get_input):
         "inputs": [("GC-013", "Fan power")],
         "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            f"GC-014's own Confirmed design discharge={GC014_DESIGN_DISCHARGE_MBAR_G:.0f} mbar(g), "
+            f"GC-014's own registry (Unverified (registry), not DOK-ING-confirmed) design discharge={GC014_DESIGN_DISCHARGE_MBAR_G:.0f} mbar(g), "
             f"suction={GC014_DESIGN_SUCTION_MBAR_G:.0f} mbar(g), read directly from the registry -- "
             f"a wiring gap, not a missing parameter (see this function's own docstring). Consistency "
-            f"check ({verdict}): GA-002's own Confirmed {GA002_TYPICAL_PRESSURE_MBAR_G:.0f} mbar(g) "
-            f"typical gasifier pressure minus GC-013's own computed cumulative confirmed-stage train "
+            f"check ({verdict}): GA-002's own registry-stated (GA-001 'Operating pressure (typical)', Unverified (registry), not DOK-ING-confirmed) {GA002_TYPICAL_PRESSURE_MBAR_G:.0f} mbar(g) "
+            f"typical gasifier pressure minus GC-013's own computed cumulative registry-stage (Unverified (registry)) train "
             f"dP ({cumulative_dp_mbar:.1f} mbar) implies a {implied_suction_mbar_g:.1f} mbar(g) "
-            f"suction pressure -- a real {abs(gap_mbar):.1f} mbar gap against the Confirmed "
+            f"suction pressure -- a real {abs(gap_mbar):.1f} mbar gap against the registry (Unverified (registry)) "
             f"{GC014_DESIGN_SUCTION_MBAR_G:.0f} mbar(g) figure, reported honestly, not forced to "
             f"match. Same class of finding as GC-013's own already-flagged mismatch between its own "
             f"140.0 mbar computed sum and the registry's separately-stated '~115+ mbar' remark for "
             f"the same train -- a pre-existing, already-known minor internal inconsistency across "
             f"this project's own per-item registry figures, not a new contradiction and not resolved "
-            f"here (neither Confirmed figure is altered to force agreement)."
+            f"here (neither registry figure is altered to force agreement)."
         ),
     }
 
@@ -821,9 +821,9 @@ def gc015_operating_conditions(get_input):
             f"explicit figures (Engineering assumption, Section 7 -- near-definitional, but not "
             f"Confirmed). TEMPERATURE: approximately {temp_lo_c:.0f}-{temp_hi_c:.0f} degC "
             f"(Internal-model-derived, Section 7) -- upper bound = this cycle's own live, flow-"
-            f"weighted blend of the five real inflow streams' own Confirmed/interpolated source "
+            f"weighted blend of the five real inflow streams' own registry (Unverified (registry))/interpolated source "
             f"temperatures ({inlet_blend_temp_c:.1f} degC, no cooling in the tank itself); lower "
-            f"bound = GC-005's own Confirmed {GC015_AMBIENT_TEMP_C:.0f} degC ambient water supply "
+            f"bound = GC-005's own registry (Unverified (registry), not DOK-ING-confirmed) {GC015_AMBIENT_TEMP_C:.0f} degC ambient water supply "
             f"temperature (full cooling, plausible given the tank's own real ~5h residence time in "
             f"an open, uninsulated vessel). A real range (Section 5), not false precision -- the "
             f"true steady-state value depends on a heat-transfer coefficient/surface area this "
