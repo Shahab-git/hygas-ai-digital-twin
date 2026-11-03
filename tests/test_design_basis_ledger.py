@@ -862,11 +862,14 @@ def test_undo_changes_nothing_but_those_phrases():
 
 
 def _differing_leaves(a, b, path=""):
-    """[(path, kind)] of every leaf at which two serialised entries differ (exactly, no tolerance)."""
+    """[(path, kind)] of every leaf at which two serialised entries differ: text and structure exactly; two numbers are the same within 1e-12 relative (the 701de71 fixture was made on 3.14, where
+    sum() is compensated; CI runs 3.11, where the last bit can differ -- max measured 4.4e-14). A number that moved more than that is reported with its kind."""
     if isinstance(a, dict) and isinstance(b, dict):
         return [x for k in sorted(set(a) | set(b)) for x in _differing_leaves(a.get(k), b.get(k), f"{path}/{k}")]
     if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
         return [x for i, (p, q) in enumerate(zip(a, b)) for x in _differing_leaves(p, q, f"{path}[{i}]")]
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool) and not isinstance(b, bool):
+        return [] if math.isclose(a, b, rel_tol=1e-12, abs_tol=1e-15) else [(path, type(a).__name__)]
     return [] if a == b else [(path, type(a).__name__)]
 
 
