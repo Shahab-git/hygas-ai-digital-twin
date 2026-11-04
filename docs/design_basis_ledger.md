@@ -348,12 +348,12 @@ Ledger rows with no consumer. They are reported, not removed.
 
 ## Confirmed mentions in the engine modules
 
-436 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
+434 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
 
 | file | lines mentioning "confirmed" |
 |---|---|
 | python/balance_audit.py | 9 |
-| python/eu_utilities_chp.py | 48 |
+| python/eu_utilities_chp.py | 46 |
 | python/fe_feed_handling.py | 35 |
 | python/ga001_energy_balance.py | 1 |
 | python/ga001_gasifier_model.py | 77 |
@@ -364,7 +364,7 @@ Ledger rows with no consumer. They are reported, not removed.
 | python/reference_feeds.py | 4 |
 | python/tab1_integration.py | 24 |
 | python/uncertainty.py | 30 |
-| **all** | 436 |
+| **all** | 434 |
 
 **The pinned counts changed in the wording pass W1 (commits 0420d32 and 87e4950).** Lines mentioning "confirmed": 476 to 449; DOK-ING-sourced 46 to 49, generic 115 to 159, registry-stated 315 to 241; registry-stated lines that reach a persisted note: 88 to 14. Why: W1.1 reworded the persisted notes that called a registry value Confirmed (they now say "Unverified (registry), not DOK-ING-confirmed", or name the DOK-ING source next to the word), so those lines left the registry-stated class (most became generic, because the new text says "not DOK-ING-confirmed"); W1.2 reworded the EU-008 capacity notes that called their input duties validated. The 14 persisted lines that remain are pinned in `tests/test_design_basis_ledger.py` (`PERSISTED_REGISTRY_STATED`) and none calls a registry value Confirmed (DOK-ING's confirmed composition ranges with RFI #2 named, negations, questions to DOK-ING, a self-test message, a code check). The registry-stated lines that remain (241 after W1, 232 after A3d) do not reach a persisted note in the live snapshot (docstrings, comments, other strings) and were not rewritten, except for the lines A3d names.
 
