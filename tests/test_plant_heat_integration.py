@@ -28,6 +28,8 @@ from python import tab1_integration as t1
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_f628406.json.gz")
 KEY = "PLANT|HeatIntegration"
+A1_KEY = "GA-001-INPUT|gasifying_agent"                  # task A1 (deliberate edit): the gasifying-agent switch, one more new key
+A1_3_KEY = "GA-001|AgentConsistency"                        # task A1.3 (deliberate edit): the read-only agent-consistency entry, one more new key
 MID = "DOK-ING midpoint (Assumed point)"
 N = 20
 
@@ -231,7 +233,7 @@ def test_the_key_does_not_depend_on_the_energybalance_entry_so_that_stays_a_leaf
     spec = engine._models[("PLANT", "HeatIntegration")]
     eb_key = ("GA-001", "EnergyBalance")
     assert eb_key not in phi.DEPENDS_ON and eb_key not in spec["depends_on"] and eb_key not in spec["lagged_depends_on"]
-    assert list(spec["depends_on"]) == phi.DEPENDS_ON and list(spec["lagged_depends_on"]) == phi.LAGGED
+    assert list(spec["depends_on"]) == phi.DEPENDS_ON + [ga001.GASIFYING_AGENT_KEY] and list(spec["lagged_depends_on"]) == phi.LAGGED          # task A1 (deliberate edit): the agent switch is declared at registration, not in the published inputs (phi.DEPENDS_ON)
 
 
 def test_nothing_reads_the_key_and_no_model_depends_on_it():
@@ -276,7 +278,7 @@ def test_the_persisted_key_count_rises_by_exactly_one_and_none_is_lost(runs, mai
     new = {f"{k[0]}|{k[1]}" for k in runs[label]}
     old = set(main_snap[fixture_key])
     assert old - new == set(), sorted(old - new)
-    assert new - old == {KEY} and len(new) == len(old) + 1 == 121
+    assert new - old == {KEY, A1_KEY, A1_3_KEY} and len(new) == len(old) + 3 == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     assert len(old) / len(new) > 0.9                                      # growth never trips the runtime's 90 % shrink guard
 
 

@@ -186,7 +186,7 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
     dem = {d["name"]: d for d in (demands if demands is not None else ebv["heat_demands"])}
     d_gs = next(d for n, d in dem.items() if n.startswith("raise gasifier steam"))
     d_ws = next(d for n, d in dem.items() if n.startswith("raise WGS steam"))
-    d_air = next(d for n, d in dem.items() if n.startswith("preheat air"))
+    d_air = next(d for n, d in dem.items() if n.startswith("preheat "))          # 'preheat air to 200 degC', or 'preheat oxidant (agent X) ...' for a non-default agent (task A1)
     d_dry = next(d for n, d in dem.items() if n.startswith("evaporate feed moisture"))
     t_sat = STEAM_6BAR["t_sat_c"]
     q_liq = ba.CP_LIQUID_WATER_J_MOLK / 1000.0 * (t_sat - ba.T_REF_C)
@@ -308,7 +308,7 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
             "by_source": by_source, "by_sink": by_sink,
         }
     srcs = [{k: v for k, v in s.items() if k != "kw_recovered"} for s in sources]
-    return {
+    result = {
         "basis": "kW, LHV + sensible heat above 25 degC (balance_audit.py); levels in degC; + surplus / - deficit; a pure function of published state",
         "tail_gas_mode": mode, "report_only": "nothing reads this entry; it adds no boiler, burner, exchanger or stack and changes no temperature, conversion, flow, composition or hydrogen",
         "sinks": [{k: v for k, v in s.items() if k != "bands"} for s in sinks], "steam_band_split": split, "steam_band_status": ps.STATUS_ESTIMATED,
@@ -320,6 +320,11 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
                       "solids_cp_kj_kgk": {"value": cp_s, "status": ps.STATUS_ASSUMED, "range": [ba.SOLIDS_CP_KJ_KGK[1], ba.SOLIDS_CP_KJ_KGK[2]]}},
         "cases": cases, "missing_terms": list(MISSING_TERMS),
     }
+    if ebv.get("agent") is not None:        # task A1: a NON-default agent adds the agent block and the explicit Missing terms; the default value is unchanged
+        result["agent"] = ebv["agent"]
+        base = list(MISSING_TERMS) if ebv["agent"]["oxygen_used"] else [m for m in MISSING_TERMS if "air-separation unit" not in m]      # no oxygen used: that line would imply a unit is needed
+        result["missing_terms"] = base + [f"{t['name']}: Missing ({t['missing_reason']})" for t in ebv["agent"]["missing_terms"]]
+    return result
 
 
 def _native(x):
@@ -345,4 +350,4 @@ def heat_integration(get_input):
 
 
 def register(engine):
-    engine.register_model(KEY, heat_integration, unit="kW dict", depends_on=list(DEPENDS_ON), lagged_depends_on=list(LAGGED))
+    engine.register_model(KEY, heat_integration, unit="kW dict", depends_on=list(DEPENDS_ON) + [ga001.GASIFYING_AGENT_KEY], lagged_depends_on=list(LAGGED))      # the agent switch is read same-cycle, not in the published 'inputs'

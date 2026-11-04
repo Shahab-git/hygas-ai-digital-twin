@@ -121,6 +121,8 @@ IDENTIFIABILITY = [
     ("GA-001.unconverted_C_to_carbon_black", ["GA-008.carbon_black_kg_h"], "carbon black mass over the unconverted carbon", ["GA-001.carbon_conversion"],
      "masses of the other unconverted-carbon exits (bed drain, cyclone catch, fly ash): no tag exists, Missing"),
     ("GA-001.tail_gas_mode", [], "not identifiable from a measurement: it states where the PSA tail gas goes in the plant", [], "DOK-ING's statement of the real tail-gas routing"),
+    ("GA-001.gasifying_agent", [], "not identifiable from one tag: it states which oxidant / heat supply the gasifier has (the N2 analyser and the air or oxygen flow carry the evidence, not a parameter)", [],
+     "DOK-ING's statement of the design agent (RFI #2 A1-A3)"),
     ("HB-006.psa_K1", ["HB-012.h2_kg_h", "HB-009.product_flow_nm3_h", "HB-009.tail_flow_nm3_h", "HB-006.psa_recovery"],
      "H2 recovery from the product and tail flows with the PSA feed composition", ["HB-006.psa_void_loss"], "PSA feed composition and flow (no PSA-inlet tag is defined in this layer)"),
     ("HB-006.psa_void_loss", ["HB-006.psa_recovery"], "only with K1 jointly (recovery = 1 - K1*index/(PR-1) - void loss)", ["HB-006.psa_K1"], "recovery at two or more pressure ratios"),

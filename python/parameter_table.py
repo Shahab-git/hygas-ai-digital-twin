@@ -126,6 +126,9 @@ def _engine_input_rows(keys):
          "The input's docstring says it is read from the registry; the code holds the 950.0 as a module constant. No range exists in the repo."),
         ("GA-001.tail_gas_mode", ga001.TAIL_GAS_MODE_KEY, ga001._input_tail_gas_mode, "mode",
          (g, r"^TAIL_GAS_MODE_DEFAULT\s*="), None, "A switch, not a measurement: one of %s." % (ga001.TAIL_GAS_MODES,)),
+        ("GA-001.gasifying_agent", ga001.GASIFYING_AGENT_KEY, ga001._input_gasifying_agent, "mode",
+         (g, r"^GASIFYING_AGENT_DEFAULT\s*="), None,
+         "A switch, not a measurement: one of %s. Every agent definition is Assumed (no DOK-ING source until RFI #2 A1-A3 answer); oxygen source cost and external heat duty are Missing." % (ga001.GASIFYING_AGENT_NAMES,)),
         ("GA-001.unconverted_C_to_carbon_black", ga001.CARBON_BLACK_SPLIT_KEY, ga001._input_carbon_black_split, "fraction",
          (g, r"^CARBON_BLACK_SPLIT_DEFAULT\s*="), ga001.CARBON_BLACK_SPLIT_RANGE, ""),
     ]

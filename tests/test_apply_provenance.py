@@ -231,7 +231,7 @@ def test_the_snapshot_keys_are_unchanged_and_say_nothing_about_status(monkeypatc
     fake = FakeSupabase()
     with patched_supabase(fake):
         snap, _state, _engine = t1.build_live_snapshot(2)
-    assert len(snap) == 121 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key
+    assert len(snap) == 123 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key; A1 (deliberate edit): +1 = the switch input; A1.3 (deliberate edit): 123 = 122 + the read-only (GA-001, AgentConsistency) key
     assert not [k for k in snap if re.search(r"overlay|provenance|registry_status|unverified", " ".join(k), re.I)]
     assert fake.calls == []
 

@@ -101,4 +101,4 @@ def ba_native(x):
 
 
 def register(engine):
-    engine.register_model(KEY, carbon_accounting, unit="kg/h dict", depends_on=list(DEPENDS_ON), lagged_depends_on=list(LAGGED))
+    engine.register_model(KEY, carbon_accounting, unit="kg/h dict", depends_on=list(DEPENDS_ON) + [ga001.GASIFYING_AGENT_KEY], lagged_depends_on=list(LAGGED))      # task A1: ba.ga001_inputs reads the agent switch (declared, not published)
