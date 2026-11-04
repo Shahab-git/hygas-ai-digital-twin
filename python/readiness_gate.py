@@ -8,6 +8,9 @@ side effect (it reads two dataclasses and returns a dict).
     DOK-ING". No number is chosen here for data volume, coverage or error. With a required criterion None the gate cannot pass, and says `criteria not set: <field>`.
   * `reasons` names each required item whose evidence is missing (`missing evidence: <item>`), each criterion that is not set (`criteria not set: <field>`) and each item that is present but
     on the wrong side of its (set) criterion (`below criterion: ...` / `above criterion: ...`). `passes` is True only when `reasons` is empty.
+  * A present-but-invalid value is NOT evidence (A10d, P0-CLOSE C4): `heldout_error` must be a finite number >= 0 and `operating_range_coverage` a finite number in [0, 1] (an int or float, never a bool,
+    NaN, infinity, a negative value, a value above 1 or a non-number). Such a value gives `invalid evidence: <item> <value> (must be ...)` instead of `missing evidence`, counts as not present and is
+    not compared with its threshold, so the gate fails. `None` stays "not determined" and gives `missing evidence: <item>`.
   * `maturity_allowed` is the highest class the EVIDENCE supports, whatever the capability: no plant data and no twin-generated data -> PHYSICS_ESTIMATE; twin-generated data only ->
     SYNTHETIC_BENCHMARK; Measured plant data -> TRAINED_ON_PLANT_DATA; Measured plant data AND a passing `validation` gate -> VALIDATED_ON_HELDOUT. No other capability passing grants the last class.
   * `physical_model_validated` cannot be claimed on its own: `evidence_with_validation_result` sets it only from a passing validation result, and a hand-set True without a passing
@@ -101,12 +104,20 @@ def _valid_error(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0
 
 
+def _valid_coverage(v):
+    """A coverage is a real fraction in [0, 1] (not a bool, NaN, infinity, a negative value, a value above 1 or a non-number); the range test also rejects NaN and infinity and cannot overflow on a huge int."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1
+
+
+INVALID_RULE = {"heldout_error": "a finite number >= 0", "operating_range_coverage": "a finite number in [0, 1]"}      # the items whose present-but-invalid value is reported, with the rule
+
+
 def _present(evidence, item):
     v = getattr(evidence, item)
     if item == "heldout_error":
         return v is not None and _valid_error(v)
     if item == "operating_range_coverage":
-        return v is not None
+        return v is not None and _valid_coverage(v)
     if isinstance(v, bool):
         return v
     return v > 0
@@ -119,8 +130,8 @@ def _reasons(capability, evidence, criteria):
         field, direction = criterion_for(capability, item)
         have = _present(evidence, item)
         if not have:
-            if item == "heldout_error" and getattr(evidence, item) is not None:
-                reasons.append(f"invalid evidence: heldout_error {getattr(evidence, item)!r} (must be a finite number >= 0)")
+            if item in INVALID_RULE and getattr(evidence, item) is not None:
+                reasons.append(f"invalid evidence: {item} {getattr(evidence, item)!r} (must be {INVALID_RULE[item]})")
             else:
                 reasons.append(f"missing evidence: {item}")
         if field is not None:
