@@ -278,7 +278,7 @@ def test_the_persisted_key_count_rises_by_exactly_one_and_none_is_lost(runs, mai
     new = {f"{k[0]}|{k[1]}" for k in runs[label]}
     old = set(main_snap[fixture_key])
     assert old - new == set(), sorted(old - new)
-    assert new - old == {KEY, A1_KEY, A1_3_KEY} and len(new) == len(old) + 3 == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
+    assert new - old == {KEY, A1_KEY, A1_3_KEY} and len(new) == len(old) + 3 == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     assert len(old) / len(new) > 0.9                                      # growth never trips the runtime's 90 % shrink guard
 
 

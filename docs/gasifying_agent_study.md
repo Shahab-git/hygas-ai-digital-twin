@@ -101,6 +101,45 @@ What the numbers do **not** show:
 
 **Not verifiable here:** Python 3.11 / 3.12 CI; the dashboard chart that the Expected set is said to match.
 
+## 7. Live agents versus study scenarios (task A1)
+
+This section was added when the study scenarios became selectable inside the engine. It is not validation against DOK-ING data: none exists, and no agent is Confirmed.
+
+**What is live.** The engine has a switch `("GA-001-INPUT", "gasifying_agent")`, default `air` (today's behaviour, bit for bit). Six values exist; each is the study scenario of the same name made a live configuration, and every definition is **Assumed** (no DOK-ING source until RFI #2 A1-A3 answer which agent the plant uses). There is **no selector in the UI**: the GA-001 card only displays the active agent, read-only.
+
+| live agent | study scenario | O2 fraction of the oxidant | ER the model uses | steam-to-feed the model uses | N2 per O2 of the oxidant |
+|---|---|---|---|---|---|
+| `air` (default) | S0 | 0.21 (a label) | the ER input (0.25) | the steam input (0.4) | 0.79 / 0.21 (the existing expression) |
+| `enriched_30` | S1a | 0.30 | the ER input | the steam input | (1 - 0.30) / 0.30 |
+| `enriched_50` | S1b | 0.50 | the ER input | the steam input | (1 - 0.50) / 0.50 |
+| `oxygen` | S2 | 1.0 | the ER input | the steam input | 0 |
+| `steam_only_0.4` | S4a | none (no oxygen used) | 0 | the steam input | 0 |
+| `steam_only_0.8` | S4b | none (no oxygen used) | 0 | 0.8 | 0 |
+
+**What stays a study scenario.** S3 (chemical-looping equivalent) is not a live agent: its air reactor, carrier circulation and carrier heat terms are not in the registry and the model has no basis for them. The oxygen-carrier circulation estimate in the engine is a literature range, not a loop model.
+
+**How the live agents were checked against the study.** The study scripts (`scripts/run_agent_comparison.py`, `scripts/run_balance_audit.py --scenarios`) are unchanged and still run an agent by overriding the ER, the steam ratio and the oxidant N2 around the unchanged model. `tests/test_gasifying_agent.py` runs each live agent and its study scenario and compares the species moles, the downstream chain (LHV, hydrogen, carbon black, PSA recovery) and the energy numbers (implied gasifier duty, heat demands, cold-gas efficiencies at three feed LHVs) to 1e-12 relative. The element closure (C, H, O, N) of the closure audit holds for all six agents. For the default agent every old persisted entry equals the one of origin/main and the scenario audit output is identical.
+
+**What the live agents add.**
+- The closure audit follows the agent (it reads the switch from the snapshot). For an agent other than air the H, O and N rows say that the oxidant side is the model's own formula, not an independent check.
+- **Oxidant preheat.** The energy terms keep the GA-004 "Air preheat temperature" (200 degC, a registry value for air). For every other agent the preheat is **Assumed and flagged**: there is no preheat temperature or heat source for an O2-enriched or oxygen oxidant. A steam-only agent uses no oxygen and has no oxidant: 0 mol, so its 0 kW is the arithmetic of no flow.
+- **Heat capacity basis.** The sensible heat of the oxidant uses `CP_J_MOLK['N2'] = 30.6 J/mol.K` for N2 and, by the repo's own convention (`CP_J_MOLK_O2_NOTE`, Estimated), the same value for O2. It is a 300-1200 K mean (`gc_gas_cleaning_chain.CP_MEAN_J_MOLK`) applied from 25 degC to 200 degC, for air, enriched air and oxygen alike. It is not a separately sourced O2 value.
+- **Missing terms.** For every agent other than air, the heat summaries `(GA-001, EnergyBalance)` and `(PLANT, HeatIntegration)` carry an `agent` block with two explicit Missing terms: the oxygen source (heat or electricity; for a steam-only agent the term reads "no oxygen used", recorded Missing only because the repo has no oxygen-source model) and the external (allothermal) heat duty. Each has status Missing, no number and a reason; neither is ever 0 kW or "closed". No oxygen cost and no external duty number is written anywhere.
+
+**The consistency check.** The read-only entry `("GA-001", "AgentConsistency")` compares three things: the registry's expected N2 (SA-005 "Expected N2 concentration", 10 vol%), the declared agent, and the model's **dry** N2. It reports the numbers and the difference (model minus registry); for air the model's dry N2 is about 39.6 vol%, a difference of about +29.6 vol%. It gives no verdict: the tolerance is a parameter and is **not set** (None), so `consistent` is None, "tolerance not set". The registry row says "10 vol%" without a wet or dry basis (the check assumes none), and its resolved status is **Assumed** (the provenance overlay: the project's own dashboard value, not from DOK-ING). Nothing reads the entry: it feeds no readiness gate, maturity class, AI model or other value.
+
+**Input entries versus the values the model used.** The persisted input entries `("GA-001-INPUT", "equivalence_ratio")` and `("GA-001-INPUT", "steam_to_feed_ratio")` are unchanged for every agent: they show the inputs (0.25 and 0.4). For a steam-only agent the model ignores the ER input (it uses 0) and for `steam_only_0.8` it uses 0.8 instead of the steam input. The values the model used are published in `(GA-001, AgentConsistency)` under `effective_inputs`, in the `(GA-001, Outputs)` value for a non-default agent (`effective_equivalence_ratio`, `effective_steam_to_feed_ratio`, `oxidant_o2_fraction`, `oxidant_n2_per_o2`), and in the GA-001 card of the UI.
+
+**What is still air-based (not changed, not agent-aware).**
+- **The ER uncertainty band.** `python/uncertainty.py` holds the "air equivalence ratio" at its Assumed point 0.25 with a uniform +/-15 % band (its own assumed default, not from DOK-ING), and `ga001_gasifier_model.run_ga001_uncertainty` samples that band and calls the solver without an agent (the air N2 expression). The band, the sampled gas compositions and anything derived from them describe an air-blown gasifier; they say nothing about the other agents, for which the ER is not an air quantity (zero for steam only).
+- **`python/dynamics.py` (the transient what-if layer).** It steps the ER input as an air flow and its time constants are Assumed for an air-blown bed. It reads no agent: with the default agent it is unchanged. If the switch were overridden, an ER step would act on the input entry that a steam-only agent ignores and that an enriched or oxygen agent reinterprets, so its time constants and ER limits must not be read for those agents. The what-if tab offers no agent selector.
+- **The tail-gas burner air** in the heat inventory (`plant_heat_integration`) is combustion air for burning the tail gas and stays air for every agent.
+- `scripts/run_agent_comparison.py` and `python/balance_scenarios.py` keep their own copy of the air N2 ratio on purpose: they are the study reference the live agents are tested against.
+
+**Persisted keys.** 121 became 123: the switch `("GA-001-INPUT", "gasifying_agent")` and the read-only `("GA-001", "AgentConsistency")`. Every one of the 121 old entries is unchanged.
+
+**Still Assumed or Missing.** Every agent definition, the O2 fractions and the 0.8 steam-to-feed of `steam_only_0.8` (Assumed); the oxidant preheat (Assumed, flagged); the registry's expected N2 and its basis (Assumed, basis not stated); the oxygen source cost and the external heat duty (Missing); the consistency tolerance (not set).
+
 ## Appendix: measured tables (generated by `scripts/run_agent_comparison.py`)
 
 ### 1. Gas, hydrogen and load

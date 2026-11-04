@@ -717,7 +717,7 @@ def _assert_only_the_d2_phrases_differ(old, new, mode):
 def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes(runs, main_snap, mode, fixture_key):
     new = _ser(runs[mode])
     old = main_snap[fixture_key]
-    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123, "same persisted keys plus the two A1 keys, same count"          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
+    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123, "same persisted keys plus the two A1 keys, same count"          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     new_wording = {k: v for k, v in new.items() if k.startswith(_d2_wording.ENTRIES)}
     _assert_only_the_d2_phrases_differ(old, new, mode)
     # the one deliberate text change is really there (and only in the entries that can carry it)
@@ -818,7 +818,7 @@ def test_the_runtime_shrink_guard_accepts_the_persisted_set(runs, main_snap):
     spec.loader.exec_module(mod)
     stored = [tuple(k.split("|", 1)) for k in main_snap["default|20"]]
     new = list(runs["default"])
-    assert set(stored) | {("GA-001-INPUT", "gasifying_agent"), ("GA-001", "AgentConsistency")} == set(new) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
+    assert set(stored) | {("GA-001-INPUT", "gasifying_agent"), ("GA-001", "AgentConsistency")} == set(new) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     assert mod.check_shrink(stored, new) is None
     assert mod.check_shrink(stored, new[:100]) is not None, "the guard itself is live: a persisted set that lost 21 keys is refused"
 

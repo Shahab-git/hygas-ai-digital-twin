@@ -5351,6 +5351,52 @@ def _ga_confidence_banner_html(level):
     )
 
 
+def _ga_agent_view(snap):
+    """What the GA-001 card shows about the gasifying agent (task A1.4), built only from published entries; READ-ONLY, there is no selector and nothing is written. An older stored snapshot has no
+    agent entries: the agent is then air and the view says so. Neutral wording: it states the agent, the values the model used, the registry's expected N2 beside the model's dry N2 (with
+    the registry row's resolved status and the fact that its wet or dry basis is not stated) and the terms that are Missing; it judges nothing."""
+    sw = snap.get(("GA-001-INPUT", "gasifying_agent"))
+    known = bool(sw) and sw.get("status") != ps.STATUS_MISSING and isinstance(sw.get("value"), str)
+    agent = sw["value"] if known else "air"
+    cons = snap.get(("GA-001", "AgentConsistency"))
+    cv = cons["value"] if cons and cons.get("status") != ps.STATUS_MISSING and isinstance(cons.get("value"), dict) else None
+    effective = dict(cv["effective_inputs"]) if cv and isinstance(cv.get("effective_inputs"), dict) else None
+    if effective is None:                                      # no consistency entry (older snapshot): the inputs ARE the values the air agent uses
+        er, st_ = snap.get(("GA-001-INPUT", "equivalence_ratio")), snap.get(("GA-001-INPUT", "steam_to_feed_ratio"))
+        if er and st_ and er.get("status") != ps.STATUS_MISSING and st_.get("status") != ps.STATUS_MISSING and agent == "air":
+            effective = {"equivalence_ratio": er["value"], "steam_to_feed_ratio": st_["value"], "oxidant_o2_fraction": 0.21}
+    eb = snap.get(("GA-001", "EnergyBalance"))
+    block = eb["value"].get("agent") if eb and eb.get("status") != ps.STATUS_MISSING and isinstance(eb.get("value"), dict) else None
+    missing = [(m["name"], m["missing_reason"]) for m in (block or {}).get("missing_terms", [])]
+    return {"agent": agent, "switch_in_snapshot": known, "effective": effective,
+            "consistency": ({k: cv[k] for k in ("expected_n2_vol_pct", "computed_n2_vol_pct_dry", "deviation_vol_pct", "tolerance_note", "reading")} | {"resolved_status": cv["expected_source"]["resolved_status"],
+                             "basis": cv["expected_source"]["basis_wet_or_dry"]}) if cv else None,
+            "missing_terms": missing}
+
+
+def _render_ga_agent_panel(snap):
+    """Read-only display of the active gasifying agent inside the GA-001 live card. No selector: which agent runs is an engine switch, an Assumed definition, not a UI choice."""
+    view = _ga_agent_view(snap)
+    with st.expander("Gasifying agent (read-only)"):
+        st.markdown(f"Active agent: **{view['agent']}** (an Assumed switch in the engine; this panel only displays it)")
+        if not view["switch_in_snapshot"]:
+            st.caption("The stored snapshot has no agent entry (it predates the switch): shown as air.")
+        eff = view["effective"]
+        if eff is not None:
+            f = eff.get("oxidant_o2_fraction")
+            st.caption(f"Values the model used for this agent: ER {eff['equivalence_ratio']:g} · steam-to-feed {eff['steam_to_feed_ratio']:g} kg/kg · "
+                       + ("no oxygen used, no oxidant" if f is None else f"oxidant O₂ fraction {100.0 * f:.0f} %")
+                       + ". The ER and steam-to-feed entries elsewhere show the inputs, not these.")
+        c = view["consistency"]
+        if c is not None:
+            st.caption(f"Model dry N₂ {c['computed_n2_vol_pct_dry']:.2f} vol% · registry expected N₂ {c['expected_n2_vol_pct']:g} vol% (SA-005, resolved status {c['resolved_status']}; "
+                       f"wet or dry basis not stated) · difference (model minus registry) {c['deviation_vol_pct']:+.2f} vol% · {c['tolerance_note']}, no verdict is given.")
+        if view["missing_terms"]:
+            for name, reason in view["missing_terms"]:
+                st.caption(f"Missing: {name}. {reason}.")
+        st.caption("Read-only: nothing here changes a value. Every agent definition is Assumed; the study scenarios behind the agents are in docs/gasifying_agent_study.md.")
+
+
 def _render_ga_live_results(snap):
     ga_out_entry = snap.get(("GA-001", "Outputs"))
     ga_tar_entry = snap.get(("GA-001", "Tar content"))
@@ -5388,6 +5434,7 @@ def _render_ga_live_results(snap):
             c7.metric("H₂O (wet mol%)", f"{v['H2O_mol_pct_wet']:.1f}%")
             with st.expander("Full status & traceability — GA-001 Outputs"):
                 st.caption(f"Status: {ga_out_entry['status']} · {ga_out_entry['confidence_note']}")
+            _render_ga_agent_panel(snap)
 
         if ga_tar_entry is not None:
             st.metric("Tar content", "Missing / Cannot Calculate" if ga_tar_entry["status"] == ps.STATUS_MISSING
