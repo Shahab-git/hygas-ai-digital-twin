@@ -282,3 +282,53 @@ def test_valid_finite_nonnegative_errors_keep_their_behaviour():
 def test_a_hand_set_claim_cannot_be_rescued_by_an_invalid_error():
     r = rg.readiness_gate("optimisation", dataclasses.replace(COMPLETE, heldout_error=float("nan")), CRIT)
     assert r["passes"] is False and INCONSISTENT in r["reasons"]
+
+
+# --- invalid operating-range coverage (P0-CLOSE C4): the same weakness as the held-out error, for a fraction that must lie in [0, 1] ---------------------------------------------------------
+
+INVALID_COVERAGE = [float("nan"), float("inf"), float("-inf"), -0.1, -1e-12, 1.0000001, 2, 70, 10 ** 400, True, False, "0.8", [0.8]]     # 70 = a percentage given as a fraction; 10 ** 400 must not crash
+
+
+@pytest.mark.parametrize("bad", INVALID_COVERAGE, ids=repr)
+@pytest.mark.parametrize("cap", ("calibration", "virtual_sensing"))
+def test_an_invalid_coverage_fails_the_gate_names_the_item_and_is_not_compared_with_the_threshold(cap, bad):
+    r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=bad), CRIT)
+    assert r["passes"] is False
+    assert any(x.startswith("invalid evidence: operating_range_coverage") and x.endswith("(must be a finite number in [0, 1])") for x in r["reasons"]), r["reasons"]
+    assert "missing evidence: operating_range_coverage" not in r["reasons"]
+    assert not any("criterion: operating_range_coverage" in x for x in r["reasons"]), "an invalid value is not compared with the threshold"
+
+
+@pytest.mark.parametrize("bad", INVALID_COVERAGE, ids=repr)
+@pytest.mark.parametrize("cap", ("calibration", "virtual_sensing"))
+def test_an_invalid_coverage_also_reports_a_criterion_that_is_not_set(cap, bad):
+    r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=bad), dataclasses.replace(CRIT, min_operating_range_coverage=None))
+    assert r["passes"] is False and "criteria not set: min_operating_range_coverage" in r["reasons"]
+    assert any(x.startswith("invalid evidence: operating_range_coverage") for x in r["reasons"])
+
+
+@pytest.mark.parametrize("bad", INVALID_COVERAGE, ids=repr)
+def test_an_invalid_coverage_changes_nothing_in_a_gate_that_does_not_require_it(bad):
+    ev = dataclasses.replace(COMPLETE, operating_range_coverage=bad)
+    assert rg.readiness_gate("validation", ev, CRIT) == rg.readiness_gate("validation", COMPLETE, CRIT)           # validation does not require coverage: unchanged on purpose
+    assert rg.maturity_allowed(ev, CRIT) == rg.maturity_allowed(COMPLETE, CRIT)
+
+
+def test_valid_coverages_keep_their_behaviour():
+    low = dataclasses.replace(CRIT, min_operating_range_coverage=0.4)
+    for cap in ("calibration", "virtual_sensing"):
+        for ok in (0.5, 0.7, 1, 1.0):                                                          # inside [0, 1]; the upper end is allowed
+            r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=ok), low)
+            assert not any("operating_range_coverage" in x for x in r["reasons"]), (cap, ok, r["reasons"])
+        r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=0.5), CRIT)                  # valid but below the 0.7 criterion: the old reason
+        assert r["passes"] is False and "below criterion: operating_range_coverage 0.5 < min_operating_range_coverage 0.7" in r["reasons"]
+        r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=0), low)                      # zero is a valid value (and below the criterion)
+        assert "below criterion: operating_range_coverage 0 < min_operating_range_coverage 0.4" in r["reasons"]
+    assert rg.readiness_gate("calibration", dataclasses.replace(COMPLETE, operating_range_coverage=0.5), low)["passes"] is True
+
+
+def test_a_coverage_of_none_is_still_plain_missing():
+    for cap in ("calibration", "virtual_sensing"):
+        r = rg.readiness_gate(cap, dataclasses.replace(COMPLETE, operating_range_coverage=None), CRIT)
+        assert "missing evidence: operating_range_coverage" in r["reasons"]
+        assert not any(x.startswith("invalid evidence") for x in r["reasons"])

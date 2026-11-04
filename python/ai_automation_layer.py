@@ -34,9 +34,9 @@ never presented as one.
 === AI-003 (Bed Pressure-Drop Sensor) -- task requirement 6 ===
 No live bed-hydrodynamics model exists anywhere in this project (GA-001's
 own model is a stoichiometric+WGS-equilibrium composition model, not a
-fluidized-bed hydrodynamics one) -- reads GA-002's own Confirmed
+fluidized-bed hydrodynamics one) -- reads GA-002's own registry (Unverified (registry))
 "Operating pressure range (50-150 mbar(g))" midpoint directly, the SAME
-"Confirmed design constant as live placeholder" treatment already
+"registry design constant as live placeholder" treatment already
 established for SA-011/SA-012 (sa_virtual_sensors.py) and GC-001/GC-003's
 own temperature functions.
 
@@ -178,12 +178,12 @@ def set_ai002_scenario_flag(value):
 # AI-003 -- Bed Pressure-Drop Sensor
 # ============================================================================
 
-AI003_CONFIRMED_BED_DP_MBAR = 50.0  # midpoint of GA-002's own Confirmed 50-150 mbar(g) range
+AI003_CONFIRMED_BED_DP_MBAR = 50.0  # midpoint of GA-002's registry 50-150 mbar(g) range [Unverified (registry), not DOK-ING-confirmed]; the name is kept, the status is Assumed
 
 
 def get_ai003_bed_pressure_drop(get_input):
     """See module docstring -- no live bed-hydrodynamics model exists;
-    reads GA-002's own Confirmed operating-range midpoint directly."""
+    reads GA-002's own registry operating-range midpoint (Unverified (registry)) directly."""
     return {
         "value": AI003_CONFIRMED_BED_DP_MBAR, "status": ps.STATUS_ASSUMED,
         "inputs": [], "validation_basis": ps.VALIDATION_NA,

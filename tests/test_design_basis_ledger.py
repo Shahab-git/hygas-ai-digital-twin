@@ -306,7 +306,10 @@ def test_the_refused_rows_are_assumed_with_their_reason_in_the_note(built):
         assert r["status"] == "Assumed" and r["status_via"] == "own" and r["origin"] == "NOT STATED" and not r["source_line"], tag
         assert reason in r["note"] or tag == "GA-001.ash_fraction", tag                            # the ash row is a table row: its own note carries the reason (checked in test_ash_fraction_is_assumed_in_the_table_and_the_ledger)
     assert by["FE-003.nominal_kg_h"]["status"] == "Confirmed" and by["FE-003.nominal_kg_h"]["status_via"] == "registry counterpart: FE-003/Nominal feed rate"
-    assert by["HB-012.discharge_bar_a"]["status"] == "Confirmed" and "701 bar" not in by["HB-012.discharge_bar_a"]["note"] or "bar(a) = bar(g) + 1 bar" in by["HB-012.discharge_bar_a"]["note"]
+    hb012 = by["HB-012.discharge_bar_a"]                                                        # P0-CLOSE C1: the former `A and B or C` was satisfied by C alone; three separate assertions
+    assert hb012["status"] == "Confirmed"
+    assert "bar(a) = bar(g) + 1 bar" in hb012["note"]                                           # the conversion is stated
+    assert "701 bar" not in hb012["note"] and not re.search(r"DOK-ING[^.]*701", hb012["note"])   # 701 is never given as DOK-ING's figure (DOK-ING stated 350/700 bar)
     assert by["FE-001.default_delivery_rate_kg_h"]["status"] == "Assumed"
 
 
@@ -546,9 +549,11 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
 # REGISTRY-STATED use is the case this guard exists for: say where the value comes from (name the DOK-ING source) or do not call it Confirmed.
 # Task A3d (Gate 5 wording) lowered three files ON PURPOSE (449 -> 436 lines; classes 49/159/241 -> 44/160/232): hb_wgs_psa_storage_chain (3, 6, 27) -> (2, 6, 26), eu_utilities_chp
 # (5, 19, 34) -> (2, 20, 26), fe_feed_handling (6, 12, 18) -> (5, 12, 18). Lines that called an Assumed / Unverified (registry) constant Confirmed now state its ledger status.
+# P0-CLOSE C3 lowered eu_utilities_chp once more, (2, 20, 26) -> (2, 20, 24) and 436 -> 434 lines: the two docstring lines (EU-008 "Confirmed 20kW rating", ~58kW paragraph) now say registry-stated,
+# Unverified (registry), scoped by the registry remark to EU-004 jacket cooling. ai_automation_layer.py is not in CONFIRMED_SCOPE, so its three reworded lines move no pin.
 CONFIRMED_PIN = {
     "ga001_gasifier_model.py": (16, 25, 36), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 60),
-    "hb_wgs_psa_storage_chain.py": (2, 6, 26), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (2, 20, 26), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 18),
+    "hb_wgs_psa_storage_chain.py": (2, 6, 26), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (2, 20, 24), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 18),
     "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 8),
 }
 PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
@@ -560,7 +565,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 436 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 434 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 

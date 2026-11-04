@@ -67,10 +67,10 @@ Part 8.
 
 === EU-008 Cooling Tower Resizing Estimate ("Cooling Tower Resizing
 Estimate" follow-up task) ===
-The live model's own EU-008 demand (~58kW vs its Confirmed 20kW rating,
+The live model's own EU-008 demand (~58kW vs its registry-stated 20kW rating (Unverified (registry); the registry remark scopes it to EU-004's 12 kWth jacket cooling),
 see above) is a genuine, calculated sizing gap. eu008_recommended_capacity_
 estimate() adds a SEPARATE, ADDITIVE ("EU-008","RecommendedCapacityEstimate")
-entry -- EU-008's own existing Confirmed 20kW rating (EU008_RATED_CAPACITY_KW,
+entry -- EU-008's own existing registry-stated 20kW rating (Unverified (registry), EU-004 jacket cooling only; EU008_RATED_CAPACITY_KW,
 already used above) is never overwritten, altered, or removed; both stand
 simultaneously visible. Tracks the RUNNING PEAK of EU-008's own real
 demand (lagged self, same mechanism as HB-013's inventory) across however

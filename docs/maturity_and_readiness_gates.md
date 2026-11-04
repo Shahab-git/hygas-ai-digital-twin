@@ -56,6 +56,8 @@ does: "already validated exactly against their design targets" (uncertainty), "f
 `readiness_gate(capability, evidence, criteria)` returns `{"passes", "reasons", "maturity_allowed"}`. **Every numeric criterion defaults to `None`** ("criteria not yet set — to be fixed with literature
 task C6 and DOK-ING"); with one `None` the gate fails with `criteria not set: <field>`. No number for data volume, coverage or error is written anywhere.
 
+A present-but-invalid value is not evidence: `heldout_error` must be a finite number >= 0 and `operating_range_coverage` a finite number in [0, 1] (an int or float, never a bool, NaN, infinity, a negative value, a value above 1 or a non-number). It gives `invalid evidence: <item> <value> (must be ...)`, is not compared with its threshold, and the gate fails; `None` still gives `missing evidence: <item>`.
+
 <!-- REQUIRED:start (generated from python/readiness_gate.REQUIRED; do not edit by hand) -->
 
 | capability | required evidence items (criterion field in brackets) |
