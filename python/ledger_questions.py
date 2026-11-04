@@ -80,6 +80,7 @@ RFI_MAP = {
     "PLANT.energy_balance_air_preheat_temperature_C": (["RFI2-19"], "the energy balance's air preheat input is the quantity RFI2-19 asks for (200 degC)"),
     "PLANT.energy_balance_steam_temperature_C": (["RFI2-19"], "the energy balance's steam temperature input is the quantity RFI2-19 asks for (350 degC)"),
     "GA-001.tail_gas_mode": (["RFI2-9", "RFI2-20"], "the switch is whether the PSA tail gas is burned for heat (RFI2-9) or sits behind a burner or boiler (RFI2-20); both questions ask it, none is chosen"),
+    "GA-001.agent_check_expected_n2_vol_pct": (["RFI2-5"], "RFI2-5 asks the design gas composition at the gasifier outlet (dry basis) and quotes the registry's about 10 % N2"),
     "GA-001.agent_air_o2_fraction": (["RFI2-1"], "RFI2-1 asks which agent is the design basis; the air fraction is the label of the 'air' agent"),
     "GA-001.agent_o2_fraction": (["RFI2-1", "RFI2-2"], "RFI2-1 asks whether the design agent is enriched air or oxygen; RFI2-2 asks where the oxygen comes from; the O2 fractions of the study agents are not chosen from an answer"),
     "GA-001.agent_er_override": (["RFI2-1"], "RFI2-1 asks whether the design agent is steam only (no oxidant)"),

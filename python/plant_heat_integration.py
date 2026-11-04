@@ -322,7 +322,8 @@ def compute(get, assumptions=None, lhv_cases=None, demands=None, duty_fn=None):
     }
     if ebv.get("agent") is not None:        # task A1: a NON-default agent adds the agent block and the explicit Missing terms; the default value is unchanged
         result["agent"] = ebv["agent"]
-        result["missing_terms"] = list(MISSING_TERMS) + [f"{t['name']}: Missing ({t['missing_reason']})" for t in ebv["agent"]["missing_terms"]]
+        base = list(MISSING_TERMS) if ebv["agent"]["oxygen_used"] else [m for m in MISSING_TERMS if "air-separation unit" not in m]      # no oxygen used: that line would imply a unit is needed
+        result["missing_terms"] = base + [f"{t['name']}: Missing ({t['missing_reason']})" for t in ebv["agent"]["missing_terms"]]
     return result
 
 

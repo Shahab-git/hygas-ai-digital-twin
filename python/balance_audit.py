@@ -112,12 +112,13 @@ def gasifying_agent(snapshot):
 
 def oxidant_heat_label(agent):
     """(heat-demand name, status, source) of the oxidant preheat term. 'air': today's text, Estimated. Any other agent (task A1): Assumed and FLAGGED, because the GA-004 'Air preheat
-    temperature' is a registry value for AIR (Unverified (registry)): no preheat temperature or heat source exists for an O2-enriched or oxygen oxidant, and steam only has no oxidant at all
-    (0 mol, so its 0 kW is the arithmetic of no flow, not a closed budget)."""
+    temperature' is a registry value for AIR (Unverified (registry)): no preheat temperature or heat source exists for an O2-enriched or oxygen oxidant, and steam only uses no oxygen and has no
+    oxidant at all (0 mol, so its 0 kW is the arithmetic of no flow, not a closed budget). Heat capacity: CP_J_MOLK['N2'] = 30.6 J/mol.K for N2 and, by the repo's own convention, for O2
+    (CP_J_MOLK_O2_NOTE: 'O2 uses the N2 mean cp', Estimated), a 300-1200 K mean applied from 25 degC to 200 degC; the same for enriched oxidant (O2 and N2 both at 30.6)."""
     if agent == ga001.GASIFYING_AGENT_DEFAULT:
         return "preheat air to 200 degC", ps.STATUS_ESTIMATED, "GA-004 'recovered process heat'"
     return (f"preheat oxidant (agent {agent}) to 200 degC [FLAGGED]", ps.STATUS_ASSUMED,
-            "FLAGGED: the 200 degC is GA-004's air preheat temperature applied to this agent's oxidant (cp O2 = cp N2); no preheat temperature or heat source exists for it. Steam only has no oxidant: 0 mol, 0 kW is no flow.")
+            "FLAGGED: the 200 degC is GA-004's air preheat temperature applied to this agent's oxidant (cp O2 = cp N2 = 30.6 J/mol.K, a 300-1200 K mean applied from 25 degC); no preheat temperature or heat source exists for it. No oxidant (steam only, no oxygen used): 0 mol, 0 kW is no flow.")
 
 
 class AuditInputMissing(Exception):
@@ -672,7 +673,7 @@ def oxidant_sensible_label(agent):
     if agent == ga001.GASIFYING_AGENT_DEFAULT:
         return "air sensible heat (preheated to 200 degC)", ps.STATUS_ESTIMATED, "GA-004 air preheat 200 degC (registry); cp O2 = cp N2 (Estimated)"
     return (f"oxidant sensible heat (agent {agent}, taken at 200 degC) [FLAGGED]", ps.STATUS_ASSUMED,
-            "FLAGGED: GA-004's air preheat temperature (200 degC) applied to this agent's oxidant, cp O2 = cp N2; no preheat temperature or heat source exists for it. Steam only has no oxidant: 0 mol, 0 kW is no flow.")
+            "FLAGGED: GA-004's air preheat temperature (200 degC) applied to this agent's oxidant, cp O2 = cp N2 = 30.6 J/mol.K (a 300-1200 K mean applied from 25 degC); no preheat temperature or heat source exists for it. No oxidant (steam only, no oxygen used): 0 mol, 0 kW is no flow.")
 
 
 def gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg):

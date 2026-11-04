@@ -17,7 +17,8 @@ def test_two_build_live_snapshot_runs_are_identical():
         snap2, _s2, _e2 = tab1_integration.build_live_snapshot()
     # HEAT INTEGRATION (deliberate edit): 121 = the 120 of before + the read-only (PLANT, HeatIntegration) key
     # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
-    assert len(snap1) == 122, f"expected the 122 engine entries (116 + tail_gas_mode + EnergyBalance + split + CarbonAccounting + HeatIntegration + gasifying_agent), got {len(snap1)}"
+    # A1.3 (deliberate edit): 123 = 122 + the read-only (GA-001, AgentConsistency) key
+    assert len(snap1) == 123, f"expected the 123 engine entries (116 + tail_gas_mode + EnergyBalance + split + CarbonAccounting + HeatIntegration + gasifying_agent + AgentConsistency), got {len(snap1)}"
     assert set(snap1) == set(snap2)
     differing = [k for k in snap1 if json.dumps(snap1[k], sort_keys=True, default=str)
                  != json.dumps(snap2[k], sort_keys=True, default=str)]

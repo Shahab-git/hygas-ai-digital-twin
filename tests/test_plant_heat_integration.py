@@ -29,6 +29,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_f628406.json.gz")
 KEY = "PLANT|HeatIntegration"
 A1_KEY = "GA-001-INPUT|gasifying_agent"                  # task A1 (deliberate edit): the gasifying-agent switch, one more new key
+A1_3_KEY = "GA-001|AgentConsistency"                        # task A1.3 (deliberate edit): the read-only agent-consistency entry, one more new key
 MID = "DOK-ING midpoint (Assumed point)"
 N = 20
 
@@ -277,7 +278,7 @@ def test_the_persisted_key_count_rises_by_exactly_one_and_none_is_lost(runs, mai
     new = {f"{k[0]}|{k[1]}" for k in runs[label]}
     old = set(main_snap[fixture_key])
     assert old - new == set(), sorted(old - new)
-    assert new - old == {KEY, A1_KEY} and len(new) == len(old) + 2 == 122          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
+    assert new - old == {KEY, A1_KEY, A1_3_KEY} and len(new) == len(old) + 3 == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
     assert len(old) / len(new) > 0.9                                      # growth never trips the runtime's 90 % shrink guard
 
 

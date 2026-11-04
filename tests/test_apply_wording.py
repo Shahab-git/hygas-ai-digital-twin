@@ -161,7 +161,7 @@ def test_the_snapshot_and_its_persisted_key_count_are_unchanged():
     fake = FakeSupabase()
     with patched_supabase(fake):
         snap, _state, _engine = t1.build_live_snapshot(2)
-    assert len(snap) == 122 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key; A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
+    assert len(snap) == 123 and all(isinstance(k, tuple) and len(k) == 2 for k in snap)      # HEAT INTEGRATION (deliberate edit): 121 = 120 + the read-only (PLANT, HeatIntegration) key; A1 (deliberate edit): +1 = the switch input; A1.3 (deliberate edit): 123 = 122 + the read-only (GA-001, AgentConsistency) key
     assert not [k for k in snap if re.search(r"wording|overlay|provenance|unverified", " ".join(k), re.I)]
     assert fake.calls == []
 

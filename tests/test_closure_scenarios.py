@@ -320,7 +320,7 @@ def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes_and_the
     with patched_supabase(fake):
         snap = t1.build_live_snapshot(20, overrides=None if mode == "default" else {("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")})[0]
     new = _undo(_ser(snap))
-    assert set(new) - {"GA-001-INPUT|gasifying_agent"} == set(old) and len(new) == 122          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122; every OLD entry is still compared below
+    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122; every OLD entry is still compared below
     bad = {k: _same(old[k], new[k]) for k in old if k != "GA-001-INPUT|tail_gas_mode"}
     assert {k: v for k, v in bad.items() if v is not True} == {}
 

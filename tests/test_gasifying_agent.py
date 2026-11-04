@@ -31,7 +31,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_701de71.json.gz")
 SCRIPT = os.path.join(ROOT, "scripts", "run_agent_comparison.py")
 KEY = ga001.GASIFYING_AGENT_KEY
-NEW_KEYS = {"GA-001-INPUT|gasifying_agent"}                  # A1.1; A1.3 adds ("GA-001", "AgentConsistency")
+NEW_KEYS = {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"}          # A1.1 the switch; A1.3 the read-only consistency entry
 AGENT_TO_STUDY = {"air": "S0", "enriched_30": "S1a", "enriched_50": "S1b", "oxygen": "S2", "steam_only_0.4": "S4a", "steam_only_0.8": "S4b"}
 N = 5
 NP = N - 1
@@ -367,12 +367,29 @@ def test_oxygen_cost_and_external_heat_duty_are_explicit_missing_terms_in_the_he
         block = value["agent"]
         assert block["gasifying_agent"] == agent and block["status"] == ps.STATUS_ASSUMED
         terms = {t["name"]: t for t in block["missing_terms"]}
-        assert set(terms) == {"oxygen source (air-separation / oxygen-enrichment heat or electricity)", "external (allothermal) heat duty"}
+        oxygen = "oxygen source (air-separation / oxygen-enrichment heat or electricity)" if ga001.GASIFYING_AGENTS[agent]["oxidant"] else "oxygen source (no oxygen used by this agent)"
+        assert set(terms) == {oxygen, "external (allothermal) heat duty"}
         assert all(_term_ok(t) for t in terms.values()), terms
         listed = " ".join(value["missing_terms"])
         assert "oxygen source" in listed and "external (allothermal) heat duty" in listed and listed.count("Missing (") >= 2
     assert _summaries(live[agent])[0]["missing_terms"][:len(eb.MISSING_TERMS)] == eb.MISSING_TERMS
-    assert _summaries(live[agent])[1]["missing_terms"][:len(phi.MISSING_TERMS)] == phi.MISSING_TERMS
+    if ga001.GASIFYING_AGENTS[agent]["oxidant"]:
+        assert _summaries(live[agent])[1]["missing_terms"][:len(phi.MISSING_TERMS)] == phi.MISSING_TERMS
+
+
+@pytest.mark.parametrize("agent", ["steam_only_0.4", "steam_only_0.8"])
+def test_a_steam_only_agent_says_no_oxygen_used_and_never_implies_an_air_separation_unit_is_needed(agent, live):
+    """Clarification of A1.3: the steam-only wording is 'no oxygen used'. Neither heat summary, the agent table nor the preheat text may name an air-separation unit for it."""
+    texts = [json.dumps(v["agent"]) + " ".join(v["missing_terms"]) for v in _summaries(live[agent])]
+    texts.append(json.dumps(ga001.GASIFYING_AGENTS[agent]))
+    texts += [x["name"] + x["source"] for x in live[agent][("GA-001", "EnergyBalance")]["value"]["heat_demands"] if "preheat" in x["name"]]
+    for text in texts:
+        low = text.lower()
+        assert "air-separation" not in low and "air separation" not in low and " asu" not in low and "enrichment" not in low, text
+    assert all("no oxygen used" in json.dumps(v["agent"]) for v in _summaries(live[agent]))
+    assert any("no oxygen used" in x for x in _summaries(live[agent])[1]["missing_terms"])
+    for other in ("enriched_30", "enriched_50", "oxygen"):                      # the agents that DO use oxygen keep the unit wording
+        assert "air-separation" in json.dumps(live[other][("PLANT", "HeatIntegration")]["value"]["agent"])
 
 
 def test_a_missing_term_that_read_zero_kw_or_closed_would_be_refused():
@@ -411,3 +428,104 @@ def test_the_tail_gas_burner_air_of_the_heat_inventory_is_air_for_every_agent():
     n = {s: v / ba.NM3_PER_MOL for s, v in species.items()}
     o2 = 0.5 * n["H2"] + 0.5 * n["CO"] + 2.0 * n["CH4"]
     assert flue["N2"] == pytest.approx(n["N2"] + o2 * 1.2 * ga001.AIR_N2_PER_O2, rel=1e-12)
+
+
+# ================================================================ A1.3: the agent-consistency check (read-only, tolerance not set)
+
+JUDGEMENT_WORDS = ("wrong", "error", "fail", "invalid", "bad", "mismatch", "inconsistent", "violat", "incorrect", "contradict", "unrealistic", "reject")
+
+
+def test_the_check_reports_the_numbers_and_the_difference_by_name_and_gives_no_verdict_without_a_tolerance():
+    c = ga001.agent_consistency("oxygen", 2.5)
+    assert c["agent"] == "oxygen" and c["agent_status"] == ps.STATUS_ASSUMED
+    assert c["expected_n2_vol_pct"] == 10.0 and c["computed_n2_vol_pct_dry"] == 2.5 and c["deviation_vol_pct"] == -7.5          # model minus registry
+    assert c["tolerance_vol_pct"] is None and c["consistent"] is None and c["tolerance_note"] == "tolerance not set"
+    assert "No tolerance is set, so no verdict is given." in c["reading"]
+    assert c["expected_source"]["resolved_status"] == "Assumed"
+    assert "not stated" in c["expected_source"]["basis_wet_or_dry"] and "wet or dry" in c["expected_source"]["basis_wet_or_dry"]
+    assert "without a wet or dry basis" in c["reading"] and "resolved status Assumed" in c["reading"] and "-7.50 vol%" in c["reading"]
+    assert ga001.AGENT_CONSISTENCY_TOLERANCE_VOL_PCT is None
+
+
+def test_a_numeric_tolerance_flags_a_deliberately_inconsistent_registry_value_as_outside_and_a_close_one_as_within():
+    far = ga001.agent_consistency("oxygen", 2.5, expected_n2_vol_pct=10.0, tolerance_vol_pct=1.0)
+    near = ga001.agent_consistency("oxygen", 2.5, expected_n2_vol_pct=3.0, tolerance_vol_pct=1.0)
+    edge = ga001.agent_consistency("oxygen", 2.5, expected_n2_vol_pct=3.5, tolerance_vol_pct=1.0)
+    assert far["consistent"] is False and "outside the tolerance of 1 vol%" in far["reading"] and far["tolerance_note"] == "tolerance passed in by the caller"
+    assert near["consistent"] is True and "within the tolerance of 1 vol%" in near["reading"]
+    assert edge["consistent"] is True                                                           # |deviation| == tolerance is within
+    assert far["deviation_vol_pct"] == -7.5 and near["deviation_vol_pct"] == -0.5
+
+
+@pytest.mark.parametrize("tol", [None, 1.0])
+@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+def test_the_wording_is_neutral_for_every_agent_with_and_without_a_tolerance(agent, tol):
+    reading = ga001.agent_consistency(agent, 39.6, tolerance_vol_pct=tol)["reading"].lower()
+    assert not [w for w in JUDGEMENT_WORDS if w in reading], reading
+    assert f"declared agent '{agent}'" in reading
+
+
+@pytest.mark.parametrize("bad", [-1.0, float("nan"), float("inf"), True, False, "1", [1.0]])
+def test_an_invalid_tolerance_raises(bad):
+    with pytest.raises(ValueError):
+        ga001.agent_consistency("air", 39.6, tolerance_vol_pct=bad)
+
+
+@pytest.mark.parametrize("bad", [None, True, "10", float("nan"), float("inf")])
+def test_an_invalid_number_or_agent_raises(bad):
+    with pytest.raises(ValueError):
+        ga001.agent_consistency("air", bad)
+    with pytest.raises(ValueError):
+        ga001.agent_consistency("air", 39.6, expected_n2_vol_pct=bad)
+    with pytest.raises(ValueError):
+        ga001.agent_consistency(bad if isinstance(bad, str) else "nitrogen", 39.6)
+
+
+@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+def test_the_live_entry_is_calculated_names_the_agent_and_publishes_the_numbers(agent, live):
+    e = live[agent][("GA-001", "AgentConsistency")]
+    v, g = e["value"], live[agent][("GA-001", "Outputs")]["value"]
+    assert e["status"] == ps.STATUS_CALCULATED and e["source"]["model"] == "ga001_gasifier_model.ga001_agent_consistency"
+    assert v["agent"] == agent and v["computed_n2_vol_pct_dry"] == g["N2_mol_pct_dry"] and v["expected_n2_vol_pct"] == 10.0
+    assert v["deviation_vol_pct"] == pytest.approx(g["N2_mol_pct_dry"] - 10.0, rel=1e-15)
+    assert v["tolerance_vol_pct"] is None and v["consistent"] is None and v["tolerance_note"] == "tolerance not set"
+    assert v["expected_source"]["resolved_status"] == "Assumed" and "wet or dry" in v["expected_source"]["basis_wet_or_dry"]
+    eff = v["effective_inputs"]
+    er, steam, _ = ga001.agent_oxidant(agent, 0.25, 0.4)
+    assert (eff["equivalence_ratio"], eff["steam_to_feed_ratio"], eff["oxidant_o2_fraction"]) == (er, steam, ga001.GASIFYING_AGENTS[agent]["o2_fraction"])
+    assert [tuple(k) for k in e["source"]["inputs"]] == [("GA-001", "Outputs"), KEY, ("GA-001-INPUT", "equivalence_ratio"), ("GA-001-INPUT", "steam_to_feed_ratio")]
+    assert "judges nothing" in e["confidence_note"] and "not validation against DOK-ING data" in e["confidence_note"]
+
+
+def test_the_registry_row_the_check_quotes_is_still_what_the_resolver_says_and_the_value_is_the_registry_value():
+    """The engine must not import the resolver (tests/test_apply_provenance.py), so the status is a constant of ga001; this test is the drift guard for it."""
+    from python import equipment_registry, registry_status
+    row = next(p for it in equipment_registry.load_registry() if it["id"] == "SA-005" for p in it["parameters"] if p["parameter"].startswith("Expected N"))
+    assert registry_status.resolve_row(registry_status.SOURCE_REGISTRY, "SA-005", row)["status"] == ga001.SA005_RESOLVED_STATUS == "Assumed"
+    assert float(row["value"]) == ga001.SA005_EXPECTED_N2_VOL_PCT and row["unit"] == "vol%"
+    assert "wet" not in (row.get("remarks") or "").lower() and "dry" not in (row.get("remarks") or "").lower(), "the registry row states no basis"
+
+
+# ---------------------------------------------------------------- it feeds nothing
+
+def test_nothing_reads_the_entry_so_no_value_gate_maturity_class_or_ai_model_can_change(fake):
+    def run(overrides=None):
+        cycle_clock.set_elapsed_hours(None)
+        with patched_supabase(fake):
+            return t1.build_live_snapshot(N, overrides=overrides)
+    snap, _state, engine = run()
+    key = ga001.AGENT_CONSISTENCY_KEY
+    for k, spec in engine._models.items():                                   # no registered model depends on it
+        assert key not in spec["depends_on"] and key not in spec["lagged_depends_on"], k
+    other, _s, _e = run({key: _const({"report_only": "replaced"})})           # replace the entry by a constant: every OTHER entry is unchanged
+    assert set(other) == set(snap) and other[key]["value"] == {"report_only": "replaced"}
+    assert {k: json.dumps(v, sort_keys=True, default=str) for k, v in snap.items() if k != key} == {k: json.dumps(v, sort_keys=True, default=str) for k, v in other.items() if k != key}
+
+
+def test_no_engine_gate_maturity_or_ai_module_names_the_entry():
+    names = []
+    for folder in ("python", "scripts"):
+        for f in sorted(os.listdir(os.path.join(ROOT, folder))):
+            if f.endswith(".py") and "AgentConsistency" in open(os.path.join(ROOT, folder, f), encoding="utf-8").read():
+                names.append(f"{folder}/{f}")
+    assert names == ["python/ga001_gasifier_model.py"], names                  # the model that publishes it; the readiness gate, maturity, AI and engine modules never mention it

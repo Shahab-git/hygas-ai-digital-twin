@@ -141,6 +141,8 @@ _c("HB-012.discharge_bar_a", "hb_wgs_psa_storage_chain", "COMPRESSOR_DISCHARGE_B
    "Three layers. DOK-ING states a magnitude of 700 bar (RFI answer 8, data/dokink_rfi_answers.md:35-36: 'compression to 350/700 bar for mobility dispensing/tube trailers'), "
    "with no gauge or absolute basis. The registry designates it bar(g) (HB-012 'Discharge pressure (design)'). The gauge basis taken from that designation and the +1 bar offset "
    "(atmosphere taken as 1 bar, not 1.01325) that gives 701.0 bar(a) are this project's conversions. The Confirmed status covers the stated 700 bar magnitude only.")
+_c("GA-001.agent_check_expected_n2_vol_pct", "ga001_gasifier_model", "SA005_EXPECTED_N2_VOL_PCT", "vol%", ("SA-005", "Expected N₂ concentration"), None,
+   "The registry's expected N2 that the read-only agent-consistency check compares with the model's dry N2. The registry row says 10 vol% without a wet or dry basis; the check assumes none. It feeds no value.")
 _c("GA-001.agent_air_o2_fraction", "ga001_gasifier_model", "AGENT_AIR_O2_FRACTION", "-", None, None,
    "O2 mole fraction of dry air, the label of the 'air' agent; the air path itself uses AIR_N2_PER_O2 (0.79 / 0.21). Assumed, no DOK-ING source.")
 _c("GA-001.agent_o2_fraction", "ga001_gasifier_model", "AGENT_O2_FRACTION", "-", None, None,
@@ -339,6 +341,7 @@ NOT_BORROWED = {
     "EU-003.syngas_lhv_mj_per_nm3": "registry EU-003 'Fuel gas LHV required' is a requirement of the engine; the code uses 9.8 as a static syngas LHV: not the same quantity",
     "FE-001.default_delivery_rate_kg_h": "the delivery rate INTO the hopper (a model choice, set equal to the feeder's nominal rate); registry FE-003 'Nominal feed rate' is the rate OUT of it",
     "FE-005.outlet_moisture_fraction": "the registry text of FE-005 'Outlet moisture (target)' is '-1 % moisture' (a negative number); equality with 1 % cannot be shown",
+    "GA-001.agent_check_expected_n2_vol_pct": "the registry row SA-005 'Expected N2 concentration' says '10 vol%' without a wet or dry basis, and the model's N2 is the dry mole fraction: the same number, but the basis is not shown to be the same",
     "PLANT.audit_lts_steam_temperature_C": "the code takes the LTS INLET temperature as a lower bound of the (not stated) LTS outlet steam temperature: not the same quantity",
 }
 # why each refused row was refused, in a few words (shown in the ledger doc; tests/test_design_basis_ledger.py checks that every refusal has one)
@@ -349,6 +352,7 @@ REFUSAL_KIND = {
     "HB-010.design_feed_h2_fraction": "different quantity (mole fraction against partial pressure)", "EU-003.syngas_lhv_mj_per_nm3": "different quantity (requirement against value)",
     "FE-001.default_delivery_rate_kg_h": "different quantity (delivery into the hopper against feed out of it) and basis not stated",
     "FE-005.outlet_moisture_fraction": "registry text unreadable, no conversion can be shown", "PLANT.audit_lts_steam_temperature_C": "different quantity (inlet against outlet)",
+    "GA-001.agent_check_expected_n2_vol_pct": "basis not stated (wet or dry)",
 }
 
 
