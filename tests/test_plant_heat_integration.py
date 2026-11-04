@@ -232,7 +232,7 @@ def test_the_key_does_not_depend_on_the_energybalance_entry_so_that_stays_a_leaf
     spec = engine._models[("PLANT", "HeatIntegration")]
     eb_key = ("GA-001", "EnergyBalance")
     assert eb_key not in phi.DEPENDS_ON and eb_key not in spec["depends_on"] and eb_key not in spec["lagged_depends_on"]
-    assert list(spec["depends_on"]) == phi.DEPENDS_ON and list(spec["lagged_depends_on"]) == phi.LAGGED
+    assert list(spec["depends_on"]) == phi.DEPENDS_ON + [ga001.GASIFYING_AGENT_KEY] and list(spec["lagged_depends_on"]) == phi.LAGGED          # task A1 (deliberate edit): the agent switch is declared at registration, not in the published inputs (phi.DEPENDS_ON)
 
 
 def test_nothing_reads_the_key_and_no_model_depends_on_it():

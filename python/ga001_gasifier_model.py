@@ -990,7 +990,7 @@ def oxygen_carrier_circulation_estimate(get_input):
     ("GA-001","OxygenCarrierCirculationEstimate") key -- does NOT alter or
     feed ga001_model()'s own physics/Outputs in any way)."""
     feed_rate = get_input(("GA-001-INPUT", "dry_feed_rate_kg_h"))["value"]
-    er = get_input(("GA-001-INPUT", "equivalence_ratio"))["value"]
+    er = agent_oxidant(_gasifying_agent(get_input), get_input(("GA-001-INPUT", "equivalence_ratio"))["value"], 0.0)[0]      # task A1: the agent's effective ER (the input itself for 'air')
     composition = get_input(("GA-001-INPUT", "feedstock_composition"))["value"]
 
     # --- PRIMARY DERIVATION: Level 3/5, Graf et al. (2024)'s own real carrier-to-fuel
@@ -1069,7 +1069,7 @@ def oxygen_carrier_circulation_estimate(get_input):
                 f"({ratio_lo}-{ratio_hi}x across 3 biomass feedstocks) x GA-001's own live, "
                 f"dry feed rate (an Assumed input; DOK-ING RFI #1 gives 1,000 kg/day without saying wet or dry) ({feed_rate:.2f} kg/h this cycle)"
             ),
-            "consistency_check": {"verdict": consistency_verdict, "note": consistency_note},
+            "consistency_check": {"verdict": consistency_verdict, "note": consistency_note + _agent_carrier_note(_gasifying_agent(get_input), er)},
             # Section 6 metadata -----------------------------------------------------
             "metadata": {
                 "parameter_name": "GA-001 Fe2O3/Fe3O4 oxygen-carrier circulation rate",
@@ -1177,7 +1177,7 @@ def register_ga001(engine):
         ("GA-001", "OxygenCarrierCirculationEstimate"), oxygen_carrier_circulation_estimate,
         unit="kg/h dict",
         depends_on=[("GA-001-INPUT", "dry_feed_rate_kg_h"), ("GA-001-INPUT", "equivalence_ratio"),
-                    ("GA-001-INPUT", "feedstock_composition")],
+                    ("GA-001-INPUT", "feedstock_composition"), GASIFYING_AGENT_KEY],
     )
     # Read-only energy report (a leaf: nothing depends on it, it feeds nothing back). Imported here to keep the module graph acyclic.
     from . import ga001_energy_balance
@@ -1731,3 +1731,34 @@ def _agent_note(agent, er, steam, n2_per_o2):
     f = GASIFYING_AGENTS[agent]["o2_fraction"]
     return (f" Gasifying agent '{agent}' (Assumed switch, no DOK-ING source): effective ER {er}, steam-to-feed {steam}, oxidant O2 fraction {f}; the ER and steam-to-feed input "
             f"entries still show the inputs, not these. Oxygen source cost and external heat duty are Missing (no ASU / allothermal heat model).")
+
+
+def agent_missing_terms(agent):
+    """The terms the heat and power summaries must carry for a NON-default agent (empty for air), each explicitly Missing: {name, status: Missing, kw: None, missing_reason}. Never a number,
+    never 0 kW, never 'closed': no air-separation unit, oxygen source or allothermal heat supply is modelled, so the energy they cost is unknown. A steam-only agent uses no oxygen; its
+    oxygen-source term is still recorded Missing (no model exists) with that said."""
+    if check_gasifying_agent(agent) == GASIFYING_AGENT_DEFAULT:
+        return []
+    spec = GASIFYING_AGENTS[agent]
+    o2 = spec["oxygen_source_cost"]["missing_reason"] + ("; this agent uses no oxygen, the term is recorded only because no oxygen-source model exists" if not spec["oxidant"] else "")
+    return [
+        {"name": "oxygen source (air-separation / oxygen-enrichment heat or electricity)", "status": ps.STATUS_MISSING, "kw": None, "missing_reason": o2},
+        {"name": "external (allothermal) heat duty", "status": ps.STATUS_MISSING, "kw": None, "missing_reason": spec["external_heat_duty"]["missing_reason"]},
+    ]
+
+
+def agent_summary_block(agent):
+    """The 'agent' block the read-only heat summaries ((GA-001, EnergyBalance), (PLANT, HeatIntegration)) publish for a NON-default agent (None for air)."""
+    if check_gasifying_agent(agent) == GASIFYING_AGENT_DEFAULT:
+        return None
+    return {"gasifying_agent": agent, "status": ps.STATUS_ASSUMED, "label": GASIFYING_AGENTS[agent]["label"],
+            "oxidant_preheat": "Assumed and FLAGGED: GA-004's air preheat temperature applied to this agent's oxidant (no basis for it); steam only has no oxidant (0 mol, 0 kW is no flow)",
+            "missing_terms": agent_missing_terms(agent)}
+
+
+def _agent_carrier_note(agent, er):
+    """Text appended to the oxygen-carrier estimate's consistency note for a NON-default agent (empty for air)."""
+    if agent == GASIFYING_AGENT_DEFAULT:
+        return ""
+    return (f" GASIFYING AGENT '{agent}' (Assumed): this is a chemical-looping carrier estimate and is not meaningful for this agent. The O2 demand it checks uses the agent's effective ER "
+            f"({er}), not the ER input; a steam-only agent has no O2 demand, so the utilization check cannot pass.")

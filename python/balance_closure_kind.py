@@ -123,11 +123,20 @@ def annotate_rows(cv, rows):
     return rows
 
 
-def annotate_audit(audit):
-    """Adds closure_kind / closure_why / closure_refs to the closure rows of an audit_snapshot() result, in place. No number is read or changed."""
+AGENT_CLAUSE = (" [Gasifying agent '{agent}' (task A1): the oxidant is not air. The model and the audit both take O2 = effective ER x stoichiometric O2 and N2 = O2 x (1 - f) / f from the "
+                "agent table, so for this agent the audit's oxidant side is the model's own formula, not an independent check; no balance checks the Assumed agent definition itself.]")
+
+
+def annotate_audit(audit, agent="air"):
+    """Adds closure_kind / closure_why / closure_refs to the closure rows of an audit_snapshot() result, in place. No number is read or changed. For a gasifying agent other than 'air'
+    (task A1) the H, O and N rows (the ones the oxidant enters) also say what the oxidant side is; the default text is unchanged."""
     for cv in ("ga001", "loop", "plant"):
         if cv in audit:
             annotate_rows(cv, audit[cv]["rows"])
+            if agent != "air":
+                for q in ("H", "O", "N"):
+                    if q in audit[cv]["rows"]:
+                        audit[cv]["rows"][q]["closure_why"] += AGENT_CLAUSE.format(agent=agent)
     if "storage" in audit:
         audit["storage"].update(info("storage", "h2_created_by_clamp"))
     for e in audit.get("energy_gasifier", {}).values():

@@ -1,8 +1,12 @@
 """Task A1: the gasifying agent as an explicit, checked configuration (switch ("GA-001-INPUT", "gasifying_agent"), default "air").
 
-A1.1 (this part): the agent table and the switch (Assumed, never Confirmed, oxygen cost and external heat duty Missing); the N2 term of solve_product_gas; the default is bit-identical to origin/main
+A1.1: the agent table and the switch (Assumed, never Confirmed, oxygen cost and external heat duty Missing); the N2 term of solve_product_gas; the default is bit-identical to origin/main
 (701de71 fixture, every old persisted entry); each live agent reproduces the corresponding scenario of the gasifying-agent study (scripts/run_agent_comparison.py, which swaps the N2 after the
 unchanged model) to 1e-12 relative; C, H, O, N closure of the solver for every agent; N2 falls with the O2 fraction of the oxidant; an invalid agent raises. Offline: counting fake store.
+
+A1.2 (below): the downstream consumers follow the agent: the closure audit (C, H, O, N for every agent, audit-based), the energy numbers of the study (gasifier duty, heat demands,
+cold-gas efficiencies), the oxidant preheat (Assumed, flagged), the oxygen-carrier estimate (effective ER) and the explicit Missing terms (oxygen source, external heat duty) of the heat summaries.
+For the default agent the audit, the energy balance and the heat inventory are unchanged (the A5 baselines are pinned in tests/test_closure_scenarios.py).
 
 NOT validation against DOK-ING data: none exists. The study scenario S3 (chemical looping) is not a live agent."""
 import gzip
@@ -15,8 +19,11 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from python import balance_audit as ba
 from python import cycle_clock
+from python import ga001_energy_balance as eb
 from python import ga001_gasifier_model as ga001
+from python import plant_heat_integration as phi
 from python import plant_status as ps
 from python import tab1_integration as t1
 
@@ -27,6 +34,8 @@ KEY = ga001.GASIFYING_AGENT_KEY
 NEW_KEYS = {"GA-001-INPUT|gasifying_agent"}                  # A1.1; A1.3 adds ("GA-001", "AgentConsistency")
 AGENT_TO_STUDY = {"air": "S0", "enriched_30": "S1a", "enriched_50": "S1b", "oxygen": "S2", "steam_only_0.4": "S4a", "steam_only_0.8": "S4b"}
 N = 5
+NP = N - 1
+LHV_CASES = (15.0, 17.5, 20.0)                          # the study's three feed LHVs (MJ/kg dry): the low end, MID_LHV and the high end of DOK-ING's range
 
 
 def _const(v):
@@ -237,3 +246,168 @@ def test_n2_falls_strictly_as_the_oxidant_o2_fraction_rises_at_fixed_er_and_feed
     x, y, z, *_ = _solver_case("oxygen")
     assert n2[-1] == pytest.approx(z / 2.0, rel=1e-12), "pure oxygen: only the fuel nitrogen is left"
     assert _solver_case("steam_only_0.4")[5]["N2"] == pytest.approx(z / 2.0, rel=1e-12)
+
+
+# ================================================================ A1.2: the downstream consumers follow the agent
+
+@pytest.fixture(scope="module")
+def live_prev(fake):
+    """{agent: snapshot of the cycle before} (the audit reads the lagged recycle from it, as the study does)."""
+    cycle_clock.set_elapsed_hours(None)
+    with patched_supabase(fake):
+        return {a: t1.build_live_snapshot(NP, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in ga001.GASIFYING_AGENT_NAMES}
+
+
+NON_DEFAULT = [a for a in ga001.GASIFYING_AGENT_NAMES if a != "air"]
+
+
+# ---------------------------------------------------------------- test 3: audit-based C, H, O, N closure for every agent
+
+@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+def test_the_audit_closes_c_h_o_n_for_every_agent_in_the_gasifier_and_the_loop(agent, live, live_prev):
+    out = ba.audit_snapshot(live[agent], live_prev[agent])
+    assert out["missing_inputs"] == [], out["missing_inputs"]
+    for cv in ("ga001", "loop"):
+        for el in ("C", "H", "O", "N"):
+            assert abs(out[cv]["rows"][el]["rel"]) < 1e-9, (agent, cv, el, out[cv]["rows"][el]["rel"])
+    ok, detail = ba.atom_balance_like_verify(live[agent], live_prev[agent])              # the solver's own guard, rebuilt from the published snapshot
+    assert ok, (agent, detail)
+
+
+@pytest.mark.parametrize("agent", ["enriched_30", "enriched_50", "oxygen"])
+def test_the_audit_closure_check_can_fail_an_oxidant_that_is_not_the_agents_does_not_close(agent, live, live_prev):
+    """The same published gas audited as if the agent were air (the switch removed from the snapshot): nitrogen must NOT close. A trivial check would stay at ~0."""
+    snap = {k: v for k, v in live[agent].items() if k != KEY}
+    prev = {k: v for k, v in live_prev[agent].items() if k != KEY}
+    wrong = ba.audit_snapshot(snap, prev)
+    assert abs(wrong["ga001"]["rows"]["N"]["rel"]) > 0.05 and abs(wrong["loop"]["rows"]["N"]["rel"]) > 0.05
+    assert ba.atom_balance_like_verify(snap, prev)[0] is False
+
+
+def test_the_default_audit_is_unlabelled_and_a_non_default_audit_names_its_agent_and_its_oxidant(live, live_prev):
+    d = ba.audit_snapshot(live["air"], live_prev["air"])
+    assert "gasifying_agent" not in d
+    names = [t["name"] for t in ba.ga001_terms(live["air"], live_prev["air"])["terms"]]
+    assert "air O2" in names and "air N2" in names and not any("oxidant" in n for n in names)
+    assert "Gasifying agent" not in d["ga001"]["rows"]["N"]["closure_why"]
+    for agent in NON_DEFAULT:
+        o = ba.audit_snapshot(live[agent], live_prev[agent])
+        assert o["gasifying_agent"] == agent
+        names = [t["name"] for t in ba.ga001_terms(live[agent], live_prev[agent])["terms"]]
+        assert f"oxidant O2 (agent {agent})" in names and f"oxidant N2 (agent {agent})" in names and "air N2" not in names
+        for cv in ("ga001", "loop", "plant"):
+            for q in ("H", "O", "N"):
+                assert f"Gasifying agent '{agent}'" in o[cv]["rows"][q]["closure_why"] and "not an independent check" in o[cv]["rows"][q]["closure_why"]
+            assert "Gasifying agent" not in o[cv]["rows"]["C"]["closure_why"]
+
+
+# ---------------------------------------------------------------- test 2 (energy part): the live numbers equal the study's
+
+@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+def test_a_live_agent_equals_the_study_scenario_in_the_gasifier_duty_the_heat_demands_and_the_efficiencies(agent, live, live_prev, runs):
+    snap, prev = live[agent], live_prev[agent]
+    d = ba.ga001_terms(snap, prev)
+    n_gs = d["terms"][4]["species"]["H2O"]
+    hb005 = snap[("HB-005", "Steam")]["value"]["steam_kg_h"]
+    evap = snap[("FE-005", "MoistureBalance")]["value"]["water_evaporated_kg_h"]
+    demands = ba.heat_demands(n_gs, hb005, d["air_o2_mol_h"], d["air_n2_mol_h"], evap, d["agent"])
+    for lhv in LHV_CASES:
+        s = runs[agent]["energy"][lhv]
+        g = ba.gasifier_energy(snap, prev, lhv)
+        live_vals = {"duty": g["implied_heat_duty_kw"], "demand": sum(x["kw"] for x in demands), "steam_kw": demands[0]["kw"] + demands[1]["kw"], "air_kw": demands[2]["kw"], "dry_kw": demands[3]["kw"],
+                     "cge_incl_recycle": g["cold_gas_efficiency_incl_recycle"], "cge_net": g["cold_gas_efficiency_net_of_recycle"], "feed_kw": g["in"][0]["kw"], "gas_chem_kw": g["out"][0]["kw"]}
+        study_vals = {k: s[k] for k in live_vals}
+        assert _same(live_vals, study_vals) is True, (agent, lhv, live_vals, study_vals)
+
+
+@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+def test_the_engine_energy_balance_carries_the_same_duty_as_the_audit_functions(agent, live, live_prev):
+    snap, prev = live[agent], live_prev[agent]
+    v = snap[("GA-001", "EnergyBalance")]["value"]
+    for name, lhv in ba.lhv_cases().items():
+        g = ba.gasifier_energy(snap, prev, lhv)
+        got, want = v["cases"][name]["implied_gasifier_heat_duty_kw"], g["implied_heat_duty_kw"]
+        assert abs(got - want) <= 1e-6 * max(1.0, abs(want)), (agent, name, got, want)           # the engine entry reads the lagged recycle of its own cycle: equal to the audit's to the lag
+
+
+# ---------------------------------------------------------------- oxidant preheat: Assumed and flagged for every non-default agent
+
+def test_the_oxidant_preheat_is_estimated_air_by_default_and_assumed_and_flagged_for_every_other_agent(live, live_prev):
+    def demand(agent):
+        d = ba.ga001_terms(live[agent], live_prev[agent])
+        out = ba.heat_demands(d["terms"][4]["species"]["H2O"], 100.0, d["air_o2_mol_h"], d["air_n2_mol_h"], 1.0, d["agent"])
+        return out[2]
+    air = demand("air")
+    assert air["name"] == "preheat air to 200 degC" and air["status"] == ps.STATUS_ESTIMATED and air["kw"] > 0
+    for agent in NON_DEFAULT:
+        x = demand(agent)
+        assert x["status"] == ps.STATUS_ASSUMED and "[FLAGGED]" in x["name"] and "FLAGGED" in x["source"] and agent in x["name"], (agent, x)
+    assert demand("steam_only_0.4")["kw"] == 0.0 and demand("steam_only_0.8")["kw"] == 0.0         # no oxidant: no flow, and still flagged (checked above)
+    assert demand("oxygen")["kw"] < air["kw"]                                                          # the same O2, no N2 to heat
+    for agent in NON_DEFAULT:
+        e = live[agent][("GA-001", "EnergyBalance")]["value"]
+        assert e["heat_demand_status"] == ps.STATUS_ASSUMED and any("[FLAGGED]" in x["name"] for x in e["heat_demands"])
+    assert live["air"][("GA-001", "EnergyBalance")]["value"]["heat_demand_status"] == ps.STATUS_ESTIMATED
+
+
+# ---------------------------------------------------------------- oxygen source and external heat duty: explicit Missing, never 0 kW or "closed"
+
+def _summaries(snap):
+    return [snap[("GA-001", "EnergyBalance")]["value"], snap[("PLANT", "HeatIntegration")]["value"]]
+
+
+def _term_ok(t):
+    text = json.dumps(t).lower()
+    return t["status"] == ps.STATUS_MISSING and t["kw"] is None and bool(t["missing_reason"]) and "closed" not in text and "0 kw" not in text and "0.0 kw" not in text
+
+
+@pytest.mark.parametrize("agent", NON_DEFAULT)
+def test_oxygen_cost_and_external_heat_duty_are_explicit_missing_terms_in_the_heat_summaries_for_a_non_default_agent(agent, live):
+    for value in _summaries(live[agent]):
+        block = value["agent"]
+        assert block["gasifying_agent"] == agent and block["status"] == ps.STATUS_ASSUMED
+        terms = {t["name"]: t for t in block["missing_terms"]}
+        assert set(terms) == {"oxygen source (air-separation / oxygen-enrichment heat or electricity)", "external (allothermal) heat duty"}
+        assert all(_term_ok(t) for t in terms.values()), terms
+        listed = " ".join(value["missing_terms"])
+        assert "oxygen source" in listed and "external (allothermal) heat duty" in listed and listed.count("Missing (") >= 2
+    assert _summaries(live[agent])[0]["missing_terms"][:len(eb.MISSING_TERMS)] == eb.MISSING_TERMS
+    assert _summaries(live[agent])[1]["missing_terms"][:len(phi.MISSING_TERMS)] == phi.MISSING_TERMS
+
+
+def test_a_missing_term_that_read_zero_kw_or_closed_would_be_refused():
+    """The check used above is not vacuous: it accepts the real terms and rejects a term that says 0 kW, is not Missing or says closed."""
+    good = ga001.agent_missing_terms("oxygen")
+    assert good and all(_term_ok(t) for t in good)
+    for bad in (dict(good[0], kw=0.0), dict(good[0], status="Calculated"), dict(good[0], missing_reason="closed"), dict(good[0], missing_reason="the duty is 0 kW"), dict(good[0], missing_reason="")):
+        assert not _term_ok(bad), bad
+
+
+def test_the_default_heat_summaries_have_no_agent_block_and_their_missing_terms_are_the_module_lists(live):
+    e, h = _summaries(live["air"])
+    assert "agent" not in e and "agent" not in h
+    assert e["missing_terms"] == eb.MISSING_TERMS and h["missing_terms"] == phi.MISSING_TERMS
+    assert ga001.agent_missing_terms("air") == [] and ga001.agent_summary_block("air") is None
+
+
+# ---------------------------------------------------------------- the oxygen-carrier estimate follows the effective ER
+
+def test_the_oxygen_carrier_estimate_uses_the_effective_er_and_says_so_for_a_non_default_agent(live):
+    air = live["air"][("GA-001", "OxygenCarrierCirculationEstimate")]["value"]
+    assert "GASIFYING AGENT" not in air["consistency_check"]["note"] and air["o2_demand_kg_h"] > 0
+    steam = live["steam_only_0.4"][("GA-001", "OxygenCarrierCirculationEstimate")]["value"]
+    assert steam["o2_demand_kg_h"] == 0.0 and "GASIFYING AGENT 'steam_only_0.4'" in steam["consistency_check"]["note"]      # the ER input (0.25) would have given a positive demand
+    oxy = live["oxygen"][("GA-001", "OxygenCarrierCirculationEstimate")]["value"]
+    assert oxy["o2_demand_kg_h"] == air["o2_demand_kg_h"] and "GASIFYING AGENT 'oxygen'" in oxy["consistency_check"]["note"]       # same ER, so the same O2
+
+
+# ---------------------------------------------------------------- combustion air for burning the tail gas stays air for every agent
+
+def test_the_tail_gas_burner_air_of_the_heat_inventory_is_air_for_every_agent():
+    import inspect
+    assert "agent" not in inspect.signature(phi._flue).parameters
+    species = {"H2": 10.0, "CO": 5.0, "CH4": 1.0, "CO2": 3.0, "N2": 2.0}
+    chem, flue, t_ad, rel, loss = phi._flue(species, 1.2, 150.0)
+    n = {s: v / ba.NM3_PER_MOL for s, v in species.items()}
+    o2 = 0.5 * n["H2"] + 0.5 * n["CO"] + 2.0 * n["CH4"]
+    assert flue["N2"] == pytest.approx(n["N2"] + o2 * 1.2 * ga001.AIR_N2_PER_O2, rel=1e-12)

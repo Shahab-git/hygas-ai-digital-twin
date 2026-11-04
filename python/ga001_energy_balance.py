@@ -103,7 +103,7 @@ def energy_balance(get_input):
     fe5 = view["FE-005", "MoistureBalance"]["value"] if view.get(("FE-005", "MoistureBalance")) else None
     hb005 = view.get(("HB-005", "Steam"))
     n_gs = ga["terms"][4]["species"]["H2O"]            # "gasifier steam", ba.ga001_terms order
-    demands = ba.heat_demands(n_gs, float(hb005["value"]["steam_kg_h"]), ga["air_o2_mol_h"], ga["air_n2_mol_h"], float(fe5["water_evaporated_kg_h"]))
+    demands = ba.heat_demands(n_gs, float(hb005["value"]["steam_kg_h"]), ga["air_o2_mol_h"], ga["air_n2_mol_h"], float(fe5["water_evaporated_kg_h"]), ga["agent"])
     steam_kw = demands[0]["kw"] + demands[1]["kw"]
     air_kw, dry_kw = demands[2]["kw"], demands[3]["kw"]
     demand_kw = steam_kw + air_kw + dry_kw
@@ -139,6 +139,11 @@ def energy_balance(get_input):
                      "used_as_heat": mode == "heat_only", "status": ps.STATUS_CALCULATED},
         "cases": cases, "assumed_inputs": ASSUMED_INPUTS, "missing_terms": list(MISSING_TERMS),
     }
+    block = ga001.agent_summary_block(ga["agent"])
+    if block is not None:        # task A1: a NON-default agent adds the agent block and the explicit Missing terms; the default value is unchanged
+        value["agent"] = block
+        value["heat_demand_status"] = ps.STATUS_ASSUMED
+        value["missing_terms"] = list(MISSING_TERMS) + [f"{t['name']}: Missing ({t['missing_reason']})" for t in block["missing_terms"]]
     return {
         "value": _native(value), "status": ps.STATUS_CALCULATED, "model": "ga001_energy_balance.energy_balance",
         "inputs": list(DEPENDS_ON) + list(LAGGED), "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
@@ -152,4 +157,4 @@ def energy_balance(get_input):
 
 
 def register(engine):
-    engine.register_model(KEY, energy_balance, unit="kW dict", depends_on=list(DEPENDS_ON), lagged_depends_on=list(LAGGED))
+    engine.register_model(KEY, energy_balance, unit="kW dict", depends_on=list(DEPENDS_ON) + [ga001.GASIFYING_AGENT_KEY], lagged_depends_on=list(LAGGED))      # the agent switch is read same-cycle, not in the published 'inputs'
