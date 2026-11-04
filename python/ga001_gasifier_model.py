@@ -289,16 +289,16 @@ def _solve_physical_quadratic_root(a, b, c, A, B, C0):
     return min(valid)
 
 
-def solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_carbon_fraction, T_K):
+def solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_carbon_fraction, T_K, n2_per_o2=None):
     """Solves the simplified stoichiometric + WGS-equilibrium gasifier
     closure for ONE MOLE OF FUEL CARBON FED. Returns mol H2/CO/CO2/H2O/
     CH4/N2 PER MOL FUEL-C FED (not per mol converted) -- see module
     docstring for the full method and its real literature citations.
     Raises ValueError (does not clamp or fabricate) if the given inputs
-    produce a physically invalid (negative-mole) result."""
+    produce a physically invalid (negative-mole) result. n2_per_o2 (task A1): N2 mol per mol O2 of the oxidant; None = air, the 0.79 / 0.21 expression."""
     o2_stoich = stoichiometric_o2_per_molc(x, y)
     o2_actual = er * o2_stoich
-    n2_from_air = o2_actual * (0.79 / 0.21)
+    n2_from_air = o2_actual * (0.79 / 0.21) if n2_per_o2 is None else o2_actual * n2_per_o2
 
     carbon_gas = carbon_conv_eff              # mol C (as CO+CO2+CH4) per mol fuel-C fed
     n5 = ch4_carbon_fraction * carbon_gas       # CH4
@@ -343,7 +343,7 @@ def unconverted_carbon_fraction(carbon_conv_eff):
     return 1.0 - carbon_conv_eff
 
 
-def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, carbon_conv_eff, tol=1e-8):
+def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, carbon_conv_eff, tol=1e-8, n2_per_o2=None):
     """Independent, exact re-check that a solve_product_gas() result actually conserves C, H, O and N atoms -- plugging the result BACK into the
     original governing equations, not re-deriving them. Per mol of (combined) fuel carbon fed:
       C: the carbon in CO + CO2 + CH4 equals the conversion, and gas carbon + unconverted carbon (unconverted_carbon_fraction) is the 1 mol fed;
@@ -359,7 +359,7 @@ def verify_atom_balance(x, y, z, er, steam_mol_per_molc, product, carbon_conv_ef
     n_check = 2.0 * product["N2"]
     h_target = x + 2.0 * steam_mol_per_molc
     o_target = y + steam_mol_per_molc + 2.0 * o2_actual
-    n_target = z + 2.0 * o2_actual * AIR_N2_PER_O2
+    n_target = z + 2.0 * o2_actual * (AIR_N2_PER_O2 if n2_per_o2 is None else n2_per_o2)
     detail = {
         "C_gas_target_vs_actual": (carbon_conv_eff, c_check),
         "C_gas_plus_unconverted_vs_fed": (1.0, c_check + unconverted),
@@ -760,8 +760,8 @@ def ga001_model(get_input):
     cycle's (which does not exist yet when GA-001 itself is the first
     thing to run in a fresh cycle)."""
     feed_rate = get_input(("GA-001-INPUT", "dry_feed_rate_kg_h"))["value"]
-    er = get_input(("GA-001-INPUT", "equivalence_ratio"))["value"]
-    steam_ratio = get_input(("GA-001-INPUT", "steam_to_feed_ratio"))["value"]
+    agent, er, steam_ratio, n2_per_o2 = _agent_inputs(get_input)
+    # (task A1) er and steam_ratio: the ER and steam_to_feed_ratio inputs for the 'air' agent, the agent's own values for steam-only (see _agent_inputs)
     carbon_conv_eff = get_input(("GA-001-INPUT", "carbon_conversion_efficiency"))["value"]
     ch4_frac = get_input(("GA-001-INPUT", "ch4_carbon_fraction"))["value"]
     composition = get_input(("GA-001-INPUT", "feedstock_composition"))["value"]
@@ -806,7 +806,7 @@ def ga001_model(get_input):
     else:
         total_C_mol_per_h = total_C_mol_per_h_feed_only
 
-    product = solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_frac, T_C + 273.15)
+    product = solve_product_gas(x, y, z, er, steam_mol_per_molc, carbon_conv_eff, ch4_frac, T_C + 273.15, n2_per_o2)
 
     dry_species = {sp: product[sp] for sp in ("H2", "CO", "CO2", "CH4", "N2")}
     dry_total = sum(dry_species.values())
@@ -822,7 +822,7 @@ def ga001_model(get_input):
         "N2_mol_pct_dry": 100.0 * dry_species["N2"] / dry_total,
         "H2O_mol_pct_wet": 100.0 * product["H2O"] / wet_total,
         "recycle_active": bool(recycle_C or recycle_H or recycle_O or recycle_N),
-    }
+    } | _agent_effective_values(agent, er, steam_ratio, n2_per_o2)
 
     validation_basis = ps.VALIDATION_ENGINEERING_CORRELATION
     _enforce_ga001_confidence_label(validation_basis)
@@ -857,7 +857,7 @@ def ga001_model(get_input):
             f"{'active (HB-009 tail gas folded into the atom balance)' if (recycle_C or recycle_H or recycle_O or recycle_N) else ('none (tail_gas_mode = heat_only: the tail gas is reported as heat, no atoms re-enter GA-001)' if _tail_gas_mode(get_input) == 'heat_only' else 'none (no prior-cycle HB-009 output available yet, or HB-009 not registered)')}. "
             f"FE-005 moisture contribution this cycle: "
             f"{'active (' + f'{moisture_water_mol_h:.3f}' + ' mol/h extra H2O folded into the water/steam pool)' if moisture_water_mol_h else 'none (no prior-cycle FE-005 output available yet, or FE-005 not registered)'}."
-        ),
+        ) + _agent_note(agent, er, steam_ratio, n2_per_o2),
     }
 
 
@@ -1165,10 +1165,11 @@ def register_ga001(engine):
     engine.register_model(("GA-001-INPUT", "feedstock_composition"), _input_feedstock_composition, unit="mass fraction dict")
     engine.register_model(("GA-001-INPUT", "operating_temperature_C"), _input_operating_temperature_c, unit="degC")
     engine.register_model(TAIL_GAS_MODE_KEY, _input_tail_gas_mode, unit="mode")
+    engine.register_model(GASIFYING_AGENT_KEY, _input_gasifying_agent, unit="mode")
     engine.register_model(CARBON_BLACK_SPLIT_KEY, _input_carbon_black_split, unit="fraction")
     engine.register_model(
         ("GA-001", "Outputs"), ga001_model, unit="Nm3/h + mol% dict",
-        depends_on=list(_GA001_INPUT_KEYS) + [TAIL_GAS_MODE_KEY],      # the switch is read same-cycle but is NOT in the published 'inputs' list
+        depends_on=list(_GA001_INPUT_KEYS) + [TAIL_GAS_MODE_KEY, GASIFYING_AGENT_KEY],      # the switches is read same-cycle but is NOT in the published 'inputs' list
         lagged_depends_on=[("HB-009", "TailGas"), ("FE-005", "MoistureBalance")],
     )
     engine.register_model(("GA-001", "Tar content"), ga001_tar_content, unit="mol% (dry)")
@@ -1630,3 +1631,103 @@ def _input_carbon_black_split(get_input):
             "bed-drain carry-over and fly ash is Missing (no DOK-ING data); the remainder, if the share is below 1, is published as a labelled Missing-split term."
         ),
     }
+
+
+# --- Gasifying agent (task A1.1) ---------------------------------------------------------------------------------------------
+# The oxidant / heat supply of GA-001 as an explicit, CHECKED configuration, copying the tail_gas_mode switch. DEFAULT "air" = today's
+# behaviour, bit for bit (the air path reads the existing ER and steam inputs and the existing 0.79 / 0.21 expression). The other agents are the
+# gasifying-agent study's scenarios (scripts/run_agent_comparison.py) made live: O2-enriched air (30 %, 50 % O2), pure oxygen, steam only.
+# Chemical looping (study scenario S3) is NOT a live agent: its air reactor and carrier circulation are not in the registry.
+# Every definition is Assumed (no DOK-ING source until RFI #2 / B1 answers) and carries no higher status. Oxygen source cost and the external
+# (allothermal) heat duty are Missing for every agent: no number is written for them.
+# Which agent runs is a switch, not a measurement, and there is no selector in the UI (read-only display only).
+GASIFYING_AGENT_KEY = ("GA-001-INPUT", "gasifying_agent")
+GASIFYING_AGENT_DEFAULT = "air"
+AGENT_AIR_O2_FRACTION = 0.21                                       # label of the air agent; the air path itself uses the AIR_N2_PER_O2 expression
+AGENT_O2_FRACTION = {"enriched_30": 0.30, "enriched_50": 0.50, "oxygen": 1.0}      # Assumed: O2 mole fraction of the oxidant (study S1a, S1b, S2)
+AGENT_ER_OVERRIDE = {"steam_only_0.4": 0.0, "steam_only_0.8": 0.0}                # Assumed: steam only has no oxidant (study S4a, S4b)
+AGENT_STEAM_OVERRIDE = {"steam_only_0.8": 0.8}                                     # Assumed: steam-to-feed of study S4b; None = the existing input
+_AGENT_NO_ASU = "no air-separation / oxygen-enrichment unit and no oxygen source is modelled or in the registry: its cost is Missing, not zero"
+_AGENT_NO_HEAT = "no heat supply for an allothermal duty is modelled: the external heat duty is Missing, not zero"
+
+
+def _agent(label, o2_fraction, er=None, steam_to_feed=None, oxidant=True):
+    return {"label": label, "o2_fraction": o2_fraction, "er": er, "steam_to_feed": steam_to_feed, "oxidant": oxidant, "status": ps.STATUS_ASSUMED,
+            "external_heat_duty": {"value": None, "status": ps.STATUS_MISSING, "missing_reason": _AGENT_NO_HEAT},
+            "oxygen_source_cost": {"value": None, "status": ps.STATUS_MISSING, "missing_reason": _AGENT_NO_ASU}}
+
+
+GASIFYING_AGENTS = {
+    "air": _agent("air (today's behaviour): ER and steam-to-feed from the existing inputs", AGENT_AIR_O2_FRACTION),
+    "enriched_30": _agent("O2-enriched air, 30 % O2 (study S1a)", AGENT_O2_FRACTION["enriched_30"]),
+    "enriched_50": _agent("O2-enriched air, 50 % O2 (study S1b)", AGENT_O2_FRACTION["enriched_50"]),
+    "oxygen": _agent("oxygen-blown, 100 % O2 (study S2)", AGENT_O2_FRACTION["oxygen"]),
+    "steam_only_0.4": _agent("steam only, steam-to-feed from the existing input (study S4a)", None, AGENT_ER_OVERRIDE["steam_only_0.4"], oxidant=False),
+    "steam_only_0.8": _agent("steam only, steam-to-feed 0.8 (study S4b)", None, AGENT_ER_OVERRIDE["steam_only_0.8"], AGENT_STEAM_OVERRIDE["steam_only_0.8"], oxidant=False),
+}
+GASIFYING_AGENT_NAMES = tuple(GASIFYING_AGENTS)
+
+
+def check_gasifying_agent(agent):
+    """Rejects anything that is not one of GASIFYING_AGENT_NAMES (a string; None, a bool or a number is not one): never guesses a default."""
+    if not isinstance(agent, str) or agent not in GASIFYING_AGENTS:
+        raise ValueError(f"gasifying_agent {agent!r} is not one of {GASIFYING_AGENT_NAMES}; refusing to guess a default")
+    return agent
+
+
+def _input_gasifying_agent(get_input):
+    return {
+        "value": check_gasifying_agent(GASIFYING_AGENT_DEFAULT), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            "Switch, not a measurement. 'air' = today's behaviour; 'enriched_30', 'enriched_50', 'oxygen', 'steam_only_0.4', 'steam_only_0.8' = the gasifying-agent study's "
+            "scenarios as live configurations. Every agent definition is Assumed (no DOK-ING source until RFI #2 answers which agent the plant uses). "
+            "Oxygen source cost and external heat duty are Missing. Default unchanged until the owner decides."
+        ),
+    }
+
+
+def _gasifying_agent(get_input):
+    """The agent GA-001 runs. A Missing entry only happens for a get_input that bypasses the engine (the registered model always yields a value) and means
+    'this context never had the switch', i.e. air. An INVALID value raises."""
+    entry = get_input(GASIFYING_AGENT_KEY)
+    if entry["status"] == ps.STATUS_MISSING:
+        return GASIFYING_AGENT_DEFAULT
+    return check_gasifying_agent(entry["value"])
+
+
+def agent_oxidant(agent, er_input, steam_input):
+    """(er, steam_to_feed, n2_per_o2) GA-001 uses for `agent`. 'air': the two inputs unchanged and n2_per_o2 None (= solve_product_gas's own 0.79 / 0.21 expression).
+    Other agents: n2_per_o2 = (1 - f) / f for an O2 fraction f of the oxidant (0 for pure oxygen); steam only has no oxidant, so 0. ER / steam-to-feed come from the
+    agent where it sets them, else from the inputs."""
+    spec = GASIFYING_AGENTS[check_gasifying_agent(agent)]
+    er = er_input if spec["er"] is None else spec["er"]
+    steam = steam_input if spec["steam_to_feed"] is None else spec["steam_to_feed"]
+    if agent == GASIFYING_AGENT_DEFAULT:
+        return er, steam, None
+    f = spec["o2_fraction"]
+    return er, steam, (0.0 if f is None else (1.0 - f) / f)
+
+
+def _agent_inputs(get_input):
+    """(agent, er, steam_to_feed, n2_per_o2) for ga001_model: reads the agent switch and the two existing inputs."""
+    agent = _gasifying_agent(get_input)
+    er, steam, n2_per_o2 = agent_oxidant(agent, get_input(("GA-001-INPUT", "equivalence_ratio"))["value"], get_input(("GA-001-INPUT", "steam_to_feed_ratio"))["value"])
+    return agent, er, steam, n2_per_o2
+
+
+def _agent_effective_values(agent, er, steam, n2_per_o2):
+    """Extra keys of the (GA-001, Outputs) value for a NON-default agent (empty for air, so the default entry is unchanged): the agent and the effective values the model used.
+    The ER and steam-to-feed INPUT entries keep showing the inputs, not these (the input functions are untouched on purpose)."""
+    if agent == GASIFYING_AGENT_DEFAULT:
+        return {}
+    return {"gasifying_agent": agent, "effective_equivalence_ratio": er, "effective_steam_to_feed_ratio": steam, "oxidant_n2_per_o2": n2_per_o2,
+            "oxidant_o2_fraction": GASIFYING_AGENTS[agent]["o2_fraction"]}
+
+
+def _agent_note(agent, er, steam, n2_per_o2):
+    """Text appended to the (GA-001, Outputs) confidence note for a NON-default agent (empty for air)."""
+    if agent == GASIFYING_AGENT_DEFAULT:
+        return ""
+    f = GASIFYING_AGENTS[agent]["o2_fraction"]
+    return (f" Gasifying agent '{agent}' (Assumed switch, no DOK-ING source): effective ER {er}, steam-to-feed {steam}, oxidant O2 fraction {f}; the ER and steam-to-feed input "
+            f"entries still show the inputs, not these. Oxygen source cost and external heat duty are Missing (no ASU / allothermal heat model).")

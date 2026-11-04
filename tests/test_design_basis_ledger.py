@@ -108,14 +108,14 @@ def main_snap():
 def test_the_ledger_extends_the_table_without_changing_it():
     assert pt.LEDGER_COLUMNS[:len(pt.COLUMNS)] == pt.COLUMNS and pt.LEDGER_COLUMNS[len(pt.COLUMNS):] == ("ledger_id", "consumers", "upgrade_question", "origin", "source_line", "status_via", "anchor")
     table, ledger = pt.build_table(), pt.build_ledger()
-    assert len(table) == 26, "build_table() is unchanged: its 26 rows"
+    assert len(table) == 27, "build_table() is unchanged: its 26 rows + the gasifying_agent switch row (A1, deliberate edit)"
     by = {(r["tag"], r["source"]): r for r in ledger}
     for r in table:
         assert all(by[(r["tag"], r["source"])][c] == r[c] for c in pt.COLUMNS), r["tag"]       # A3c: strict again, every column of every table row (the ash_fraction exception of A3b is gone)
     ash = by[("GA-001.ash_fraction", "module constant gasifier_mass_balance.ASH_FRACTION (reused by ga001 as ASH_FRACTION)")]
     assert ash["status"] == "Assumed" and ash["status_via"] == "own" and ash["origin"] == "NOT STATED" and not ash["source_line"]
     assert next(x for x in table if x["tag"] == "GA-001.ash_fraction")["status"] == "Assumed", "ledger and table agree: one source of truth"
-    assert len(ledger) == 26 + len(lr.build_rows()) == len(by)
+    assert len(ledger) == 27 + len(lr.build_rows()) == len(by)          # A1 (deliberate edit): 27 = 26 + the gasifying_agent switch row
     assert all(r["ledger_id"] == "LEDGER." + r["tag"] for r in ledger)
     assert all(set(r) >= set(pt.LEDGER_COLUMNS) for r in ledger)
 
@@ -145,7 +145,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 360 and len(exceptions) == 189 and len(items) - len(exceptions) == 171     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 364 and len(exceptions) == 189 and len(items) - len(exceptions) == 175     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -684,7 +684,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none      # constants nothing in the code uses
-    assert len(ledger) == 173                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
+    assert len(ledger) == 178                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
@@ -717,7 +717,7 @@ def _assert_only_the_d2_phrases_differ(old, new, mode):
 def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes(runs, main_snap, mode, fixture_key):
     new = _ser(runs[mode])
     old = main_snap[fixture_key]
-    assert set(new) == set(old) and len(new) == 121, "same persisted keys, same count"
+    assert set(new) - {"GA-001-INPUT|gasifying_agent"} == set(old) and len(new) == 122, "same persisted keys plus the A1 switch, same count"          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
     new_wording = {k: v for k, v in new.items() if k.startswith(_d2_wording.ENTRIES)}
     _assert_only_the_d2_phrases_differ(old, new, mode)
     # the one deliberate text change is really there (and only in the entries that can carry it)
@@ -818,7 +818,7 @@ def test_the_runtime_shrink_guard_accepts_the_persisted_set(runs, main_snap):
     spec.loader.exec_module(mod)
     stored = [tuple(k.split("|", 1)) for k in main_snap["default|20"]]
     new = list(runs["default"])
-    assert set(stored) == set(new) and len(new) == 121
+    assert set(stored) | {("GA-001-INPUT", "gasifying_agent")} == set(new) and len(new) == 122          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 122
     assert mod.check_shrink(stored, new) is None
     assert mod.check_shrink(stored, new[:100]) is not None, "the guard itself is live: a persisted set that lost 21 keys is refused"
 
@@ -919,7 +919,7 @@ COMMITTED = {n: open(os.path.join(ROOT, "docs", n), encoding="utf-8", newline=""
 def test_every_row_has_a_symbolic_anchor_and_no_two_rows_share_one(built):
     ledger = built[0]
     rep = la.anchor_report(ledger)
-    assert rep["rows"] == len(ledger) == 173 and rep["shared"] == []
+    assert rep["rows"] == len(ledger) == 178 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
     for r in ledger:
         a = r["anchor"]
         assert re.match(r"^(registry:[A-Z]+-\d+/.+|[a-z_0-9]+:[A-Za-z_0-9#+:'\[\]\(\)\. /,-]+)$", a), (r["ledger_id"], a)

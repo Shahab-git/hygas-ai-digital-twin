@@ -24,7 +24,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_198bfcb.json.gz")
 # HEAT INTEGRATION (deliberate edit): "PLANT|HeatIntegration" is one more new key against the 198bfcb fixture, and it moves with the split because it reads (GA-001, CarbonAccounting)'s carbon-black flow
 # for its ash / carbon-black heat source (a fraction of a kW); no gas-side entry moves, which is what these tests pin.
-NEW_KEYS = {"GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting", "PLANT|HeatIntegration"}
+NEW_KEYS = {"GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting", "PLANT|HeatIntegration",
+            "GA-001-INPUT|gasifying_agent"}      # task A1 (deliberate edit): the gasifying-agent switch is one more new key; every OLD entry is still compared unchanged
 ACC = ("GA-001", "CarbonAccounting")
 N, NP = 5, 4          # the sweeps run the engine's default five-cycle state (and the cycle before it, for the lagged recycle)
 
@@ -175,7 +176,7 @@ def test_the_cross_check_exists_and_feeds_nothing(runs, fake, monkeypatch):
 def test_the_split_changes_only_the_carbon_accounting_and_its_input(runs):
     base, alt = _ser(runs["default"][0]), _ser(runs["split 0.5"][0])
     differing = {k for k in base if _same(base[k], alt[k]) is not True}
-    assert differing == NEW_KEYS, differing                                                 # no gas-side entry moves with the split
+    assert differing == NEW_KEYS - {"GA-001-INPUT|gasifying_agent"}, differing           # no gas-side entry moves with the split (task A1, deliberate edit: the agent switch is the same in both runs, so it is not in the difference)
 
 
 # ------------------------------------------------------------------ nothing gas-side changed, nothing lost

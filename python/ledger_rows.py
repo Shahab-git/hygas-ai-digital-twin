@@ -141,6 +141,14 @@ _c("HB-012.discharge_bar_a", "hb_wgs_psa_storage_chain", "COMPRESSOR_DISCHARGE_B
    "Three layers. DOK-ING states a magnitude of 700 bar (RFI answer 8, data/dokink_rfi_answers.md:35-36: 'compression to 350/700 bar for mobility dispensing/tube trailers'), "
    "with no gauge or absolute basis. The registry designates it bar(g) (HB-012 'Discharge pressure (design)'). The gauge basis taken from that designation and the +1 bar offset "
    "(atmosphere taken as 1 bar, not 1.01325) that gives 701.0 bar(a) are this project's conversions. The Confirmed status covers the stated 700 bar magnitude only.")
+_c("GA-001.agent_air_o2_fraction", "ga001_gasifier_model", "AGENT_AIR_O2_FRACTION", "-", None, None,
+   "O2 mole fraction of dry air, the label of the 'air' agent; the air path itself uses AIR_N2_PER_O2 (0.79 / 0.21). Assumed, no DOK-ING source.")
+_c("GA-001.agent_o2_fraction", "ga001_gasifier_model", "AGENT_O2_FRACTION", "-", None, None,
+   "O2 mole fraction of the oxidant of the enriched_30, enriched_50 and oxygen agents (gasifying-agent study S1a, S1b, S2). Assumed, no DOK-ING source until RFI #2 A1-A3 answer.")
+_c("GA-001.agent_er_override", "ga001_gasifier_model", "AGENT_ER_OVERRIDE", "-", None, None,
+   "ER the steam-only agents use (no oxidant: 0). Assumed (gasifying-agent study S4a, S4b); the 'air' and oxygen agents read the existing ER input.")
+_c("GA-001.agent_steam_override", "ga001_gasifier_model", "AGENT_STEAM_OVERRIDE", "kg/kg", None, None,
+   "Steam-to-feed ratio of the steam_only_0.8 agent (study S4b); the other agents read the existing steam_to_feed_ratio input. Assumed, no DOK-ING source.")
 _c("HB-012.polytropic_n", "hb_wgs_psa_storage_chain", "COMPRESSOR_POLYTROPIC_N", "-", None, Q_POLY, "Literature-typical value for a well-intercooled multistage compressor, not HB-012's own data (docs/master_open_questions.md).")
 _c("HB-013.storage_capacity_kg", "hb_wgs_psa_storage_chain", "H2_STORAGE_CAPACITY_KG", "kg H2", ("HB-013", "Storage capacity"))
 _c("PLANT.assumed_hours_per_cycle", "hb_wgs_psa_storage_chain", "ASSUMED_HOURS_PER_CYCLE", "h", None, Q_CYCLE,
