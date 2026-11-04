@@ -306,7 +306,10 @@ def test_the_refused_rows_are_assumed_with_their_reason_in_the_note(built):
         assert r["status"] == "Assumed" and r["status_via"] == "own" and r["origin"] == "NOT STATED" and not r["source_line"], tag
         assert reason in r["note"] or tag == "GA-001.ash_fraction", tag                            # the ash row is a table row: its own note carries the reason (checked in test_ash_fraction_is_assumed_in_the_table_and_the_ledger)
     assert by["FE-003.nominal_kg_h"]["status"] == "Confirmed" and by["FE-003.nominal_kg_h"]["status_via"] == "registry counterpart: FE-003/Nominal feed rate"
-    assert by["HB-012.discharge_bar_a"]["status"] == "Confirmed" and "701 bar" not in by["HB-012.discharge_bar_a"]["note"] or "bar(a) = bar(g) + 1 bar" in by["HB-012.discharge_bar_a"]["note"]
+    hb012 = by["HB-012.discharge_bar_a"]                                                        # P0-CLOSE C1: the former `A and B or C` was satisfied by C alone; three separate assertions
+    assert hb012["status"] == "Confirmed"
+    assert "bar(a) = bar(g) + 1 bar" in hb012["note"]                                           # the conversion is stated
+    assert "701 bar" not in hb012["note"] and not re.search(r"DOK-ING[^.]*701", hb012["note"])   # 701 is never given as DOK-ING's figure (DOK-ING stated 350/700 bar)
     assert by["FE-001.default_delivery_rate_kg_h"]["status"] == "Assumed"
 
 
