@@ -1202,43 +1202,50 @@ with tab1:
     # ---------------------------------------------------------------------
     st.header("Circularity Scoring")
     st.caption(
-        "Byproduct mass flows use the real design-basis mass fractions embedded in this repo's own "
-        "equipment datasheets (GA-005: \"10% ash content, dry basis\"; GA-008's stated capacity implies "
-        "~5% carbon black) — a ported linear relationship, not a new model. The **revenue-potential "
+        "Byproduct mass flows use design-basis mass fractions taken from this repo's own registry remarks "
+        "(GA-005: \"10% ash content, dry basis\"; GA-008: ~1.88 kg/h at the earlier 37.5 kg/h design "
+        "point, i.e. ~5% carbon black) — project assumptions, not DOK-ING-stated fractions — applied as a "
+        "ported linear relationship, not a new model. The **revenue-potential "
         "figures use our own assumed placeholder prices, not real market pricing** — there's no real "
         "market data in this project yet. The diversion fraction needs no price assumption at all; "
         "it's a real mass-balance ratio."
     )
-    st.success(
-        "**✅ Recalibrated to DOK-ING's confirmed feed rate.** The 37.5 kg/h (900 kg/day) default "
-        "was this project's own original physics-model design point; a previously-flagged "
-        "discrepancy against DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, "
-        "RFI #1: **1 tonne/day / 1,000 kg/day**) has since been resolved by explicit user decision "
-        "— the default below is now **41.67 kg/h (1,000 kg/day)**, a +11.12% increase. The ash "
-        "(10%) and carbon black (5%) fractions themselves are UNCHANGED — only the absolute feed "
-        "rate they're applied to — so ash/carbon-black output and revenue-potential figures below "
-        "all scale by the same +11.12%; the diversion-from-landfill percentage does not change "
-        "(it's a pure ratio of two fractions). WGS conversion (kinetics.py) and PSA recovery "
-        "(psa.py) have no dependency on this number and are unaffected. See the Design Basis tab "
-        "(RFI #1) for the full recalibration detail.",
-        icon="✅",
+    st.info(
+        "**Feed basis of this section (known limitation, recorded for correction).** The default below, "
+        "**41.67 kg/h**, is DOK-ING's stated nominal of 1 tonne/day (1,000 kg/day) converted to an hourly "
+        "rate (data/dokink_rfi_answers.md, answer 1). DOK-ING did not say whether that tonnage is "
+        "as-received or dry; this project **treats it as the as-received feed**, which is a project "
+        "decision, not a DOK-ING statement. This section applies the 10% ash and 5% carbon-black fractions "
+        "to the number entered **as if it were dry feed**, so at the default it mixes bases. The live "
+        "engine instead takes 41.67 kg/h as-received, applies the assumed 10% inlet moisture (FE-005) and "
+        "feeds GA-001 (from the second cycle on; cycle 1 uses 41.67 as a fallback) **37.503 kg/h dry feed "
+        "including ash**, of which **33.753 kg/h is dry ash-free** "
+        "(the part that carries the C/H/O/N atoms). At the defaults, the ash and carbon-black outputs and "
+        "revenue figures below are therefore about **11.1% higher** than the live engine's (ash 4.167 vs "
+        "3.750 kg/h). This is a known inconsistency, not the intended final behaviour. The 10% moisture "
+        "and 10% ash are project assumptions inside DOK-ING's stated 5-15% ranges, not DOK-ING-stated "
+        "points, and DOK-ING did not state the basis of those ranges. The calculation, the default and the "
+        "10% / 5% fractions are unchanged by this wording. See the Design Basis tab (RFI #1).",
+        icon="ℹ️",
     )
 
     circ_feed_kg_h = st.number_input(
-        "Dry feed rate (kg/h)", min_value=1.0, max_value=200.0,
+        "Feed rate treated as dry (kg/h) — default 41.67 is the as-received figure", min_value=1.0, max_value=200.0,
         value=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H, step=0.5, key="circ_feed",
+        help="Used as dry feed by this section's fixed fractions. The default is the as-received 1,000 kg/day "
+             "(project basis, not a DOK-ING-stated wet/dry basis); the live engine's dry feed is 37.503 kg/h.",
     )
     circ = circularity.circularity_summary(circ_feed_kg_h)
 
     ccol1, ccol2, ccol3 = st.columns(3)
-    ccol1.metric("Ash output", f"{circ['ash_kg_h']:.2f} kg/h", help="10% of dry feed — GA-005's own design figure")
+    ccol1.metric("Ash output", f"{circ['ash_kg_h']:.2f} kg/h", help="10% of the entered feed rate, treated as dry feed (project assumption; GA-005's registry row is not a DOK-ING-stated ash fraction)")
     ccol2.metric(
         "Carbon black output", f"{circ['carbon_black_kg_h']:.2f} kg/h",
-        help="~5% of dry feed — consistent with GA-008's stated design capacity",
+        help="5% of the entered feed rate, treated as dry feed (legacy datasheet rule, project assumption; the live engine derives carbon black from the unconverted carbon instead)",
     )
     ccol3.metric(
         "Diversion from landfill", f"{circ['diversion_fraction']*100:.1f}%",
-        help="Total byproduct mass ÷ dry feed mass — a real ratio, no price assumption",
+        help="Total byproduct mass ÷ the entered feed rate — the sum of the two fractions, no price assumption",
     )
 
     st.caption(

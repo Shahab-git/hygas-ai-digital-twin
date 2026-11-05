@@ -1,0 +1,186 @@
+"""Feed-basis tests (task P0-FB1): which kind of kg/h each feed number is, and what the repo does with it today.
+
+The three numbers (see CLAUDE.md, "Feed-rate bases"):
+    41.67 kg/h   DOK-ING's stated 1 tonne/day, 1,000 kg/day / 24 h. DOK-ING did not say wet or dry; the project TREATS it as as-received.
+    37.503 kg/h  dry solids INCLUDING ash = 41.67 x (1 - 0.10 inlet moisture, an Assumed value): the live engine's GA-001 dry feed.
+    33.753 kg/h  dry ASH-FREE = 37.503 x (1 - 0.10 ash, an Assumed value): computed inside GA-001 for the C/H/O/N atoms.
+
+The file has two parts, kept apart on purpose:
+
+PART 1, CORRECTNESS tests. They state what must stay true after any later correction of the known limitations (the arithmetic of the live chain, the
+dry-including-ash / dry-ash-free distinction, the carbon-black identity, the documentation not presenting an assumed basis as a DOK-ING statement).
+
+PART 2, CHARACTERIZATION tests of KNOWN LIMITATIONS (every test name starts with `test_known_limitation_`). They record what the code does TODAY and
+do NOT say it is right: the 41.67 kg/h cycle-1 fallback, the `DEFAULT_DRY_FEED_KG_H` constant that holds an as-received value under a "dry" name, the
+static ash / carbon-black figures that apply the dry-feed fractions to 41.67, and the three carbon-black definitions. When one of these is corrected
+(an owner decision, not made here), the matching test must be updated or replaced in the same change; its failure message says so.
+
+No default, equation, registry value or persisted key is touched here, and nothing here is validation against DOK-ING data (none exists).
+Offline: counting fake store, no credentials, no network."""
+import os
+import re
+
+import pytest
+
+from _fakes import FakeSupabase, patched_supabase
+from python import balance_audit as ba
+from python import circularity, cycle_clock, fe_feed_handling as fe
+from python import ga001_gasifier_model as ga001
+from python import gasifier_mass_balance as gmb
+from python import tab1_integration as t1
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+N = 6                                   # cycle 6 reads the tail gas of cycle 5; the identities below hold at every cycle, so no convergence is needed
+AS_RECEIVED = 41.67                     # 1,000 kg/day / 24 h, rounded as the repo writes it
+DRY_INCL_ASH = 41.67 * (1.0 - 0.10)     # 37.503
+DRY_ASH_FREE = DRY_INCL_ASH * (1.0 - 0.10)   # 33.7527
+FIX = ("When a known limitation is corrected (an owner decision, see CLAUDE.md 'Known limitations'), update or replace this "
+       "characterization test in the same change; do not edit it to keep the old behaviour.")
+
+
+@pytest.fixture(scope="module")
+def snaps():
+    cycle_clock.set_elapsed_hours(None)
+    out = {}
+    with patched_supabase(FakeSupabase()):
+        for n in (1, N - 1, N):
+            out[n] = t1.build_live_snapshot(n_cycles=n)[0]
+    return out
+
+
+def _text(rel):
+    with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
+        return f.read().replace("\r\n", "\n")
+
+
+def _val(snap, key):
+    return snap[key]["value"]
+
+
+# =====================================================================================================================================
+# PART 1: CORRECTNESS tests (must stay true after any correction)
+# =====================================================================================================================================
+def test_the_three_feed_numbers_follow_from_the_two_assumed_fractions():
+    assert fe.FE005_INLET_MOISTURE_FRACTION == 0.10 and ga001.ASH_FRACTION == 0.10      # Assumed project values, not DOK-ING-stated points
+    assert DRY_INCL_ASH == pytest.approx(37.503, abs=1e-9)
+    assert DRY_ASH_FREE == pytest.approx(33.7527, abs=1e-9)
+    assert round(DRY_ASH_FREE, 3) == 33.753
+    assert DRY_INCL_ASH != pytest.approx(DRY_ASH_FREE, rel=0.05)                         # dry including ash and dry ash-free are different quantities
+
+
+def test_fe005_turns_the_as_received_feed_into_dry_solids_including_ash(snaps):
+    fe005 = _val(snaps[N], ("FE-005", "MoistureBalance"))
+    wet = _val(snaps[N], ("FE-004", "ShredderPower"))["outlet_kg_h"]
+    assert wet == pytest.approx(AS_RECEIVED, abs=1e-9)
+    assert fe005["dry_solids_kg_h"] == pytest.approx(wet * (1.0 - fe.FE005_INLET_MOISTURE_FRACTION), rel=1e-12)
+    assert fe005["dry_solids_kg_h"] == pytest.approx(37.503, abs=1e-9)
+    assert fe005["outlet_wet_kg_h"] == pytest.approx(fe005["dry_solids_kg_h"] / (1.0 - fe.FE005_OUTLET_MOISTURE_FRACTION), rel=1e-12)
+    assert fe005["residual_water_kg_h"] == pytest.approx(fe005["outlet_wet_kg_h"] - fe005["dry_solids_kg_h"], rel=1e-12)
+
+
+def test_from_cycle_two_ga001_receives_the_lagged_fe005_dry_solids(snaps):
+    assert _val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")) == pytest.approx(_val(snaps[N - 1], ("FE-005", "MoistureBalance"))["dry_solids_kg_h"], rel=1e-12)
+    assert _val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")) == pytest.approx(37.503, abs=1e-9)
+
+
+def test_ga001_carbon_atoms_come_from_the_dry_ash_free_feed_not_the_dry_feed_with_ash(snaps):
+    """33.753 kg/h daf x 0.50 C = 16.876 kg C/h; the dry-including-ash feed would give 18.75 kg C/h (a 11.1 % difference)."""
+    feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    comp = _val(snaps[N], ("GA-001-INPUT", "feedstock_composition"))
+    terms = ba.ga001_terms(snaps[N], snaps[N - 1])
+    c_kg_h = terms["feed_atoms"]["C"] * ga001.M_C / 1000.0
+    assert c_kg_h == pytest.approx(feed * (1.0 - ga001.ASH_FRACTION) * comp["C"], rel=1e-9)
+    assert c_kg_h == pytest.approx(DRY_ASH_FREE * 0.50, rel=1e-6)
+    assert c_kg_h != pytest.approx(feed * comp["C"], rel=0.05)
+
+
+def test_the_derived_carbon_black_is_the_unconverted_carbon_recomputed_independently(snaps):
+    """(1 - conversion) x (feed carbon + recycled CO/CH4 carbon) x split, from the composition and the previous cycle's HB-009 tail gas."""
+    snap, prev = snaps[N], snaps[N - 1]
+    feed = float(_val(snap, ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    comp = _val(snap, ("GA-001-INPUT", "feedstock_composition"))
+    conv = float(_val(snap, ("GA-001-INPUT", "carbon_conversion_efficiency")))
+    feed_c = feed * (1.0 - ga001.ASH_FRACTION) * comp["C"]
+    assert _val(snap, ("GA-001", "Outputs"))["recycle_active"] is True
+    tail = _val(prev, ("HB-009", "TailGas"))["species_nm3_h"]
+    rec_c = (float(tail["CO"]) + float(tail["CH4"])) / ga001.NM3_PER_MOL * ga001.M_C / 1000.0
+    expected = (1.0 - conv) * (feed_c + rec_c) * ga001.CARBON_BLACK_SPLIT_DEFAULT
+    got = _val(snap, ("GA-001", "CarbonAccounting"))["carbon_black_kg_h"]
+    assert got == pytest.approx(expected, rel=1e-9)
+
+
+def test_the_documentation_does_not_present_an_assumed_basis_as_a_dok_ing_statement():
+    answers = _text("data/dokink_rfi_answers.md")
+    feed_line = next(line for line in answers.split("\n") if line.startswith("1. **Feed rate.**"))
+    block = answers[answers.index("1. **Feed rate.**"):answers.index("2. **Composition.**")]
+    assert "1 tonne/day" in feed_line
+    assert not re.search(r"\b(wet|dry|as[- ]received)\b", block, re.IGNORECASE), "DOK-ING's answer 1 states no wet/dry basis"
+    comp = answers[answers.index("2. **Composition.**"):answers.index("3. **Feedstock form.**")]
+    assert comp.count("(dry basis)") == 1 and comp.index("(dry basis)") > comp.index("LHV"), "'(dry basis)' appears once, after the LHV"
+    doc = _text("CLAUDE.md")
+    assert "Feed-rate bases" in doc and "Known limitations" in doc
+    for needle in ("41.67 kg/h", "37.503 kg/h", "33.753 kg/h", "as-received", "dry ASH-FREE", "INCLUDING ash", "not DOK-ING-confirmed"):
+        assert needle in doc, needle
+    assert "did NOT state whether it is wet or dry" in doc
+    assert "41.67 kg/h dry\nfeed = 1,000 kg/day" not in doc, "the old 'use this in any new work: 41.67 kg/h dry feed' sentence must not return"
+    assert "own confirmed WET rate" not in doc
+
+
+def test_the_circularity_section_names_its_feed_basis_and_calls_the_mix_a_known_limitation():
+    src = _text("app.py")
+    assert 'st.number_input(\n        "Dry feed rate (kg/h)"' not in src, "the bare 'Dry feed rate' label hid that the default is the as-received figure"
+    section = src[src.index('st.header("Circularity Scoring")'):src.index("Section 14")]
+    for needle in ("as-received", "37.503", "33.753", "known limitation", "not a DOK-ING statement", "not the intended final behaviour"):
+        assert needle in section, needle
+    assert "Recalibrated to DOK-ING's confirmed feed rate" not in section
+    assert "value=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H" in section and "circularity.circularity_summary(circ_feed_kg_h)" in section   # logic and default unchanged
+
+
+# =====================================================================================================================================
+# PART 2: CHARACTERIZATION of KNOWN LIMITATIONS (what the code does today; not the intended final behaviour)
+# =====================================================================================================================================
+def test_known_limitation_cycle_one_feeds_ga001_the_as_received_figure_as_if_it_were_dry(snaps):
+    """KNOWN LIMITATION: on cycle 1 GA-001 has no FE-005 value yet and falls back to 41.67 kg/h, which is the as-received figure, as 'dry' feed."""
+    got = _val(snaps[1], ("GA-001-INPUT", "dry_feed_rate_kg_h"))
+    fe005_same_cycle = _val(snaps[1], ("FE-005", "MoistureBalance"))["dry_solids_kg_h"]
+    assert got == gmb.DEFAULT_DRY_FEED_KG_H == AS_RECEIVED, FIX
+    assert fe005_same_cycle == pytest.approx(37.503, abs=1e-9)
+    assert got / fe005_same_cycle == pytest.approx(1.0 / 0.9, rel=1e-9), FIX          # +11.1 % on that cycle only
+    assert _val(snaps[1], ("GA-001", "Outputs"))["recycle_active"] is False
+
+
+def test_known_limitation_the_dry_named_default_constant_holds_the_as_received_value():
+    """KNOWN LIMITATION: `DEFAULT_DRY_FEED_KG_H` is named 'dry' but equals the as-received delivery and nominal rates of the feed chain."""
+    assert gmb.DEFAULT_DRY_FEED_KG_H == fe.FE001_DEFAULT_DELIVERY_RATE_KG_H == fe.FE003_NOMINAL_KG_H == AS_RECEIVED, FIX
+
+
+def test_known_limitation_static_ash_and_carbon_black_apply_the_dry_fractions_to_the_as_received_figure(snaps):
+    """KNOWN LIMITATION: the static byproduct flows at the default (4.167 / 2.0835 kg/h) are 11.1 % above the same fractions on the live dry feed."""
+    static = gmb.byproduct_mass_flows()
+    live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    live = gmb.byproduct_mass_flows(live_feed)
+    assert static["ash_kg_h"] == pytest.approx(4.167, abs=1e-9) and static["carbon_black_kg_h"] == pytest.approx(2.0835, abs=1e-9), FIX
+    assert live["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and live["carbon_black_kg_h"] == pytest.approx(1.87515, abs=1e-9)
+    assert static["ash_kg_h"] / live["ash_kg_h"] == pytest.approx(1.0 / 0.9, rel=1e-9), FIX
+    assert static["carbon_black_kg_h"] / live["carbon_black_kg_h"] == pytest.approx(1.0 / 0.9, rel=1e-9), FIX
+
+
+def test_known_limitation_the_circularity_default_is_the_as_received_figure_used_as_dry():
+    """KNOWN LIMITATION: `circularity_summary()` called with its default treats 41.67 kg/h as dry feed; only the UI wording was clarified in P0-FB1."""
+    s = circularity.circularity_summary()
+    assert s["dry_feed_kg_h"] == AS_RECEIVED, FIX
+    assert s["ash_kg_h"] == pytest.approx(4.167, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(2.0835, abs=1e-9), FIX
+    assert s["diversion_fraction"] == pytest.approx(gmb.ASH_FRACTION + gmb.CARBON_BLACK_FRACTION, rel=1e-12)       # a pure ratio: unaffected by the basis
+
+
+def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps):
+    """KNOWN LIMITATION: 5 % rule on 41.67 (2.0835), 5 % rule on the live dry feed (1.87515) and the carbon-balance value are not one quantity.
+    Only the ordering and the definitions are characterized, not a preferred value."""
+    live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    rule_static = gmb.CARBON_BLACK_FRACTION * AS_RECEIVED
+    rule_live = gmb.CARBON_BLACK_FRACTION * live_feed
+    derived = _val(snaps[N], ("GA-001", "CarbonAccounting"))["carbon_black_kg_h"]
+    assert rule_static == pytest.approx(2.0835, abs=1e-9) and rule_live == pytest.approx(1.87515, abs=1e-9)
+    assert rule_live < derived < rule_static, FIX
+    cross = _val(snaps[N], ("GA-001", "CarbonAccounting"))["datasheet_cross_check"]
+    assert cross["datasheet_rule_kg_h"] == pytest.approx(rule_live, rel=1e-12)             # the engine's own cross-check uses the live feed, not 41.67

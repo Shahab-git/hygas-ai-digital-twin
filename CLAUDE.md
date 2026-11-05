@@ -90,18 +90,55 @@ at `("EU-008", "RecommendedCapacityEstimate")` in the Shared Plant State
 — see that module's own docstring and self-test for the full derivation.
 This does NOT modify `data/equipment_registry.json`'s own EU-008 row.
 
-DOK-ING's real, formal RFI response (data/dokink_rfi_answers.md, applied
-in python/design_basis.py) has since confirmed all 17 design-basis RFI
-questions. One real discrepancy came out of it — DOK-ING's confirmed
+DOK-ING has provided formal responses to all 17 questions in the initial
+design-basis RFI (data/dokink_rfi_answers.md, applied in
+python/design_basis.py). One real discrepancy came out of it — DOK-ING's stated
 nominal feed rate (1 tonne/day, 1,000 kg/day) differed from this
 project's own physics-model design point (37.5 kg/h dry feed = 900
-kg/day) — and has SINCE BEEN RESOLVED by explicit user decision: the
-physics core is now recalibrated to DOK-ING's confirmed figure.
+kg/day) — and the project's nominal feed-rate magnitude was
+subsequently aligned with DOK-ING's stated 1,000 kg/day figure by
+explicit project decision. The wet/dry basis remains unconfirmed by
+DOK-ING. See the bases below.
 
-**Current feed-rate basis (use this in any new work): 41.67 kg/h dry
-feed = 1,000 kg/day** (`python/gasifier_mass_balance.py`'s
-`DEFAULT_DRY_FEED_KG_H`), up from the old 37.5 kg/h / 900 kg/day, a
-+11.12% scale-up. The ash (10%) and carbon-black (5%) fractions
+**Feed-rate bases (use this in any new work; wording corrected
+2026-11-05, no value changed).** Four different quantities appear in this
+repository; do not interchange them:
+
+- **41.67 kg/h** = DOK-ING's stated 1 tonne/day (1,000 kg/day) / 24 h.
+  The magnitude is DOK-ING's (`data/dokink_rfi_answers.md`, answer 1);
+  DOK-ING did NOT state whether it is wet or dry. This project TREATS it
+  as the **as-received** feed (a project decision, Phase 3); that basis is
+  not DOK-ING-confirmed. In code: `FE001_DEFAULT_DELIVERY_RATE_KG_H`,
+  `FE003_NOMINAL_KG_H` and, under a misleading name,
+  `gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H`.
+- **37.503 kg/h** = dry solids INCLUDING ash = 41.67 x (1 - 0.10), the
+  FE-005 moisture balance with the assumed 10% inlet moisture (Unverified;
+  DOK-ING gave 5-15(20)%, basis not stated). This is what the live engine
+  feeds GA-001 as `("GA-001-INPUT","dry_feed_rate_kg_h")` from cycle 2.
+- **33.753 kg/h** = dry ASH-FREE = 37.503 x (1 - 0.10 ash), computed
+  inside GA-001 (not a stored constant) for the C/H/O/N atoms. The 10% ash
+  is an Assumed value inside DOK-ING's stated 5-15% range; DOK-ING did not
+  state the basis of that range.
+- **37.5 kg/h (900 kg/day)** = this project's original dry design point,
+  still quoted in registry remarks (GA-003 steam, GA-008, GA-009) and in a
+  few scripts. It is close to, but not the same as, 37.503.
+
+**Known limitations (recorded for correction; each needs an owner
+decision; not corrected here):** (1) `DEFAULT_DRY_FEED_KG_H` holds an
+as-received value under a "dry" name. It is GA-001's cycle-1 fallback (so
+on cycle 1 the engine treats 41.67 as dry and the plant balance does not
+close) and the default of every static module (`circularity.py`, the
+equipment estimate fills, the Circularity Scoring input in `app.py`).
+(2) The static ash and carbon-black figures at that default, 4.167 and
+2.0835 kg/h, are 11.1% above the live engine's ash (3.750 kg/h) and its
+5%-rule carbon black (1.875 kg/h); the live cards show the carbon black
+derived from the unconverted carbon instead (a different definition).
+Treating 41.67 as dry in the static modules is NOT correct engineering; it
+is documented history. `tests/test_feed_basis.py` characterizes it so a
+future correction is a visible, deliberate test change.
+
+History of the static recalibration (41.67 up from 37.5 / 900 kg/day, a
++11.12% scale-up): the ash (10%) and carbon-black (5%) fractions
 themselves are UNCHANGED — only the absolute feed rate they're applied
 to — so absolute ash/carbon-black mass flows and circularity.py's
 revenue-potential figures scaled by the same +11.12% (ash 3.750 -> 4.167
@@ -123,14 +160,16 @@ and python/gasifier_mass_balance.py's own docstring for the full detail.
 engine's own feed rate now differs from the 41.67 kg/h figure above,
 which stays UNCHANGED and still describes `gasifier_mass_balance.py`'s
 own separate static tooling (circularity.py etc., not the live engine).**
+(The "figure above" is the 41.67 kg/h of the bases list.)
 Building FE-003 (Weighing Conveyor) and FE-005 (Dryer) live surfaced a
 real, pre-existing internal inconsistency: `equipment_engineering_
-estimates.py`'s own existing FE-007 static fill already treated DOK-ING's
-confirmed 41.67 kg/h as the AS-RECEIVED (WET, ~10% moisture) rate, not
-dry, deriving ~37.5 kg/h dry solids from it — contradicting the "41.67 kg/h
-dry feed" framing above. Resolved by explicit user decision (Phase 3):
-41.67 kg/h is FE-003's own confirmed WET rate; FE-005's own moisture mass
-balance converts it to ~37.5 kg/h dry, which is what the LIVE engine's
+estimates.py`'s own existing FE-007 static fill already treated the 41.67 kg/h
+DOK-ING-stated figure as the AS-RECEIVED (WET, ~10% moisture) rate, not
+dry, deriving ~37.5 kg/h dry solids from it — contradicting the earlier
+"41.67 kg/h dry feed" framing. Resolved by explicit user decision (Phase 3):
+41.67 kg/h is FE-003's nominal AS-RECEIVED rate (project basis; DOK-ING did
+not state wet or dry); FE-005's own moisture mass
+balance converts it to 37.503 kg/h dry, which is what the LIVE engine's
 GA-001 (`python/ga001_gasifier_model.py`) now actually receives as
 `("GA-001-INPUT","dry_feed_rate_kg_h")` once FE-001..008 are registered —
 a genuine ~10% drop from the Phase 1-2 placeholder, matching the existing
