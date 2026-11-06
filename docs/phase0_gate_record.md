@@ -44,6 +44,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-06 feed basis | correct now, narrow scope (done: PRs #30, #31); the full correction (cycle-1 fallback, constant name) is not authorised |
 | G5-07 | list drafted; dispositions **on hold until DOK-ING replies** |
 | G5-15 and three amendments; G5-13 boundary draft | accepted as proposals, not as approved criteria |
+| G5-10 benchmark screen | proposed dispositions accepted (numbers unchanged, evidence made visible); screen added to the repo as a screen, not as validation |
 
 ## 4. Gate 5 criteria: status as of this record
 
@@ -58,7 +59,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-07 | Cross-module disagreements listed with dispositions | 19-row list drafted; reproduction script merged (PR #32); dispositions on hold |
 | G5-08 | Open items each have a disposition | pending |
 | G5-09 | CI green on the closing commit | partly met; manual run on `main` not done |
-| G5-10 | Benchmark screen reviewed | first screen done; owner review pending |
+| G5-10 | Benchmark screen reviewed | screen in `docs/benchmark_msw_gasification.md`; owner dispositions recorded (section 6 of that file); deeper source reading still open |
 | G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | RFI #2 status below; list pending |
 | G5-12 | No external validation claimed | met 3 Nov; refresh needed |
 | G5-13 | Phase 0 / Phase 1 boundary written down | draft accepted as a proposal |
