@@ -126,14 +126,31 @@ def test_the_documentation_does_not_present_an_assumed_basis_as_a_dok_ing_statem
     assert "own confirmed WET rate" not in doc
 
 
-def test_the_circularity_section_names_its_feed_basis_and_calls_the_mix_a_known_limitation():
+def test_the_circularity_section_names_its_feed_basis_and_its_remaining_limitations():
+    # P0-FB2 step 1 (deliberate edit): the section no longer mixes bases, so the old "known limitation / not the intended final
+    # behaviour" needles are replaced by the statement of the dry default and of the limitations that remain.
     src = _text("app.py")
-    assert 'st.number_input(\n        "Dry feed rate (kg/h)"' not in src, "the bare 'Dry feed rate' label hid that the default is the as-received figure"
+    assert "Feed rate treated as dry (kg/h) \u2014 default 41.67 is the as-received figure" not in src, "the old mixed-basis label must not return"
     section = src[src.index('st.header("Circularity Scoring")'):src.index("Section 14")]
-    for needle in ("as-received", "37.503", "33.753", "known limitation", "not a DOK-ING statement", "not the intended final behaviour"):
+    for needle in ("as-received", "37.503", "33.753", "including ash", "not a DOK-ING statement", "Known limitations that remain",
+                   "DEFAULT_DRY_FEED_KG_H", "cycle 1 of the live engine still uses 41.67"):
         assert needle in section, needle
     assert "Recalibrated to DOK-ING's confirmed feed rate" not in section
-    assert "value=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H" in section and "circularity.circularity_summary(circ_feed_kg_h)" in section   # logic and default unchanged
+    assert "value=circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H" in section and "circularity.circularity_summary(circ_feed_kg_h)" in section
+
+
+def test_the_circularity_default_is_the_dry_solids_the_live_engine_feeds_ga001(snaps):
+    """P0-FB2 step 1 (replaces the known-limitation test of the same default): the circularity default is derived from the two feed-chain
+    constants, equals FE-005's dry solids and the live GA-001 feed, and its static ash and 5 % carbon black equal the same fractions on the live feed."""
+    s = circularity.circularity_summary()
+    live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    assert circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == fe.FE001_DEFAULT_DELIVERY_RATE_KG_H * (1.0 - fe.FE005_INLET_MOISTURE_FRACTION)
+    assert s["dry_feed_kg_h"] == circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == pytest.approx(DRY_INCL_ASH, abs=1e-9) == pytest.approx(live_feed, abs=1e-9)
+    assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(1.87515, abs=1e-9)
+    assert s["ash_kg_h"] == pytest.approx(gmb.byproduct_mass_flows(live_feed)["ash_kg_h"], rel=1e-12)
+    assert s["carbon_black_kg_h"] == pytest.approx(gmb.CARBON_BLACK_FRACTION * live_feed, rel=1e-12)
+    assert s["diversion_fraction"] == pytest.approx(gmb.ASH_FRACTION + gmb.CARBON_BLACK_FRACTION, rel=1e-12)       # a pure ratio: unaffected by the basis
+    assert gmb.DEFAULT_DRY_FEED_KG_H == AS_RECEIVED, "step 1 does not change the constant: the cycle-1 fallback and byproduct_mass_flows() keep it (step 2)"
 
 
 # =====================================================================================================================================
@@ -155,7 +172,7 @@ def test_known_limitation_the_dry_named_default_constant_holds_the_as_received_v
 
 
 def test_known_limitation_static_ash_and_carbon_black_apply_the_dry_fractions_to_the_as_received_figure(snaps):
-    """KNOWN LIMITATION: the static byproduct flows at the default (4.167 / 2.0835 kg/h) are 11.1 % above the same fractions on the live dry feed."""
+    """KNOWN LIMITATION (P0-FB2 step 2 pending): `byproduct_mass_flows()` at its own default (4.167 / 2.0835 kg/h, used by the equipment datasheet fills) is 11.1 % above the same fractions on the live dry feed. The circularity section no longer uses this default (step 1)."""
     static = gmb.byproduct_mass_flows()
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     live = gmb.byproduct_mass_flows(live_feed)
@@ -163,14 +180,6 @@ def test_known_limitation_static_ash_and_carbon_black_apply_the_dry_fractions_to
     assert live["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and live["carbon_black_kg_h"] == pytest.approx(1.87515, abs=1e-9)
     assert static["ash_kg_h"] / live["ash_kg_h"] == pytest.approx(1.0 / 0.9, rel=1e-9), FIX
     assert static["carbon_black_kg_h"] / live["carbon_black_kg_h"] == pytest.approx(1.0 / 0.9, rel=1e-9), FIX
-
-
-def test_known_limitation_the_circularity_default_is_the_as_received_figure_used_as_dry():
-    """KNOWN LIMITATION: `circularity_summary()` called with its default treats 41.67 kg/h as dry feed; only the UI wording was clarified in P0-FB1."""
-    s = circularity.circularity_summary()
-    assert s["dry_feed_kg_h"] == AS_RECEIVED, FIX
-    assert s["ash_kg_h"] == pytest.approx(4.167, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(2.0835, abs=1e-9), FIX
-    assert s["diversion_fraction"] == pytest.approx(gmb.ASH_FRACTION + gmb.CARBON_BLACK_FRACTION, rel=1e-12)       # a pure ratio: unaffected by the basis
 
 
 def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps):
