@@ -42,7 +42,10 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | Issue 8 | recorded as a limit |
 | G5-14 disposition | A1 authorised retroactively; A4.1 held |
 | G5-06 feed basis | correct now, narrow scope (done: PRs #30, #31); the full correction (cycle-1 fallback, constant name) is not authorised |
-| G5-07 | list drafted; dispositions **on hold until DOK-ING replies** |
+| G5-07 | list in `docs/cross_module_disagreements.md`; dispositions accepted 6 Nov: defer all 19 rows pending DOK-ING (row 9 decision still open, rows 14 and 18 accepted) |
+| G5-08 | dispositions accepted 6 Nov: see `docs/phase0_open_items.md` |
+| G5-13 | boundary accepted as final 6 Nov (wording in `docs/phase0_open_items.md`, to be confirmed in review) |
+| G5-05 | wording residue accepted 6 Nov; rewording listed as Phase 1 work |
 | G5-15 and three amendments; G5-13 boundary draft | accepted as proposals, not as approved criteria |
 | G5-10 benchmark screen | proposed dispositions accepted (numbers unchanged, evidence made visible); screen added to the repo as a screen, not as validation |
 | G5-12 wording scan | fix points 1, 2, 3, 5 (wording only, no number changes); point 4 (the word 'Confirmed' in app.py code comments for HB-006 55 % and 10 % inlet moisture) recorded as a known limitation |
@@ -55,15 +58,15 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-02 | Gates 1-4 restated on the closing commit | restated 6 Nov on `6b010de`; needs refresh on the closing commit |
 | G5-03 | "Phase 0 approved" decision recorded | pending |
 | G5-04 | Phase 1 authorisation is a separate act | not given |
-| G5-05 | No assumption presented as confirmed or validated | partly met; residue list pending |
+| G5-05 | No assumption presented as confirmed or validated | residue list in `docs/phase0_open_items.md`; owner accepted it 6 Nov |
 | G5-06 | Feed-basis disposition | decided and implemented (narrow); documented limits remain |
-| G5-07 | Cross-module disagreements listed with dispositions | 19-row list drafted; reproduction script merged (PR #32); dispositions on hold |
-| G5-08 | Open items each have a disposition | pending |
+| G5-07 | Cross-module disagreements listed with dispositions | list in repo; reproduction script merged (PR #32); all rows deferred pending DOK-ING (owner, 6 Nov) |
+| G5-08 | Open items each have a disposition | dispositions recorded (owner, 6 Nov) |
 | G5-09 | CI green on the closing commit | partly met; manual run on `main` not done |
 | G5-10 | Benchmark screen reviewed | screen in `docs/benchmark_msw_gasification.md`; owner dispositions recorded (section 6 of that file); deeper source reading still open |
 | G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | RFI #2 status below; list pending |
 | G5-12 | No external validation claimed | refreshed 6 Nov: no validation claim found; 4 wording points fixed in code text, 1 recorded as a limitation |
-| G5-13 | Phase 0 / Phase 1 boundary written down | draft accepted as a proposal |
+| G5-13 | Phase 0 / Phase 1 boundary written down | accepted as final (owner, 6 Nov); wording in `docs/phase0_open_items.md` |
 | G5-14 | Disposition of A1 and A4.1 | recorded (section 3) |
 | G5-15 | In-repo gate record | this document, once accepted |
 
