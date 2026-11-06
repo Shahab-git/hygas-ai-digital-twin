@@ -1,0 +1,34 @@
+# Phase 0 open items, boundary and wording residue (G5-08, G5-13, G5-05)
+
+Date: 2026-11-06. Checked against `main` at `edb091b`. Allowed dispositions: fix, defer, accept. Owner dispositions are in section D.
+
+## A. Items that already have an owner disposition
+
+| Item | Disposition on record | Source |
+|---|---|---|
+| 8 history-dependent skipped tests + 2 openpyxl skips | accepted | your "accept" (12 CI skips) |
+| 2 previously unidentified skips (`test_closure_scenarios.py`, `test_maturity_registry.py`: merge-state guards that need `origin/main`) | identified, accepted with the 12 skips | G5-02 report |
+| `os.walk` ordering fragility (passes on GitHub, fails in my container) | on hold, no change | your "keep on hold" |
+
+## B. Items still needing a disposition (verified in the current code)
+
+| # | Item | What the code shows today | Effect | Proposed |
+|---|---|---|---|---|
+| 1 | H2 LHV in three places | `eu_utilities_chp.py:165` 10.783 (syngas LHV, EU-003); `:167` 10.8 (EU-006 basis, KPIs); `balance_audit.py:846` literal 10.8 | 10.8 vs 10.783 is +0.158 %; no test compares the two (the 1e-3 tolerance applies to mass residuals only) | **accept for Phase 0, defer the fix.** Using one value would change persisted KPI numbers, so it needs a Gate 4 scope and a Gate 2 re-baseline |
+| 2 | Water molar mass 18.015 vs 18.016 | `ga001_gasifier_model.py:165` `M_H2O = 18.015`; atoms `M_H = 1.008`, `M_O = 16.00` give 18.016 | 5.5e-5 of the water mass; equals the whole loop-mass residual in scenario S4a (3.2e-5); hidden by the 1e-3 tolerance | **accept, defer the fix** (same reason: changes GA-001 outputs) |
+| 3 | Two undeclared reads | `GA-001|EnergyBalance` reads `GA-001|CarbonAccounting`; `HB-009|TailGas` reads `WGS|Composition` (still not in its `depends_on`; line 435 lists it as an input, line 350 reads it). Pinned by a test, so a third hidden read fails | status inheritance and dependency ordering do not see these two links | **defer** to the A9 read-graph task, as the ledger already says |
+| 4 | Three unused constants | `FE001_TOTAL_CAPACITY_T` (2.0), `FE002_REMOVAL_EFFICIENCY` (0.98), `HB010_CONFIRMED_RECOVERY` (0.85): defined and in ledger rows, used nowhere else (the last one only in a comment) | none on any output | **accept** (documented reasons in the ledger); removal is cosmetic and would touch ledger rows |
+| 5 | `operator_setpoints.request_setpoint` | writes a pending setpoint to the database; **no caller in the repo** (only a docstring and a test pin: "explicit operator call, no caller") | cannot run unless something calls it | **accept**, and add a guard when a UI is built (Phase 1). Whether it respects `HYGAS_ALLOW_DB_WRITES`: **NOT VERIFIED** |
+| 6 | `performance_guarantee` mutates `uncertainty.ASSUMPTIONS` | `price_with_confirmation_scenario` calls `set_confirmed`, then restores in a `finally` block (line ~149-160) | correct for one thread; a second Streamlit session reading the same module during the scenario would see the temporary range | **defer.** Cleaner fix: run the scenario on a copy instead of the shared dict (Phase 1); I did not test the concurrent case |
+
+## C. Not included, deliberately
+
+Row-level disagreements are in the G5-07 list; registry source-data errors (75 wrong cross-references) are listed in CLAUDE.md and belong to the registry owner, not to this criterion.
+
+## D. Owner dispositions (2026-11-06)
+
+**G5-08.** The owner accepted all proposed dispositions (Phase 0 closing request, item 1): items 1 and 2 accept, with the fix deferred to Phase 1 (they change persisted numbers, so need a Gate 4 scope and a Gate 2 re-baseline); item 3 defer to the A9 read-graph task; item 4 accept; item 5 accept, with a guard added when a UI is built (whether it respects `HYGAS_ALLOW_DB_WRITES` is NOT VERIFIED); item 6 defer (Phase 1: run the scenario on a copy). Section A items keep their earlier dispositions.
+
+**G5-13, Phase 0 / Phase 1 boundary** (accepted as final, item 3). The exact wording the owner reviewed earlier was not available when this file was written, so it is stated here from the G5-13 criterion's own text; the owner is asked to confirm it in review of this change. A change belongs to **Phase 0** when it removes a demonstrable disagreement inside the repository or corrects a wrong evidence label (an assumption presented as confirmed, a module presented as validated). A change belongs to **Phase 1** when it improves the model, adds a capability, or calibrates or replaces an assumed value (including applying any DOK-ING answer or literature value to the model). Phase 1 starts only with a separate written authorisation (G5-04).
+
+**G5-05, wording residue** (accepted, item 4). Known residue, accepted with rewording listed as Phase 1 work: registry-stated "Confirmed" mentions that name an item with no Confirmed value (pinned in `tests/test_design_basis_ledger.py`, not reworded); about 14 static `app.py` paragraphs using "Confirmed" in general terms; the "confirmed" wording elsewhere in docs and code comments not yet swept; the five points of the G5-12 scan (four fixed in PR #35, one recorded in CLAUDE.md). The G5-12 scan found no claim of validation against plant, DOK-ING or Simulink data.
