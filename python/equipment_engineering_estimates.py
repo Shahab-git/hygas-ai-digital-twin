@@ -635,13 +635,13 @@ FILLED — 10 of 29:
     operating temperature is the same 150 degC figure GA-006's own data
     already states.
 
-  GA-006 (Char / Ash Conveyor) Outputs: ~4.167 kg/h ash mass flow rate
+  GA-006 (Char / Ash Conveyor) Outputs: ~3.750 kg/h ash mass flow rate
     to GA-007. Basis: standard mass-balance pass-through — GA-006 is a
     pure mechanical relay (drag chain conveyor) with no separation or
     mass-loss step of its own between GA-005 and GA-007, so mass in =
     mass out. Value = GA-005's own confirmed "10% of feed" ash
-    discharge fraction applied to the project's confirmed 41.67 kg/h
-    dry feed rate (DOK-ING RFI Q1, gasifier_mass_balance.py) — computed
+    discharge fraction applied to the 37.503 kg/h dry solids feed (41.67
+    kg/h as-received, DOK-ING RFI Q1, x (1 - 0.10 assumed moisture)) — computed
     live via that module's own byproduct_mass_flows(), not a separate
     hardcoded figure.
 
@@ -654,12 +654,12 @@ FILLED — 10 of 29:
     new quantified claim, not a bare restatement of the inlet figure
     under a different category label.
 
-  GA-007 (Char Collection Bin) Inputs: ~4.167 kg/h ash mass inflow
+  GA-007 (Char Collection Bin) Inputs: ~3.750 kg/h ash mass inflow
     rate. Basis: same mass-balance pass-through as GA-006's Outputs —
     GA-007 receives the identical ash stream from GA-006 with no
     intermediate processing step.
 
-  GA-007 Outputs: ~4.167 kg/h ash mass outflow rate to GA-008/GA-009.
+  GA-007 Outputs: ~3.750 kg/h ash mass outflow rate to GA-008/GA-009.
     Basis: mass conservation through a buffer vessel on a TIME-AVERAGED
     basis — GA-007's own data states no separation or loss mechanism
     (it is explicitly a buffer/storage bin, "several days' buffer"),
@@ -667,11 +667,11 @@ FILLED — 10 of 29:
     standard steady-state mass-balance principle for buffer/silo
     equipment, not a claim about any single instant.
 
-  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~2.084
+  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~1.875
     kg/h carbon-black-laden fines inflow rate. Basis: the project's own
     established 5% CARBON_BLACK_FRACTION (gasifier_mass_balance.py)
-    applied to the confirmed 41.67 kg/h dry feed rate, computed live
-    via byproduct_mass_flows() — the same relationship this item's OWN
+    applied to the 37.503 kg/h dry solids feed (41.67 as-received x
+    (1 - 0.10 assumed moisture)), computed live via byproduct_mass_flows() — the same relationship this item's OWN
     registry remarks already reference for its design-capacity margin
     ("~1.88 kg/h nominal... already used in the mass/energy balance"),
     so this is not a new external estimate, just the same internally-
@@ -704,10 +704,10 @@ FILLED — 10 of 29:
     a real, stated additive/transformation step), so the added cement/
     lime mass is explicitly accounted for rather than assumed away.
 
-  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.98 kg/h
+  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.78 kg/h
     recovered carbon-black inflow rate from GA-008. Basis: GA-008's OWN
     confirmed Performance Indicator ("Collection efficiency = >95%")
-    applied to the raw carbon-black generation rate (2.084 kg/h, same
+    applied to the raw carbon-black generation rate (1.875 kg/h, same
     gasifier_mass_balance.py figure as GA-008's own Inputs fill above)
     — GA-010 receives what GA-008 actually RECOVERS, not the raw pre-
     separation fines figure. DELIBERATELY does NOT assume 100% recovery
@@ -788,7 +788,7 @@ DECLINED — 19 of 29, with the actual reason:
 
   GA-005 Performance Indicators: CHECKED, not just skipped — a specific
     conveying-energy figure was computed (Drive motor power 1.1 kW /
-    ash mass rate 4.167 kg/h = ~264 kWh/tonne) and cross-checked against
+    ash mass rate 3.750 kg/h = ~293 kWh/tonne) and cross-checked against
     typical bulk-material-handling literature (e.g. CEMA-type screw/
     conveyor specific-energy guidance), which puts short-run bulk
     conveying at a few kWh/tonne, one to two orders of magnitude below
@@ -802,7 +802,7 @@ DECLINED — 19 of 29, with the actual reason:
     declined on that basis, not overlooked.
 
   GA-006 Performance Indicators: same conveying-energy check as GA-005
-    (Drive motor power 0.55 kW / 4.167 kg/h = ~132 kWh/tonne) — same
+    (Drive motor power 0.55 kW / 3.750 kg/h = ~147 kWh/tonne) — same
     literature-mismatch conclusion, same decline reasoning.
 
   GA-007 Operating Conditions: no defensible quantifiable basis. This
@@ -1610,11 +1610,15 @@ import copy
 
 from . import equipment_datasheet
 from . import gasifier_mass_balance
+from . import circularity
 from . import kinetics
 from . import chp
 
 _Q = equipment_datasheet
-_GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows()
+# P0-FB2 Step 2: the 10% ash / 5% carbon-black fractions are applied to the DRY SOLIDS feed
+# (41.67 kg/h as-received x (1 - 0.10 assumed moisture) = 37.503 kg/h, FE-005's balance, the figure
+# the live engine feeds GA-001), not to the as-received 41.67 kg/h as before.
+_GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows(circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H)
 _GA_ASH_KG_H = _GA_FLOWS["ash_kg_h"]
 _GA_CARBON_BLACK_KG_H = _GA_FLOWS["carbon_black_kg_h"]
 _GA_RECOVERED_CARBON_BLACK_KG_H = 0.95 * _GA_CARBON_BLACK_KG_H  # GA-008's own confirmed ">95%" collection-efficiency floor
@@ -1827,8 +1831,8 @@ ESTIMATE_FILLS = {
                     f"Standard mass-balance pass-through: GA-006 is a pure mechanical relay (drag "
                     f"chain conveyor) with no separation or mass-loss step of its own between "
                     f"GA-005 and GA-007, so mass in = mass out. Value = GA-005's own confirmed "
-                    f"'10% of feed' ash discharge fraction applied to the project's confirmed "
-                    f"41.67 kg/h dry feed rate (DOK-ING RFI Q1) — computed live via "
+                    f"'10% of feed' ash discharge fraction applied to the "
+                    f"37.503 kg/h dry solids feed (41.67 kg/h as-received, DOK-ING RFI Q1, x (1 - 0.10 assumed moisture)) — computed live via "
                     f"gasifier_mass_balance.py's own byproduct_mass_flows() ({_GA_ASH_KG_H:.4f} "
                     f"kg/h), not a separately hardcoded figure."
                 ),
@@ -1890,8 +1894,8 @@ ESTIMATE_FILLS = {
                 "value": f"~{_GA_CARBON_BLACK_KG_H:.3f}", "unit": "kg/h",
                 "remarks": (
                     f"The project's own established 5% carbon-black byproduct-yield fraction "
-                    f"(gasifier_mass_balance.py CARBON_BLACK_FRACTION) applied to the confirmed "
-                    f"41.67 kg/h dry feed rate, computed live via byproduct_mass_flows() "
+                    f"(gasifier_mass_balance.py CARBON_BLACK_FRACTION) applied to the "
+                    f"37.503 kg/h dry solids feed (41.67 kg/h as-received x (1 - 0.10 assumed moisture)), computed live via byproduct_mass_flows() "
                     f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h) — the same relationship this item's OWN "
                     f"registry remarks already reference for its design-capacity margin ('~1.88 "
                     f"kg/h nominal... already used in the mass/energy balance'), so this is not a "
