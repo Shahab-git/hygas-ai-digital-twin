@@ -1,6 +1,6 @@
 {
- "date": "2026-10-30",
- "commit": "1ceda20aec8ccd024c9e5767149f3f0c59afc402",
+ "date": "2026-11-06",
+ "commit": "6b010dedfa2012149c3ec587562fe09931fddf14",
  "note": "Measured residuals, NOT a CI gate: a later task decides the tolerances. Regenerate with scripts/run_balance_audit.py --write-baseline.",
  "tolerances_used_for_verdicts": {
   "numerical": 1e-06,
@@ -2289,8 +2289,8 @@
   }
  },
  "scenario_cases": {
-  "date": "2026-11-02",
-  "commit": "f194dd2402cb46fdca7135f6f78c753b5eaebac4",
+  "date": "2026-11-06",
+  "commit": "6b010dedfa2012149c3ec587562fe09931fddf14",
   "n_converged": 30,
   "n_five": 5,
   "note": "Measured residuals of the gasifying-agent scenarios and the reference feeds, NOT a CI gate. Regenerate with scripts/run_balance_audit.py --scenarios --write-baseline. Cases where the oxidant is not air carry the scenario's own O2/N2 in the inflow (stock_audit_N_and_mass_rel shows the stock audit's artefact).",
