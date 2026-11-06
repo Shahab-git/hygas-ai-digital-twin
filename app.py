@@ -708,8 +708,8 @@ with tab1:
             ocol3.metric("Overall WGS conversion", f"{opt_result['overall']*100:.1f}%")
             st.caption(
                 f"scipy L-BFGS-B, {opt_result['n_evaluations']} evaluations, converged={opt_result['converged']}. "
-                "Verified: recomputing kinetics.py directly at these setpoints reproduces this exact result — "
-                "the answer isn't just reported, it's checked. Note: this optimizer has no penalty for extreme "
+                "Recomputed: calling kinetics.py directly at these setpoints gives this exact result — "
+                "a self-consistency check of the same code, not a validation against plant data. Note: this optimizer has no penalty for extreme "
                 "setpoints (catalyst degradation, capital cost, equipment limits aren't modeled), so a boundary "
                 "solution like this is a legitimate answer to 'maximize conversion, no other constraints' — not "
                 "necessarily an operationally sound recommendation on its own."
@@ -729,8 +729,8 @@ with tab1:
             )
             st.metric("PSA recovery", f"{opt_result['recovery']*100:.1f}%")
             st.caption(
-                f"Grid search, {opt_result['n_evaluations']} evaluations. Verified: recomputing psa.py directly "
-                "at these setpoints reproduces this exact result. Feed CO2 fraction held at the current slider "
+                f"Grid search, {opt_result['n_evaluations']} evaluations. Recomputed: calling psa.py directly "
+                "at these setpoints gives this exact result (a self-consistency check of the same code, not a validation against plant data). Feed CO2 fraction held at the current slider "
                 "value above."
             )
             if st.button("Jump sliders to these values", key="jump_psa"):
@@ -1961,7 +1961,9 @@ with tab10:
     st.header("Project Design Basis — DOK-ING RFI Tracker (17 questions)")
     st.success(
         "**DOK-ING answered the real RFI.** All 17 questions are now Confirmed with DOK-ING's "
-        "own real, formal answers (via Ankica Kovac) — see `data/dokink_rfi_answers.md`. Applied "
+        "own real, formal answers (via Ankica Kovac) — see `data/dokink_rfi_answers.md`. Here, Confirmed means "
+        "DOK-ING gave a written answer; ranges and bases are stated as DOK-ING gave them, and nothing is validated "
+        "against plant data. Applied "
         "via `python/design_basis.py`'s `set_confirmed()` mechanism, the first real use of it. "
         "One real discrepancy came out of this — DOK-ING's confirmed feed rate (1,000 kg/day) "
         "differed from this project's own physics-model design point (900 kg/day) — and has "

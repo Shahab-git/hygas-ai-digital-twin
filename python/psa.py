@@ -9,7 +9,7 @@ Explicitly a simplified first-pass industrial design heuristic
 
 SELECTIVITY = {"CO2": 250.0, "CH4": 18.0, "CO": 6.0, "N2": 3.5}
 VOID_LOSS = 0.03
-K1 = 0.01742  # calibrated to the established 75% design-point recovery
+K1 = 0.01742  # fitted to reproduce the registry's 75% design-point recovery target (Assumed; not plant data)
 
 
 def psa_recovery(y_CO2=0.35, y_CH4=0.03, y_CO=0.042, y_N2=0.028,
