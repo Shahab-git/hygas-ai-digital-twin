@@ -64,7 +64,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-08 | Open items each have a disposition | dispositions recorded (owner, 6 Nov) |
 | G5-09 | CI green on the closing commit | partly met; manual run on `main` not done |
 | G5-10 | Benchmark screen reviewed | screen in `docs/benchmark_msw_gasification.md`; owner dispositions recorded (section 6 of that file); deeper source reading still open |
-| G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | RFI #2 status below; list pending |
+| G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | list in `docs/dok_ing_dependent_items.md` (headline values mapped to RFI #2 questions; items no question asks listed as a gap); RFI #2 status in section 5 |
 | G5-12 | No external validation claimed | refreshed 6 Nov: no validation claim found; 4 wording points fixed in code text, 1 recorded as a limitation |
 | G5-13 | Phase 0 / Phase 1 boundary written down | accepted as final (owner, 6 Nov); wording in `docs/phase0_open_items.md` |
 | G5-14 | Disposition of A1 and A4.1 | recorded (section 3) |
