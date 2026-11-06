@@ -45,6 +45,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-07 | list drafted; dispositions **on hold until DOK-ING replies** |
 | G5-15 and three amendments; G5-13 boundary draft | accepted as proposals, not as approved criteria |
 | G5-10 benchmark screen | proposed dispositions accepted (numbers unchanged, evidence made visible); screen added to the repo as a screen, not as validation |
+| G5-12 wording scan | fix points 1, 2, 3, 5 (wording only, no number changes); point 4 (the word 'Confirmed' in app.py code comments for HB-006 55 % and 10 % inlet moisture) recorded as a known limitation |
 
 ## 4. Gate 5 criteria: status as of this record
 
@@ -61,7 +62,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-09 | CI green on the closing commit | partly met; manual run on `main` not done |
 | G5-10 | Benchmark screen reviewed | screen in `docs/benchmark_msw_gasification.md`; owner dispositions recorded (section 6 of that file); deeper source reading still open |
 | G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | RFI #2 status below; list pending |
-| G5-12 | No external validation claimed | met 3 Nov; refresh needed |
+| G5-12 | No external validation claimed | refreshed 6 Nov: no validation claim found; 4 wording points fixed in code text, 1 recorded as a limitation |
 | G5-13 | Phase 0 / Phase 1 boundary written down | draft accepted as a proposal |
 | G5-14 | Disposition of A1 and A4.1 | recorded (section 3) |
 | G5-15 | In-repo gate record | this document, once accepted |

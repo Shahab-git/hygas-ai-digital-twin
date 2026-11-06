@@ -205,8 +205,8 @@ assert abs(
 # a SEPARATE module-level constant, not part of the "feedstock_composition"
 # GA-001-INPUT (which only carries C/H/O/N) -- out of scope for the live
 # design_basis.py re-wiring done below (task's own explicit scope is
-# _input_feedstock_composition()); still cross-validated against DOK-ING's
-# own confirmed ash range there, at call time, without changing this
+# _input_feedstock_composition()); still range-checked (not validated) against
+# DOK-ING's stated 5-15 % ash range there, at call time, without changing this
 # constant's own value or sourcing mechanism.
 ASH_FRACTION = gasifier_mass_balance.ASH_FRACTION
 
