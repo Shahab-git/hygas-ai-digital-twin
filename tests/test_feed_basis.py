@@ -171,8 +171,25 @@ def test_known_limitation_the_dry_named_default_constant_holds_the_as_received_v
     assert gmb.DEFAULT_DRY_FEED_KG_H == fe.FE001_DEFAULT_DELIVERY_RATE_KG_H == fe.FE003_NOMINAL_KG_H == AS_RECEIVED, FIX
 
 
+def test_the_equipment_datasheet_ga_fills_use_the_dry_solids_feed_the_live_engine_feeds_ga001(snaps):
+    """P0-FB2 step 2: the GA-006/007/008/010 estimate fills are computed from the dry solids (37.503 kg/h), so they equal the live GA-001 ash and the 5 % rule on the live feed."""
+    from python import equipment_engineering_estimates as eee
+    live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    live = gmb.byproduct_mass_flows(live_feed)
+    assert eee._GA_ASH_KG_H == pytest.approx(live["ash_kg_h"], rel=1e-12) == pytest.approx(3.7503, abs=1e-9)
+    assert eee._GA_CARBON_BLACK_KG_H == pytest.approx(live["carbon_black_kg_h"], rel=1e-12)
+    assert eee._GA_RECOVERED_CARBON_BLACK_KG_H == pytest.approx(0.95 * 1.87515, abs=1e-9)
+    fills = eee.ESTIMATE_FILLS
+    got = {(i, r["parameter"]): r["value"] for i, secs in fills.items() for rows in secs.values() for r in rows}
+    assert got[("GA-006", "Estimated ash mass flow rate (to GA-007)")] == "~3.750"
+    assert got[("GA-007", "Estimated ash mass inflow rate (from GA-006)")] == "~3.750"
+    assert got[("GA-007", "Estimated ash mass outflow rate (to GA-008/GA-009)")] == "~3.750"
+    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~1.875"
+    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.78"
+
+
 def test_known_limitation_static_ash_and_carbon_black_apply_the_dry_fractions_to_the_as_received_figure(snaps):
-    """KNOWN LIMITATION (P0-FB2 step 2 pending): `byproduct_mass_flows()` at its own default (4.167 / 2.0835 kg/h, used by the equipment datasheet fills) is 11.1 % above the same fractions on the live dry feed. The circularity section no longer uses this default (step 1)."""
+    """KNOWN LIMITATION: `byproduct_mass_flows()` at its own default (4.167 / 2.0835 kg/h) is 11.1 % above the same fractions on the live dry feed. Neither the circularity section (step 1) nor the equipment datasheet fills (step 2) use this default any more."""
     static = gmb.byproduct_mass_flows()
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     live = gmb.byproduct_mass_flows(live_feed)

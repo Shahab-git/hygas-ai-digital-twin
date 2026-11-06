@@ -1,9 +1,9 @@
 {
  "header": {
   "format": 1,
-  "generated_at": "2026-10-30T16:24:30Z",
+  "generated_at": "2026-11-06T13:44:32Z",
   "source_file": "provenance_worksheet_filled.csv",
-  "source_sha256": "d67c63bf4acf0cca25c98eae0c7ea8e3100e2efd5c4c2a5e105ff0e892c3cf9f",
+  "source_sha256": "209cfc11f526d6de8836128ae44594a1eef400845effa97eb028d38a29eab57d",
   "sha256_basis": "file content with LF line endings",
   "n_entries": 29,
   "meaning": "row_id -> resolved status; DOK-ING->Confirmed (source cited), SIMILAR_PLANT->Estimated (literature-informed), ASSUMED->Assumed, CALCULATED->Calculated; rows absent here are 'Unverified (registry)'"

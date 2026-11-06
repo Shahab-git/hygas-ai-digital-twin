@@ -126,22 +126,25 @@ repository; do not interchange them:
   few scripts. It is close to, but not the same as, 37.503.
 
 **Known limitations (recorded for correction; each needs an owner
-decision). P0-FB2 step 1 (2026-11-06) corrected the Circularity Scoring
-section and its `app.py` input only; the rest remains:** (1)
-`DEFAULT_DRY_FEED_KG_H` holds an as-received value under a "dry" name. It is
-GA-001's cycle-1 fallback (so on cycle 1 the engine treats 41.67 as dry and
-the plant balance does not close) and the default of `byproduct_mass_flows()`
-and of the equipment estimate fills (GA-006 to GA-010). (2) At that default
-the static ash and carbon-black figures, 4.167 and 2.0835 kg/h, are 11.1%
-above the live engine's ash (3.750 kg/h) and its 5%-rule carbon black
-(1.875 kg/h); the live cards show the carbon black derived from the
-unconverted carbon instead (a different definition). The Circularity Scoring
-section and its input now use the dry solids (37.503 kg/h: ash 3.750,
-carbon black 1.875 kg/h) and agree with the live engine; the datasheet fills
-are step 2 (they also record values in the owner-filled provenance
-worksheet). Treating 41.67 as dry is NOT correct engineering; the remaining
-cases are documented history. `tests/test_feed_basis.py` characterizes them
-so a future correction is a visible, deliberate test change.
+decision). P0-FB2 steps 1 and 2 (2026-11-06) corrected the Circularity Scoring
+section, its `app.py` input and the equipment datasheet fills (GA-006 to
+GA-010); the rest remains:** (1) `DEFAULT_DRY_FEED_KG_H` holds an
+as-received value under a "dry" name. It is GA-001's cycle-1 fallback (so on
+cycle 1 the engine treats 41.67 as dry and the plant balance does not close)
+and the default of `byproduct_mass_flows()` itself, whose ash and carbon-black
+figures at that default (4.167 and 2.0835 kg/h) are 11.1% above the live
+engine's ash (3.750 kg/h) and its 5%-rule carbon black (1.875 kg/h); the live
+cards show the carbon black derived from the unconverted carbon instead (a
+different definition). The Circularity Scoring section, its input and the
+GA-006/007/008/010 datasheet estimate fills now pass the dry solids (37.503
+kg/h: ash 3.750, carbon black 1.875, recovered carbon black >=1.78 kg/h) and
+agree with the live engine. Step 2 edited five value cells of the owner-filled
+provenance worksheet CSV (origin labels unchanged) and regenerated
+`data/registry_status_overlay.json`; the owner's own xlsx copy outside the
+repo is not updated by this change. Treating 41.67 as dry is NOT correct
+engineering; the remaining cases are documented history.
+`tests/test_feed_basis.py` characterizes them so a future correction is a
+visible, deliberate test change.
 
 History of the static recalibration (41.67 up from 37.5 / 900 kg/day, a
 +11.12% scale-up): the ash (10%) and carbon-black (5%) fractions
