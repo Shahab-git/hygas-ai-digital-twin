@@ -21,7 +21,16 @@ to produce three things:
      real mass-balance ratio, computed directly from the (real) mass
      flows above.
 """
-from . import gasifier_mass_balance
+from . import fe_feed_handling, gasifier_mass_balance
+
+# P0-FB2 Step 1 (feed basis): the circularity default is DRY SOLIDS, derived from the two feed-chain constants, not a typed
+# number. 41.67 kg/h is the project's as-received feed (DOK-ING stated 1 tonne/day, no wet/dry basis; the as-received reading is a
+# project decision) and 10 % inlet moisture is an Assumed value (FE-005, inside DOK-ING's 5-15 (20) % range). The result,
+# 37.503 kg/h, is exactly what FE-005 hands to GA-001 from cycle 2, so the static ash (10 %) and carbon black (5 % rule) below
+# agree with the live engine's ash. It is dry solids INCLUDING ash. Gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H (41.67, as-received
+# under a dry name) is NOT changed here: it is still the cycle-1 fallback and the default of byproduct_mass_flows() (task P0-FB2 step 2).
+DEFAULT_DRY_SOLIDS_FEED_KG_H = (fe_feed_handling.FE001_DEFAULT_DELIVERY_RATE_KG_H
+                                * (1.0 - fe_feed_handling.FE005_INLET_MOISTURE_FRACTION))
 
 # Our own assumed placeholder market prices — NOT sourced from any real
 # market data. Directional reasoning only: ash aggregate (GA-009: EN
@@ -34,7 +43,7 @@ ASH_PRICE_EUR_PER_KG = 0.03
 CARBON_BLACK_PRICE_EUR_PER_KG = 0.40
 
 
-def circularity_summary(dry_feed_kg_h=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H):
+def circularity_summary(dry_feed_kg_h=DEFAULT_DRY_SOLIDS_FEED_KG_H):
     """Returns dry_feed_kg_h, ash_kg_h, carbon_black_kg_h, per-stream and
     total revenue-potential (EUR/h, assumption-based — see module
     docstring), and diversion_fraction (real mass ratio, no price

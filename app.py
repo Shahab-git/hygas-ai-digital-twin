@@ -1211,29 +1211,25 @@ with tab1:
         "it's a real mass-balance ratio."
     )
     st.info(
-        "**Feed basis of this section (known limitation, recorded for correction).** The default below, "
-        "**41.67 kg/h**, is DOK-ING's stated nominal of 1 tonne/day (1,000 kg/day) converted to an hourly "
-        "rate (data/dokink_rfi_answers.md, answer 1). DOK-ING did not say whether that tonnage is "
-        "as-received or dry; this project **treats it as the as-received feed**, which is a project "
-        "decision, not a DOK-ING statement. This section applies the 10% ash and 5% carbon-black fractions "
-        "to the number entered **as if it were dry feed**, so at the default it mixes bases. The live "
-        "engine instead takes 41.67 kg/h as-received, applies the assumed 10% inlet moisture (FE-005) and "
-        "feeds GA-001 (from the second cycle on; cycle 1 uses 41.67 as a fallback) **37.503 kg/h dry feed "
-        "including ash**, of which **33.753 kg/h is dry ash-free** "
-        "(the part that carries the C/H/O/N atoms). At the defaults, the ash and carbon-black outputs and "
-        "revenue figures below are therefore about **11.1% higher** than the live engine's (ash 4.167 vs "
-        "3.750 kg/h). This is a known inconsistency, not the intended final behaviour. The 10% moisture "
-        "and 10% ash are project assumptions inside DOK-ING's stated 5-15% ranges, not DOK-ING-stated "
-        "points, and DOK-ING did not state the basis of those ranges. The calculation, the default and the "
-        "10% / 5% fractions are unchanged by this wording. See the Design Basis tab (RFI #1).",
+        "**Feed basis of this section.** The default below, **37.503 kg/h**, is the dry solids of the project's "
+        "as-received feed: DOK-ING's stated nominal of 1 tonne/day (1,000 kg/day = 41.67 kg/h, "
+        "data/dokink_rfi_answers.md, answer 1; DOK-ING did not state wet or dry, and treating it as as-received is a "
+        "**project decision, not a DOK-ING statement**) times (1 - 10% assumed inlet moisture, FE-005). It is dry solids "
+        "**including ash**, the same figure the live engine feeds GA-001 from the second cycle on, so the 10% ash fraction "
+        "gives the live engine's ash (3.750 kg/h). The 33.753 kg/h figure is the dry ash-free part that carries the C/H/O/N "
+        "atoms. The 10% moisture and 10% ash are project assumptions inside DOK-ING's stated 5-15% ranges, not DOK-ING-stated "
+        "points. **Known limitations that remain:** cycle 1 of the live engine still uses 41.67 kg/h as a fallback, the "
+        "constant `DEFAULT_DRY_FEED_KG_H` still holds the as-received value under a dry name, and the equipment datasheet "
+        "estimates (GA-006 to GA-010) still use that constant. The 5% carbon-black rule here is a legacy datasheet rule; the "
+        "live engine derives carbon black from the unconverted carbon. See the Design Basis tab (RFI #1).",
         icon="ℹ️",
     )
 
     circ_feed_kg_h = st.number_input(
-        "Feed rate treated as dry (kg/h) — default 41.67 is the as-received figure", min_value=1.0, max_value=200.0,
-        value=gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H, step=0.5, key="circ_feed",
-        help="Used as dry feed by this section's fixed fractions. The default is the as-received 1,000 kg/day "
-             "(project basis, not a DOK-ING-stated wet/dry basis); the live engine's dry feed is 37.503 kg/h.",
+        "Dry feed rate (kg/h) — default is the dry solids of the as-received 41.67 kg/h", min_value=1.0, max_value=200.0,
+        value=circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H, step=0.5, key="circ_feed",
+        help="Used as dry feed by this section's fixed fractions. The default is 41.67 kg/h as-received (project basis, "
+             "not a DOK-ING-stated wet/dry basis) x (1 - 10% assumed moisture) = 37.503 kg/h, equal to the live engine's dry feed.",
     )
     circ = circularity.circularity_summary(circ_feed_kg_h)
 
@@ -1971,7 +1967,9 @@ with tab10:
         "differed from this project's own physics-model design point (900 kg/day) — and has "
         "since been **resolved by explicit recalibration**: see RFI #1 below and the Circularity "
         "Scoring section, both updated with the new 41.67 kg/h (1,000 kg/day) basis, a +11.12% "
-        "scale-up (percentages/conversions unchanged, only absolute mass flows scaled). Two "
+        "scale-up (percentages/conversions unchanged, only absolute mass flows scaled; the "
+        "Circularity Scoring default has since been restated as the dry solids of that figure, "
+        "37.503 kg/h, see that section). Two "
         "corrections to this project's own prior framing: RFNBO qualification (RFI #14) is "
         "confirmed OPTIONAL, not required — see the Compliance Documentation section; and "
         "hydrogen end use / co-products (RFI #9/#10) are confirmed contractually flexible, not "
