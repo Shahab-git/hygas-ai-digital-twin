@@ -27,7 +27,8 @@ NEW_KEYS = {"GA-001-INPUT|tail_gas_mode", "GA-001|EnergyBalance",
             "GA-001-INPUT|unconverted_carbon_to_carbon_black", "GA-001|CarbonAccounting",      # the two before come from the carbon-bookkeeping task
             "PLANT|HeatIntegration",
             "GA-001-INPUT|gasifying_agent",
-            "GA-001|AgentConsistency"}      # task A1 / A1.3 (deliberate edit): the agent switch and the read-only agent-consistency entry are new keys; task A1: the gasifying-agent switch is one more new key, every OLD entry is still compared unchanged.  HEAT INTEGRATION (deliberate edit): the read-only heat inventory key is one more new key against the 71e92cc fixture; every OLD entry is still compared unchanged
+            "GA-001|AgentConsistency",
+            "HB-003|DutyEstimate"}      # P1-15: the new Estimated HB-003 rating key; task A1 / A1.3 (deliberate edit): the agent switch and the read-only agent-consistency entry are new keys; task A1: the gasifying-agent switch is one more new key, every OLD entry is still compared unchanged.  HEAT INTEGRATION (deliberate edit): the read-only heat inventory key is one more new key against the 71e92cc fixture; every OLD entry is still compared unchanged
 N = 20          # the tail-gas recycle has converged by cycle 20
 MID = "DOK-ING midpoint (Assumed point)"
 
