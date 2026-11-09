@@ -25,7 +25,7 @@ Date: 2026-11-06. Figures measured on `origin/main` at `d8af8f3` (after P0-FB2 s
 | 8 | PSA recovery, model vs registry | 78.8 % (default); 77.0 % in `heat_only` | 75 % (HB-007) | ad hoc snapshot; repo script above | `tail_gas_heat.md` | Yes (RFI #2 point 7) | defer |
 | 9 | Tail-gas use: model re-gasifies it; registry says it returns as supplemental fuel | `regasify` (default) | `heat_only` mode exists, not default | repo script above | `tail_gas_heat.md` | Yes | owner decision on the default |
 | 10 | EU-008 cooling tower rating vs this model's own demand | 20 kW (registry, scoped to EU-004 jacket only) | 52.0 kW live demand (utilisation 2.60); 55-60 kW baseline estimate with 15 % margin | ad hoc snapshot (`EU-008 CoolingSupply`, `RecommendedCapacityEstimate`) | CLAUDE.md; `master_open_questions.md` item 1 | Yes (first on the list for DOK-ING) | defer; already flagged |
-| 11 | HB-003 heat duty: three figures | 5 kW (registry) vs live 7.38 kW hot side, 10.72 kW cold side | the repo's own self-test prints 6.36 / 9.44 kW | ad hoc snapshot; repo self-test `python -m python.hb_wgs_psa_storage_chain` | `master_open_questions.md` item 7 (quotes 6.360 / 9.436) | Yes | defer; **see note 1** |
+| 11 | HB-003 heat duty: three figures | 5 kW (registry) vs live 7.38 kW hot side, 10.72 kW cold side | the repo's own self-test prints 6.360 / 9.436 kW, but it runs ONE cycle from a cold start (`_run_full_chain(0.25, n_cycles=1)`); the same chain gives 7.193 / 10.457 kW at 2 cycles and 7.375 / 10.715 kW at 5 | ad hoc snapshot; repo self-test `python -m python.hb_wgs_psa_storage_chain` | `master_open_questions.md` item 7 (now labelled as the 1-cycle figures) | Yes | defer; **see note 1** |
 | 12 | GC-009 HCl removal vs its own target | 96.67 % computed from its inlet/outlet figures | ">97 %" stated | ad hoc snapshot (`GC-009 HCl`); repo self-test | `master_open_questions.md` item 8 | Yes (minor) | accept or ask; small |
 
 ### B. Module against module inside the model
@@ -42,7 +42,7 @@ Date: 2026-11-06. Figures measured on `origin/main` at `d8af8f3` (after P0-FB2 s
 
 ## 2. Notes
 
-1. **Row 11 shows an internal inconsistency, not only a model-vs-registry gap.** The live engine reports 7.376 / 10.717 kW, while the repo's self-test, and `master_open_questions.md` item 7 which quotes it, show 6.360 / 9.436 kW. The two come from different feed or recycle states and I did not trace which. The document figure is therefore stale against the live engine. This is a documentation fix at most; I have not made it.
+1. **Row 11 shows an internal inconsistency, not only a model-vs-registry gap.** The live engine reports 7.376 / 10.717 kW, while the repo's self-test, and `master_open_questions.md` item 7 which quotes it, show 6.360 / 9.436 kW. **Cause traced 9 Nov:** the self-test runs one cycle from a cold start (cycle-1 feed fallback of 41.67 kg/h, tail-gas recycle not yet established), the live figures are the converged 30-cycle state. Measured offline with the fake store: 1 cycle 6.360 / 9.436 kW, 2 cycles 7.193 / 10.457, 5 cycles 7.375 / 10.715, 30 cycles 7.376 / 10.717. No model, test or script output was changed; `master_open_questions.md` item 7 now says which state each figure belongs to (owner-authorised documentation fix, 9 Nov).
 2. Rows 1-4 share one root cause (row 5: the gasifying agent and air). I list them separately because each is a separate number a reviewer can find, but a single DOK-ING answer would close all four.
 3. Row 6's 38.79 Nm3/h is at 37.5 kg/h, the original design point. At 37.503 it is effectively the same. I did not recompute it at the cycle-1 41.67 figure.
 4. Row 2 and the "-73 to +107 kW" range in row 15 are taken from CLAUDE.md and the closure audit; I did not re-measure them today.
@@ -61,7 +61,7 @@ The owner accepted the proposed dispositions (Phase 0 closing request, item 2): 
 | 1, 2, 3, 4 | defer (one cause: the gasifying agent; RFI #2 point 1) |
 | 5, 6, 7, 8 | defer (RFI #2 points 1, 4, 7, and tail-gas use) |
 | 9 (tail-gas default) | **decision still open**; to be taken once DOK-ING answers on tail-gas use; no default changes before then |
-| 10, 11 | defer (DOK-ING to confirm cooling duty and HB-003 duty); row 11's document figures (6.36 / 9.44 kW) are stale against the live engine and are not corrected here |
+| 10, 11 | defer (DOK-ING to confirm cooling duty and HB-003 duty); row 11's document figures (6.36 / 9.44 kW) were the 1-cycle self-test values, now labelled as such in `master_open_questions.md` item 7 (9 Nov); the disposition (defer) is unchanged |
 | 12 | defer (small; ask DOK-ING at the next request) |
 | 13 | defer (aligning the app cards to the engine's derived carbon black is a separate decision) |
 | 14 | **accept** as documented (cycle-1 feed basis; narrow scope chosen for P0-FB2) |

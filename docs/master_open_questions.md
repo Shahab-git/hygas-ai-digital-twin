@@ -433,7 +433,10 @@ what remains open is a narrower, more specific question.
 - **Equipment ID(s):** HB-003 (Heat Exchanger, WGS interstage).
 - **Parameter:** Design heat duty, **kW**.
 - **The question:** *HB-003's own Confirmed "Design heat duty" is 5 kW.
-  This model's own two independently-computed values are: gas-side
+  This model's own two independently-computed values are (as printed by
+  the 1-cycle cold-start self-test; the converged 30-cycle live engine gives
+  7.376 kW hot side and 10.717 kW cold side, see G5-07 row 11 in
+  `docs/cross_module_disagreements.md`): gas-side
   (hot-side) sensible-heat duty = 6.360 kW; water-side (cold-side) duty
   (feedwater heating to HB-005's own steam-generation requirement) =
   9.436 kW. None of the three figures agree. Which is closest to the
