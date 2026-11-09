@@ -366,39 +366,56 @@ def hb010_feed(get_input):
 
 
 def hb010_separation(get_input):
-    """Permanently Missing half of HB-010's dual-status pair -- see module
-    docstring's HB-010 section for the full reasoning. HB-010's own
-    registry gives H2 permeance (50 GPU) and a STATIC design-point
-    recovery/purity figure (85% / 95-98%) but no DIRECTLY CONFIRMED membrane
-    SELECTIVITY -- solution-diffusion membrane transport theory needs
-    permeance AND selectivity together (with feed composition and the
-    pressure ratio) to compute a live, composition-dependent recovery.
-    UPDATE (Missing Parameter Resolution Protocol, HB-010 selectivity task):
-    a Comparable-equipment-cross-checked, Internal-model-derived SELECTIVITY
-    BASELINE now exists (hb010_selectivity_estimate(), registered as
-    ("HB-010","SelectivityEstimate")) -- but this function's own status is
-    DELIBERATELY UNCHANGED: whether that baseline should feed a real live
-    recovery/purity calculation here is a separate, explicitly undecided
-    follow-up question (see the new function's own docstring), not decided
-    in this task. The registry's own static figures remain a design point,
-    not something this cycle-by-cycle model independently re-derives --
-    reporting them as freshly 'Calculated' here would misrepresent a copied
-    constant as a real result. Not approximated, not fabricated."""
+    """HB-010 recovery, product flow and permeate purity -- Estimated, first-pass, since Phase 1 task P1-12 (owner decision, 2026-11-09:
+    "proceed with the closest realistic values ... instead of leaving parameters empty"). Before P1-12 this key was deliberately Missing.
+
+    WHAT IT IS: a one-line solution-diffusion relation, NOT a membrane-module simulation.
+    - Purity: y_p/(1 - y_p) = alpha * x_f/(1 - x_f) at the LIVE feed H2 fraction x_f (the 'low back-permeation' ideal-selectivity approximation,
+      Baker, Membrane Technology and Applications), with alpha from ('HB-010','SelectivityEstimate') -- itself back-derived from the registry
+      design point and cross-checked against one published polyimide module (Estimated). The low/high purities use the low/high ends of that
+      selectivity range; the value used is the middle of the range.
+    - Recovery: HELD at the registry design-point 85 % (HB010_CONFIRMED_RECOVERY, Unverified (registry), not DOK-ING-confirmed). It is NOT computed
+      here: a real recovery depends on the stage cut, the permeate pressure and the area, none of which is stated anywhere in the project. The
+      85 % was stated at a 55 % feed-H2 design point; at the live feed (lower H2) the real recovery would differ.
+    - Product H2 flow = recovery * feed flow (HB010_FEED_FLOW_NM3_H, registry-stated, Unverified) * x_f; permeate flow = product / purity.
+    NOT modelled: multi-component permeation (one lumped selectivity), stage cut, pressure ratio, permeate-side pressure, temperature, membrane
+    area, pressure drop. At a high stage cut the real permeate purity is LOWER than this relation gives, so treat the purity as an upper-end first
+    pass. Nothing downstream reads this key (checked 2026-11-09)."""
+    feed = get_input(("HB-010", "Feed"))["value"]
+    sel = get_input(("HB-010", "SelectivityEstimate"))["value"]
+    x_f = float(feed["feed_composition"]["y_H2"])
+    a_lo, a_hi = (float(v) for v in sel["digital_twin_engineering_baseline_range"])
+    a_mid = (a_lo + a_hi) / 2
+
+    def purity(alpha):
+        r = alpha * x_f / (1.0 - x_f)
+        return r / (1.0 + r)
+
+    y_lo, y_mid, y_hi = purity(a_lo), purity(a_mid), purity(a_hi)
+    rec = HB010_CONFIRMED_RECOVERY
+    feed_flow = float(feed["feed_flow_nm3_h"])
+    product = rec * feed_flow * x_f
     return {
-        "value": None,
-        "status": ps.STATUS_MISSING,
+        "value": {
+            "recovery": rec,
+            "recovery_basis": "held at the registry design point (Unverified (registry)); not computed",
+            "selectivity_used": a_mid, "selectivity_range": (a_lo, a_hi),
+            "permeate_h2_purity": y_mid, "permeate_h2_purity_range": (y_lo, y_hi),
+            "product_h2_flow_nm3_h": product,
+            "permeate_flow_nm3_h": product / y_mid,
+            "feed_h2_fraction_live": x_f,
+            "registry_design_point": {"feed_h2_fraction": HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION, "recovery": rec, "purity_range": HB010_CONFIRMED_PURITY_RANGE},
+            "not_modelled": "multi-component permeation, stage cut, pressure ratio, permeate pressure, temperature, membrane area",
+        },
+        "status": ps.STATUS_ESTIMATED,
         "model": "hb_remaining_chain.hb010_separation",
-        "inputs": [],
-        "validation_basis": ps.VALIDATION_NA,
-        "missing_reason": (
-            "recovery/product_h2_flow_nm3_h/permeate_purity: HB-010's own registry gives H2 "
-            "permeance (50 GPU) and a STATIC design-point recovery/purity figure (85% / 95-98%) but "
-            "no DIRECTLY CONFIRMED membrane SELECTIVITY -- see this function's own docstring. An "
-            "Internal-model-derived/Comparable-equipment-cross-checked selectivity BASELINE now "
-            "exists separately (('HB-010','SelectivityEstimate')) but is not wired into this "
-            "calculation -- a deliberate, separate, open decision, not resolved here. Not "
-            "approximated, not fabricated, not copied from the static design point since that would "
-            "misrepresent it as freshly calculated."
+        "inputs": [("HB-010", "Feed"), ("HB-010", "SelectivityEstimate")],
+        "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
+        "confidence_note": (
+            f"First-pass Estimated (Phase 1 task P1-12): purity {y_mid*100:.1f} % ({y_lo*100:.1f}-{y_hi*100:.1f} %) from selectivity {a_mid:.1f} "
+            f"({a_lo:.1f}-{a_hi:.1f}) at the live feed H2 {x_f*100:.1f} %; recovery held at the registry 85 % (Unverified (registry)), not computed. "
+            f"One lumped selectivity, no stage cut or pressure ratio; not validated against HB-010 data. Replace with DOK-ING's or the vendor's selectivity "
+            f"and recovery curve when available."
         ),
     }
 
@@ -1026,7 +1043,7 @@ def register_hb_remaining(engine):
     engine.register_model(("HB-010", "Feed"), hb010_feed, unit="Nm3/h dict",
                            depends_on=[("WGS", "Composition")])
     engine.register_model(("HB-010", "Separation"), hb010_separation, unit="fraction dict",
-                           depends_on=[])
+                           depends_on=[("HB-010", "Feed"), ("HB-010", "SelectivityEstimate")])
     engine.register_model(("HB-010", "SelectivityEstimate"), hb010_selectivity_estimate,
                            unit="dimensionless dict", depends_on=[("HB-010", "Feed")])
     engine.register_model(("HB-007", "H2SplitFraction"), hb007_h2_split_fraction, unit="fraction",
@@ -1100,10 +1117,20 @@ if __name__ == "__main__":
     assert abs(sum(hb010_feed_out["value"]["feed_composition"].values()) - 1.0) < 1e-9
     print(f"  HB-010 Feed: {hb010_feed_out['value']} -- PASSED")
 
-    hb010_sep_out = hb010_separation(lambda k: None)
-    assert hb010_sep_out["status"] == ps.STATUS_MISSING and hb010_sep_out["value"] is None
-    assert "selectivity" in hb010_sep_out["missing_reason"].lower()
-    print("  HB-010 Separation: Missing, reason names the real selectivity gap -- PASSED")
+    _sel_mock = hb010_selectivity_estimate(lambda k: hb010_feed_out)
+
+    def _mock_sep(k):
+        return {("HB-010", "Feed"): hb010_feed_out, ("HB-010", "SelectivityEstimate"): _sel_mock}[k]
+
+    hb010_sep_out = hb010_separation(_mock_sep)
+    assert hb010_sep_out["status"] == ps.STATUS_ESTIMATED and hb010_sep_out["value"]["recovery"] == HB010_CONFIRMED_RECOVERY
+    _a = hb010_sep_out["value"]["selectivity_used"]
+    _x = hb010_feed_out["value"]["feed_composition"]["y_H2"]
+    _y = (_a * _x / (1 - _x)) / (1 + _a * _x / (1 - _x))                 # independent re-derivation of the purity
+    assert abs(hb010_sep_out["value"]["permeate_h2_purity"] - _y) < 1e-12
+    assert abs(hb010_sep_out["value"]["product_h2_flow_nm3_h"] - HB010_CONFIRMED_RECOVERY * HB010_FEED_FLOW_NM3_H * _x) < 1e-12
+    assert hb010_sep_out["value"]["permeate_h2_purity_range"][0] < _y < hb010_sep_out["value"]["permeate_h2_purity_range"][1]
+    print(f"  HB-010 Separation: Estimated, purity {_y*100:.1f} % at feed H2 {_x*100:.1f} %, recovery held at the registry 85 % -- PASSED")
 
     print("\n=== Missing Parameter Resolution Protocol candidate: HB-010 membrane selectivity ===")
     hb010_sel_out = hb010_selectivity_estimate(lambda k: hb010_feed_out if k == ("HB-010", "Feed") else None)
@@ -1270,9 +1297,9 @@ if __name__ == "__main__":
     hb010_feed_live = snap[("HB-010", "Feed")]
     hb010_sep_live = snap[("HB-010", "Separation")]
     print(f"  HB-010 Feed: status={hb010_feed_live['status']}  {hb010_feed_live['value']}")
-    print(f"  HB-010 Separation: status={hb010_sep_live['status']}  reason={hb010_sep_live['missing_reason']}")
+    print(f"  HB-010 Separation: status={hb010_sep_live['status']}  purity={hb010_sep_live['value']['permeate_h2_purity']:.3f}")
     assert hb010_feed_live["status"] == ps.STATUS_CALCULATED
-    assert hb010_sep_live["status"] == ps.STATUS_MISSING
+    assert hb010_sep_live["status"] == ps.STATUS_ESTIMATED
 
     hb010_sel_live = snap[("HB-010", "SelectivityEstimate")]
     print(f"  HB-010 SelectivityEstimate: status={hb010_sel_live['status']}  "

@@ -12,6 +12,7 @@ import os
 import pytest
 
 import _d2_wording
+from _intentional_changes import INTENTIONAL
 from _fakes import FakeSupabase, patched_supabase
 from python import plant_status as ps
 from python import tab1_integration as t1
@@ -60,7 +61,7 @@ def _expected(old):
 
 
 def _differences(expected, new):
-    bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode"}
+    bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL}
     return {k: v for k, v in bad.items() if v is not True}
 
 

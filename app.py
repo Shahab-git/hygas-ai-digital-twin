@@ -8152,7 +8152,7 @@ def _render_hb_live_kpis(snap):
 # =============================================================================
 _HB_ADDITIONAL_KEYS = [
     # (parent eq_id, sub-label, key, pill-state-if-not-missing)
-    ("HB-010", "Separation", ("HB-010", "Separation"), "missing"),
+    ("HB-010", "Separation", ("HB-010", "Separation"), "estimated"),
     ("HB-010", "SelectivityEstimate", ("HB-010", "SelectivityEstimate"), "estimated"),
     ("HB-014", "ReactionKinetics", ("HB-014", "ReactionKinetics"), "missing"),
     ("HB-014", "KineticsBaselineEstimate", ("HB-014", "KineticsBaselineEstimate"), "estimated"),
@@ -8399,8 +8399,14 @@ def _render_hb_live_results(snap):
             _hb_live_expander("HB-010 Feed", hb010f)
         hb010s = snap.get(("HB-010", "Separation"))
         if hb010s is not None:
-            st.metric("Recovery / product flow / permeate purity", "Missing / Cannot Calculate")
-            _hb_missing_expander("HB-010 Separation", hb010s)
+            sv = hb010s["value"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Recovery (held, registry)", f"{sv['recovery']*100:.0f}%")
+            c2.metric("Product H₂ flow", f"{sv['product_h2_flow_nm3_h']:.2f} Nm³/h")
+            c3.metric("Permeate purity", f"{sv['permeate_h2_purity']*100:.1f}%")
+            st.caption("Estimated, first pass (Phase 1 task P1-12): purity from the selectivity baseline below at the live feed H₂; recovery is held at "
+                       "the registry design point, not computed. No stage cut, pressure ratio or membrane area; replace with DOK-ING's or the vendor's curve.")
+            _hb_live_expander("HB-010 Separation", hb010s)
         hb010sel = snap.get(("HB-010", "SelectivityEstimate"))
         if hb010sel is not None:
             v = hb010sel["value"]
@@ -8409,8 +8415,8 @@ def _render_hb_live_results(snap):
                         unsafe_allow_html=True)
             st.caption(f"Consistency check: {v['consistency_check']['verdict']} — a real comparable "
                        f"membrane module's own measured H₂/CO₂ selectivity ({v['comparable_module_h2_co2_selectivity']}) "
-                       f"falls inside this internally-derived range. Does NOT feed the Separation "
-                       f"calculation above — a separate, explicitly open follow-up question.")
+                       f"falls inside this internally-derived range. Feeds the Separation "
+                       f"estimate above (Phase 1 task P1-12).")
             _hb_live_expander("HB-010 SelectivityEstimate", hb010sel)
 
     # -- HB-011 (+ AI-001 context) ------------------------------------------------

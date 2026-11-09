@@ -13,6 +13,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import cycle_clock
 from python import ga001_gasifier_model as ga001
@@ -191,7 +192,7 @@ def test_every_entry_of_main_is_unchanged_in_both_tail_gas_modes(runs, main_snap
     assert set(new) - set(old) == NEW_KEYS
     # in heat_only the switch's own entry is the test's override (its model name and note are the override's), everything else must match
     skip = {"GA-001-INPUT|tail_gas_mode"} if label == "heat_only" else set()
-    bad = {k: _same(old[k], new[k]) for k in old if k not in skip}
+    bad = {k: _same(old[k], new[k]) for k in old if k not in skip and k not in INTENTIONAL}
     assert {k: v for k, v in bad.items() if v is not True} == {}
     if label == "heat_only":
         assert new["GA-001-INPUT|tail_gas_mode"]["value"] == "heat_only"

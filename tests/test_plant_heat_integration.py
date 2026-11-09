@@ -18,6 +18,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import plant_heat_integration as phi
 from python import plant_status as ps
@@ -269,7 +270,7 @@ def test_every_entry_of_origin_main_is_unchanged_in_both_modes(runs, main_snap, 
     old = _d2_wording.forward(main_snap[fixture_key])
     assert len(old) == 120 and set(old) <= set(new)
     skip = {"GA-001-INPUT|tail_gas_mode"} if label == "heat_only" else set()          # in heat_only the switch's own entry is this test's override (its model name differs)
-    bad = {k: _same(old[k], new[k]) for k in old if k not in skip}
+    bad = {k: _same(old[k], new[k]) for k in old if k not in skip and k not in INTENTIONAL}
     assert {k: v for k, v in bad.items() if v is not True} == {}, "a gas-side, energy-key, carbon or hydrogen entry moved"
 
 

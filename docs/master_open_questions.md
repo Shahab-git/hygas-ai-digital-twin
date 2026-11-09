@@ -544,6 +544,17 @@ what remains open is a narrower, more specific question.
   a SEPARATE, deliberately undecided follow-up question: whether/how this
   baseline should ever feed `hb010_separation()`'s own recovery/purity
   calculation at all.
+- **UPDATE (Phase 1 task P1-12, 2026-11-09, owner decision to proceed
+  with literature-informed values instead of leaving outputs empty).**
+  `("HB-010","Separation")` is no longer Missing: it is now **Estimated**,
+  first pass. Purity = `alpha*x/(1-x)` relation at the LIVE feed H2 with
+  alpha from the selectivity baseline above (middle of 15.5-40.1, with the
+  low and high ends reported); recovery is HELD at the registry's 85 %
+  (Unverified (registry)), not computed; product flow = recovery x 50 Nm3/h
+  x feed H2. No stage cut, pressure ratio, permeate pressure or membrane
+  area; real purity at a high stage cut is lower than this relation gives.
+  Nothing reads the key. The question to DOK-ING is unchanged and still
+  open; its answer replaces these numbers.
 - **Source:** `python/hb_remaining_chain.py` (`hb010_separation`,
   `hb010_selectivity_estimate`); `data/equipment_registry.json` HB-010;
   "Recent advances in H₂ purification and CO₂ capture: Evolving from flat
