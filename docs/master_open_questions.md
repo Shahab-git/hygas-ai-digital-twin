@@ -78,6 +78,12 @@ what remains open is a narrower, more specific question.
     live `("EU-008","RecommendedCapacityEstimate")` entry, not from this text.
     (`docs/missing_parameter_protocol.md` and a docstring in
     `python/ai_automation_layer.py` still quote 65–70 kW and were not touched.)
+- **P1-15 note (2026-11-09, no code change for EU-008):** the registry's 20 kW
+  (Unverified (registry), not DOK-ING-confirmed) and the live Estimated
+  recommendation (about 60 kW, `("EU-008","RecommendedCapacityEstimate")`) are
+  different scopes. The 20 kW is stated for EU-004 jacket cooling only; the
+  model's figure sums GC-004, HB-003 and HB-012 as well. They are published
+  side by side; neither replaces the other and the registry row is untouched.
   - **Status of baseline:** `Internal-model-derived` (Section 7).
   - **Engineering basis:** sum of three independently-validated real
     duties — GC-004 quench sensible-heat duty + HB-003 cold-side duty +
@@ -448,6 +454,14 @@ what remains open is a narrower, more specific question.
   balance, into the whole downstream H₂ production chain.
 - **Source:** `python/hb_wgs_psa_storage_chain.py` self-test ("HB-003
   duty" cross-check).
+- **P1-15 note (2026-11-09):** the live engine now also publishes
+  `("HB-003","DutyEstimate")` as **Estimated**: the larger of the hot and cold
+  side duties (7.376 / 10.717 kW) times the same 15 % margin as EU-008
+  (`EU008_SIZING_MARGIN_FRACTION`), about 12.3 kW, range "approximately 10-15 kW".
+  It sits next to the registry's 5 kW (Unverified (registry), not DOK-ING-confirmed)
+  and changes neither it nor `("HB-003","HeatExchanger")`; nothing reads it. Choosing
+  the larger side plus a margin is this project's own choice, not DOK-ING's; the
+  question above stays open for DOK-ING.
 
 ### 8. GC-009 HCl removal efficiency — below its own stated target
 - **Equipment ID(s):** GC-009 (HCl Scrubber).

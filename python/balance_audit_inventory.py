@@ -90,9 +90,9 @@ UNIT_TABLE = [
     ("EU-CHP dispatch / EU-002..006", "syngas budget (0 after WGS/PSA claim), H2 budget", "electrical, thermal kW", "partly (energy split explicit)", (EU, 299, "def eu_chp_dispatch"), "CHP receives no syngas by design"),
     ("EU-007 flare", "tail gas CO2 + N2", "vented", "Y", (EU, 464, "def eu007_flare"), "98 % destruction applies to 0 combustible"),
     ("EU-008 cooling tower", "GC-004 + HB-003 cold side + HB-012", "demand 52 kW", "N (a sum, not a balance)", (EU, 510, "def eu008_cooling_supply"), "HB-003 cold side is recovered, not rejected"),
-    ("EU-009 electrical metering", "HB-012 + HB-011 + GC-013 fan + EU-008 fan", "consumption kW", "N (a sum)", (EU, 733, "def eu009_grid_balance"), "omits FE-004 and all other nameplate loads"),
-    ("EU-010 UPS", "EU-009 net", "state of charge", "explicit (Coulomb counting)", (EU, 775, "def eu010_ups_battery"), ""),
-    ("EU-011..013 heat recovery", "EU-005 exhaust, EU-004", "kWth", "Y (sums)", (EU, 813, "def eu011_heat_recovery"), "zero while the CHP units idle"),
+    ("EU-009 electrical metering", "HB-012 + HB-011 + GC-013 fan + EU-008 fan", "consumption kW", "N (a sum)", (EU, 775, "def eu009_grid_balance"), "omits FE-004 and all other nameplate loads"),
+    ("EU-010 UPS", "EU-009 net", "state of charge", "explicit (Coulomb counting)", (EU, 817, "def eu010_ups_battery"), ""),
+    ("EU-011..013 heat recovery", "EU-005 exhaust, EU-004", "kWth", "Y (sums)", (EU, 855, "def eu011_heat_recovery"), "zero while the CHP units idle"),
     ("oxygen carrier (chemical looping)", "-", "-", "n/a (standalone estimate)", (G, 984, "def oxygen_carrier_circulation_estimate"), "no stream enters or leaves the balance"),
 ]
 

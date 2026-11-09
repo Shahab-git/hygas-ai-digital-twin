@@ -557,9 +557,10 @@ def test_the_two_constants_nothing_uses_are_still_unused(built):
 # (ga001 (16, 25, 35) -> (16, 25, 19), gc (0, 28, 60) -> (0, 28, 11), hb_remaining (1, 35, 47) -> (1, 35, 14), eu (2, 20, 24) -> (2, 20, 8), fe (5, 12, 18) -> (5, 12, 4), hb_wgs (2, 6, 26) -> (2, 6, 6),
 # tab1 (12, 4, 8) -> (12, 4, 7)). No string literal changed; PERSISTED_REGISTRY_STATED is unchanged.
 # Phase 1 task P1-12 (new hb010_separation names HB010_CONFIRMED_RECOVERY and says 'not DOK-ING-confirmed'): hb_remaining generic 35 -> 38, total 284 -> 287.
+# Phase 1 task P1-15 (new hb003_duty_estimate says "not DOK-ING-confirmed" twice, for the registry 5 kW): eu_utilities_chp generic 20 -> 22, total 287 -> 289.
 CONFIRMED_PIN = {
     "ga001_gasifier_model.py": (16, 25, 19), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 11),
-    "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 38, 14), "eu_utilities_chp.py": (2, 20, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
+    "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 38, 14), "eu_utilities_chp.py": (2, 22, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
     "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 7),
 }
 PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
@@ -571,7 +572,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 287 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 289 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 
@@ -719,7 +720,7 @@ def _assert_only_the_d2_phrases_differ(old, new, mode):
 def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes(runs, main_snap, mode, fixture_key):
     new = _ser(runs[mode])
     old = main_snap[fixture_key]
-    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123, "same persisted keys plus the two A1 keys, same count"          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
+    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency", "HB-003|DutyEstimate"} == set(old) and len(new) == 124, "same persisted keys plus the two A1 keys, same count"          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     new_wording = {k: v for k, v in new.items() if k.startswith(_d2_wording.ENTRIES)}
     _assert_only_the_d2_phrases_differ(old, new, mode)
     # the one deliberate text change is really there (and only in the entries that can carry it)
@@ -820,7 +821,7 @@ def test_the_runtime_shrink_guard_accepts_the_persisted_set(runs, main_snap):
     spec.loader.exec_module(mod)
     stored = [tuple(k.split("|", 1)) for k in main_snap["default|20"]]
     new = list(runs["default"])
-    assert set(stored) | {("GA-001-INPUT", "gasifying_agent"), ("GA-001", "AgentConsistency")} == set(new) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
+    assert set(stored) | {("GA-001-INPUT", "gasifying_agent"), ("GA-001", "AgentConsistency"), ("HB-003", "DutyEstimate")} == set(new) and len(new) == 124          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all
     assert mod.check_shrink(stored, new) is None
     assert mod.check_shrink(stored, new[:100]) is not None, "the guard itself is live: a persisted set that lost 21 keys is refused"
 

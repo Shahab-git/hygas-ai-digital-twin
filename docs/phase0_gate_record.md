@@ -137,6 +137,8 @@ Conditions that apply to all five (stated by Claude when the list was offered; t
 | G5-14 | Disposition of A1 and A4.1 | recorded (section 3) |
 | G5-15 | In-repo gate record | this document, once accepted |
 
+Task P1-15 (authorised in section 3e): `("HB-003","DutyEstimate")` is published as Estimated next to the registry 5 kW; EU-008 already published its Estimated recommendation beside the registry 20 kW, so it needed no code change. Persisted keys 123 to 124; no old entry moved; the registry is untouched.
+
 ## 5. RFI #2 status
 
 - DOK-ING's first RFI (17 questions) was answered earlier (`data/dokink_rfi_answers.md`).

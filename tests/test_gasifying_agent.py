@@ -166,7 +166,7 @@ def test_the_default_agent_leaves_every_old_persisted_entry_unchanged(fake):
         old = json.loads(fh.read().decode("utf-8"))["default|20"]
     with patched_supabase(fake):
         new = _ser(t1.build_live_snapshot(20)[0])
-    assert set(new) - set(old) == NEW_KEYS and set(old) - set(new) == set() and len(old) == 121
+    assert set(new) - set(old) == NEW_KEYS | {"HB-003|DutyEstimate"} and set(old) - set(new) == set() and len(old) == 121
     expected = _d2_wording.forward(old)                        # the reworded notes of tests/_d2_wording.py applied to the stored fixture
     bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL and _same(expected[k], new[k]) is not True}
     assert bad == {}, bad

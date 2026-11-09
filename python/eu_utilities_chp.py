@@ -726,6 +726,48 @@ def eu008_recommended_capacity_estimate(get_input):
     }
 
 
+HB003_DUTY_OPEN_QUESTION = (
+    "Which basis does HB-003's registry 'Design heat duty' (5 kW) refer to (flow, temperatures, gas side or water side), and what is the installed unit's rating? "
+    "The model's two independent duties (gas side, water side) both exceed it."
+)
+
+
+def hb003_duty_estimate(get_input):
+    """HB-003 duty rating Estimate (Phase 1 task P1-15, owner decision 2026-11-09) -- a SEPARATE, ADDITIVE entry, same pattern as EU-008's above.
+    Does NOT alter HB-003's own registry 'Design heat duty' (5 kW, Unverified (registry), not DOK-ING-confirmed) nor ('HB-003','HeatExchanger').
+
+    Value: the LARGER of the model's two duties (gas side Q_hot_side_kW, water side Q_cold_side_kW) times 1 + EU008_SIZING_MARGIN_FRACTION (the same Assumed
+    15 % margin). It is a pure function of the current cycle's HB-003 duties (no running peak, unlike EU-008, because HB-003 has no operating-envelope sweep here).
+    The two sides are independent calculations that do not agree with each other or with the registry; taking the larger is a sizing convention, not a
+    finding about which side is right. Replace with the installed rating when DOK-ING states it."""
+    hx = get_input(("HB-003", "HeatExchanger"))["value"]
+    hot_kw, cold_kw = hx["Q_hot_side_kW"], hx["Q_cold_side_kW"]
+    duty_kw = max(hot_kw, cold_kw)
+    rating_kw = duty_kw * (1.0 + EU008_SIZING_MARGIN_FRACTION)
+    rng = _engineering_range(rating_kw)
+    return {
+        "value": {
+            "actual_dokking_value": "Unverified (registry), not DOK-ING-confirmed -- HB-003 'Design heat duty' 5 kW (basis not stated)",
+            "digital_twin_engineering_baseline": f"approximately {rng[0]:.0f}-{rng[1]:.0f} kW",
+            "digital_twin_engineering_baseline_range_kw": rng,
+            "status_of_baseline": "Internal-model-derived",
+            "recommended_duty_kw": rating_kw, "larger_side_duty_kw": duty_kw,
+            "hot_side_kw": hot_kw, "cold_side_kw": cold_kw, "margin_fraction": EU008_SIZING_MARGIN_FRACTION,
+            "source_basis": "max(gas-side duty, water-side duty) of ('HB-003','HeatExchanger'), calculated by this project's own model from Unverified (registry) inputs, x the Assumed sizing margin of EU-008's estimate",
+            "real_open_question": HB003_DUTY_OPEN_QUESTION,
+        },
+        "status": ps.STATUS_ESTIMATED,
+        "model": "eu_utilities_chp.hb003_duty_estimate",
+        "inputs": [("HB-003", "HeatExchanger")],
+        "validation_basis": ps.VALIDATION_ENGINEERING_CORRELATION,
+        "confidence_note": (
+            f"Estimated (Phase 1 task P1-15): larger of gas side {hot_kw:.2f} kW and water side {cold_kw:.2f} kW x {1.0 + EU008_SIZING_MARGIN_FRACTION:.2f} = {rating_kw:.2f} kW "
+            f"(approximately {rng[0]:.0f}-{rng[1]:.0f} kW). Registry 'Design heat duty' 5 kW (Unverified (registry), basis not stated) is untouched. "
+            f"A sizing convention, not a validated rating; replace with the installed rating."
+        ),
+    }
+
+
 # ============================================================================
 # EU-009 -- Electrical Metering (Grid balance)
 # ============================================================================
@@ -895,6 +937,10 @@ def register_eu_chain(engine):
         ("EU-008", "RecommendedCapacityEstimate"), eu008_recommended_capacity_estimate, unit="kW dict",
         depends_on=[("EU-008", "CoolingSupply")],
         lagged_depends_on=[("EU-008", "RecommendedCapacityEstimate")],
+    )
+    engine.register_model(
+        ("HB-003", "DutyEstimate"), hb003_duty_estimate, unit="kW dict",
+        depends_on=[("HB-003", "HeatExchanger")],
     )
     engine.register_model(
         ("EU-009", "GridBalance"), eu009_grid_balance, unit="kW dict",

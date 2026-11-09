@@ -85,7 +85,7 @@ def _old(key):
 def test_every_persisted_entry_equals_origin_main_and_the_key_count_is_unchanged(fake, mode, key):
     old = _old(key)
     new = _live(fake, mode)
-    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all; every OLD entry is still compared below
+    assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency", "HB-003|DutyEstimate"} == set(old) and len(new) == 124          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all; every OLD entry is still compared below
     expected = _expected(old)
     text = json.dumps(expected)
     assert all(n in text for n, _ in _d2_wording.PAIRS), "the mapping is not vacuous: each of the four new phrases is in the expectation"
