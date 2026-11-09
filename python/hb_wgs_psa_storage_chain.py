@@ -23,25 +23,25 @@ convention established in ga001_gasifier_model.py / gc_gas_cleaning_chain.py):
   - HB-004's own remark: "Inlet temperature (design) = 220 degC ... Matches
     HB-005's hot-side outlet directly." HB-005 (Steam Generator) has no
     hot-side/cold-side terminology anywhere in its own data. HB-003 (Heat
-    Exchanger)'s own Confirmed "Hot side outlet temperature = 220 degC" is
+    Exchanger)'s own registry-stated "Hot side outlet temperature = 220 degC" is
     the exact, real match -- this is what HB-004's live inlet is actually
     wired to below (CLAUDE.md item 15).
   - HB-005's own "Heat source" VALUE field: "Preheated feed water from
     HB-005 (150 degC) + supplementary heat..." -- a literal self-reference
     (HB-005 citing itself). HB-005's OWN REMARKS field on the SAME row
     correctly says "Closes the loop with HB-003 directly," and HB-003's own
-    Confirmed "Cold side outlet temperature = 150 degC" is the exact match
+    registry-stated "Cold side outlet temperature = 150 degC" is the exact match
     -- this is what HB-005's live preheat input is actually wired to below
     (CLAUDE.md item 20).
 
-REAL, CONFIRMED THERMAL-INTEGRATION LOOP this module wires together, read
+REAL, registry-stated THERMAL-INTEGRATION LOOP this module wires together, read
 directly from data/equipment_registry.json, not assumed: HB-001 (HTS)
 400 degC outlet -> HB-003 hot-side inlet 400 degC -> HB-003 hot-side outlet
 220 degC -> HB-004 (LTS) inlet 220 degC (corrected from the mislabel
 above); HB-003 cold-side inlet 20 degC (ambient BFW) -> HB-003 cold-side
 outlet 150 degC -> HB-005 preheat input 150 degC (corrected from the
-mislabel above) -> HB-005 produces steam at the Confirmed 4:1 steam-to-CO
-molar ratio (matching HB-002's own confirmed ratio exactly).
+mislabel above) -> HB-005 produces steam at the registry-stated 4:1 steam-to-CO
+molar ratio (matching HB-002's own registry-stated ratio exactly).
 
 THE POST-WGS FULL-COMPOSITION MASS BALANCE, new adapter work (NOT a change
 to kinetics.py, which only ever returns a conversion fraction X): standard
@@ -55,7 +55,7 @@ discipline as ga001_gasifier_model.py's own verify_atom_balance().
 
 PSA's OWN COMPOSITION BASIS, checked before assuming it: psa.py's own
 default arguments (y_CO2=0.35, y_CH4=0.03, y_CO=0.042, y_N2=0.028) sum to
-0.45, implying a 0.55 H2 balance -- EXACTLY matching HB-006's own Confirmed
+0.45, implying a 0.55 H2 balance -- EXACTLY matching HB-006's own registry-stated
 "Feed gas H2 content = 55 vol%". This confirms psa.py's own composition
 convention is a DRY-basis (post excess-steam-knockout) mole fraction at
 the PSA's own inlet, modeled here as a knockout step analogous to GC-004's
@@ -93,16 +93,16 @@ R_GAS_CONSTANT = 8.314          # J/mol.K -- same value kinetics.py's own R alre
 M_H2 = 2.016                     # g/mol, IUPAC standard atomic weight x2
 CP_WATER_KJ_KGK = 4.186          # standard liquid-water specific heat capacity
 
-# HB-002's/HB-005's own Confirmed steam-to-CO molar ratio (4:1) -- read
+# HB-002's/HB-005's own registry-stated steam-to-CO molar ratio (4:1) -- read
 # directly, matched exactly between the two items' own registry data.
 STEAM_TO_CO_MOLAR_RATIO = 4.0
-# HB-001's/HB-002's own Confirmed reactor conditions.
+# HB-001's/HB-002's own registry-stated reactor conditions.
 HTS_INLET_TEMPERATURE_C = 350.0
 HTS_GHSV = 2000.0
-# HB-004's own Confirmed reactor conditions (inlet temperature corrected
+# HB-004's own registry-stated reactor conditions (inlet temperature corrected
 # per the HB-004/HB-005 mislabel above -- see module docstring).
 LTS_GHSV = 2000.0
-# HB-003's own Confirmed hot/cold-side temperatures.
+# HB-003's own registry-stated hot/cold-side temperatures.
 HB003_HOT_INLET_C = 400.0     # = HB-001's own registry-stated [Unverified (registry)] outlet
 HB003_HOT_OUTLET_C = 220.0    # = HB-004's own real inlet (corrected)
 HB003_COLD_INLET_C = 20.0     # ambient BFW, registry-stated [Unverified (registry)]
@@ -115,12 +115,12 @@ COMPRESSOR_SUCTION_BAR_A = 8.0         # 7 bar(g) + ~1 atm, HB-012 'Inlet pressu
 COMPRESSOR_DISCHARGE_BAR_A = 701.0     # bar(a): DOK-ING RFI 8 (data/dokink_rfi_answers.md:35-36) states 350/700 bar with no gauge/absolute basis; bar(g) is the registry's designation and the +1 bar offset (atm taken as 1 bar) is this project's assumption [ledger: Confirmed for the stated 700 bar magnitude only]
 # Polytropic exponent -- ASSUMED, a real, standard, citable value for a
 # well-intercooled multistage reciprocating/diaphragm compressor (HB-012's
-# own Confirmed "4 stages" + "Interstage water/air cooling"); n=1.3 is a
+# own registry-stated "4 stages" + "Interstage water/air cooling"); n=1.3 is a
 # commonly-cited representative value for this equipment class (closer to
 # isothermal than the pure adiabatic n=gamma~1.4 for H2, reflecting real
 # intercooling), NOT derived from this specific compressor's own data.
 COMPRESSOR_POLYTROPIC_N = 1.3
-# HB-013's own Confirmed storage capacity.
+# HB-013's own registry-stated storage capacity.
 H2_STORAGE_CAPACITY_KG = 50.0
 # Assumed, stated modeling choice: this project's Phase 0 update-cycle has
 # no defined wall-clock duration -- one cycle is treated as one hour for
@@ -140,10 +140,10 @@ ASSUMED_HOURS_PER_CYCLE = 1.0
 def hb001_hts_conversion(get_input):
     """Thin adapter. kinetics.hts_conversion() itself: zero code change.
     y_CO_in comes from GC-013's real live dry CO mole fraction (task
-    requirement 1) -- steam_to_CO comes from HB-002's own Confirmed 4:1
+    requirement 1) -- steam_to_CO comes from HB-002's own registry-stated 4:1
     molar ratio (a real design constant, not part of GC-013's own gas
     composition -- see module docstring for why this distinction matters).
-    T_K and GHSV come from HB-001's/HB-002's own Confirmed design values."""
+    T_K and GHSV come from HB-001's/HB-002's own registry-stated design values."""
     gc013 = get_input(("GC-013", "Gas"))["value"]
     y_CO_in = gc013["CO_mol_pct_dry"] / 100.0
     T_K = HTS_INLET_TEMPERATURE_C + 273.15
@@ -170,17 +170,17 @@ def hb001_hts_conversion(get_input):
 # HB-005 is built and registered FIRST -- its own live feedwater/steam mass
 # flow is what HB-003's own cold-side energy-balance cross-check needs,
 # per the roadmap's own explicit sequencing note (Part 1.5). HB-003's own
-# hot/cold-side TEMPERATURES are all separately Confirmed static values
+# hot/cold-side TEMPERATURES are all separately registry-stated static values
 # (no energy balance needed to know them); what genuinely gets computed is
 # the DUTY, cross-checked from both sides once HB-005's flow exists.
 
 def hb005_steam_generation(get_input):
     """HB-005's own real mass-balance model (task requirement 3): steam
     (=feedwater) mass flow computed LIVE from HB-001/002's own live CO
-    molar flow x HB-002's own Confirmed 4:1 steam-to-CO ratio -- replacing
+    molar flow x HB-002's own registry-stated 4:1 steam-to-CO ratio -- replacing
     the static '45 kg/h' registry figure (itself derived the same way, at
     the original design point) with a live-recomputed one. Preheat input:
-    HB-003's own Confirmed 150 degC cold-side outlet (corrected from
+    HB-003's own registry-stated 150 degC cold-side outlet (corrected from
     HB-005's own self-reference mislabel -- module docstring)."""
     hts = get_input(("HB-001", "HTS"))["value"]
     gc013 = get_input(("GC-013", "Gas"))["value"]
@@ -208,9 +208,9 @@ def hb005_steam_generation(get_input):
 def hb003_heat_exchanger(get_input):
     """HB-003's own real engineering calc: gas-side (hot-side) sensible-
     heat duty from the live WGS-reactor gas flow/composition and its own
-    Confirmed 400->220 degC temperature drop, cross-checked (not forced to
+    registry-stated 400->220 degC temperature drop, cross-checked (not forced to
     match) against the water-side (cold-side) duty using HB-005's own now-
-    live feedwater flow and its own Confirmed 20->150 degC rise. Needs
+    live feedwater flow and its own registry-stated 20->150 degC rise. Needs
     HB-005's live flow to exist first -- the real sequencing dependency the
     roadmap's own Part 1.5 names, not missing data."""
     gc013 = get_input(("GC-013", "Gas"))["value"]
@@ -290,7 +290,7 @@ def verify_wgs_atom_balance(gc013_value, X_hts, X_lts_relative, tol=1e-9):
 def hb004_lts_conversion(get_input):
     """Thin adapter. kinetics.lts_conversion() itself: zero code change.
     y_CO_in comes from HB-001/002's own live HTS outlet -- HB-004's inlet
-    TEMPERATURE is HB-003's own Confirmed 220 degC hot-side outlet
+    TEMPERATURE is HB-003's own registry-stated 220 degC hot-side outlet
     (corrected from HB-004's own mislabel citing 'HB-005's hot-side
     outlet' -- module docstring)."""
     hts = get_input(("HB-001", "HTS"))["value"]

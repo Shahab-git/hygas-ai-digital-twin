@@ -12,7 +12,7 @@ Cleaning train, and every other Phase 1 item remain exactly as Phase 0 left
 them.
 
 A MAJOR FINDING, surfaced here rather than smoothed over: GA-001's own real,
-Confirmed registry data (data/equipment_registry.json) states its actual
+Registry data (data/equipment_registry.json) states its actual
 technology as "Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4
 chemical looping oxygen carrier" -- NOT a conventional simple air-blown
 gasifier, which is what the engineering plan's own Section 2.2 language
@@ -24,8 +24,8 @@ oxidation for autothermal heat; majority of gasification still driven by
 steam reactions"), alongside a separate steam injection (15 kg/h at the
 original 37.5 kg/h design point, i.e. exactly a 0.4 kg steam/kg feed ratio
 -- matching uncertainty.py's own steam_to_feed_ratio point value exactly).
-What this model DOES capture, honestly: the real, confirmed ER-based air
-partial-oxidation contribution and the real, confirmed steam addition, both
+What this model DOES capture, honestly: the real, modelled ER-based air
+partial-oxidation contribution and the real, modelled steam addition, both
 closed with a standard elemental/WGS-equilibrium stoichiometry. What this
 model explicitly does NOT capture, stated as a real limitation rather than
 ignored: the Fe2O3/Fe3O4 oxygen carrier's own separate reduction/
@@ -45,7 +45,7 @@ the "inventing a figure" this paragraph warns against: it is a clearly-
 tagged Estimated RANGE built from a REAL, directly-reported oxygen-carrier-
 to-fuel mass ratio (18.4-44.7x, Graf et al. 2024, Energy & Fuels 38(19),
 18660-18673 -- a real 1 MWth chemical-looping GASIFICATION pilot), scaled
-to GA-001's own confirmed feed rate, cross-checked (not derived from) this
+to GA-001's own live feed rate, cross-checked (not derived from) this
 project's own O2 demand and the redox couple's own real stoichiometry --
 with an explicit ACTUAL/DOK-ING VALUE field stating none is confirmed, and
 an honest, reported consistency-check verdict (see its own docstring for
@@ -135,7 +135,7 @@ literature ultimate-analysis values below are UNCHANGED. What changed:
 _input_feedstock_composition() now reads DOK-ING's confirmed ranges LIVE,
 every run (design_basis.get_feedstock_composition_ranges(), never a
 hardcoded copy), and cross-validates the existing literature figures (plus
-the separately-Confirmed ASH_FRACTION) against them
+the separately stated ASH_FRACTION (Assumed, inside DOK-ING's range)) against them
 (feedstock_composition_dokink_cross_check()) -- HONEST RESULT: every
 figure already satisfies DOK-ING's stated constraints (Carbon 50%>45%,
 Hydrogen 6%>5%, Ash 10% inside [5,15]%), so the composition VALUES this
@@ -199,7 +199,7 @@ assert abs(
 ) < 1e-9, "REGRESSION: representative feedstock mass fractions no longer sum to 1.0."
 
 # Ash fraction -- NOT re-assumed here. Reused directly from
-# gasifier_mass_balance.py's own already-real, already-Confirmed constant
+# gasifier_mass_balance.py's own already-real, registry-stated constant
 # (GA-005's own registry data: "10% ash content, dry basis"), read, not
 # re-typed -- avoids introducing a second, inconsistent ash figure. This is
 # a SEPARATE module-level constant, not part of the "feedstock_composition"
@@ -224,7 +224,7 @@ CARBON_CONVERSION_EFFICIENCY_RANGE = (0.85, 0.98)
 CH4_CARBON_FRACTION = 0.05
 CH4_CARBON_FRACTION_RANGE = (0.02, 0.08)
 
-# GA-001's own Confirmed registry value (data/equipment_registry.json,
+# GA-001's own registry value (data/equipment_registry.json,
 # "Operating temperature (typical)" = 950 degC) -- read directly, not
 # re-derived, used for the water-gas-shift equilibrium constant below.
 GA001_OPERATING_TEMPERATURE_C = 950.0
@@ -623,7 +623,7 @@ def _input_feedstock_composition(get_input):
 
 
 def _input_operating_temperature_c(get_input):
-    """GA-001's own CONFIRMED registry value (data/equipment_registry.json,
+    """GA-001's own registry value (data/equipment_registry.json,
     'Operating temperature (typical)' = 950 degC), read directly, not
     re-derived or separately assumed. Tagged Assumed for the same reason as
     the feed-rate placeholder (see module docstring): plant_status.py's
@@ -724,7 +724,7 @@ def _moisture_water_moles(get_input):
     zero effect, by construction" convention already established for the
     HB-009 recycle in Phase 1d) and returns the residual water still
     physically present in the "dry" feed reaching GA-001 (FE-005's own
-    outlet moisture, ~1%, per its own Confirmed target) as extra H2O mol/h
+    outlet moisture, ~1%, per its own registry-stated target) as extra H2O mol/h
     -- the same physical role the external process steam already plays,
     folded into the SAME water/steam pool, not a separate parallel
     calculation. Returns 0.0, gracefully, if FE-005 isn't registered or
@@ -881,7 +881,7 @@ def ga001_tar_content(get_input):
 
 # =============================================================================
 # Missing Parameter Resolution Protocol candidate (docs/master_open_questions.md
-# item 5): GA-001's own Confirmed registry data states its real technology is
+# item 5): GA-001's own registry data states its real technology is
 # "Bubbling Fluidized Bed (BFB), steam-blown, Fe2O3/Fe3O4 chemical looping
 # oxygen carrier" -- but NO circulation rate, carrier inventory, or per-pass
 # conversion-degree figure exists anywhere in this project (RE-checked
@@ -894,7 +894,7 @@ def ga001_tar_content(get_input):
 # Evidence hierarchy walked top-down, not assumed empty:
 #   Level 1 (Confirmed): NONE.
 #   Level 2 (Internal-model-derived): no direct circulation figure, but this
-#     project's OWN already-confirmed oxygen demand (ER x stoichiometric O2 --
+#     project's OWN already-modelled oxygen demand (ER x stoichiometric O2 --
 #     the SAME real quantity ga001_model() itself already computes for the
 #     partial-oxidation air split) is reused below, NOT as the primary
 #     derivation (see Level 3/5 below) but as an independent CONSISTENCY
@@ -914,7 +914,7 @@ def ga001_tar_content(get_input):
 #     straw pellets: 6,478/352.5 = 18.4x), a genuine carrier-to-fuel MASS
 #     RATIO range of 18.4-44.7, not a single number lifted from one table.
 #   HONEST CAVEATS, not smoothed over (checked and found real, material
-#   differences from GA-001's own confirmed technology): (a) Graf et al.'s
+#   differences from GA-001's own registry-stated technology): (a) Graf et al.'s
 #   own oxygen carrier is Norwegian ILMENITE (modeled as Fe2O3+TiO2+FeTiO3),
 #   NOT the pure Fe2O3/Fe3O4 couple GA-001's own registry confirms -- a
 #   different, TiO2-diluted carrier chemistry with its own, different
@@ -941,7 +941,7 @@ def ga001_tar_content(get_input):
 #   directly retrieve its own specific circulation-rate figure (paywalled).
 # CONSISTENCY CHECK (Section 4, required before accepting): the Graf et al.
 # ratio, scaled to GA-001's own feed rate, is checked against this project's
-# OWN confirmed O2 demand and Fe2O3/Fe3O4's own REAL, computed theoretical
+# OWN modelled O2 demand and Fe2O3/Fe3O4's own REAL, computed theoretical
 # oxygen transport capacity (Ro -- direct stoichiometry of 3 Fe2O3 -> 2
 # Fe3O4 + 1/2 O2, the SAME redox couple GA-001's own registry confirms, not
 # a deeper reduction to FeO/Fe) -- see oxygen_carrier_circulation_estimate()
@@ -970,7 +970,7 @@ OXYGEN_CARRIER_RO_MASS_FRACTION = (0.5 * M_O2) / (3.0 * M_FE2O3)  # = 0.03340 (3
 # for three biomass feedstocks in a 1 MWth chemical-looping gasification
 # pilot (ilmenite carrier, dual-CFB) -- see module-level docstring above for
 # the full citation and the honest caveats on transferring this ratio to
-# GA-001's own, different (Fe2O3/Fe3O4, BFB) confirmed technology.
+# GA-001's own, different (Fe2O3/Fe3O4, BFB) registry-stated technology.
 OXYGEN_CARRIER_TO_FUEL_RATIO_RANGE = (18.4, 44.7)
 
 # A per-pass carrier utilization outside this window is flagged (not
@@ -994,14 +994,14 @@ def oxygen_carrier_circulation_estimate(get_input):
     composition = get_input(("GA-001-INPUT", "feedstock_composition"))["value"]
 
     # --- PRIMARY DERIVATION: Level 3/5, Graf et al. (2024)'s own real carrier-to-fuel
-    # ratio, scaled directly to GA-001's own live, confirmed dry feed rate. ---------
+    # ratio, scaled directly to GA-001's own live dry feed rate. ---------
     ratio_lo, ratio_hi = OXYGEN_CARRIER_TO_FUEL_RATIO_RANGE
     circulation_lo_kg_h = ratio_lo * feed_rate
     circulation_hi_kg_h = ratio_hi * feed_rate
     baseline_range = (round(circulation_lo_kg_h, 0), round(circulation_hi_kg_h, 0))
 
     # --- CONSISTENCY CHECK (Section 4): does this baseline make sense against GA-001's
-    # own confirmed O2 demand and Fe2O3/Fe3O4's own real stoichiometry? --------------
+    # own modelled O2 demand and Fe2O3/Fe3O4's own real stoichiometry? --------------
     x, y, z, n_C_per_kg = elemental_atomic_ratios(
         composition["C"], composition["H"], composition["O"], composition["N"], ASH_FRACTION,
     )

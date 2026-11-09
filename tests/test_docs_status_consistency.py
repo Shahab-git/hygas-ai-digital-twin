@@ -126,10 +126,10 @@ def test_the_document_no_longer_says_registry_rows_are_confirmed_by_default():
 # ------------------------------------------------------------------ P0-CLOSE C5: docstrings and comments of the engine modules against the ledger
 
 ITEM_TAG = re.compile(r"\b([A-Z]{2}-\d{3})\b")
-# {file: number of REGISTRY-STATED mentions whose named items have no Confirmed value anywhere}; 91 on 2026-11-04 (origin/main 5dfe3bc + P0-CLOSE C3). Accepted limitation: not reworded in this task.
+# {file: number of REGISTRY-STATED mentions whose named items have no Confirmed value anywhere}; 91 on 2026-11-04 (origin/main 5dfe3bc + P0-CLOSE C3), 15 after Phase 1 task P1-02 (2026-11-09): the docstring and comment lines were reworded; what remains is 15 string literals (self-test prints, assertion messages, one note f-string), not touched in this step.
 LEDGER_CONTRADICTION_PIN = {
-    "python/balance_audit.py": 1, "python/eu_utilities_chp.py": 11, "python/fe_feed_handling.py": 4, "python/ga001_gasifier_model.py": 7, "python/gc_gas_cleaning_chain.py": 35,
-    "python/hb_remaining_chain.py": 18, "python/hb_wgs_psa_storage_chain.py": 13, "python/tab1_integration.py": 2,
+    "python/balance_audit.py": 1, "python/eu_utilities_chp.py": 2, "python/gc_gas_cleaning_chain.py": 8,
+    "python/hb_remaining_chain.py": 1, "python/hb_wgs_psa_storage_chain.py": 2, "python/tab1_integration.py": 1,
 }
 
 
@@ -173,7 +173,7 @@ def test_the_items_that_have_a_confirmed_value_are_exactly_these(item_status):
 def test_the_ledger_contradictions_in_the_engine_comments_are_the_pinned_ones(item_status):
     found = ledger_contradictions(lc.confirmed_mentions(), item_status)
     assert _counts(found) == LEDGER_CONTRADICTION_PIN, _counts(found)
-    assert len(found) == sum(LEDGER_CONTRADICTION_PIN.values()) == 91
+    assert len(found) == sum(LEDGER_CONTRADICTION_PIN.values()) == 15
     assert all(m["where"] in ("docstring", "comment", "string") for m in found)
 
 

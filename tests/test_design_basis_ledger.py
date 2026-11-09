@@ -552,10 +552,13 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
 # P0-CLOSE C3 lowered eu_utilities_chp once more, (2, 20, 26) -> (2, 20, 24) and 436 -> 434 lines: the two docstring lines (EU-008 "Confirmed 20kW rating", ~58kW paragraph) now say registry-stated,
 # Unverified (registry), scoped by the registry remark to EU-004 jacket cooling. ai_automation_layer.py is not in CONFIRMED_SCOPE, so its three reworded lines move no pin.
 # G5-12 wording fix lowered ga001_gasifier_model by one REGISTRY-STATED line, (16, 25, 36) -> (16, 25, 35) and 434 -> 433 lines: a comment that called DOK-ING's ash range 'confirmed' and 'cross-validated' now says 'range-checked ... stated'.
+# Phase 1 task P1-02 lowered seven files ON PURPOSE (433 -> 284 lines; classes 44/160/229 -> 44/160/80): 149 docstring / comment lines that called a registry-stated value Confirmed now say "registry-stated"
+# (ga001 (16, 25, 35) -> (16, 25, 19), gc (0, 28, 60) -> (0, 28, 11), hb_remaining (1, 35, 47) -> (1, 35, 14), eu (2, 20, 24) -> (2, 20, 8), fe (5, 12, 18) -> (5, 12, 4), hb_wgs (2, 6, 26) -> (2, 6, 6),
+# tab1 (12, 4, 8) -> (12, 4, 7)). No string literal changed; PERSISTED_REGISTRY_STATED is unchanged.
 CONFIRMED_PIN = {
-    "ga001_gasifier_model.py": (16, 25, 35), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 60),
-    "hb_wgs_psa_storage_chain.py": (2, 6, 26), "hb_remaining_chain.py": (1, 35, 47), "eu_utilities_chp.py": (2, 20, 24), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 18),
-    "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 8),
+    "ga001_gasifier_model.py": (16, 25, 19), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 11),
+    "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 35, 14), "eu_utilities_chp.py": (2, 20, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
+    "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 7),
 }
 PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
 # blowdown figure is separately confirmed", "not Confirmed"), 2 negations ("is CONFIRMED ... anywhere", "not a DOK-ING/vendor-confirmed figure"), 2 questions that ask DOK-ING to confirm, one self-test assert
@@ -566,7 +569,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 433 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 284 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 

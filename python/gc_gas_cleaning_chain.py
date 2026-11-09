@@ -43,12 +43,12 @@ TWO GENUINE DATA GAPS, handled honestly rather than papered over:
      own dust removal therefore stays honestly `Missing / Cannot
      Calculate` at the inlet. GC-003's own dust chain does NOT start from
      GC-001's (Missing) output -- it starts from GC-003's OWN separately,
-     independently Confirmed registry value ("Dust loading inlet (max) =
+     independently stated registry value ("Dust loading inlet (max) =
      2 g/Nm3"), used here as a real, standalone reference point, not
      derived from a Missing upstream figure.
-  2. GC-003's own computed outlet dust loading (from its Confirmed 2 g/Nm3
-     inlet and its own Confirmed >95% efficiency) does NOT exactly equal
-     GC-010's OWN separately, independently Confirmed inlet dust loading
+  2. GC-003's own computed outlet dust loading (from its registry-stated 2 g/Nm3
+     inlet and its own registry-stated >95% efficiency) does NOT exactly equal
+     GC-010's OWN separately, independently registry-stated inlet dust loading
      (300 mg/Nm3) -- a real, stated discrepancy in the registry's own
      data at two different stages, reported explicitly in this module's
      self-test rather than silently reconciled or hidden, the same
@@ -63,7 +63,7 @@ REAL EQUATIONS USED, cited (task requirement 1):
     that do not materially shift the BULK gas-phase mole fractions.
   - GC-004 (Quench Tower): (a) water condensation -- GA-001's own already-
     computed wet-vs-dry mole split (Phase 1a) is used directly: quenching
-    from 860 degC to the Confirmed 65 degC outlet target condenses
+    from 860 degC to the registry-stated 65 degC outlet target condenses
     essentially all of the process water vapor out of the gas phase (a
     real, standard quench-tower design outcome -- the process water's dew
     point at these concentrations is well above 65 degC), so the gas
@@ -78,18 +78,18 @@ REAL EQUATIONS USED, cited (task requirement 1):
     cannot reach, stated as such).
   - Tar/H2S/HCl/dust removal-efficiency stages (GC-003, GC-007, GC-008,
     GC-009, GC-010, GC-012): efficiency = (inlet - outlet)/inlet, applied
-    to a REAL Confirmed inlet where one exists at that specific stage --
+    to a REAL registry-stated inlet where one exists at that specific stage --
     the exact same exact-calculation pattern
     python/equipment_engineering_estimates.py's own GC-007/GC-010 static
     fills already established and cross-checked (this module's self-test
     cross-checks against those exact existing numbers).
   - Wet-scrubber blowdown (GC-007/008/009): circulating liquid rate =
-    L/G ratio (Confirmed) x gas flow; blowdown = circulating rate x
-    GC-005's own Confirmed blowdown-to-circulation ratio (0.05/0.5 = 10%)
+    L/G ratio (registry-stated) x gas flow; blowdown = circulating rate x
+    GC-005's own registry-stated blowdown-to-circulation ratio (0.05/0.5 = 10%)
     -- the ONLY such ratio confirmed anywhere in this gas-cleaning train,
     reused rather than a separately invented figure, tagged Assumed.
   - Cumulative pressure drop / fan hydraulic power (GC-013): sum of every
-    stage's own Confirmed design pressure-drop figure; hydraulic power =
+    stage's own registry-stated design pressure-drop figure; hydraulic power =
     delta_P_total * Q (standard fan/blower hydraulic-power equation),
     cross-checked (not forced to match) against GC-013's own Confirmed
     1.5 kW motor rating and its own remark citing "~115+ mbar" cumulative
@@ -105,8 +105,8 @@ from . import plant_status as ps
 # lookup this environment can perform, stated as an explicit convention.
 CP_MEAN_J_MOLK = {"H2": 29.3, "CO": 30.5, "CO2": 46.5, "CH4": 55.0, "N2": 30.6, "H2O": 37.5}
 
-# GC-005's own Confirmed blowdown-to-circulation ratio (0.05 m3/h blowdown
-# / 0.5 m3/h water consumption = 10%) -- the only such ratio confirmed
+# GC-005's own registry-stated blowdown-to-circulation ratio (0.05 m3/h blowdown
+# / 0.5 m3/h water consumption = 10%) -- the only such ratio stated
 # anywhere in this gas-cleaning train; reused for GC-007/008/009's own
 # blowdown estimate rather than a separately invented figure.
 QUENCH_BLOWDOWN_TO_CIRCULATION_RATIO = 0.05 / 0.5
@@ -130,7 +130,7 @@ def _cp_mix_avg(dry_fractions):
 # ============================================================================
 
 def gc001_particulate(get_input):
-    """Primary cyclone particulate removal. GC-002's own Confirmed
+    """Primary cyclone particulate removal. GC-002's own registry-stated
     'Collection efficiency (design) = >90% > d50' is this physical
     cyclone's real removal efficiency (shared-equipment pattern -- GC-002
     is GC-001's own pressure/instrumentation sub-item, engineering plan
@@ -169,10 +169,10 @@ def gc001_gas_passthrough(get_input):
 
 
 def gc001_temperature(get_input):
-    """GC-001's own Confirmed registry outlet temperature (880 degC) --
+    """GC-001's own registry outlet temperature (880 degC) --
     static design value, not predicted from an energy balance (no
     conductive heat-loss model exists in this project for the transfer
-    piping/cyclone body). Same 'Confirmed design constant as live
+    piping/cyclone body). Same 'registry-stated design constant as live
     placeholder' treatment as GA-001's own operating-temperature input
     (Phase 1a) -- tagged Assumed, not Measured (plant_status.py reserves
     Measured for a real future sensor)."""
@@ -198,9 +198,9 @@ def gc003_gas_passthrough(get_input):
 
 
 def gc003_dust(get_input):
-    """GC-003's own Confirmed inlet dust loading (2 g/Nm3 = 2000 mg/Nm3),
+    """GC-003's own registry-stated inlet dust loading (2 g/Nm3 = 2000 mg/Nm3),
     used as a standalone real reference point (module docstring, gap 1) --
-    NOT derived from GC-001's own (Missing) output. GC-003's own Confirmed
+    NOT derived from GC-001's own (Missing) output. GC-003's own registry-stated
     '>95% collection efficiency > 10um' applied as an exact removal
     calculation."""
     inlet_mg_nm3 = 2000.0
@@ -232,7 +232,7 @@ def gc003_temperature(get_input):
 # ============================================================================
 
 def gc004_quench_gas(get_input):
-    """Quenching from 860 degC to the Confirmed 65 degC outlet target
+    """Quenching from 860 degC to the registry-stated 65 degC outlet target
     condenses essentially all of GA-001's own wet-basis process water out
     of the gas phase (module docstring, real equations section). The gas
     leaving GC-004 is modeled as GA-001's own DRY-basis composition/flow,
@@ -310,8 +310,8 @@ def gc004_cooling_duty(get_input):
 
 
 def gc005_blowdown(get_input):
-    """GC-005's own Confirmed 'Blowdown rate = 0.05 m3/h' -- static design
-    value, pass-through, same 'Confirmed constant as live placeholder'
+    """GC-005's own registry-stated 'Blowdown rate = 0.05 m3/h' -- static design
+    value, pass-through, same 'registry-stated constant as live placeholder'
     treatment used throughout this chain."""
     return {
         "value": 0.05, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
@@ -328,8 +328,8 @@ def gc006_tar_outlet(get_input):
     raw syngas tar-loading figure exists anywhere in this project --
     module docstring, gap 1; already established in
     equipment_engineering_estimates.py's own GC-006 decline). GC-006's
-    OWN OUTLET, however, IS a real, usable, Confirmed reference point --
-    correctly sourced from GC-007's own Confirmed 'Tar inlet concentration
+    OWN OUTLET, however, IS a real, usable, registry-stated reference point --
+    correctly sourced from GC-007's own registry-stated 'Tar inlet concentration
     (design) = 0.5 g/Nm3', NOT the mislabeled 'GC-008' reference GC-007's
     own remark actually cites (module docstring, mislabel correction 1)."""
     return {
@@ -364,7 +364,7 @@ def gc006_tar_inlet_missing(get_input):
 def gc007_tar(get_input):
     """Exact removal-efficiency calculation: efficiency = (inlet -
     outlet)/inlet, using GC-006's real outlet (above) as GC-007's real
-    inlet, and GC-007's own Confirmed outlet target (<50 mg/Nm3). The
+    inlet, and GC-007's own registry-stated outlet target (<50 mg/Nm3). The
     SAME exact-calc pattern and the SAME 90% figure
     equipment_engineering_estimates.py's own existing static fill already
     established -- cross-checked, not coincidentally similar."""
@@ -388,7 +388,7 @@ def gc007_tar(get_input):
 
 def gc007_blowdown(get_input):
     """Wet-scrubber blowdown, Assumed: circulating liquid = L/G (2 L/Nm3,
-    Confirmed) x gas flow; blowdown = circulating x GC-005's own Confirmed
+    registry-stated) x gas flow; blowdown = circulating x GC-005's own registry-stated
     blowdown-to-circulation ratio (module docstring, real equations)."""
     gas = get_input(("GC-004", "Gas"))["value"]
     flow_nm3_h = gas["dry_flow_nm3_h"]
@@ -506,7 +506,7 @@ def gc009_blowdown(get_input):
 # ============================================================================
 
 def gc010_dust(get_input):
-    """GC-010's own separately, independently Confirmed inlet (300 mg/Nm3)
+    """GC-010's own separately, independently registry-stated inlet (300 mg/Nm3)
     and outlet target (<5 mg/Nm3) -- exact-calc efficiency, the SAME
     pattern and SAME ~98.3% figure equipment_engineering_estimates.py's
     own existing static fill already established. Does NOT reconcile
@@ -539,7 +539,7 @@ def gc012_h2s_cos_polish(get_input):
     """Polishing removal, using GC-008's own computed H2S outlet as this
     stage's real inlet (GC-009/GC-010 do not remove H2S themselves --
     HCl-specific and dust-specific respectively), and GC-012's own
-    Confirmed outlet target (<0.1 ppm)."""
+    registry-stated outlet target (<0.1 ppm)."""
     h2s = get_input(("GC-008", "H2S"))["value"]
     inlet = h2s["outlet_ppm"]
     outlet_target = 0.1
@@ -563,7 +563,7 @@ def gc012_h2s_cos_polish(get_input):
 # GC-013 / GC-014 -- Gas Blower / ID Fan
 # ============================================================================
 
-# Each stage's own Confirmed design pressure drop (mbar) -- read directly
+# Each stage's own registry-stated design pressure drop (mbar) -- read directly
 # from the registry, summed for the cumulative-ΔP cross-check below.
 _STAGE_DELTA_P_MBAR = {
     "GC-002 (cyclone 1)": 20.0, "GC-003 (cyclone 2)": 30.0, "GC-006 (tar bed)": 40.0,
@@ -575,7 +575,7 @@ def gc013_gas_final(get_input):
     """Final cleaned-syngas flow/composition -- pass-through of GC-004's
     own gas composition/flow (GC-006 through GC-012 remove trace tar/H2S/
     HCl/dust, not bulk gas-phase species -- module docstring). This is
-    the item GC-013's own Confirmed 'Design gas flow rate = 50 Nm3/h...
+    the item GC-013's own registry-stated 'Design gas flow rate = 50 Nm3/h...
     matches the flow established through the entire gas cleaning train'
     describes."""
     upstream = get_input(("GC-004", "Gas"))
@@ -592,9 +592,9 @@ def gc013_gas_final(get_input):
 
 
 def gc013_fan_power(get_input):
-    """Cumulative pressure drop (sum of every stage's own Confirmed design
+    """Cumulative pressure drop (sum of every stage's own registry-stated design
     ΔP) and hydraulic fan power (P = deltaP * Q, standard fan-power
-    equation), cross-checked against GC-013's own Confirmed 1.5 kW motor
+    equation), cross-checked against GC-013's own registry-stated 1.5 kW motor
     rating and its own remark citing '~115+ mbar' cumulative train ΔP --
     NOT forced to match (module docstring, real equations)."""
     gas = get_input(("GC-013", "Gas"))["value"]
@@ -623,11 +623,11 @@ def gc013_fan_power(get_input):
 # GC-014 -- Gas Blower (Pressure)
 # ============================================================================
 
-# GC-014's own Confirmed design discharge/suction pressures (registry, GC-014)
+# GC-014's own registry-stated design discharge/suction pressures (registry, GC-014)
 # -- read directly, not estimated. Missing Parameter Resolution Protocol
 # candidate (docs/master_open_questions.md, Section 3 bucket reconciliation)
 # investigated and found to be a WIRING GAP, not a missing parameter -- both
-# figures were ALREADY Confirmed in the registry the whole time. NOT the same
+# figures were ALREADY stated in the registry the whole time. NOT the same
 # item as GC-013 (Flow/motor power) -- one physical fan/blower, two registry
 # rows, the same "one physical unit, two registry rows" convention already
 # established elsewhere in this project (e.g. EU-004 Gas Engine thermal vs.
@@ -635,24 +635,24 @@ def gc013_fan_power(get_input):
 GC014_DESIGN_DISCHARGE_MBAR_G = 50.0
 GC014_DESIGN_SUCTION_MBAR_G = -20.0
 
-# GA-002's own Confirmed "Operating pressure range 50-150 mbar(g)... Band
+# GA-002's own registry-stated "Operating pressure range 50-150 mbar(g)... Band
 # around the 100 mbar(g) typical value" -- used below ONLY as an independent
-# consistency check on GC-014's own Confirmed suction pressure, not as the
-# source of GC-014's own value (which is separately, directly Confirmed).
+# consistency check on GC-014's own registry-stated suction pressure, not as the
+# source of GC-014's own value (which is separately, directly registry-stated).
 GA002_TYPICAL_PRESSURE_MBAR_G = 100.0
 
 
 def gc014_blower_pressure(get_input):
-    """GC-014's own Confirmed design discharge (50 mbar(g)) and suction
+    """GC-014's own registry-stated design discharge (50 mbar(g)) and suction
     (-20 mbar(g)) pressures -- read directly, not derived or estimated
     (see the module-level constants' own docstring above for why this is a
     wiring gap, not a missing parameter). Cross-checked (Missing Parameter
     Protocol Section 4), not left unverified: GA-002's own Confirmed 100
     mbar(g) typical gasifier pressure, minus GC-013's own already-computed
     cumulative gas-cleaning-train pressure drop (gc013_fan_power()'s own
-    140.0 mbar sum of the six stages with their own Confirmed dP), implies
+    140.0 mbar sum of the six stages with their own registry-stated dP), implies
     a -40 mbar(g) suction pressure -- a real 20 mbar gap against GC-014's
-    own separately Confirmed -20 mbar(g), reported HONESTLY, not forced to
+    own separately registry-stated -20 mbar(g), reported HONESTLY, not forced to
     match: this project's own GC-013 self-test already independently
     flagged that its own 140.0 mbar computed sum exceeds the registry's
     own separately-stated '~115+ mbar' remark for the very same train, a
@@ -660,7 +660,7 @@ def gc014_blower_pressure(get_input):
     per-item registry figures were populated -- this is the SAME class of
     finding surfacing a second time via a different cross-check, not a new
     contradiction. Neither figure is edited to force a match (both stay
-    exactly as separately Confirmed)."""
+    exactly as separately registry-stated)."""
     fan = get_input(("GC-013", "Fan power"))["value"]
     cumulative_dp_mbar = fan["cumulative_dp_mbar"]
     implied_suction_mbar_g = GA002_TYPICAL_PRESSURE_MBAR_G - cumulative_dp_mbar
@@ -713,7 +713,7 @@ def gc014_blower_pressure(get_input):
 def gc015_condensate(get_input):
     """Sums the train's real wet-blowdown sources: GC-004 (condensed
     process water, Calculated) + GC-005 (recirculated quench blowdown,
-    Confirmed) + GC-007/008/009 (the three actual wet scrubbers'
+    registry-stated) + GC-007/008/009 (the three actual wet scrubbers'
     blowdowns, Assumed) -- module docstring, mislabel correction 2.
     Deliberately does NOT include GC-006 (dry adsorber, no liquid
     blowdown) or cite itself, unlike this item's own mislabeled remark."""
@@ -748,25 +748,25 @@ def gc015_condensate(get_input):
 # candidate (docs/master_open_questions.md item, GC-015). Level 1 (raw registry) re-checked, not
 # assumed empty: GC-015's own 8 filled registry parameters (tank volume, condensate flow rate,
 # level sensor, pH monitoring, pump spec, material, disposal route) genuinely include NO
-# temperature or pressure field -- confirmed still open, unlike GC-002/011/014. Level 2 (internal
+# temperature or pressure field -- checked, still open, unlike GC-002/011/014. Level 2 (internal
 # consistency) DOES have real material, checked before reaching for a generic ambient assumption:
-# each of the five inflow streams' own SOURCE equipment has an already-Confirmed operating
+# each of the five inflow streams' own SOURCE equipment has a registry-stated operating
 # temperature elsewhere in this project --
-#   GC-004 condensed process water: condenses out of the gas AT GC-004's own Confirmed 65 degC
+#   GC-004 condensed process water: condenses out of the gas AT GC-004's own registry-stated 65 degC
 #     outlet gas temperature (equilibrium with the cooled gas at the point of condensation).
 #   GC-005 quench blowdown: the SAME recirculating quench water performing GC-004's own quench
 #     duty, in intimate direct gas-liquid contact -- same 65 degC basis.
-#   GC-007 blowdown: GC-007's own Confirmed 60 degC gas-side operating temperature.
+#   GC-007 blowdown: GC-007's own registry-stated 60 degC gas-side operating temperature.
 #   GC-008 blowdown: GC-008's own registry states NO temperature -- but GC-009's own remark
 #     ("Continues the gradual cooling trend from GC-007's 60 degC") treats GC-007's 60 degC as its
 #     own DIRECT predecessor, implying no further cooling occurs across GC-008 itself -- a real,
 #     Level-2 interpolation from the registry's own stated narrative, not invented; used as 60 degC.
-#   GC-009 blowdown: GC-009's own Confirmed 55 degC operating temperature.
+#   GC-009 blowdown: GC-009's own registry-stated 55 degC operating temperature.
 _GC015_INFLOW_TEMPS_C = {
     "condensed_process_water_m3_h": 65.0, "gc005_blowdown_m3_h": 65.0,
     "gc007_blowdown_m3_h": 60.0, "gc008_blowdown_m3_h": 60.0, "gc009_blowdown_m3_h": 55.0,
 }
-# GC-005's own Confirmed "Water supply temperature" (ambient plant water) -- used below ONLY as
+# GC-005's own registry-stated "Water supply temperature" (ambient plant water) -- used below ONLY as
 # the LOWER bound of GC-015's own operating-temperature range (full cooling to ambient in the
 # open, vented, uninsulated tank), not as the source of the inlet-blend temperature itself.
 GC015_AMBIENT_TEMP_C = 20.0
@@ -784,15 +784,15 @@ def gc015_operating_conditions(get_input):
     Engineering assumption -- extremely high confidence, but still an
     assumption, not Confirmed or Internal-model-derived, since "vented"
     itself is inferred from the equipment description, not a literal
-    Confirmed pressure figure). TEMPERATURE: a real RANGE (Section 5),
+    registry-stated pressure figure). TEMPERATURE: a real RANGE (Section 5),
     bounded by the live, flow-weighted blend of the five inflow streams'
-    own Confirmed/interpolated temperatures (the UPPER bound -- no cooling
-    in the tank itself) and GC-005's own Confirmed 20 degC ambient supply
+    own registry-stated/interpolated temperatures (the UPPER bound -- no cooling
+    in the tank itself) and GC-005's own registry-stated 20 degC ambient supply
     temperature (the LOWER bound -- full cooling to ambient, plausible
     given the tank's own real ~5 h residence time, 1 m3 volume / 0.2 m3/h
     design flow, in an open, uninsulated vessel) -- Section 7: Internal-
     model-derived (the upper bound is a genuine calculation from this
-    project's own already-Confirmed/live-computed upstream temperatures,
+    project's own registry-stated/live-computed upstream temperatures,
     not a bare generic assumption)."""
     cond = get_input(("GC-015", "Condensate"))["value"]
     total_m3_h = cond["total_m3_h"]

@@ -91,16 +91,16 @@ section and the engineering plan's Section 10, item 11) -- see both.
 === EU-009 (Electrical Metering/Grid), task requirement 4 ===
 net = generation (EU-002/003/005/006's real live electrical output) -
 consumption (HB-012's compressor + HB-011's electrolyser + GC-013's own
-hydraulic fan-power lower bound + EU-008's own Confirmed fan motor power)
--- every term a real, already-computed live value or a real Confirmed
+hydraulic fan-power lower bound + EU-008's own registry-stated fan motor power)
+-- every term a real, already-computed live value or a real registry-stated
 nameplate figure, none fabricated.
 
 === EU-010 (UPS/Battery), task requirement 5 ===
 Coulomb-counting SOC model (lagged self, same pattern as HB-013's own
-inventory): capacity = EU-010's own Confirmed rated power (10 kVA) x its
-own Confirmed backup duration (30 min) = 5.0 kWh (derived directly from
-two Confirmed figures, not a separate assumption). Round-trip efficiency
-(94%, midpoint of EU-010's own Confirmed ~92-96% range) applied on the
+inventory): capacity = EU-010's own registry-stated rated power (10 kVA) x its
+own registry-stated backup duration (30 min) = 5.0 kWh (derived directly from
+two registry-stated figures, not a separate assumption). Round-trip efficiency
+(94%, midpoint of EU-010's own registry-stated ~92-96% range) applied on the
 charge side only -- a standard, stated simplification. Consumes EU-009's
 real net electrical balance.
 
@@ -122,7 +122,7 @@ This wiring uses EU-011, matching the number, not the mislabeled name.
 EU-013 is a simple metering pass-through of EU-012's own real duty.
 
 === H2/SYNGAS DOUBLE-COUNTING FIX (post-Phase-6 correction) ===
-Found while wiring GA-001's confirmed feedstock composition: a first attempt at a Tab 1 "overall
+Found while wiring GA-001's feedstock composition: a first attempt at a Tab 1 "overall
 efficiency" KPI (H2 + net electrical + thermal output, divided by feedstock energy input) came out
 ABOVE 100% for part of DOK-ING's own confirmed feedstock-LHV range. ROOT CAUSE, traced directly
 (not assumed): _syngas_budget_kw() (old) returned GC-013's FULL, undiminished syngas flow as
@@ -157,7 +157,7 @@ from . import ga001_gasifier_model as ga001
 from . import hb_wgs_psa_storage_chain as hbchain
 from . import plant_status as ps
 
-# --- Real physical/Confirmed constants --------------------------------------
+# --- Real physical/registry-stated constants --------------------------------------
 SYNGAS_LHV_MJ_PER_NM3 = 9.8    # registry-stated [Unverified (registry)] STATIC design-point figure (EU-003/EU-005, matches
                                  # SA-006 directly) -- used ONLY as an honest cross-check
                                  # reference below, NOT for the live budget calc itself; see
@@ -394,11 +394,11 @@ def eu003_gas_engine(get_input):
 def eu004_gas_engine_thermal(get_input):
     """EU-004's own real jacket/exhaust heat-recovery split, scaled by
     EU-003's own real load factor -- 12/8 kWth rated split (both
-    Confirmed), summing to EU-003's own dispatch-reported thermal_kw
+    registry-stated), summing to EU-003's own dispatch-reported thermal_kw
     (20kWth rated) as an internal consistency check. NOT wired into
     EU-008's cooling-water demand in this phase -- the task named exactly
     three consumers (GC-004/005, HB-003, HB-012); EU-004's own cooling
-    water draw (~1 m3/h at rated jacket duty, per its own Confirmed
+    water draw (~1 m3/h at rated jacket duty, per its own registry-stated
     figures) is a real, stated, explicitly SCOPED-OUT future integration
     point, not silently ignored."""
     d = get_input(("EU-CHP", "Dispatch"))["value"]["units"]["Gas Engine"]
@@ -466,7 +466,7 @@ def eu007_flare(get_input):
     under this project's current 100%-combustible-recycle wiring, nothing
     combustible is routinely left over for this flare -- its real feed is
     HB-009's own CO2+N2 (inert). Written generally/correctly regardless:
-    applies EU-007's own Confirmed >=98% destruction efficiency to
+    applies EU-007's own registry-stated >=98% destruction efficiency to
     whatever combustible fraction is present, so it is ready the day a
     partial recycle split exists."""
     tail = get_input(("HB-009", "TailGas"))["value"]
@@ -614,7 +614,7 @@ def eu008_recommended_capacity_estimate(get_input):
     """Cooling Tower Resizing Estimate -- a SEPARATE, ADDITIVE entry.
     Does NOT overwrite, alter, or remove EU-008's own existing Confirmed
     20kW rating (EU008_RATED_CAPACITY_KW, used elsewhere in this module
-    unchanged) -- both this estimate and that Confirmed figure stand
+    unchanged) -- both this estimate and that registry-stated figure stand
     simultaneously visible and traceable.
 
     REFORMATTED under the Missing Parameter Resolution Protocol
@@ -733,8 +733,8 @@ def eu008_recommended_capacity_estimate(get_input):
 def eu009_grid_balance(get_input):
     """net = generation (EU-002/003/005/006's real live electrical output)
     - consumption (HB-012 compressor + HB-011 electrolyser + GC-013's own
-    hydraulic fan-power lower bound + EU-008's own Confirmed fan motor
-    power) -- every term real/live or a real Confirmed nameplate figure."""
+    hydraulic fan-power lower bound + EU-008's own registry-stated fan motor
+    power) -- every term real/live or a real registry-stated nameplate figure."""
     sofc = get_input(("EU-002", "SOFC"))["value"]
     ge = get_input(("EU-003", "GasEngine"))["value"]
     mt = get_input(("EU-005", "Microturbine"))["value"]
@@ -773,9 +773,9 @@ def eu009_grid_balance(get_input):
 # ============================================================================
 
 def eu010_ups_battery(get_input):
-    """Coulomb-counting SOC: capacity DERIVED from EU-010's own Confirmed
+    """Coulomb-counting SOC: capacity DERIVED from EU-010's own registry-stated
     rated power (10 kVA) x backup duration (30 min) = 5.0 kWh. Round-trip
-    efficiency (94%, midpoint of EU-010's own Confirmed ~92-96%) applied
+    efficiency (94%, midpoint of EU-010's own registry-stated ~92-96%) applied
     on the charge side only -- a standard, stated simplification. Consumes
     EU-009's real net electrical balance. Bootstraps at 50% SOC on the
     first cycle -- a stated, explicit modeling choice (no real initial-

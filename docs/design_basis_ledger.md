@@ -365,27 +365,29 @@ Ledger rows with no consumer. They are reported, not removed.
 
 ## Confirmed mentions in the engine modules
 
-433 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
+284 lines of the 18 engine modules mention "confirmed" (case-insensitive). Each is classified by `python/ledger_coverage.classify_mention` as DOK-ING-SOURCED (a DOK-ING source is named in the line or the next 3 lines), GENERIC (explanatory use that states no value as Confirmed) or REGISTRY-STATED (a registry value called Confirmed with no source named next to it), and the counts per class and file are pinned by `tests/test_design_basis_ledger.py::test_the_confirmed_mentions_are_pinned_per_class_and_file`, so a new REGISTRY-STATED use fails. They are not rewritten here.
 
 | file | lines mentioning "confirmed" |
 |---|---|
 | python/balance_audit.py | 9 |
-| python/eu_utilities_chp.py | 46 |
-| python/fe_feed_handling.py | 35 |
+| python/eu_utilities_chp.py | 30 |
+| python/fe_feed_handling.py | 21 |
 | python/ga001_energy_balance.py | 1 |
-| python/ga001_gasifier_model.py | 76 |
+| python/ga001_gasifier_model.py | 60 |
 | python/gasifier_mass_balance.py | 3 |
-| python/gc_gas_cleaning_chain.py | 88 |
-| python/hb_remaining_chain.py | 83 |
-| python/hb_wgs_psa_storage_chain.py | 34 |
+| python/gc_gas_cleaning_chain.py | 39 |
+| python/hb_remaining_chain.py | 50 |
+| python/hb_wgs_psa_storage_chain.py | 14 |
 | python/reference_feeds.py | 4 |
-| python/tab1_integration.py | 24 |
+| python/tab1_integration.py | 23 |
 | python/uncertainty.py | 30 |
-| **all** | 433 |
+| **all** | 284 |
 
 **The pinned counts changed in the wording pass W1 (commits 0420d32 and 87e4950).** Lines mentioning "confirmed": 476 to 449; DOK-ING-sourced 46 to 49, generic 115 to 159, registry-stated 315 to 241; registry-stated lines that reach a persisted note: 88 to 14. Why: W1.1 reworded the persisted notes that called a registry value Confirmed (they now say "Unverified (registry), not DOK-ING-confirmed", or name the DOK-ING source next to the word), so those lines left the registry-stated class (most became generic, because the new text says "not DOK-ING-confirmed"); W1.2 reworded the EU-008 capacity notes that called their input duties validated. The 14 persisted lines that remain are pinned in `tests/test_design_basis_ledger.py` (`PERSISTED_REGISTRY_STATED`) and none calls a registry value Confirmed (DOK-ING's confirmed composition ranges with RFI #2 named, negations, questions to DOK-ING, a self-test message, a code check). The registry-stated lines that remain (241 after W1, 232 after A3d) do not reach a persisted note in the live snapshot (docstrings, comments, other strings) and were not rewritten, except for the lines A3d names.
 
 **The pinned counts changed again in task A3d (Gate 5 wording).** Lines mentioning "confirmed": 449 to 436; DOK-ING-sourced 49 to 44, generic 159 to 160, registry-stated 241 to 232 (hb_wgs_psa_storage_chain 3/6/27 to 2/6/26, eu_utilities_chp 5/19/34 to 2/20/26, fe_feed_handling 6/12/18 to 5/12/18). Why: A3d reworded comments and docstrings that called an Assumed or Unverified (registry) constant Confirmed (EU-003, EU-004, EU-005, EU-006, EU-007, EU-008, EU-010, FE-001) so that each states the status the ledger gives, and reworded two persisted notes (HB-012 discharge pressure; the 100 % WGS / PSA claim fraction). The registry-stated lines that reach a persisted note stay at the pinned count.
+
+**The pinned counts changed in Phase 1 task P1-02 (wording residue).** Lines mentioning "confirmed": 433 to 284; DOK-ING-sourced 44 to 44, generic 160 to 160, registry-stated 229 to 80 (eu_utilities_chp 2/20/24 to 2/20/8, fe_feed_handling 5/12/18 to 5/12/4, ga001_gasifier_model 16/25/35 to 16/25/19, gc_gas_cleaning_chain 0/28/60 to 0/28/11, hb_remaining_chain 1/35/47 to 1/35/14, hb_wgs_psa_storage_chain 2/6/26 to 2/6/6, tab1_integration 12/4/8 to 12/4/7). Why: 149 docstring and comment lines that called a registry-stated value Confirmed now say "registry-stated" (or "modelled", "live", "stated" where the value is a model output or an Assumed input). Lines whose "Confirmed" is true under the rule (a DOK-ING source is cited: FE-003 nominal feed rate, HB-006 H2 purity) and lines that name DOK-ING's confirmed answers were left as written. Text only: for every changed file the syntax tree with all string constants neutralised equals that of the previous commit, and no string literal (so no persisted note) was touched; the 80 registry-stated lines that remain are 53 string literals (not touched in this step; some reach persisted notes) and 27 docstring or comment lines left as written (they name DOK-ING's answers, concern the confirmation tracker, or are true under the rule).
 
 ## Exceptions (numeric constants that are not parameters)
 
