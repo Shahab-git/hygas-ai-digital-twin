@@ -1,8 +1,8 @@
 # Phase 0 gate record
 
-**Status: Phase 0 is NOT closed. Gate 5 has NOT passed.** None of the proposed Gate 5 criteria (G5-01 to G5-15) is formally approved as a criterion; the owner accepted G5-15, three amendments and a draft of the G5-13 boundary as proposals only.
+**Status: Phase 0 is closed WITH EXCEPTIONS by the owner's decision of 2026-11-09 (G5-03, section 3c). Phase 1 is NOT authorised (G5-04).** The approval says the baseline and its limits are documented; it does not say the model is validated, calibrated or correct. The Gate 5 criteria (G5-01 to G5-15) were adopted as working proposals; the owner accepted each disposition recorded below, and G5-09 is an exception, not a pass.
 
-Record date: 2026-11-06; sections 2a, 3a and 4 updated 2026-11-09 (G5-01, G5-02, G5-09). Repository state described: `main` at `e7f25b2` (merge of PR #38) for the 9 Nov updates; section 1 lists merges up to PR #32. This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
+Record date: 2026-11-06; sections 2a, 3a, 3b, 3c and 4 updated 2026-11-09 (G5-01, G5-02, G5-03, G5-09). Repository state described: `main` at `e7f25b2` (merge of PR #38) for the 9 Nov updates; section 1 lists merges up to PR #32. This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
 
 ## 1. What has been merged since the 3 Nov Phase 0 report
 
@@ -91,13 +91,27 @@ The owner chose an **indirect record** instead of a manual `workflow_dispatch` r
 | Owner's machine, Python 3.14 | 913 passed, 0 failed, 4 skipped on the last docs PR before PR #38 | not a CI run; 3.14 is not a CI version |
 | Merge commits on `main` | no Tests run exists (the workflow runs on `pull_request` and `workflow_dispatch` only) | the gap itself |
 
+### 3c. G5-03: Phase 0 approved with exceptions (owner decision, 2026-11-09)
+
+The owner approved Phase 0 as closed with the exceptions below, in chat on 2026-11-09, after the merge of PR #39 (`8e0f268`). The decision is on `main` at `8e0f268`; the commit that records it changes documentation only. This entry records the owner's statement; the repo cannot show the decision itself (NOT VERIFIED from the repo).
+
+What the approval means: the baseline and its limits are documented. It does **not** say the model is validated, calibrated or correct, it changes no number, and it does **not** authorise Phase 1 (G5-04). Any later change to the model needs its own authorisation.
+
+Exceptions carried into Phase 1:
+
+1. The 19 cross-module disagreement rows (`docs/cross_module_disagreements.md`), deferred pending DOK-ING. Row 9 (the tail-gas default) is still an open owner decision.
+2. The DOK-ING-dependent items in `docs/dok_ing_dependent_items.md`, including those no RFI #2 question asks.
+3. The wording residue in code comments and docstrings (G5-05; G5-12 point 4, see `docs/phase0_open_items.md`).
+4. No Tests run on merge commits of `main` (G5-09; the indirect record in section 3b stands in for it).
+5. The full feed-basis correction (cycle-1 fallback, `DEFAULT_DRY_FEED_KG_H`), not authorised.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
 |---|---|---|
 | G5-01 | Owner review of A3/A5/A10/W1 recorded | recorded 9 Nov (section 3a) |
-| G5-02 | Gates 1-4 restated on the closing commit | refreshed 9 Nov on `365f8b5` (section 2a); a CI run on the closing commit itself is not recorded (G5-09) |
-| G5-03 | "Phase 0 approved" decision recorded | pending |
+| G5-02 | Gates 1-4 restated on the closing commit | refreshed 9 Nov on `365f8b5` (section 2a). Commits after it (`#38`, `#39` and the G5-03 record) change documentation only; the only later run is the owner's full suite on the PR #39 branch (`fd9ba34`): 913 passed, 0 failed, 4 skipped on Python 3.14 (owner's report). A CI run on the closing commit is not recorded (G5-09) |
+| G5-03 | "Phase 0 approved" decision recorded | recorded 9 Nov: approved with exceptions (section 3c) |
 | G5-04 | Phase 1 authorisation is a separate act | not given |
 | G5-05 | No assumption presented as confirmed or validated | residue list in `docs/phase0_open_items.md`; owner accepted it 6 Nov |
 | G5-06 | Feed-basis disposition | decided and implemented (narrow); documented limits remain |
