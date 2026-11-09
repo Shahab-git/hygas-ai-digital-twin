@@ -132,13 +132,14 @@ def sweep_thresholds(thresholds, penalty_eur_per_point=DEFAULT_PENALTY_EUR_PER_P
 def price_with_confirmation_scenario(assumption_name, confirmed_low, confirmed_high, threshold,
                                       penalty_eur_per_point=DEFAULT_PENALTY_EUR_PER_POINT,
                                       n_runs=DEFAULT_N_RUNS, seed=42, **mc_kwargs):
-    """Prices the SAME guarantee before and after temporarily applying a
-    hypothetical confirmed range to one assumption, via uncertainty.py's
-    real set_confirmed()/clear_confirmed() — the same functions
-    confirmation_loop.py calls when DOK-ING actually confirms a value —
-    then restores whatever confirmation state existed before this call,
-    so using this has no lasting side effect on the live app's
-    uncertainty state.
+    """Prices the SAME guarantee before and after applying a hypothetical
+    confirmed range to one assumption. The range is passed to
+    uncertainty.run_monte_carlo() as a confirmed_overrides entry, which has the
+    same effect on the sampling range as the real set_confirmed() that
+    confirmation_loop.py calls when DOK-ING actually confirms a value
+    (P1-04: the shared uncertainty.ASSUMPTIONS dict is not modified at all, so
+    there is nothing to restore and no lasting side effect on the live app's
+    uncertainty state).
 
     Does NOT assume confirmation makes the guarantee cheaper: a narrower
     confirmed range that happens to land on the less favorable side of
@@ -146,18 +147,17 @@ def price_with_confirmation_scenario(assumption_name, confirmed_low, confirmed_h
     cost go UP, not down. This reports whatever the Monte Carlo
     distribution actually produces, in both directions.
     """
-    prior_low = uncertainty.ASSUMPTIONS[assumption_name]["confirmed_low"]
-    prior_high = uncertainty.ASSUMPTIONS[assumption_name]["confirmed_high"]
+    if assumption_name not in uncertainty.ASSUMPTIONS:
+        raise KeyError(assumption_name)
+    if confirmed_low >= confirmed_high:
+        raise ValueError("low must be < high")
 
     before = price_guarantee(threshold, penalty_eur_per_point, n_runs=n_runs, seed=seed, **mc_kwargs)
-    try:
-        uncertainty.set_confirmed(assumption_name, confirmed_low, confirmed_high)
-        after = price_guarantee(threshold, penalty_eur_per_point, n_runs=n_runs, seed=seed, **mc_kwargs)
-    finally:
-        if prior_low is not None and prior_high is not None:
-            uncertainty.set_confirmed(assumption_name, prior_low, prior_high)
-        else:
-            uncertainty.clear_confirmed(assumption_name)
+    # P1-04: the hypothetical range is passed to the Monte Carlo as an override; the shared
+    # uncertainty.ASSUMPTIONS dict is never written (no set_confirmed / restore), so another thread
+    # or an exception cannot leave a hypothetical confirmation behind.
+    after = price_guarantee(threshold, penalty_eur_per_point, n_runs=n_runs, seed=seed,
+                            confirmed_overrides={assumption_name: (confirmed_low, confirmed_high)}, **mc_kwargs)
 
     return {"assumption": assumption_name, "confirmed_range": (confirmed_low, confirmed_high),
             "before": before, "after": after}
@@ -195,5 +195,5 @@ if __name__ == "__main__":
           f"expected_cost=EUR{unfavorable['before']['expected_cost']:>8,.0f}")
     print(f"    after:  breach_prob={unfavorable['after']['breach_probability'] * 100:5.1f}%  "
           f"expected_cost=EUR{unfavorable['after']['expected_cost']:>8,.0f}")
-    print("\n  Confirmed uncertainty.ASSUMPTIONS state was restored after each scenario "
+    print("\n  Confirmed uncertainty.ASSUMPTIONS state was never modified by the scenarios "
           f"(is_confirmed('psa_target_calibration') = {uncertainty.is_confirmed('psa_target_calibration')}).")

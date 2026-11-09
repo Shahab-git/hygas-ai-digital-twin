@@ -111,7 +111,7 @@ def mark_setpoint_applied(engine_key_str):
         return False
 
 
-def request_setpoint(engine_key_tuple, value, requested_by=""):
+def request_setpoint(engine_key_tuple, value, requested_by="", explicit_operator_call=False):
     """Durably records a NEW pending setpoint request -- upserted on
     engine_key (a fresh request for the same key replaces the still-
     pending one, per the table's own schema comment), applied_at left
@@ -121,7 +121,15 @@ def request_setpoint(engine_key_tuple, value, requested_by=""):
     widget has a single, real, already-tested entry point to call rather
     than writing to Supabase directly itself. Raises on failure -- the
     caller decides how to surface that (a future UI would show a real
-    error, not silently drop the request)."""
+    error, not silently drop the request).
+
+    P1-04 guard: this is a durable DATABASE WRITE, so it refuses (RuntimeError, nothing sent) unless
+    the caller passes explicit_operator_call=True (a deliberate operator action such as a future
+    button) or the runtime flag HYGAS_ALLOW_DB_WRITES=1 is set (vendor_log.db_writes_allowed()). An
+    accidental call from a self-test, an import or a script therefore cannot write."""
+    if not (explicit_operator_call is True or vendor_log.db_writes_allowed()):
+        raise RuntimeError("request_setpoint writes to the database: pass explicit_operator_call=True "
+                           "(a deliberate operator action) or set HYGAS_ALLOW_DB_WRITES=1")
     payload = {
         "engine_key": key_to_str(engine_key_tuple), "value": value,
         "requested_by": requested_by,
