@@ -14,6 +14,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import cycle_clock
 from python import ga001_gasifier_model as ga001
@@ -104,7 +105,7 @@ def test_default_mode_snapshot_equals_origin_main_for_every_existing_entry(runs,
     assert len(old) == 116
     assert set(old) <= set(new), sorted(set(old) - set(new))
     assert set(new) - set(old) == NEW_KEYS
-    bad = {k: _same(old[k], new[k]) for k in old}
+    bad = {k: _same(old[k], new[k]) for k in old if k not in INTENTIONAL}
     bad = {k: v for k, v in bad.items() if v is not True}
     assert bad == {}, bad
 

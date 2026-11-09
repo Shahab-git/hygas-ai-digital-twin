@@ -13,6 +13,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import cycle_clock
 from python import ga001_gasifier_model as ga001
@@ -100,6 +101,8 @@ def test_the_wrapper_at_the_air_fraction_changes_nothing(mod, fake, main_snap):
     expected = _d2_wording.forward({k: json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in main_snap.items()})
     bad = {}
     for k, a in expected.items():
+        if k in INTENTIONAL:
+            continue
         b = new[k]
         a, b = dict(a, confidence_note=""), dict(b, confidence_note="")           # the notes quote numbers to full repr; the values are compared to 1e-12
         r = _same(a, b)

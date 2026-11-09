@@ -19,6 +19,7 @@ import subprocess
 import pytest
 
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import balance_closure_kind as bck
 from python import balance_scenarios as bs
@@ -321,7 +322,7 @@ def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes_and_the
         snap = t1.build_live_snapshot(20, overrides=None if mode == "default" else {("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")})[0]
     new = _undo(_ser(snap))
     assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"} == set(old) and len(new) == 123          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all; every OLD entry is still compared below
-    bad = {k: _same(old[k], new[k]) for k in old if k != "GA-001-INPUT|tail_gas_mode"}
+    bad = {k: _same(old[k], new[k]) for k in old if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL}
     assert {k: v for k, v in bad.items() if v is not True} == {}
 
 

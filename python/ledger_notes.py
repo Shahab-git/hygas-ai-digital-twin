@@ -40,8 +40,6 @@ UNUSED_CONSTANTS = [
      "Defined under the comment '# --- FE-001 Hopper (Confirmed figures)'; no other line of the repository names it. The FE-001 behaviour uses FE001_LIVE_CAPACITY_T (1.7 t). Nothing documents why the total is kept."),
     ("FE002_REMOVAL_EFFICIENCY", "python/fe_feed_handling.py", "FE002_REMOVAL_EFFICIENCY = 0.98",
      "Its own comment: 'informational; a polishing duty, negligible mass removed'. No other line of the repository names it. The documented reason is that the removal is not modelled."),
-    ("HB010_CONFIRMED_RECOVERY", "python/hb_remaining_chain.py", "HB010_CONFIRMED_RECOVERY = 0.85",
-     "Comment: 'registry-stated [Unverified (registry)] (registry: \"H2 recovery rate\")'. Only a comment on HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION mentions it. The documented reason is that it states the basis of the purity range and the feed H2 fraction."),
 ]
 
 # id, what, [(label, file, token)], who reads each, how big, why it is not hidden or hidden
@@ -155,7 +153,8 @@ def render_confirmed():
           "hb_wgs_psa_storage_chain 2/6/26 to 2/6/6, tab1_integration 12/4/8 to 12/4/7). Why: 149 docstring and comment lines that called a registry-stated value Confirmed now say \"registry-stated\" (or \"modelled\", "
           "\"live\", \"stated\" where the value is a model output or an Assumed input). Lines whose \"Confirmed\" is true under the rule (a DOK-ING source is cited: FE-003 nominal feed rate, HB-006 H2 purity) and lines "
           "that name DOK-ING's confirmed answers were left as written. Text only: for every changed file the syntax tree with all string constants neutralised equals that of the previous commit, and no string literal "
-          "(so no persisted note) was touched; the 80 registry-stated lines that remain are 53 string literals (not touched in this step; some reach persisted notes) and 27 docstring or comment lines left as written (they name DOK-ING's answers, concern the confirmation tracker, or are true under the rule)."]
+          "(so no persisted note) was touched; the 80 registry-stated lines that remain are 53 string literals (not touched in this step; some reach persisted notes) and 27 docstring or comment lines left as written (they name DOK-ING's answers, concern the confirmation tracker, or are true under the rule).",
+          "", "**The pinned counts changed again in Phase 1 task P1-12 (HB-010 Separation).** hb_remaining_chain generic mentions 35 to 38 (total 284 to 287): the new `hb010_separation` code and its docstring name the existing identifier `HB010_CONFIRMED_RECOVERY` and say \"not DOK-ING-confirmed\". No value was called Confirmed. The constant `HB010_CONFIRMED_RECOVERY` is no longer unused (the new function reads it), so it left the list of constants nothing uses (three became two)."]
     return L
 
 

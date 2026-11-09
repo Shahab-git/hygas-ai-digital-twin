@@ -23,6 +23,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import equipment_datasheet as ed
 from python import ledger_consumers as lcons
 from python import ledger_anchors as la
@@ -530,9 +531,9 @@ def test_the_two_recorded_inconsistencies_are_the_values_in_the_code():
         assert heading in docs, heading
 
 
-def test_the_three_constants_nothing_uses_are_still_unused(built):
+def test_the_two_constants_nothing_uses_are_still_unused(built):
     none = {r["ledger_id"] for r in built[0] if not r["consumers"]}
-    assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none
+    assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency"} <= none and "LEDGER.HB-010.h2_recovery" not in none      # P1-12: hb010_separation reads it
     for name, f, tok, _ in lnotes.UNUSED_CONSTANTS:
         hits = []
         for fn in os.listdir(os.path.join(ROOT, "python")):
@@ -555,9 +556,10 @@ def test_the_three_constants_nothing_uses_are_still_unused(built):
 # Phase 1 task P1-02 lowered seven files ON PURPOSE (433 -> 284 lines; classes 44/160/229 -> 44/160/80): 149 docstring / comment lines that called a registry-stated value Confirmed now say "registry-stated"
 # (ga001 (16, 25, 35) -> (16, 25, 19), gc (0, 28, 60) -> (0, 28, 11), hb_remaining (1, 35, 47) -> (1, 35, 14), eu (2, 20, 24) -> (2, 20, 8), fe (5, 12, 18) -> (5, 12, 4), hb_wgs (2, 6, 26) -> (2, 6, 6),
 # tab1 (12, 4, 8) -> (12, 4, 7)). No string literal changed; PERSISTED_REGISTRY_STATED is unchanged.
+# Phase 1 task P1-12 (new hb010_separation names HB010_CONFIRMED_RECOVERY and says 'not DOK-ING-confirmed'): hb_remaining generic 35 -> 38, total 284 -> 287.
 CONFIRMED_PIN = {
     "ga001_gasifier_model.py": (16, 25, 19), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 11),
-    "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 35, 14), "eu_utilities_chp.py": (2, 20, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
+    "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 38, 14), "eu_utilities_chp.py": (2, 20, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
     "uncertainty.py": (0, 26, 4), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 7),
 }
 PERSISTED_REGISTRY_STATED = 14      # was 88 before task W1.1. What remains on purpose: 3 persisted + 3 self-test prints that name DOK-ING's CONFIRMED ranges (RFI #2, named in the same sentence), 2 negations ("no
@@ -569,7 +571,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 284 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 287 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 
@@ -683,7 +685,7 @@ def test_an_input_that_nothing_reads_is_reported():
 def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
-    assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency", "LEDGER.HB-010.h2_recovery"} <= none      # constants nothing in the code uses
+    assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency"} <= none      # constants nothing in the code uses (HB-010.h2_recovery left the list in P1-12)
     assert len(ledger) == 179                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
@@ -706,10 +708,10 @@ def _assert_only_the_d2_phrases_differ(old, new, mode):
     3.11-style sum(): 4.4e-14); a bit-exact comparison failed on 3.11 and passed on 3.12 although nothing had changed. A real change (1e-9 relative, one character of text, a phrase in another
     entry, an old phrase back) still fails: test_the_persisted_comparison_still_catches_a_real_change."""
     expected = _d2_wording.forward(old)
-    diffs = {k: _same(expected[k], new[k]) for k in old if k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default"}
+    diffs = {k: _same(expected[k], new[k]) for k in old if (k not in ("GA-001-INPUT|tail_gas_mode",) or mode == "default") and k not in INTENTIONAL}
     bad = {k: v for k, v in diffs.items() if v is not True}
     assert bad == {}, bad
-    changed = [k for k in old if k != "GA-001-INPUT|tail_gas_mode" and _same(old[k], new[k]) is not True]
+    changed = [k for k in old if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL and _same(old[k], new[k]) is not True]
     assert all(k.startswith(_d2_wording.ENTRIES) for k in changed), changed
 
 
@@ -891,8 +893,8 @@ EXPECTED_DIFFERING_LEAVES = (73, 45)      # (string fields, entries) at which th
 def test_the_persisted_text_differences_are_exactly_the_mapped_fields(runs, main_snap, mode, fixture_key):
     old, new = main_snap[fixture_key], _ser(runs[mode])
     mapped = _d2_wording.forward(old)
-    live = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" for p, kind in _differing_leaves(old[k], new[k]))
-    by_map = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" for p, kind in _differing_leaves(old[k], mapped[k]))
+    live = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL for p, kind in _differing_leaves(old[k], new[k]))
+    by_map = sorted((k + p, kind) for k in old if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL for p, kind in _differing_leaves(old[k], mapped[k]))
     assert live == by_map, "the live snapshot differs from the fixture at exactly the fields the mapping changes, and nowhere else"
     assert {kind for _, kind in live} == {"str"}, "no number, list length or key moved: text only"
     assert (len(live), len({p.split("/")[0] for p, _ in live})) == EXPECTED_DIFFERING_LEAVES

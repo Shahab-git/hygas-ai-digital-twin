@@ -46,7 +46,7 @@ the FE->GA->GC backbone, upstream of the entire HB branch) -- so this
 module's own self-test instead proves the underlying MECHANISM (the same
 _virtual_sensor() helper every one of the 12 real functions below uses)
 correctly inherits Missing by pointing it directly at a REAL, permanently-
-Missing entry already in this project (HB-010's own Separation, Phase 1d)
+Missing entry already in this project (HB-014's own ReactionKinetics; HB-010's Separation was used until Phase 1 task P1-12 made it Estimated)
 -- honestly framed as a mechanism demonstration, not a claim about any SA
 item's real physical location.
 
@@ -284,22 +284,22 @@ if __name__ == "__main__":
           "cross-checked exactly against their own real upstream sources.")
 
     print("\n=== Task requirement 3: Missing correctly inherited, traceable, not a fallback number ===")
-    hb010_sep = snap[("HB-010", "Separation")]
-    assert hb010_sep["status"] == ps.STATUS_MISSING, "Expected HB-010 Separation to be Missing (Phase 1d)."
-    print(f"  Real Missing entry used for this demonstration: ('HB-010','Separation') -- "
-          f"missing_reason={hb010_sep['missing_reason'][:80]}...")
+    hb014_kin = snap[("HB-014", "ReactionKinetics")]
+    assert hb014_kin["status"] == ps.STATUS_MISSING, "Expected HB-014 ReactionKinetics to be Missing."
+    print(f"  Real Missing entry used for this demonstration: ('HB-014','ReactionKinetics') -- "
+          f"missing_reason={hb014_kin['missing_reason'][:80]}...")
 
-    def _mock_get_input_hb010(k):
-        assert k == ("HB-010", "Separation")
-        return hb010_sep
+    def _mock_get_input_hb014(k):
+        assert k == ("HB-014", "ReactionKinetics")
+        return hb014_kin
 
     demo = _virtual_sensor(
-        _mock_get_input_hb010, ("HB-010", "Separation"), "recovery",
+        _mock_get_input_hb014, ("HB-014", "ReactionKinetics"), "rate",
         "sa_virtual_sensors.DEMO", "Demonstration (no real SA item sits here -- see module docstring)",
     )
     assert demo["status"] == ps.STATUS_MISSING and demo["value"] is None
-    assert "HB-010" in demo["missing_reason"] and "Separation" in str(demo["inputs"])
-    print(f"  _virtual_sensor() pointed at ('HB-010','Separation'): status={demo['status']}, "
+    assert "HB-014" in demo["missing_reason"] and "ReactionKinetics" in str(demo["inputs"])
+    print(f"  _virtual_sensor() pointed at ('HB-014','ReactionKinetics'): status={demo['status']}, "
           f"value={demo['value']}, missing_reason names the real blocking source -- PASSED.")
     print("  PASSED -- the SAME mechanism every one of the 12 real SA items above uses correctly "
           "reports Missing (not a fallback number) when its source is genuinely Missing, traceable "

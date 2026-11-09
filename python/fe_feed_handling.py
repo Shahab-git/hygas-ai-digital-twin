@@ -67,7 +67,7 @@ gap does not close here. Only feed RATE and MOISTURE go live.
 ("FE-002","MassBalance") is genuinely live (Calculated); ("FE-002",
 "TrampMetalReject") stays permanently Missing -- no feedstock tramp-metal
 loading data exists anywhere in this project, same discipline as every
-other permanently-blocked output (HB-010's Separation, GA-001's Tar
+other permanently-blocked output (HB-014's ReactionKinetics, GA-001's Tar
 content, etc.).
 
 === Task requirement 5 -- the getter-discipline proof ===

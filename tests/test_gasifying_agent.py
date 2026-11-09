@@ -19,6 +19,7 @@ import pytest
 
 import _d2_wording
 from _fakes import FakeSupabase, patched_supabase
+from _intentional_changes import INTENTIONAL
 from python import balance_audit as ba
 from python import cycle_clock
 from python import ga001_energy_balance as eb
@@ -167,7 +168,7 @@ def test_the_default_agent_leaves_every_old_persisted_entry_unchanged(fake):
         new = _ser(t1.build_live_snapshot(20)[0])
     assert set(new) - set(old) == NEW_KEYS and set(old) - set(new) == set() and len(old) == 121
     expected = _d2_wording.forward(old)                        # the reworded notes of tests/_d2_wording.py applied to the stored fixture
-    bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode" and _same(expected[k], new[k]) is not True}
+    bad = {k: _same(expected[k], new[k]) for k in expected if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL and _same(expected[k], new[k]) is not True}
     assert bad == {}, bad
     assert new["GA-001-INPUT|gasifying_agent"]["value"] == "air" and new["GA-001-INPUT|gasifying_agent"]["status"] == "Assumed"
 
