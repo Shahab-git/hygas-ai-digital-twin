@@ -112,13 +112,18 @@ ASSUMPTIONS = {
 }
 
 
-def bounds(name):
+def bounds(name, confirmed_overrides=None):
     """The (lo, hi) sampling range actually used for one assumption: the
     CONFIRMED range if confirmation_loop.py has recorded one (see
     set_confirmed below), otherwise the default point +/-fraction band.
     Public, since compliance.py reads this too — a confirmed assumption
     should show as such in the compliance checklist automatically, not
-    just in the Monte Carlo."""
+    just in the Monte Carlo.
+
+    confirmed_overrides (P1-04): optional dict name -> (low, high) that is used INSTEAD of the
+    stored confirmation for that name, without writing to ASSUMPTIONS. Default None = unchanged."""
+    if confirmed_overrides and name in confirmed_overrides:
+        return confirmed_overrides[name]
     cfg = ASSUMPTIONS[name]
     if cfg["confirmed_low"] is not None and cfg["confirmed_high"] is not None:
         return cfg["confirmed_low"], cfg["confirmed_high"]
@@ -157,7 +162,7 @@ def run_monte_carlo(n_runs=1000, seed=42,
                      hts_T_C=350, hts_GHSV=2000,
                      lts_T_C=220, lts_GHSV=2000,
                      psa_p_high=8.0, psa_p_low=1.0, psa_y_co2=0.35,
-                     fractions=None):
+                     fractions=None, confirmed_overrides=None):
     """Runs n_runs Monte Carlo samples of the six unconfirmed assumptions
     through the existing kinetics.py/psa.py functions.
 
@@ -170,6 +175,10 @@ def run_monte_carlo(n_runs=1000, seed=42,
     fractions: optional dict overriding each assumption's `fraction`
     (keyed the same as ASSUMPTIONS) — used to sanity-check that a wider
     input band produces a wider output interval.
+
+    confirmed_overrides (P1-04): optional dict name -> (low, high), used for the sampling range of
+    those assumptions instead of the stored confirmation, WITHOUT modifying ASSUMPTIONS (so what-if
+    callers such as performance_guarantee need not mutate shared state). Default None = unchanged.
 
     Returns a dict of lists: hts, lts, overall, psa_recovery.
     """
@@ -186,7 +195,7 @@ def run_monte_carlo(n_runs=1000, seed=42,
                 # always relative to the point value, ignoring confirmed status.
                 sampled[name] = _sample_uniform(cfg["point"], fractions[name], rng)
             else:
-                lo, hi = bounds(name)  # confirmed range if set, else default point +/-fraction
+                lo, hi = bounds(name, confirmed_overrides)  # confirmed range if set, else default point +/-fraction
                 sampled[name] = rng.uniform(lo, hi)
 
         steam_to_CO = 4.0 * (sampled["steam_to_feed_ratio"] / ASSUMPTIONS["steam_to_feed_ratio"]["point"])

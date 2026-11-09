@@ -117,6 +117,10 @@ After the P1-07 draft, the owner wrote in chat that DOK-ING's answers may take l
 
 Conditions that apply to all five (stated by Claude when the list was offered; the owner proceeded on them): every value taken from literature or another plant is labelled `Assumed` (literature-informed) with its source and range; none becomes Confirmed or "validated" without a DOK-ING source line; a source that cannot be found is recorded as not found, and the value is not invented; the Phase 1 rules (before / after table and Gate 4 scope statement for any change that can move a number; nothing tuned) apply. Not authorised by this entry: the larger drivers (gasifying agent, feed composition, tail-gas default), which stay scenario work until the owner decides separately, and every item listed in section 7.
 
+### 3f. Task P1-04 (owner instruction, 2026-11-09)
+
+After the five tasks of section 3e were merged, the owner was offered the list of tasks that do not wait for DOK-ING and wrote "start please". **Read as authorising P1-04 only** (the first item of the recommendation made in the same reply: the two safety items of G5-08, no number changes). P1-05 (number-changing fixes) and P1-06 (tail-gas default decision) still need the owner's own authorisation. This reading is Claude's; the owner is asked to confirm or correct it.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -152,7 +156,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d and the five of section 3e; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e and P1-04 of section 3f; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

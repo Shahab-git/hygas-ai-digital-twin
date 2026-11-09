@@ -63,7 +63,7 @@ def test_selftest_writers_are_guarded_without_the_flag():
 KNOWN_WRITERS = {
     "python/ai_automation_layer.py": (1, "AI-011 cycle log -- GUARDED by db_writes_allowed()"),
     "python/measurement_promotion.py": (1, "audit trail -- GUARDED"),
-    "python/operator_setpoints.py": (2, "mark_setpoint_applied GUARDED; request_setpoint = explicit operator call, no caller"),
+    "python/operator_setpoints.py": (2, "mark_setpoint_applied GUARDED; request_setpoint = GUARDED (P1-04: explicit_operator_call=True or the flag), no caller"),
     "python/confirmation_loop.py": (2, "UI buttons (mark asked / record confirmation); __main__ only reads"),
     "python/vendor_log.py": (1, "UI 'log quote' button"),
     "scripts/migrate_vendor_quotes_to_supabase.py": (1, "manual one-off migration script"),
