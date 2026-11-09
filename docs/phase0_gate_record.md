@@ -1,6 +1,6 @@
 # Phase 0 gate record
 
-**Status: Phase 0 is closed WITH EXCEPTIONS by the owner's decision of 2026-11-09 (G5-03, section 3c). Phase 1 is NOT authorised (G5-04).** The approval says the baseline and its limits are documented; it does not say the model is validated, calibrated or correct. The Gate 5 criteria (G5-01 to G5-15) were adopted as working proposals; the owner accepted each disposition recorded below, and G5-09 is an exception, not a pass.
+**Status: Phase 0 is closed WITH EXCEPTIONS by the owner's decision of 2026-11-09 (G5-03, section 3c). Phase 1 is authorised ONLY for the four tasks named in section 3d (G5-04).** The approval says the baseline and its limits are documented; it does not say the model is validated, calibrated or correct. The Gate 5 criteria (G5-01 to G5-15) were adopted as working proposals; the owner accepted each disposition recorded below, and G5-09 is an exception, not a pass.
 
 Record date: 2026-11-06; sections 2a, 3a, 3b, 3c and 4 updated 2026-11-09 (G5-01, G5-02, G5-03, G5-09). Repository state described: `main` at `e7f25b2` (merge of PR #38) for the 9 Nov updates; section 1 lists merges up to PR #32. This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
 
@@ -105,6 +105,12 @@ Exceptions carried into Phase 1:
 4. No Tests run on merge commits of `main` (G5-09; the indirect record in section 3b stands in for it).
 5. The full feed-basis correction (cycle-1 fallback, `DEFAULT_DRY_FEED_KG_H`), not authorised.
 
+### 3d. G5-04: Phase 1 authorisation (owner instruction, 2026-11-09)
+
+On 2026-11-09 the owner wrote in chat "please start phase 1", after reading the draft Phase 1 task list (kept outside the repo). The instruction did not name tasks. **It is read as authorising the four tasks that the draft recommended starting with, in this order:** P1-01 (operating-point study, read-only; "aligned with about 50 kg/day" read as a scenario study that changes no default), P1-02 (wording residue), P1-03 (declare the two undeclared reads) and P1-07 (second request to DOK-ING for the items no RFI #2 question asks). None of the four changes a persisted number. This reading is Claude's; the owner is asked to confirm or correct it when reviewing this change. This entry records the owner's statement; the repo cannot show it (NOT VERIFIED from the repo).
+
+Not authorised: every other Phase 1 task (P1-04, P1-05, P1-06, P1-08 to P1-10 of the draft), applying any provisional-answer-sheet value, changing a default, and CI or workflow changes. The Phase 1 rules (one task per PR; a before / after table and a Gate 4 scope statement for any change that can move a number; nothing tuned; Assumed labels) apply to each task.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -112,7 +118,7 @@ Exceptions carried into Phase 1:
 | G5-01 | Owner review of A3/A5/A10/W1 recorded | recorded 9 Nov (section 3a) |
 | G5-02 | Gates 1-4 restated on the closing commit | refreshed 9 Nov on `365f8b5` (section 2a). Commits after it (`#38`, `#39` and the G5-03 record) change documentation only; the only later run is the owner's full suite on the PR #39 branch (`fd9ba34`): 913 passed, 0 failed, 4 skipped on Python 3.14 (owner's report). A CI run on the closing commit is not recorded (G5-09) |
 | G5-03 | "Phase 0 approved" decision recorded | recorded 9 Nov: approved with exceptions (section 3c) |
-| G5-04 | Phase 1 authorisation is a separate act | not given |
+| G5-04 | Phase 1 authorisation is a separate act | given 9 Nov for four named tasks only (section 3d); everything else in Phase 1 stays unauthorised |
 | G5-05 | No assumption presented as confirmed or validated | residue list in `docs/phase0_open_items.md`; owner accepted it 6 Nov |
 | G5-06 | Feed-basis disposition | decided and implemented (narrow); documented limits remain |
 | G5-07 | Cross-module disagreements listed with dispositions | list in repo; reproduction script merged (PR #32); all rows deferred pending DOK-ING (owner, 6 Nov) |
@@ -138,7 +144,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
