@@ -322,10 +322,11 @@ Engine: `GA002_TYPICAL_PRESSURE_MBAR_G` = 100.0 mbar(g), the typical gasifier pr
 
 ## Known undeclared reads
 
-Engine models whose code reads another published key that their registration does not declare (found by the instrumented run against `declared_readers`). The fix is deferred to the output-status-inheritance task (A9), which needs the real read graph; tests/test_design_basis_ledger.py pins exactly these two, so a third hidden read fails.
+Engine models whose code reads another published key that their registration does not declare (found by the instrumented run against `declared_readers`). Both reads found in task A3 were declared in Phase 1 task P1-03 (same-cycle `depends_on`; the evaluation order was already the declared one, and the persisted snapshot is unchanged). tests/test_design_basis_ledger.py pins the list as empty, so any new hidden read fails.
 
-- `GA-001|EnergyBalance` reads `GA-001|CarbonAccounting`: balance_audit.carbon_black_flows (called through ga001_terms from ga001_energy_balance.energy_balance) reads the derived carbon black; ga001_energy_balance declares it neither in DEPENDS_ON nor in LAGGED. Where: `python/balance_audit.py (snapshot.get(("GA-001", "CarbonAccounting")))`, `python/ga001_energy_balance.py (DEPENDS_ON = [)`.
-- `HB-009|TailGas` reads `WGS|Composition`: hb009_tail_gas reads the WGS composition; its registration declares only HB-006 PSA and GC-013 Gas. Where: `python/hb_wgs_psa_storage_chain.py (wgs = get_input(("WGS", "Composition"))["value"])`, `python/hb_wgs_psa_storage_chain.py (engine.register_model(("HB-009", "TailGas"))`.
+None open.
+- Resolved: `GA-001|EnergyBalance` reads `GA-001|CarbonAccounting`: declared in `depends_on` at registration (`ga001_energy_balance.CARBON_ACCOUNTING_KEY`); not added to the module's `DEPENDS_ON` list, which `ga001_carbon_accounting` reuses; the published `inputs` list of `GA-001|EnergyBalance` is unchanged.
+- Resolved: `HB-009|TailGas` reads `WGS|Composition`: declared in `depends_on` of the `HB-009|TailGas` registration; the published `inputs` already named it.
 
 ## Inline literals
 

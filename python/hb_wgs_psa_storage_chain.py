@@ -599,7 +599,7 @@ def register_hb_chain(engine):
     engine.register_model(("HB-006", "PSA"), hb006_psa_recovery, unit="fraction dict",
                            depends_on=[("WGS", "Composition")])
     engine.register_model(("HB-009", "TailGas"), hb009_tail_gas, unit="Nm3/h dict",
-                           depends_on=[("HB-006", "PSA"), ("GC-013", "Gas")])
+                           depends_on=[("HB-006", "PSA"), ("GC-013", "Gas"), ("WGS", "Composition")])
     engine.register_model(("HB-012", "Compressor"), hb012_compressor, unit="kW + kg/h dict",
                            depends_on=[("HB-006", "PSA"), ("HB-009", "TailGas")])
     engine.register_model(

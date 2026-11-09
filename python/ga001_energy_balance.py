@@ -25,6 +25,7 @@ from . import ga001_gasifier_model as ga001
 from . import plant_status as ps
 
 KEY = ("GA-001", "EnergyBalance")
+CARBON_ACCOUNTING_KEY = ("GA-001", "CarbonAccounting")       # P1-03: read through balance_audit.carbon_black_flows; declared at registration (not in DEPENDS_ON: ga001_carbon_accounting derives its own list from DEPENDS_ON[:-1])
 _INPUT_KEYS = [("GA-001-INPUT", k) for k in ("dry_feed_rate_kg_h", "equivalence_ratio", "steam_to_feed_ratio", "carbon_conversion_efficiency",
                                               "ch4_carbon_fraction", "feedstock_composition", "operating_temperature_C")]
 DEPENDS_ON = [("GA-001", "Outputs")] + _INPUT_KEYS + [ga001.TAIL_GAS_MODE_KEY, ("FE-005", "MoistureBalance"), ("HB-005", "Steam")]
@@ -157,4 +158,4 @@ def energy_balance(get_input):
 
 
 def register(engine):
-    engine.register_model(KEY, energy_balance, unit="kW dict", depends_on=list(DEPENDS_ON) + [ga001.GASIFYING_AGENT_KEY], lagged_depends_on=list(LAGGED))      # the agent switch is read same-cycle, not in the published 'inputs'
+    engine.register_model(KEY, energy_balance, unit="kW dict", depends_on=list(DEPENDS_ON) + [ga001.GASIFYING_AGENT_KEY, CARBON_ACCOUNTING_KEY], lagged_depends_on=list(LAGGED))      # the agent switch is read same-cycle, not in the published 'inputs'
