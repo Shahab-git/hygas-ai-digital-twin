@@ -483,6 +483,11 @@ what remains open is a narrower, more specific question.
   downstream Missing statuses trace to this one key, not four
   independent gaps). Answering it converts the whole LOHC branch from
   Missing to genuinely live.
+- **UPDATE (Phase 1 task P1-14, 2026-11-09).** The split is a design choice,
+  not a literature value, so it is not defaulted. `docs/lohc_split_scenarios.md`
+  (`scripts/run_lohc_split_scenarios.py`, read-only) sweeps it over 0 to 1 and
+  shows the loaded hydrogen, carrier flow, heat and returned hydrogen for each
+  value on three hydrogen bases. The key and the chain behind it stay Missing.
 - **Source:** `python/hb_remaining_chain.py` (`hb007_h2_split_fraction`).
 
 ### 10. HB-010 membrane separator selectivity
