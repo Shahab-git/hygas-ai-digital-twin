@@ -2,7 +2,7 @@
 
 **Status: Phase 0 is NOT closed. Gate 5 has NOT passed.** None of the proposed Gate 5 criteria (G5-01 to G5-15) is formally approved as a criterion; the owner accepted G5-15, three amendments and a draft of the G5-13 boundary as proposals only.
 
-Record date: 2026-11-06. Repository state described: `main` at `244eb39` (merge of PR #32). This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
+Record date: 2026-11-06; sections 2a, 3a and 4 updated 2026-11-09 (G5-01, G5-02, G5-09). Repository state described: `main` at `e7f25b2` (merge of PR #38) for the 9 Nov updates; section 1 lists merges up to PR #32. This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
 
 ## 1. What has been merged since the 3 Nov Phase 0 report
 
@@ -69,11 +69,33 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-10 benchmark screen | proposed dispositions accepted (numbers unchanged, evidence made visible); screen added to the repo as a screen, not as validation |
 | G5-12 wording scan | fix points 1, 2, 3, 5 (wording only, no number changes); point 4 (the word 'Confirmed' in app.py code comments for HB-006 55 % and 10 % inlet moisture) recorded as a known limitation |
 
+### 3a. G5-01: owner review of the four reports (recorded 2026-11-09, on `main` at `e7f25b2`)
+
+The owner reviewed the four reports: A3 (`docs/design_basis_ledger.md`), A5 (`docs/balance_closure_audit.md`, section 9 and the audit it extends), A10 (`docs/maturity_and_readiness_gates.md`) and W1 (the wording-pass record in the ledger document, section "Confirmed mentions in the engine modules"). The owner worked from one-paragraph summaries prepared by Claude from those documents; Claude did not re-run the underlying scripts for this review. This entry records the owner's statement; the repo cannot show the review itself (NOT VERIFIED from the repo).
+
+Findings:
+
+1. The A10 table of wording still "needing rewording, not changed" (section 9 of that document) predates PR #35 (G5-12). It is not the current residue; the residue list is in `docs/phase0_open_items.md`.
+2. The A5 audit's section 8 says its CI results were not verified. The current commit is covered only by the indirect CI record (section 3b), not by a run on `main`.
+3. The A5 audit's standard enthalpies and LHV correlations are cited from memory, not fetched. A test pins the derived LHVs to the repo's own table within 0.3 %.
+4. Not claimed: none of the four reports validates the model. 9 of the 21 closure rows close by construction (ENFORCED), and no module has plant-data evidence.
+
+### 3b. G5-09: CI evidence on the closing commit (owner decision, 2026-11-09)
+
+The owner chose an **indirect record** instead of a manual `workflow_dispatch` run on `main`. This is an accepted exception, not a pass. The hold on CI for `main` merges and on workflow changes stays.
+
+| Evidence | What it shows | Limit |
+|---|---|---|
+| Tests workflow, 3.11 and 3.12 | green on PRs #25, #26, #27, #28 and #30 (as reported earlier) | not recorded here for PRs #29 and #31-#38: the owner merged them and reported no failure, but the repo cannot show the runs (NOT VERIFIED) |
+| Container runs on `365f8b5` (section 2a) | 910 passed, 6 skipped, 1 failed on 3.11 and on 3.12; the one failure is the known file-listing-order artefact | not a CI run; not on the final commit |
+| Owner's machine, Python 3.14 | 913 passed, 0 failed, 4 skipped on the last docs PR before PR #38 | not a CI run; 3.14 is not a CI version |
+| Merge commits on `main` | no Tests run exists (the workflow runs on `pull_request` and `workflow_dispatch` only) | the gap itself |
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
 |---|---|---|
-| G5-01 | Owner review of A3/A5/A10/W1 recorded | pending |
+| G5-01 | Owner review of A3/A5/A10/W1 recorded | recorded 9 Nov (section 3a) |
 | G5-02 | Gates 1-4 restated on the closing commit | refreshed 9 Nov on `365f8b5` (section 2a); a CI run on the closing commit itself is not recorded (G5-09) |
 | G5-03 | "Phase 0 approved" decision recorded | pending |
 | G5-04 | Phase 1 authorisation is a separate act | not given |
@@ -81,7 +103,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | G5-06 | Feed-basis disposition | decided and implemented (narrow); documented limits remain |
 | G5-07 | Cross-module disagreements listed with dispositions | list in repo; reproduction script merged (PR #32); all rows deferred pending DOK-ING (owner, 6 Nov) |
 | G5-08 | Open items each have a disposition | dispositions recorded (owner, 6 Nov) |
-| G5-09 | CI green on the closing commit | partly met; manual run on `main` not done |
+| G5-09 | CI green on the closing commit | **accepted as an exception, not a pass**: indirect record (owner, 9 Nov; section 3b). No Tests run exists on a merge commit of `main` |
 | G5-10 | Benchmark screen reviewed | screen in `docs/benchmark_msw_gasification.md`; owner dispositions recorded (section 6 of that file); deeper source reading still open |
 | G5-11 | DOK-ING-dependent items listed; RFI #2 status recorded | list in `docs/dok_ing_dependent_items.md` (headline values mapped to RFI #2 questions; items no question asks listed as a gap); RFI #2 status in section 5 |
 | G5-12 | No external validation claimed | refreshed 6 Nov: no validation claim found; 4 wording points fixed in code text, 1 recorded as a limitation |
