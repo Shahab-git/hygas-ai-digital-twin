@@ -208,7 +208,7 @@ def compute_tab1_kpis(snapshot):
         h2_kg_h = h2_rate["value"]["h2_kg_h"]
         # H2 chemical energy content: mass -> mol -> Nm3 -> MJ, using ONLY already-established real
         # constants (hbchain.M_H2, ga001.NM3_PER_MOL, eu.H2_LHV_MJ_PER_NM3 -- the latter itself
-        # EU-006's own Confirmed volumetric H2 LHV) -- the SAME conversion eu_utilities_chp.py's own
+        # EU-006's own registry-stated volumetric H2 LHV) -- the SAME conversion eu_utilities_chp.py's own
         # _h2_budget_kw() already performs on HB-013's stored inventory, reused here on a RATE.
         h2_energy_kw = (h2_kg_h * 1000.0 / hbchain.M_H2) * ga001.NM3_PER_MOL * eu.H2_LHV_MJ_PER_NM3 / 3.6
         feed_input_kw_at_lhv_hi = dry_kg_h * lhv_hi / 3.6   # MJ/h -> kW

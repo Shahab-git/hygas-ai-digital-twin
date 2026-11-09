@@ -19,7 +19,7 @@ moisture) rate, deriving a dry mass of 37.5 kg/h (41.67 x 0.90) and a
 post-drying wet mass of ~37.9 kg/h (37.5 / 0.99) via a standard wet/dry
 moisture-basis mass-balance conversion.
 
-RESOLVED (user decision): 41.67 kg/h is FE-003's own confirmed AS-RECEIVED
+RESOLVED (user decision): 41.67 kg/h is FE-003's AS-RECEIVED (project basis; DOK-ING did not state wet or dry)
 (wet) feed rate. FE-005's own moisture mass balance converts it to dry
 solids (~37.5 kg/h), which is what actually reaches GA-001's own
 dry_feed_rate_kg_h input -- a genuine ~10% change from the Phase 1-2
@@ -90,21 +90,21 @@ FE001_TOTAL_CAPACITY_T = 2.0
 FE001_LIVE_CAPACITY_T = 1.7
 FE001_DEFAULT_DELIVERY_RATE_KG_H = 41.67  # Assumed model default, set equal to the FE-003 nominal rate (DOK-ING RFI #1, 1,000 kg/day); the as-received basis is a project decision
 
-# --- FE-002 Magnetic & Eddy Current Separator (Confirmed) -------------------
+# --- FE-002 Magnetic & Eddy Current Separator (registry-stated) -------------------
 FE002_REMOVAL_EFFICIENCY = 0.98  # informational; a polishing duty, negligible mass removed
 
-# --- FE-003 Weighing Conveyor (Confirmed) -----------------------------------
+# --- FE-003 Weighing Conveyor (registry-stated) -----------------------------------
 FE003_NOMINAL_KG_H = 41.67
 FE003_MIN_KG_H = 29.0
 FE003_MAX_KG_H = 50.0
 
-# --- FE-004 Shredder / Size Reducer (both Confirmed, ratio matches
+# --- FE-004 Shredder / Size Reducer (both registry-stated, ratio matches
 # equipment_engineering_estimates.py's own existing FE-004 static fill exactly) --
 FE004_MOTOR_KW = 15.0
 FE004_THROUGHPUT_T_H = 0.1
 FE004_SPECIFIC_ENERGY_KWH_PER_T = FE004_MOTOR_KW / FE004_THROUGHPUT_T_H  # = 150.0
 
-# --- FE-005 Feed Dryer (both Confirmed) -------------------------------------
+# --- FE-005 Feed Dryer (both registry-stated) -------------------------------------
 FE005_INLET_MOISTURE_FRACTION = 0.10
 FE005_OUTLET_MOISTURE_FRACTION = 0.01  # FE-005's own registry-stated [Unverified (registry)] "<1%" target, taken as ~1%,
                                          # same treatment as the existing FE-007 static fill
@@ -136,7 +136,7 @@ def fe001_inventory(get_input):
     """Inventory mass balance (task requirement 1): level(cycle N) =
     level(cycle N-1) + (delivery - FE-003's own Confirmed nominal design
     discharge) x ASSUMED_HOURS_PER_CYCLE, clamped to [0, FE-001's own
-    Confirmed live capacity]. Lagged self-dependency, the same Phase 0
+    registry-stated live capacity]. Lagged self-dependency, the same Phase 0
     mechanism as HB-013's own inventory.
 
     STATED SIMPLIFICATION, not hidden: the material that actually feeds
@@ -178,7 +178,7 @@ def fe001_inventory(get_input):
 def fe002_mass_balance(get_input):
     """Calculated half of FE-002's dual-status pair (task requirement 3) --
     mass pass-through of FE-001's own live delivery rate. A polishing duty
-    (FE-002's own Confirmed >98% removal efficiency applies to trace
+    (FE-002's own registry-stated >98% removal efficiency applies to trace
     tramp-metal content only) -- negligible mass removed, not modeled as
     a separate mass-balance term."""
     inventory = get_input(("FE-001", "Inventory"))["value"]
@@ -214,12 +214,12 @@ def fe002_tramp_metal_reject(get_input):
 
 def fe003_weighing(get_input):
     """The item this task's own item 2 calls "FE-003's confirmed feed
-    rate" -- clipped to FE-003's own Confirmed min/max operating range
+    rate" -- clipped to FE-003's own registry-stated min/max operating range
     (29-50 kg/h), the real equipment-throughput constraint. STATED
     LIMITATION: if the raw delivery ever falls outside this range, this
     simplified chain does not model where the resulting surplus/deficit
     mass goes (not exercised by this phase's own baseline or perturbation
-    test, both of which stay within FE-003's own confirmed range)."""
+    test, both of which stay within FE-003's own registry-stated range)."""
     inlet_kg_h = get_input(("FE-002", "MassBalance"))["value"]["outlet_kg_h"]
     confirmed_kg_h = min(max(inlet_kg_h, FE003_MIN_KG_H), FE003_MAX_KG_H)
     clipped = confirmed_kg_h != inlet_kg_h
@@ -243,9 +243,9 @@ def fe003_weighing(get_input):
 def fe004_shredder_power(get_input):
     """Power/throughput calc (task requirement 1), cross-verified against
     equipment_engineering_estimates.py's own existing static fill: specific
-    energy = Drive motor power (15kW, Confirmed) / Throughput capacity
-    (0.1 t/h, Confirmed) = 150 kWh/t EXACTLY, by construction (the same
-    ratio of the same two Confirmed nameplate figures the static fill
+    energy = Drive motor power (15kW, registry-stated) / Throughput capacity
+    (0.1 t/h, registry-stated) = 150 kWh/t EXACTLY, by construction (the same
+    ratio of the same two registry-stated nameplate figures the static fill
     itself used) -- not independently re-derived, verified identical in
     this module's own self-test. Live power draw scales with FE-003's own
     live throughput. Mass pass-through -- shredding doesn't change mass."""
@@ -276,7 +276,7 @@ def fe005_moisture_balance(get_input):
     """Moisture mass balance (task requirement 1), cross-verified against
     equipment_engineering_estimates.py's own existing FE-007 static fill
     (~37.5 kg/h dry, ~37.9 kg/h post-drying wet): standard wet/dry
-    moisture-basis conversion using FE-005's own Confirmed inlet (10%) and
+    moisture-basis conversion using FE-005's own registry-stated inlet (10%) and
     outlet (~1%) moisture. THE REAL CONNECTION POINT (task requirement 2):
     dry_solids_kg_h becomes GA-001's own live dry_feed_rate_kg_h input
     (via ga001_gasifier_model.py's own _input_dry_feed_rate(), lagged);
@@ -476,7 +476,7 @@ if __name__ == "__main__":
 
     print("\n=== Task requirement 4: the biggest single propagation test in this project so far ===")
     NEW_DELIVERY_RATE = 45.0  # kg/h, a real, deliberate change, still within FE-003's own
-                               # Confirmed [29,50] kg/h range (no clipping confound)
+                               # registry-stated [29,50] kg/h range (no clipping confound)
 
     def _perturbed_delivery(get_input, _v=NEW_DELIVERY_RATE):
         return {"value": _v, "status": ps.STATUS_ASSUMED, "inputs": [], "validation_basis": ps.VALIDATION_NA,

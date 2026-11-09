@@ -49,18 +49,18 @@ this -- this is an ADDITIVE baseline PARAMETER, not a decision to make
 hb010_separation() Calculated. Levels 1-2 RE-CHECKED for this task, not
 assumed empty: design_basis.py, data/dokink_rfi_answers.md, and the full
 equipment registry all searched for "selectivity" -- genuinely nothing
-Confirmed. BUT Level 2 (Internal-model-derived) is NOT empty, unlike the
+registry-stated. BUT Level 2 (Internal-model-derived) is NOT empty, unlike the
 Fe2O3/Fe3O4 circulation-rate item: HB-010's own registry ALREADY confirms
-a design-point recovery (85%) and permeate purity (95-98%) at a Confirmed
-55% feed H2 content (matching HB-006's own Confirmed feed H2 content
+a design-point recovery (85%) and permeate purity (95-98%) at a registry-stated
+55% feed H2 content (matching HB-006's own registry-stated feed H2 content
 exactly) -- standard solution-diffusion membrane transport theory can
 back-derive what EFFECTIVE H2/(everything else) selectivity those
-confirmed numbers themselves imply (hb010_selectivity_estimate(), using
+registry-stated numbers themselves imply (hb010_selectivity_estimate(), using
 the standard "low back-permeation" approximation: y_p/(1-y_p) = alpha x
 x_f/(1-x_f) -- a real, standard, simplified first-order relation, e.g.
 Baker, R.W., "Membrane Technology and Applications," Wiley, not a full
 multicomponent stage-cut solve, an honest, stated simplification), EVALUATED
-AT the SAME Confirmed 55% design-point feed H2 basis those recovery/purity
+AT the SAME registry-stated 55% design-point feed H2 basis those recovery/purity
 figures are themselves stated for -- DELIBERATELY NOT at HB-010's own live,
 fluctuating feed composition. An earlier draft of this function DID
 re-derive selectivity at the live feed composition each cycle; running the
@@ -70,13 +70,13 @@ genuinely vary with feed composition for a fixed-selectivity membrane, so
 re-applying the SAME design-point recovery/purity numbers to a DIFFERENT
 feed composition produced a wildly different, wrong-headed range (as high
 as ~150 at one live composition observed) -- fixed by anchoring the
-derivation to the Confirmed design point only; the live feed H2 fraction is
+derivation to the registry-stated design point only; the live feed H2 fraction is
 still read and reported for honest comparison, not used in the computation.
 Result: implied selectivity approximately 15.5-40.1 (rounds to 15-40), a
 FIXED baseline, correctly invariant to the live feed composition. CROSS-
 CHECKED (Section 4), not left unverified: a real comparable polyimide hollow-fiber
 membrane module (~39 GPU H2 permeance, closely matching HB-010's own
-Confirmed 50 GPU) reports a measured H2/CO2 selectivity of 20.2 ("Recent
+registry-stated 50 GPU) reports a measured H2/CO2 selectivity of 20.2 ("Recent
 advances in H2 purification and CO2 capture: Evolving from flat sheet to
 hollow fiber membranes," ScienceDirect, Oct. 2024, PII S2772656824001465 --
 full author/journal/volume details could not be retrieved, paywalled;
@@ -127,7 +127,7 @@ reaction order anywhere in this project (design_basis.py, the RFI answers,
 equipment_engineering_estimates.py, and this module's own existing
 constants were all re-checked directly). This IS the same class of gap as
 Fe2O3/Fe3O4 circulation (Levels 1-2 genuinely empty), NOT the same class as
-GC-002/011/014 (which turned out Confirmed-but-unwired) -- confirmed
+GC-002/011/014 (which turned out registry-stated-but-unwired) -- checked
 before starting this task, not assumed. Level 5 (peer-reviewed literature)
 reached: DBT is one of the most-studied LOHC compounds, with real,
 independently-verified kinetics papers for BOTH directions -- see
@@ -146,7 +146,7 @@ this task does not, and should not, touch that block at all.
 Logic/state model: dispensed(cycle) = min(rated max throughput x
 ASSUMED_HOURS_PER_CYCLE, available storage). No FCEV traffic/refuelling
 demand schedule exists anywhere in this project -- "demand" is modeled
-here as HB-018's own Confirmed maximum dispensing rate (1.2 kg/min = 72
+here as HB-018's own registry-stated maximum dispensing rate (1.2 kg/min = 72
 kg/h), an ASSUMED full-utilization worst case, explicitly flagged as such,
 not a fabricated demand curve. Reads HB-013's PREVIOUS cycle's storage
 level (lagged); HB-013 reads THIS function's previous output as its own
@@ -163,7 +163,7 @@ from . import plant_status as ps
 # --- AI-001 --------------------------------------------------------------
 AI001_ILLUSTRATIVE_AVAILABILITY_FRACTION = 0.6
 
-# --- HB-011 Electrolyser (PEM, Confirmed rated figures) -------------------
+# --- HB-011 Electrolyser (PEM, registry-stated rated figures) -------------------
 HB011_RATED_POWER_KW = 10.0
 HB011_RATED_H2_NM3_H = 0.18                 # registry-stated [Unverified (registry)], informational cross-check only
 HB011_SEC_RATED_KWH_PER_NM3 = 55.0          # HB-011's own registry-stated [Unverified (registry)] "System efficiency"
@@ -171,7 +171,7 @@ HB011_WATER_L_PER_NM3 = 1.0                 # HB-011's own registry-stated [Unve
 HB011_MIN_LOAD_FRACTION = 0.10              # Assumed: literature-typical PEM stack turndown
                                              # (PEM commonly cited as stable down to ~5-10% of
                                              # rated current, unlike alkaline's ~20-40% -- HB-011's
-                                             # own Confirmed "PEM" type). No HB-011-specific
+                                             # own registry-stated "PEM" type). No HB-011-specific
                                              # turndown spec exists in this project's registry.
 HB011_BOP_POWER_FRACTION = 0.08             # Assumed: literature-typical balance-of-plant/
                                              # auxiliary power fraction for a compact PEM system.
@@ -186,10 +186,10 @@ HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION = 0.55  # registry-stated [Unverified (r
                                              # remark states "55% H2 content (HB-006)" explicitly --
                                              # the SAME basis HB010_CONFIRMED_RECOVERY/_PURITY_RANGE
                                              # are themselves stated at, matching HB-006's own
-                                             # Confirmed feed H2 content exactly.
+                                             # registry-stated feed H2 content exactly.
 
 # Real comparable polyimide hollow-fiber membrane module (~39 GPU H2 permeance, closely
-# matching HB-010's own Confirmed 50 GPU) -- measured H2/CO2 selectivity, used ONLY as a
+# matching HB-010's own registry-stated 50 GPU) -- measured H2/CO2 selectivity, used ONLY as a
 # consistency check on hb010_selectivity_estimate()'s own internally-derived range below,
 # not as the primary derivation. See module docstring's HB-010-selectivity section for the
 # full citation and the honest limits on what could be verified.
@@ -201,12 +201,12 @@ HB016_RELEASE_EFFICIENCY_WT_PCT = 6.0       # registry-stated [Unverified (regis
 HB017_RECOVERY_EFFICIENCY = 0.99            # registry-stated [Unverified (registry)] ">99%", point value used
 
 # HB-016 DEHYDROGENATION activation-energy range (kJ/mol) -- real, independently-verified
-# literature, both studies matching HB-016's own Confirmed Pt/Al2O3 catalyst AND its own
-# Confirmed 300 degC operating temperature directly:
+# literature, both studies matching HB-016's own registry-stated Pt/Al2O3 catalyst AND its own
+# registry-stated 300 degC operating temperature directly:
 #   Garidzirai, R., Modisha, P., & Bessarabov, D. (2024), "Assessment of Reaction Kinetics for
 #   the Dehydrogenation of Perhydro-Dibenzyltoluene Using Mg- and Zn-Modified Pt/Al2O3
 #   Catalysts," Catalysts, 14(1), 32, DOI 10.3390/catal14010032 -- 205 kJ/mol (1 wt% Pt/Al2O3,
-#   first-order, k=0.0222 1/min at 300 degC, the SAME temperature HB-016 is Confirmed at).
+#   first-order, k=0.0222 1/min at 300 degC, the SAME temperature HB-016 is registry-stated at).
 #   Park, S., Naseem, M., & Lee, S. (2021), "Experimental Assessment of Perhydro-
 #   Dibenzyltoluene Dehydrogenation Reaction Kinetics in a Continuous Flow System for Stable
 #   Hydrogen Supply," Materials, 14(24), 7613, DOI 10.3390/ma14247613 -- 171 kJ/mol (Pt/Al2O3,
@@ -234,7 +234,7 @@ HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN = 0.0222  # Garidzirai et al. 2024, 
 # S., Abdullah, M.M., Seong, G., & Lee, S. (2023), "Kinetic analysis of dibenzyltoluene
 # hydrogenation on commercial Ru/Al2O3 catalyst for liquid organic hydrogen carrier," Chemical
 # Engineering Journal, 474, 145743, DOI 10.1016/j.cej.2023.145743 -- studied at 130-170 degC,
-# 40-80 bar, an EXACT match to HB-014's own Confirmed 170 degC/40 bar) independently confirms
+# 40-80 bar, an EXACT match to HB-014's own registry-stated 170 degC/40 bar) independently confirms
 # this reaction has been kinetically characterized (Langmuir-Hinshelwood model) at HB-014's own
 # exact conditions, but its own specific activation-energy figure could not be retrieved in this
 # session either (paywalled) -- used as qualitative, methodological corroboration only, not a
@@ -279,7 +279,7 @@ def ai001_renewable_availability(get_input):
 def hb011_electrolyser(get_input):
     """Literature part-load specific-energy-consumption (SEC) correlation:
     SEC(load) = SEC_rated x [BOP_frac + (1-BOP_frac)/load], calibrated so
-    SEC(load=1.0) = SEC_rated EXACTLY (HB-011's own Confirmed 55 kWh/Nm3),
+    SEC(load=1.0) = SEC_rated EXACTLY (HB-011's own registry-stated 55 kWh/Nm3),
     regardless of BOP_frac's value -- a property of the formula, not a fit.
     Below load=1, SEC rises (efficiency falls) because a roughly constant
     balance-of-plant power draw gets spread over less H2 output -- a real,
@@ -408,7 +408,7 @@ def hb010_selectivity_estimate(get_input):
     questions.md item 10) -- see module docstring's HB-010-selectivity
     section for the full evidence-hierarchy walk, citation, and honest
     limitations. Returns a bounded, dimensionless EFFECTIVE H2/(everything
-    else) selectivity RANGE, back-derived from HB-010's own CONFIRMED
+    else) selectivity RANGE, back-derived from HB-010's own registry-stated
     design-point recovery (85%) and permeate purity (95-98%) AT ITS OWN
     CONFIRMED DESIGN-POINT FEED H2 FRACTION (55%, HB010_CONFIRMED_DESIGN_
     FEED_H2_FRACTION), via the standard "low back-permeation" solution-
@@ -423,7 +423,7 @@ def hb010_selectivity_estimate(get_input):
     an earlier draft of this function did exactly that and was caught, not
     shipped, by this module's own self-test: the registry's 85%/95-98%
     recovery/purity figures are an explicit STATIC DESIGN POINT, stated
-    (and only valid) at the Confirmed 55% feed H2 basis -- applying them to
+    (and only valid) at the registry-stated 55% feed H2 basis -- applying them to
     a DIFFERENT, live, fluctuating feed composition via the same simple
     ratio conflates two different quantities (selectivity is approximately
     a material property; recovery/purity are OUTPUTS that genuinely vary
@@ -670,11 +670,11 @@ def hb014_kinetics_baseline(get_input):
     Experimental Study," Inorganic Chemistry, 62(42), 17390-17400, DOI
     10.1021/acs.inorgchem.3c02721 -- reports ~67.2 kJ/mol for its own
     best-performing hydrogenation catalyst (5 wt% Rh/Al2O3, NOT HB-014's
-    own Confirmed Pt/Pd/Al2O3 -- a real, stated catalyst-metal mismatch).
+    own registry-stated Pt/Pd/Al2O3 -- a real, stated catalyst-metal mismatch).
     Independently, Park, S. et al. (2023), Chemical Engineering Journal,
     474, 145743, DOI 10.1016/j.cej.2023.145743, kinetically characterized
     this SAME reaction (DBT hydrogenation, Langmuir-Hinshelwood model) at
-    130-170 degC / 40-80 bar -- an EXACT match to HB-014's own Confirmed
+    130-170 degC / 40-80 bar -- an EXACT match to HB-014's own registry-stated
     170 degC/40 bar -- confirming the reaction has been studied at
     exactly these conditions, though its own specific Ea figure could not
     be independently re-verified in this session (paywalled). HONEST,
@@ -786,9 +786,9 @@ def hb015_inventory(get_input):
 
 
 def hb016_mass_balance(get_input):
-    """H2 release mass balance, capped at HB-016's own Confirmed 2 kg H2/h
-    capacity, applying its own Confirmed 6.0 wt% release efficiency
-    against HB-014's own Confirmed 6.2 wt% loading efficiency (a real,
+    """H2 release mass balance, capped at HB-016's own registry-stated 2 kg H2/h
+    capacity, applying its own registry-stated 6.0 wt% release efficiency
+    against HB-014's own registry-stated 6.2 wt% loading efficiency (a real,
     small round-trip loss, matching the registry's own stated framing).
     depends_on (same-cycle) HB-015's own Inventory -- structurally
     cascaded-blocked, never executed under this project's current data."""
@@ -835,21 +835,21 @@ def hb016_kinetics_baseline(get_input):
     open -- same finding as HB-014's own hb014_kinetics_baseline(): the
     registry confirms catalyst type, T/P, and efficiency, but genuinely no
     kinetic parameter. Level 5 (peer-reviewed literature), TWO independent
-    sources BOTH matching HB-016's own Confirmed Pt/Al2O3 catalyst AND its
-    own Confirmed 300 degC operating temperature directly (a materially
+    sources BOTH matching HB-016's own registry-stated Pt/Al2O3 catalyst AND its
+    own registry-stated 300 degC operating temperature directly (a materially
     STRONGER match than HB-014's own hydrogenation baseline -- see that
     function's own docstring for the contrast): Garidzirai, R., Modisha,
     P., & Bessarabov, D. (2024), Catalysts, 14(1), 32, DOI
     10.3390/catal14010032 -- 205 kJ/mol activation energy, first-order
     kinetics, rate constant 0.0222 /min, 1 wt% Pt/Al2O3, batch reactor AT
-    300 degC (HB-016's own exact Confirmed temperature). Park, S.,
+    300 degC (HB-016's own exact registry-stated temperature). Park, S.,
     Naseem, M., & Lee, S. (2021), Materials, 14(24), 7613, DOI
     10.3390/ma14247613 -- 171 kJ/mol activation energy, Pt/Al2O3,
     continuous flow, 250-320 degC (spanning HB-016's own 300 degC).
     CONSISTENCY CHECK (Section 4, Missing Parameter Protocol) performed
     below, not skipped: Garidzirai et al.'s own real first-order rate
     constant is used to back-derive the reaction time needed to reach
-    HB-016's own Confirmed round-trip efficiency (6.0/6.2 wt% = ~96.8% of
+    HB-016's own registry-stated round-trip efficiency (6.0/6.2 wt% = ~96.8% of
     theoretical), then cross-checked against that SAME paper's own stated
     real batch reaction time (6 h, for its own best-performing catalyst
     variant) -- same order of magnitude, a genuine, not-forced PASS."""
@@ -857,7 +857,7 @@ def hb016_kinetics_baseline(get_input):
     k_per_min = HB016_DEHYDROGENATION_RATE_CONSTANT_PER_MIN
 
     # Consistency check: first-order batch conversion X = 1 - exp(-k*t), solved for t at
-    # HB-016's own Confirmed round-trip efficiency target (6.0/6.2 wt% = 96.77% of theoretical
+    # HB-016's own registry-stated round-trip efficiency target (6.0/6.2 wt% = 96.77% of theoretical
     # loading released) -- real numbers, not invented, both already Confirmed in this project.
     target_conversion = HB016_RELEASE_EFFICIENCY_WT_PCT / HB014_LOADING_EFFICIENCY_WT_PCT
     implied_time_min = -math.log(1.0 - target_conversion) / k_per_min
@@ -955,7 +955,7 @@ def hb016_kinetics_baseline(get_input):
 
 
 def hb017_mass_balance(get_input):
-    """Purification recovery mass balance, HB-017's own Confirmed >99%
+    """Purification recovery mass balance, HB-017's own registry-stated >99%
     recovery efficiency applied to HB-016's own H2 release rate.
     depends_on (same-cycle) HB-016's own MassBalance -- structurally
     cascaded-blocked, never executed under this project's current data.
@@ -1120,7 +1120,7 @@ if __name__ == "__main__":
     assert 0.0 < lo_sel < hi_sel, f"REGRESSION: baseline range {(lo_sel, hi_sel)} is not a sane bounded range."
 
     # Independent re-derivation, not just "a number came back": recompute via a separate expression,
-    # using the CONFIRMED 55% design-point feed H2 fraction (NOT the mocked feed's own live y_H2,
+    # using the registry-stated 55% design-point feed H2 fraction (NOT the mocked feed's own live y_H2,
     # which this function deliberately does not use for the computation itself).
     ratio_chk = HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION / (1.0 - HB010_CONFIRMED_DESIGN_FEED_H2_FRACTION)
     lo_chk = (0.95 / 0.05) / ratio_chk
@@ -1154,7 +1154,7 @@ if __name__ == "__main__":
 
     # FIXED baseline, correctly NOT live-wired to feed composition (an earlier draft got this
     # backwards -- see this function's own docstring): a DIFFERENT live feed H2 fraction must NOT
-    # move the baseline (selectivity is anchored to the Confirmed design point), while the reported
+    # move the baseline (selectivity is anchored to the registry-stated design point), while the reported
     # live_feed_h2_fraction_this_cycle field DOES change, purely informational.
     def _mock_wgs_alt(k):
         return {"value": {"CO": 0.10, "H2": 0.45, "CO2": 0.30, "CH4": 0.05, "N2": 0.10}}

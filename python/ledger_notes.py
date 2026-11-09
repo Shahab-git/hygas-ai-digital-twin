@@ -147,7 +147,13 @@ def render_confirmed():
           "", "**The pinned counts changed again in task A3d (Gate 5 wording).** Lines mentioning \"confirmed\": 449 to 436; DOK-ING-sourced 49 to 44, generic 159 to 160, registry-stated 241 to 232 "
           "(hb_wgs_psa_storage_chain 3/6/27 to 2/6/26, eu_utilities_chp 5/19/34 to 2/20/26, fe_feed_handling 6/12/18 to 5/12/18). Why: A3d reworded comments and docstrings that called an Assumed or "
           "Unverified (registry) constant Confirmed (EU-003, EU-004, EU-005, EU-006, EU-007, EU-008, EU-010, FE-001) so that each states the status the ledger gives, and reworded two persisted notes "
-          "(HB-012 discharge pressure; the 100 % WGS / PSA claim fraction). The registry-stated lines that reach a persisted note stay at the pinned count."]
+          "(HB-012 discharge pressure; the 100 % WGS / PSA claim fraction). The registry-stated lines that reach a persisted note stay at the pinned count.",
+          "", "**The pinned counts changed in Phase 1 task P1-02 (wording residue).** Lines mentioning \"confirmed\": 433 to 284; DOK-ING-sourced 44 to 44, generic 160 to 160, registry-stated 229 to 80 "
+          "(eu_utilities_chp 2/20/24 to 2/20/8, fe_feed_handling 5/12/18 to 5/12/4, ga001_gasifier_model 16/25/35 to 16/25/19, gc_gas_cleaning_chain 0/28/60 to 0/28/11, hb_remaining_chain 1/35/47 to 1/35/14, "
+          "hb_wgs_psa_storage_chain 2/6/26 to 2/6/6, tab1_integration 12/4/8 to 12/4/7). Why: 149 docstring and comment lines that called a registry-stated value Confirmed now say \"registry-stated\" (or \"modelled\", "
+          "\"live\", \"stated\" where the value is a model output or an Assumed input). Lines whose \"Confirmed\" is true under the rule (a DOK-ING source is cited: FE-003 nominal feed rate, HB-006 H2 purity) and lines "
+          "that name DOK-ING's confirmed answers were left as written. Text only: for every changed file the syntax tree with all string constants neutralised equals that of the previous commit, and no string literal "
+          "(so no persisted note) was touched; the 80 registry-stated lines that remain are 53 string literals (not touched in this step; some reach persisted notes) and 27 docstring or comment lines left as written (they name DOK-ING's answers, concern the confirmation tracker, or are true under the rule)."]
     return L
 
 
