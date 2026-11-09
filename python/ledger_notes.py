@@ -23,15 +23,13 @@ def locate(file, token, after=None):
 
 
 # (reader, the key it reads without declaring it, [(file, token)], why, fix)
-KNOWN_UNDECLARED_READS = [
-    {"reader": ("GA-001", "EnergyBalance"), "reads": ("GA-001", "CarbonAccounting"),
-     "where": [("python/balance_audit.py", 'snapshot.get(("GA-001", "CarbonAccounting"))'), ("python/ga001_energy_balance.py", "DEPENDS_ON = [")],
-     "why": "balance_audit.carbon_black_flows (called through ga001_terms from ga001_energy_balance.energy_balance) reads the derived carbon black; ga001_energy_balance declares it neither in DEPENDS_ON nor in LAGGED."},
-    {"reader": ("HB-009", "TailGas"), "reads": ("WGS", "Composition"),
-     "where": [("python/hb_wgs_psa_storage_chain.py", 'wgs = get_input(("WGS", "Composition"))["value"]', "def hb009_tail_gas"), ("python/hb_wgs_psa_storage_chain.py", 'engine.register_model(("HB-009", "TailGas")')],
-     "why": "hb009_tail_gas reads the WGS composition; its registration declares only HB-006 PSA and GC-013 Gas."},
+KNOWN_UNDECLARED_READS = []
+RESOLVED_UNDECLARED_READS = [
+    {"reader": ("GA-001", "EnergyBalance"), "reads": ("GA-001", "CarbonAccounting"), "how": "declared in `depends_on` at registration (`ga001_energy_balance.CARBON_ACCOUNTING_KEY`); not added to the module's `DEPENDS_ON` list, which `ga001_carbon_accounting` reuses; the published `inputs` list of `GA-001|EnergyBalance` is unchanged"},
+    {"reader": ("HB-009", "TailGas"), "reads": ("WGS", "Composition"), "how": "declared in `depends_on` of the `HB-009|TailGas` registration; the published `inputs` already named it"},
 ]
-KNOWN_UNDECLARED_FIX = "The fix is deferred to the output-status-inheritance task (A9), which needs the real read graph; tests/test_design_basis_ledger.py pins exactly these two, so a third hidden read fails."
+KNOWN_UNDECLARED_FIX = ("Both reads found in task A3 were declared in Phase 1 task P1-03 (same-cycle `depends_on`; the evaluation order was already the declared one, and the persisted snapshot is unchanged). "
+                        "tests/test_design_basis_ledger.py pins the list as empty, so any new hidden read fails.")
 
 INLINE_LITERAL_NOTE = ("A number that is hard-coded inside a function (for example `efficiency = 0.95` in `gc003_dust`) is read from the function's `ast` (`via` = `code only`, source `literal ... inside f() (read from its ast)`). "
                        "It stays inline: extraction into a named constant happens only when a later task edits that function anyway.")
@@ -81,6 +79,10 @@ def render_prose():
          "Engine models whose code reads another published key that their registration does not declare (found by the instrumented run against `declared_readers`). " + KNOWN_UNDECLARED_FIX, ""]
     for u in KNOWN_UNDECLARED_READS:
         L.append(f"- `{u['reader'][0]}|{u['reader'][1]}` reads `{u['reads'][0]}|{u['reads'][1]}`: {u['why']} Where: " + ", ".join(f"`{_loc(w[0], w[1], *w[2:])}`" for w in u["where"]) + ".")
+    if not KNOWN_UNDECLARED_READS:
+        L.append("None open.")
+    for u in RESOLVED_UNDECLARED_READS:
+        L.append(f"- Resolved: `{u['reader'][0]}|{u['reader'][1]}` reads `{u['reads'][0]}|{u['reads'][1]}`: {u['how']}.")
     L += ["", "## Inline literals", "", INLINE_LITERAL_NOTE, "", "## Constants nothing uses", "",
           "Ledger rows with no consumer. They are reported, not removed.", ""]
     for name, f, tok, says in UNUSED_CONSTANTS:

@@ -654,15 +654,11 @@ def test_a_known_input_lists_the_keys_that_really_read_it(built):
     assert "GA-001|Outputs" in row["consumers"] and "GA-001|EnergyBalance" in row["consumers"], row["consumers"]
 
 
-# Found by the instrumented run (task A3), reported and NOT fixed (engine files are out of scope): two models call get_input for a key they do not declare in depends_on /
-# lagged_depends_on. Pinned here so that a THIRD hidden read fails this test, and so that fixing one of these means removing it from the list.
-KNOWN_UNDECLARED_READS = {
-    (("GA-001", "CarbonAccounting"), ("GA-001", "EnergyBalance")),     # balance_audit.carbon_black_flows (via ga001_terms) reads the derived carbon black
-    (("WGS", "Composition"), ("HB-009", "TailGas")),                   # the PSA tail-gas handler reads the WGS composition
-}
+# Found by the instrumented run (task A3): two models called get_input for a key they did not declare. Declared in Phase 1 task P1-03, so the set is empty and a NEW hidden read fails this test.
+KNOWN_UNDECLARED_READS = set()
 
 
-def test_instrumented_reads_agree_with_the_declared_dependencies_except_two_known_hidden_ones(built):
+def test_instrumented_reads_agree_with_the_declared_dependencies_except_the_known_hidden_ones(built):
     readers = built[3]
     declared = lcons.declared_readers()
     undeclared = {(dep, m) for dep, models in readers.items() for m in models if m not in declared.get(dep, [])}
