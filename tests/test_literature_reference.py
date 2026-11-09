@@ -99,3 +99,17 @@ def test_nothing_in_the_engine_or_the_app_reads_the_reference_layer():
                 continue
             src = open(path, encoding="utf-8").read()
             assert "literature_reference" not in src, f"{name} reads the reference layer"
+
+
+def test_p1_11_heat_recovery_sources_are_recorded_and_the_model_fractions_are_unchanged():
+    """Phase 1 task P1-11: two sourced entries and a not-found item were added; the four Assumed recovery fractions they were compared with did not move."""
+    b = lr.entry("nrel_boiler_economizer")
+    assert [n["low"] for n in b["numeric"]] == [78, 84, 92] and [n["high"] for n in b["numeric"]] == [83, 86, 95]
+    n = lr.entry("netl_syngas_cooling_recovery")
+    assert (n["numeric"][0]["low"], n["numeric"][0]["high"]) == (5, 25)
+    assert "not by the project owner" in b["caveat"] and "not by the project owner" in n["caveat"]
+    assert any("recovery fractions" in x["item"] for x in lr.NOT_FOUND)
+    from python import plant_heat_integration as phi
+    got = {k: (v["value"], v["low"], v["high"], v["status"]) for k, v in phi.ASSUMED.items() if k.startswith("recovery_")}
+    assert got == {"recovery_gas_cooler": (0.7, 0.5, 0.9, "Assumed"), "recovery_wgs": (0.7, 0.5, 0.9, "Assumed"),
+                   "recovery_ash": (0.5, 0.25, 0.75, "Assumed"), "recovery_flue": (0.8, 0.6, 0.9, "Assumed")}
