@@ -49,7 +49,7 @@ These are open in `docs/master_open_questions.md` section 1 (the DOK-ING list) b
 | HB-010 membrane selectivity | Assumed | master_open_questions 1.10 |
 | HB-014/016 LOHC catalyst kinetics | Assumed | master_open_questions 1.11 |
 | Heat recovery fractions | see section 2 | ledger "considered and left empty" |
-| Feeder minimum and maximum rate (FE-003) | Assumed | ledger (RFI2-8 considered, asks the design rate only) |
+| Feeder minimum and maximum rate (FE-003) | **not a gap, corrected in Phase 1 task P1-13:** the registry gives 0.029 and 0.05 t/h (29.0 and 50.0 kg/h, 70 % and 120 % of nominal), remarks "per DOK-ING spec"; ledger status Unverified (registry, origin not stated); the engine already clips the feed to this range (`fe_feed_handling`). Only a ramp rate (how fast the feed may change) is absent, and it is not modelled | ledger rows `LEDGER.FE-003.min_kg_h`, `LEDGER.FE-003.max_kg_h`; the earlier row said "Assumed", which was wrong |
 
 ## 4. Limits
 
