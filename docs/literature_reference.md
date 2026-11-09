@@ -124,13 +124,29 @@ Wording of the stated figures is as given by the owner; `numeric` in the module 
 | chalmers_devolatilisation_transient | devolatilisation and char accommodation time scales | Devolatilisation transient "a few seconds"; char accommodation "minutes to hours"; no specific time constants (simulation, no validation stated) | simulation / not stated in the task file / not stated in the task file | Chalmers research record 503301 (title not given in the task file) -- https://research.chalmers.se/en/publication/503301 | specific time constants, any validation | literature-informed Assumed: a value from another plant and feed, not DOK-ING's and not validated for GA-001. Qualitative time scales from a simulation with no validation stated; no number to compare with. |
 | grasys_psa_vendor | PSA recovery, purity and pressure | PSA (vendor page): recovery up to 90 %, purity up to 99.999 %, pressure up to 5.5 MPa | vendor product page / not stated / not applicable | grasys.com, hydrogen adsorption product page -- https://grasys.com/products/gas/hydrogen/adsorption | feed composition, the conditions at which the maxima hold | literature-informed Assumed: a value from another plant and feed, not DOK-ING's and not validated for GA-001. Vendor marketing, not independent; maxima, not typical values. |
 | nrel_station_throughput_2015 | hydrogen station throughput, 2015 data | Hydrogen stations, 2015 data: highest station average 35 kg/day; no hourly values in the text | hydrogen fuelling stations, 2015 data / not applicable / not applicable | NREL report fy16osti/65485 -- https://www.nrel.gov/docs/fy16osti/65485.pdf | hourly values | literature-informed Assumed: a value from another plant and feed, not DOK-ING's and not validated for GA-001. A dispensing demand scale, not a gasifier quantity; 2015 data. |
+| nrel_boiler_economizer | boiler efficiency and stack temperature, with and without an economizer | Natural-gas boiler at 4 % excess O2: alone 78 to 83 % (stack 350 to 550 degF); with feedwater economizer 84 to 86 % (250 to 300 degF); with feedwater and condensing economizers 92 to 95 % (75 to 150 degF) | industrial and commercial boilers / natural gas / not applicable | NREL fy12osti/52752 (https://nrel.gov/docs/fy12osti/52752.pdf) | syngas or tail-gas firing, small units, the flame-to-stack recovery share as such | literature-informed Assumed; read via a page-fetch summary on 2026-11-09, not by the owner |
+| netl_syngas_cooling_recovery | heat recovered from the syngas by cooling | Heat recovery takes 5-25 % of the energy in the syngas (sensible and latent); gasifier outlet 2,500 to 2,800 degF, about 1,100 degF after a radiant cooler, 700 to 750 degF after a convective cooler | large entrained-flow plants / coal and petroleum coke / oxygen | NETL Gasifipedia, syngas (https://netl.doe.gov/research/Coal/energy-systems/gasification/gasifipedia/syngas) | sensible heat alone, the effectiveness of one cooler, small or fluidised-bed plants | literature-informed Assumed; plausibility band only; read via a page-fetch summary on 2026-11-09, not by the owner |
 
 ## 6. Not found
 
 - **gasifier temperature lag**: no published value found.
 - **tail-gas recycle delay**: no published value found.
 - **cooling-basin lag**: no published value found.
+- **gas-cooler, water-gas-shift reaction-heat and ash-heat recovery fractions for a plant of this size**: searched on 2026-11-09 (Phase 1 task P1-11); no readable source gave a fraction; the values 0.7, 0.7 and 0.5 stay Assumed.
 - **waste-derived chemical-looping gasification data**: no readable source; the 5 MWth pilot used wood pellets.
+
+## 7. Heat-recovery fractions (Phase 1 task P1-11, 2026-11-09)
+
+Question: do published figures support the four Assumed recovery fractions in `python/plant_heat_integration.py` (gas cooler 0.7, shift heat 0.7, ash 0.5, flue gas 0.8; ranges 0.5-0.9, 0.5-0.9, 0.25-0.75, 0.6-0.9)? Two entries were added (`nrel_boiler_economizer`, `netl_syngas_cooling_recovery`, rows below). **These two were read through a page-fetch summary on 2026-11-09, not by the project owner as for the other entries.** No value, range or default changed; `(PLANT, HeatIntegration)` is unchanged.
+
+| fraction | model value (range) | what the sources give | reading |
+|---|---|---|---|
+| flue gas | 0.8 (0.6-0.9) | natural-gas boilers: 78-83 % alone, 84-86 % with a feedwater economizer (stack 250-300 degF, about 120-150 degC), 92-95 % with a condensing economizer | **supports 0.8** as the order of a conventional boiler; the range 0.6-0.9 is wider than the published 0.78-0.86 for non-condensing units; condensing economizers (0.92-0.95) are outside the model's 180 degC stack assumption |
+| gas cooler | 0.7 (0.5-0.9) | 5-25 % of the energy in the syngas is recovered as heat (large entrained-flow plants, sensible plus latent) | plausibility only: at 0.7 the cooler hands back about 32 kW, which is 16 % of the 202 kW feed energy at 17.5 MJ/kg; the bases differ (feed energy vs syngas energy), so this is a same-order check, not support for 0.7 |
+| shift reaction heat | 0.7 (0.5-0.9) | no readable source found | stays Assumed; shift heat is only 9 kW in the model, so the effect is small |
+| ash heat | 0.5 (0.25-0.75) | no readable source found | stays Assumed; low grade |
+
+Effect on numbers: none. The fractions feed only the read-only heat-deficit report. Changing them is bounded by the existing sensitivity (about 7 to 8 kW for the gas cooler and flue gas across 0.5 to 0.9, `docs/plant_heat_integration.md`). The one concrete data point that could narrow a range is DOK-ING's gas-cooler and stack data (RFI #2 Q21, Q22; draft request question 7).
 
 ## Appendix: trend-check tables (generated by `scripts/run_literature_trend_check.py`)
 

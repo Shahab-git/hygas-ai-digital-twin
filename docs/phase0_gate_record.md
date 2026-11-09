@@ -1,6 +1,6 @@
 # Phase 0 gate record
 
-**Status: Phase 0 is closed WITH EXCEPTIONS by the owner's decision of 2026-11-09 (G5-03, section 3c). Phase 1 is authorised ONLY for the four tasks named in section 3d (G5-04).** The approval says the baseline and its limits are documented; it does not say the model is validated, calibrated or correct. The Gate 5 criteria (G5-01 to G5-15) were adopted as working proposals; the owner accepted each disposition recorded below, and G5-09 is an exception, not a pass.
+**Status: Phase 0 is closed WITH EXCEPTIONS by the owner's decision of 2026-11-09 (G5-03, section 3c). Phase 1 is authorised ONLY for the four tasks named in section 3d (G5-04) and the five named in section 3e.** The approval says the baseline and its limits are documented; it does not say the model is validated, calibrated or correct. The Gate 5 criteria (G5-01 to G5-15) were adopted as working proposals; the owner accepted each disposition recorded below, and G5-09 is an exception, not a pass.
 
 Record date: 2026-11-06; sections 2a, 3a, 3b, 3c and 4 updated 2026-11-09 (G5-01, G5-02, G5-03, G5-09). Repository state described: `main` at `e7f25b2` (merge of PR #38) for the 9 Nov updates; section 1 lists merges up to PR #32. This file records decisions and facts; it makes none. Where a statement rests only on the owner's word, it says so. Where the repo cannot show something, it says NOT VERIFIED.
 
@@ -111,6 +111,12 @@ On 2026-11-09 the owner wrote in chat "please start phase 1", after reading the 
 
 Not authorised: every other Phase 1 task (P1-04, P1-05, P1-06, P1-08 to P1-10 of the draft), applying any provisional-answer-sheet value, changing a default, and CI or workflow changes. The Phase 1 rules (one task per PR; a before / after table and a Gate 4 scope statement for any change that can move a number; nothing tuned; Assumed labels) apply to each task.
 
+### 3e. Phase 1 extension: literature-informed values (owner instruction, 2026-11-09)
+
+After the P1-07 draft, the owner wrote in chat that DOK-ING's answers may take long, that the project should proceed with the closest realistic values from other projects and reliable figures instead of leaving parameters empty, and that DOK-ING's data will replace them when available; and then, offered a list of five items, "all of 1-5 in this order". **Read as authorising five further tasks, one PR each, in this order:** P1-11 (heat-recovery fractions), P1-12 (HB-010 membrane selectivity and HB-014/016 carrier kinetics), P1-13 (FE-003 minimum and maximum feed rate), P1-14 (HB-007 liquid-carrier split as an explicit scenario parameter, not one chosen number), P1-15 (EU-008 and HB-003 published as `Estimated` ratings next to the registry figures, registry rows untouched). The owner's statement is recorded here; the repo cannot show it (NOT VERIFIED from the repo).
+
+Conditions that apply to all five (stated by Claude when the list was offered; the owner proceeded on them): every value taken from literature or another plant is labelled `Assumed` (literature-informed) with its source and range; none becomes Confirmed or "validated" without a DOK-ING source line; a source that cannot be found is recorded as not found, and the value is not invented; the Phase 1 rules (before / after table and Gate 4 scope statement for any change that can move a number; nothing tuned) apply. Not authorised by this entry: the larger drivers (gasifying agent, feed composition, tail-gas default), which stay scenario work until the owner decides separately, and every item listed in section 7.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -144,7 +150,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d and the five of section 3e; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

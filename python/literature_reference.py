@@ -6,7 +6,8 @@ by a person or a script. Nothing in the engine, the uncertainty module, the app 
 from the project (tests/test_literature_reference.py enforces both).
 
 Every figure below was read on the cited page by the project owner (mostly abstracts) and is reproduced as given: no digit was added, no
-paper was fetched, nothing was inferred. A figure the page does not state is not here; `what_the_page_does_not_state` says so.
+paper was fetched, nothing was inferred. EXCEPTION: the two entries added in Phase 1 task P1-11 (`nrel_boiler_economizer`, `netl_syngas_cooling_recovery`) were read on
+2026-11-09 through a page-fetch summary, not by the owner, and their caveats say so. A figure the page does not state is not here; `what_the_page_does_not_state` says so.
 
 STATUS. The repo's tag vocabulary (plant_status.py) has the five tags Measured / Calculated / Estimated / Assumed / Missing and no
 "Assumed (literature-informed)" string. The project's `Assumed` tag is therefore used for every entry, and "literature-informed" is carried in
@@ -230,12 +231,44 @@ ENTRIES = [
         "status": STATUS_ASSUMED,
         "caveat": _OTHER_PLANT + " A dispensing demand scale, not a gasifier quantity; 2015 data.",
     },
+    {
+        "key": "nrel_boiler_economizer",
+        "parameter": "boiler efficiency and stack temperature, with and without an economizer",
+        "value_text": ("Natural-gas boiler, combustion efficiency at 4 % excess O2: boiler alone 78 to 83 % (stack 350 to 550 degF); with a feedwater economizer 84 to 86 % (stack 250 to 300 degF); "
+                       "with feedwater and condensing economizers 92 to 95 % (stack 75 to 150 degF). A conventional economizer cools flue gas to about 250 degF to avoid condensation."),
+        "numeric": [_n("boiler alone", 78, 83, "%"), _n("with feedwater economizer", 84, 86, "%"), _n("with feedwater and condensing economizer", 92, 95, "%")],
+        "scale": "industrial and commercial boilers (US DOE/NREL technical report)",
+        "feed": "natural gas",
+        "agent": "not applicable",
+        "source_title": "NREL, condensing economizer technical report (fy12osti/52752)",
+        "source_url": "https://nrel.gov/docs/fy12osti/52752.pdf",
+        "what_the_page_does_not_state": "syngas or tail-gas firing, units below about 1 MW, the heat-recovery share between flame and stack as such (it states efficiencies)",
+        "status": STATUS_ASSUMED,
+        "caveat": _OTHER_PLANT + " Added in Phase 1 task P1-11: read on 2026-11-09 through a page-fetch summary, not by the project owner. Natural-gas boilers, much larger than a 1 tpd plant; supports the order of the flue-gas recovery fraction (0.8), not a value for GA-001.",
+    },
+    {
+        "key": "netl_syngas_cooling_recovery",
+        "parameter": "heat recovered from the syngas by cooling",
+        "value_text": ("Gasifipedia (syngas): heat recovery takes a significant portion (5-25 %) of the energy contained in the syngas; it covers sensible and latent heat and depends on the technology. "
+                       "Gasifier outlet typically 2,500 to 2,800 degF; about 1,100 degF after a radiant cooler; 700 to 750 degF after a convective cooler; about 100 degF after low-temperature cooling."),
+        "numeric": [_n("share of the syngas energy recovered as heat", 5, 25, "%")],
+        "scale": "large coal and petcoke entrained-flow gasification plants",
+        "feed": "coal and petroleum coke",
+        "agent": "oxygen (entrained flow)",
+        "source_title": "NETL Gasifipedia, syngas page",
+        "source_url": "https://netl.doe.gov/research/Coal/energy-systems/gasification/gasifipedia/syngas",
+        "what_the_page_does_not_state": "a separate percentage for sensible heat alone, the effectiveness of any single cooler, anything for fluidised-bed or small plants",
+        "status": STATUS_ASSUMED,
+        "caveat": _OTHER_PLANT + " Added in Phase 1 task P1-11: read on 2026-11-09 through a page-fetch summary, not by the project owner. Entrained-flow plants at 1,400 degC; only a plausibility band for the share of energy recovered, not a recovery fraction for a cooler.",
+    },
 ]
 
 NOT_FOUND = [
     {"item": "gasifier temperature lag", "note": "no published value found"},
     {"item": "tail-gas recycle delay", "note": "no published value found"},
     {"item": "cooling-basin lag", "note": "no published value found"},
+    {"item": "gas-cooler, water-gas-shift reaction-heat and ash-heat recovery fractions for a plant of this size",
+     "note": "searched on 2026-11-09 (Phase 1 task P1-11); no readable source gave a fraction; the values 0.7, 0.7 and 0.5 stay Assumed"},
     {"item": "waste-derived chemical-looping gasification data",
      "note": "no readable source; the 5 MWth pilot used wood pellets"},
 ]
