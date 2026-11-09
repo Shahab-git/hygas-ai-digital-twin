@@ -28,6 +28,25 @@ The Tests workflow runs on `pull_request` and `workflow_dispatch` only. Merge co
 | 3 Maturity classes and readiness gates | PASS (3 Nov) | tests pass on both Pythons | gates fail by design; no module has plant-data evidence |
 | 4 Test safeguards preserved | PASS (3 Nov), restated | persisted snapshots compared with fixture `tests/fixtures/snapshot_origin_main_701de71.json.gz` at 1e-12 relative; 123 keys now | scope restated 3 Nov; see owner notes below |
 
+### 2a. Evidence on the commit `365f8b5` (merge of PR #37), 2026-11-09 (G5-02 refresh)
+
+Gates 1-4 were re-checked on `365f8b5`, the tip of `main` when this section was written. Later commits in this series change documentation only. This is evidence of what ran, not a new decision.
+
+| Check | Result | Where it ran |
+|---|---|---|
+| Full test suite, Python 3.11 | 910 passed, 6 skipped, 1 failed | scratch clone (cloud container), 9 Nov |
+| Full test suite, Python 3.12 | 910 passed, 6 skipped, 1 failed | scratch clone (cloud container), 9 Nov |
+| The one failure | `test_plant_heat_integration.py::test_nothing_reads_the_key_and_no_model_depends_on_it`: file-listing order in the container; the same test passes on the owner's machine and in the PR CI runs (container artefact, on hold, see section 3) | |
+| Full test suite, Python 3.14.0, owner's machine | 913 passed, 0 failed, 4 skipped (last docs PR before this one, reported by the owner) | owner's machine |
+| The 6 skips | 2 openpyxl not installed in the container (`test_apply_provenance.py:270`, `test_provenance_overlay.py:133`); 2 wording / heat-integration range guards; 2 "already merged" guards (`test_closure_scenarios.py:148`, `test_maturity_registry.py:128`). The owner's machine skips 4 (it has openpyxl) | |
+| Gate 1: ledger coverage and pinned counts | included in the full run above, passed on both | |
+| Gate 2: balance-audit baseline regenerated | 1,285 numeric and text entries of the original baseline compared with the committed file: the only differences are the date and the commit label (numbers equal at 1e-9). The scenario baseline is checked by `test_the_scenario_baseline_matches_a_fresh_run`, passed in the full run | scratch clone |
+| Gate 3: maturity and readiness tests | passed in the full run on both | |
+| Gate 4: persisted snapshot comparisons | passed in the full run on both; 123 persisted keys; fixture `tests/fixtures/snapshot_origin_main_701de71.json.gz` at 1e-12 relative | |
+| Tests workflow results (GitHub Actions) | green on 3.11 and 3.12 for PRs #25-#28 and #30 as reported earlier; **not recorded here for PRs #29, #31-#37**: the owner merged them and reported no failure, but this record cannot show the runs (NOT VERIFIED from the repo) | |
+
+Limits: no Tests run exists on merge commits of `main` (on hold); the container runs and the owner's run are not a substitute for a CI run on `365f8b5`.
+
 Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001-INPUT|gasifying_agent`, `GA-001|AgentConsistency`); some tests were edited for them; A1 was done early. P0-FB2 (narrow, steps 1 and 2): static modules, the app and the datasheet fills use the dry feed; **no persisted number changed**; two feed-basis limitation tests were converted or replaced by correctness tests, one new correctness test was added.
 
 ## 3. Owner decisions recorded (as stated by the owner in review)
@@ -55,7 +74,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | ID | Criterion | Status |
 |---|---|---|
 | G5-01 | Owner review of A3/A5/A10/W1 recorded | pending |
-| G5-02 | Gates 1-4 restated on the closing commit | restated 6 Nov on `6b010de`; needs refresh on the closing commit |
+| G5-02 | Gates 1-4 restated on the closing commit | refreshed 9 Nov on `365f8b5` (section 2a); a CI run on the closing commit itself is not recorded (G5-09) |
 | G5-03 | "Phase 0 approved" decision recorded | pending |
 | G5-04 | Phase 1 authorisation is a separate act | not given |
 | G5-05 | No assumption presented as confirmed or validated | residue list in `docs/phase0_open_items.md`; owner accepted it 6 Nov |
