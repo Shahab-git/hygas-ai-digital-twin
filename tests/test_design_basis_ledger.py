@@ -1086,7 +1086,17 @@ def _export_module():
     return mod
 
 
-def test_the_committed_ledger_files_equal_a_fresh_generation(built):
+def test_the_committed_ledger_files_equal_a_fresh_generation(fake):
+    # P1-06 (deliberate edit): the committed files are generated on the REAL default (heat_only); this module runs on the restored old default (tests/conftest.py), so it is put back here
+    from python import ga001_gasifier_model as ga
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(ga, "TAIL_GAS_MODE_DEFAULT", "heat_only")
+        with patched_supabase(fake):
+            readers = lcons.engine_input_readers(lambda: t1.build_live_snapshot(3))
+        _check_committed_ledger((pt.build_ledger(readers=readers), lc.scan(), lc.load_exceptions(), readers))
+
+
+def _check_committed_ledger(built):
     ex = _export_module()
     ledger, items, exceptions, _ = built
     for path, fresh in ((ex.MD_PATH, ex.render_md(ledger, items, exceptions)), (ex.CSV_PATH, ex.render_csv(ledger))):

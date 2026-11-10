@@ -71,3 +71,6 @@ P1_05C_KEYS = (
 )
 for _k in P1_05C_KEYS:
     INTENTIONAL[_k] = "Phase 1 task P1-05(c): cycle-1 dry feed 37.503 (was 41.67 as-received); pinned by tests/test_p1_05c_feed_basis.py"
+
+# Phase 1 task P1-06: the tail-gas mode switch's own note says the default is "heat_only" (it said "Default unchanged until the owner flips it"); its value is the mode the run uses.
+INTENTIONAL["GA-001-INPUT|tail_gas_mode"] = "Phase 1 task P1-06 (owner decision 2026-11-10): the switch's note names the new default; pinned by tests/test_p1_06_tail_gas_default.py"

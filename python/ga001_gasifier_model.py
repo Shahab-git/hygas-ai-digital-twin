@@ -1563,13 +1563,14 @@ if __name__ == "__main__":
 
 
 # --- Tail-gas mode switch (tail-gas-heat task) ------------------------------------------------------------
-# "regasify" (DEFAULT, today's behaviour): HB-009's H2/CO/CH4 are folded back into GA-001's atom balance (below).
+# P1-06 (owner decision 2026-11-10): the DEFAULT is now "heat_only" (matches the registry's 'supplemental fuel' tail-gas disposition); "regasify" is the previous default and stays selectable.
+# "regasify" (the default until P1-06): HB-009's H2/CO/CH4 are folded back into GA-001's atom balance (below).
 # "heat_only": GA-001 receives ZERO recycle atoms; the tail gas is reported as a heat source only
 #   ((GA-001, EnergyBalance), ga001_energy_balance.py). HB-009 and every other model are untouched.
 # Reason: HB-007/HB-009's registry 'Tail gas disposition' is "Recycled to GA-001 gasifier as supplemental fuel" -- fuel = heat.
-# Flipping the default is the owner's decision; nothing here changes the default.
+# Flipping the default was the owner's decision (P1-06); nothing was tuned: ER, conversion, PSA recovery and every other Assumed default are unchanged.
 TAIL_GAS_MODES = ("regasify", "heat_only")
-TAIL_GAS_MODE_DEFAULT = "regasify"
+TAIL_GAS_MODE_DEFAULT = "heat_only"             # P1-06; was "regasify"
 TAIL_GAS_MODE_KEY = ("GA-001-INPUT", "tail_gas_mode")
 
 
@@ -1584,9 +1585,9 @@ def _input_tail_gas_mode(get_input):
     return {
         "value": check_tail_gas_mode(TAIL_GAS_MODE_DEFAULT), "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
         "confidence_note": (
-            "Switch, not a measurement. 'regasify' = today's behaviour (HB-009 H2/CO/CH4 atoms re-enter GA-001); 'heat_only' = GA-001 receives no recycle "
+            "Switch, not a measurement. 'regasify' = the previous default (HB-009 H2/CO/CH4 atoms re-enter GA-001); 'heat_only' = GA-001 receives no recycle "
             "atoms and the tail gas is reported as heat. Registry: HB-007/HB-009 'Tail gas disposition' = 'Recycled to GA-001 gasifier as supplemental "
-            "fuel', i.e. fuel / heat. Default unchanged until the owner flips it."
+            "fuel', i.e. fuel / heat. Default 'heat_only' since P1-06 (owner decision 2026-11-10)."
         ),
     }
 

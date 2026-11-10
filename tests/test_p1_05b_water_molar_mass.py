@@ -203,7 +203,7 @@ def test_with_the_old_water_mass_the_snapshot_equals_the_fixture_so_the_change_i
     fx = _d2_wording.forward(fixture_entries[f"{mode}|20"])                      # notes reworded since the fixture was made: the old -> new phrase pairs are applied to the fixture
     bad = {}
     for k, e in fx.items():
-        if k in OTHER_DECISIONS:
+        if k in OTHER_DECISIONS or k == "GA-001-INPUT|tail_gas_mode":      # P1-06 (deliberate edit): the switch note names the new default; pinned by tests/test_p1_06_tail_gas_default.py
             continue
         for field in ("value", "status", "unit", "confidence_note"):
             r = _same(e.get(field), old[mode][k].get(field))

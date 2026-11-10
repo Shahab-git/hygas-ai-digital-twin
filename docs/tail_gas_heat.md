@@ -1,5 +1,7 @@
 # Tail gas as heat: a switch and a read-only energy key
 
+> **Update 2026-11-10 (P1-06): the owner flipped the default to `heat_only`.** Everything below that says the switch is OFF by default, or that the runtime, the app and every persisted value show `regasify`, describes the state before that decision; `regasify` stays selectable. See `docs/phase0_gate_record.md` 3j.
+
 > Update 2026-10-30: the carbon residuals quoted below (+0.138 / -0.1875 kg/h) are from before the carbon-bookkeeping change; carbon now closes to numerical precision in both modes (`docs/carbon_bookkeeping.md`). Nothing gas-side in this document changed.
 
 Written 2026-10-30 on `origin/main` 71e92cc (branch `tail-gas-heat`). The twin makes 78.0 kg/day of hydrogen against DOK-ING's "about 50 kg/day" (RFI #6, plastic waste) and the registry's

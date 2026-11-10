@@ -1206,7 +1206,7 @@ with tab1:
         "(GA-005: \"10% ash content, dry basis\") for ash — a project assumption, not a DOK-ING-stated fraction. "
         "**Carbon black is the live engine's derived value** (unconverted carbon x split, `(GA-001, CarbonAccounting)`, "
         "Calculated from the Assumed conversion 0.90 and split 1.0), carried here as a pinned fraction of the dry feed "
-        "(default tail-gas mode; approximate when the feed is changed), no longer the legacy 5% rule. The **revenue-potential "
+        "(default tail-gas mode, heat_only; approximate when the feed or mode is changed), no longer the legacy 5% rule. The **revenue-potential "
         "figures use our own assumed placeholder prices, not real market pricing** — there's no real "
         "market data in this project yet. The diversion fraction needs no price assumption at all; "
         "it's a real mass-balance ratio."
@@ -1237,7 +1237,7 @@ with tab1:
     ccol1.metric("Ash output", f"{circ['ash_kg_h']:.2f} kg/h", help="10% of the entered feed rate, treated as dry feed (project assumption; GA-005's registry row is not a DOK-ING-stated ash fraction)")
     ccol2.metric(
         "Carbon black output", f"{circ['carbon_black_kg_h']:.2f} kg/h",
-        help="The live engine's derived carbon black (unconverted carbon x split, 5.37% of the dry feed at the default feed and tail-gas mode), scaled linearly with the entered feed rate (approximate away from the default). The legacy 5% rule would give " + f"{circ['carbon_black_rule_kg_h']:.2f} kg/h.",
+        help="The live engine's derived carbon black (unconverted carbon x split, 4.5% of the dry feed at the default feed and tail-gas mode), scaled linearly with the entered feed rate (approximate away from the default). The legacy 5% rule would give " + f"{circ['carbon_black_rule_kg_h']:.2f} kg/h.",
     )
     ccol3.metric(
         "Diversion from landfill", f"{circ['diversion_fraction']*100:.1f}%",
