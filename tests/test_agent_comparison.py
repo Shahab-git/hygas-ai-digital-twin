@@ -88,7 +88,9 @@ def test_s0_reproduces_the_main_snapshot_values_exactly(runs, main_snap):
     out = main_snap["GA-001|Outputs"]["value"]
     assert r["h2_kg_day"] == main_snap["HB-012|Compressor"]["value"]["h2_kg_h"] * 24.0
     assert r["pct"]["N2"] == out["N2_mol_pct_dry"] and r["pct"]["H2"] == out["H2_mol_pct_dry"] and r["dry_flow"] == out["dry_flow_nm3_h"]
-    assert r["lhv"] == main_snap["SA-006|Reading"]["value"]
+    # P1-05(a) (deliberate edit): the fixture's SA-006 reading used H2 = 10.783; since P1-05(a) the H2 term uses 10.8 (one hydrogen LHV). Same function, same composition, so the reading differs by
+    # exactly y_H2 x (10.8 - 10.783); pinned independently in tests/test_p1_05a_h2_lhv.py.
+    assert r["lhv"] == pytest.approx(main_snap["SA-006|Reading"]["value"] + r["pct"]["H2"] / 100.0 * (10.8 - 10.783), rel=1e-12)
 
 
 def test_the_wrapper_at_the_air_fraction_changes_nothing(mod, fake, main_snap):

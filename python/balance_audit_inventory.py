@@ -87,12 +87,12 @@ UNIT_TABLE = [
     ("HB-013 H2 storage", "PSA + electrolyser H2", "lagged dispensing + fuel cell; level", "N when clamped", (HB, 487, "def hb013_storage_level"), "clamp to [0, 50] kg creates / destroys H2"),
     ("HB-014..017 LOHC", "-", "-", "Missing", (HR, 622, "def hb014_mass_balance"), "mass balances Missing"),
     ("HB-018 dispensing", "HB-013 level (lagged)", "min(72 kg/h, level)", "partly", (HR, 998, "def hb018_dispensing"), "lagged, so it oscillates against HB-013"),
-    ("EU-CHP dispatch / EU-002..006", "syngas budget (0 after WGS/PSA claim), H2 budget", "electrical, thermal kW", "partly (energy split explicit)", (EU, 299, "def eu_chp_dispatch"), "CHP receives no syngas by design"),
-    ("EU-007 flare", "tail gas CO2 + N2", "vented", "Y", (EU, 464, "def eu007_flare"), "98 % destruction applies to 0 combustible"),
-    ("EU-008 cooling tower", "GC-004 + HB-003 cold side + HB-012", "demand 52 kW", "N (a sum, not a balance)", (EU, 510, "def eu008_cooling_supply"), "HB-003 cold side is recovered, not rejected"),
-    ("EU-009 electrical metering", "HB-012 + HB-011 + GC-013 fan + EU-008 fan", "consumption kW", "N (a sum)", (EU, 775, "def eu009_grid_balance"), "omits FE-004 and all other nameplate loads"),
-    ("EU-010 UPS", "EU-009 net", "state of charge", "explicit (Coulomb counting)", (EU, 817, "def eu010_ups_battery"), ""),
-    ("EU-011..013 heat recovery", "EU-005 exhaust, EU-004", "kWth", "Y (sums)", (EU, 855, "def eu011_heat_recovery"), "zero while the CHP units idle"),
+    ("EU-CHP dispatch / EU-002..006", "syngas budget (0 after WGS/PSA claim), H2 budget", "electrical, thermal kW", "partly (energy split explicit)", (EU, 300, "def eu_chp_dispatch"), "CHP receives no syngas by design"),
+    ("EU-007 flare", "tail gas CO2 + N2", "vented", "Y", (EU, 465, "def eu007_flare"), "98 % destruction applies to 0 combustible"),
+    ("EU-008 cooling tower", "GC-004 + HB-003 cold side + HB-012", "demand 52 kW", "N (a sum, not a balance)", (EU, 511, "def eu008_cooling_supply"), "HB-003 cold side is recovered, not rejected"),
+    ("EU-009 electrical metering", "HB-012 + HB-011 + GC-013 fan + EU-008 fan", "consumption kW", "N (a sum)", (EU, 776, "def eu009_grid_balance"), "omits FE-004 and all other nameplate loads"),
+    ("EU-010 UPS", "EU-009 net", "state of charge", "explicit (Coulomb counting)", (EU, 818, "def eu010_ups_battery"), ""),
+    ("EU-011..013 heat recovery", "EU-005 exhaust, EU-004", "kWth", "Y (sums)", (EU, 856, "def eu011_heat_recovery"), "zero while the CHP units idle"),
     ("oxygen carrier (chemical looping)", "-", "-", "n/a (standalone estimate)", (G, 984, "def oxygen_carrier_circulation_estimate"), "no stream enters or leaves the balance"),
 ]
 
@@ -109,9 +109,9 @@ REGISTRY_HARD_CODES = [
     ("compressor polytropic exponent", "1.3, Assumed", (HB, 122, "COMPRESSOR_POLYTROPIC_N = 1.3"), "sets 8.7 kW"),
     ("PSA product purity", "100 % H2 (design target 99.97 %)", (HB, 384, "PSA product modeled as ~pure H2"), "impurities ignored"),
     ("electrolyser SEC and balance of plant", "55 kWh/Nm3 H2 rated, BoP 8 %", (HR, 169, "HB011_SEC_RATED_KWH_PER_NM3 = 55.0"), "LHV of H2 is 3.0 kWh/Nm3: this is 5.5 % efficient (unit suspect)"),
-    ("flare destruction efficiency", "0.98", (EU, 177, "EU007_DESTRUCTION_EFFICIENCY = 0.98"), "applied to zero combustible"),
-    ("UPS round-trip efficiency", "0.94", (EU, 207, "EU010_ROUNDTRIP_EFFICIENCY = 0.94"), "charge side only"),
-    ("WGS/PSA claim on syngas", "1.0", (EU, 231, "WGS_PSA_SYNGAS_CLAIM_FRACTION = 1.0"), "CHP fuel budget is 0"),
+    ("flare destruction efficiency", "0.98", (EU, 178, "EU007_DESTRUCTION_EFFICIENCY = 0.98"), "applied to zero combustible"),
+    ("UPS round-trip efficiency", "0.94", (EU, 208, "EU010_ROUNDTRIP_EFFICIENCY = 0.94"), "charge side only"),
+    ("WGS/PSA claim on syngas", "1.0", (EU, 232, "WGS_PSA_SYNGAS_CLAIM_FRACTION = 1.0"), "CHP fuel budget is 0"),
     ("gas-train fan power", "hydraulic power only (efficiency not applied)", (GC, 594, "def gc013_fan_power"), "lower bound of electrical load"),
     ("heat loss from any vessel or pipe", "none anywhere", (G, 740, "def ga001_model"), "no heat-loss term exists in the repo"),
 ]
@@ -165,11 +165,11 @@ def unaccounted_items(snapshot):
     rows.append(("WGS steam raised (HB-005)", v(("HB-005", "Steam"), "steam_kg_h"), "kg/h", "Calculated", (HB, 189, "steam_kg_h = steam_mol_h"), "feedwater source and boiler energy not modelled"))
     rows.append(("gasifier steam (GA-003 / GA-004)", 0.4 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (G, 774, "steam_mol_per_molc = (steam_ratio"), "source and energy of this steam not modelled"))
     rows.append(("dryer vapour (FE-005)", fe5["water_evaporated_kg_h"], "kg/h", "Calculated", (FE, 291, "water_evaporated_kg_h = wet_inlet"), "no destination, no heat duty"))
-    rows.append(("tail-gas CO2 + N2 vented", (hb009["species_nm3_h"]["CO2"] * 44.0095 + hb009["species_nm3_h"]["N2"] * 28.0134) / 22.414, "kg/h", "Calculated", (EU, 485, "inert_nm3_h = species.get"), "a real exit stream (EU-007)"))
+    rows.append(("tail-gas CO2 + N2 vented", (hb009["species_nm3_h"]["CO2"] * 44.0095 + hb009["species_nm3_h"]["N2"] * 28.0134) / 22.414, "kg/h", "Calculated", (EU, 486, "inert_nm3_h = species.get"), "a real exit stream (EU-007)"))
     rows.append(("HB-013 clamp at 0 kg (storage would go negative)", None, "kg per cycle", "Calculated", (HB, 537, "new_level = min(max(prev_level"), "creates H2; see storage_inventory_check"))
     rows.append(("HB-010 membrane feed (constant, not taken from the plant flow)", 50.0, "Nm3/h", "Assumed", (HR, 182, "HB010_FEED_FLOW_NM3_H = 50.0"), "not deducted from the PSA/WGS gas"))
     rows.append(("FE-004 shredder electricity not in EU-009", v(("FE-004", "ShredderPower"), "power_kw"), "kW", "Calculated", (FE, 243, "def fe004_shredder_power"), "electrical load missing from the plant sum"))
     rows.append(("registry nameplate loads in no sum (FE-003 .37, FE-005 5, FE-007 5.5, FE-008 .75, GA-005 1.1, GA-006 .55, HB-009 .5)", 13.77, "kW rated", "Confirmed nameplate", ("equipment_registry.json", 0, ""), "utilisation not stated"))
-    rows.append(("EU-008 'cooling demand' counts HB-003 cold side as a cooling load", v(("HB-003", "HeatExchanger"), "Q_cold_side_kW"), "kW", "Calculated", (EU, 520, "demand_kw = gc004_duty_kw"), "heat that is recovered to the feedwater, not rejected"))
+    rows.append(("EU-008 'cooling demand' counts HB-003 cold side as a cooling load", v(("HB-003", "HeatExchanger"), "Q_cold_side_kW"), "kW", "Calculated", (EU, 521, "demand_kw = gc004_duty_kw"), "heat that is recovered to the feedwater, not rejected"))
     rows.append(("GC-004 duty omits condensation latent heat", None, "kW", "Calculated", (GC, 282, "def gc004_cooling_duty"), "see plant_energy candidates"))
     return rows

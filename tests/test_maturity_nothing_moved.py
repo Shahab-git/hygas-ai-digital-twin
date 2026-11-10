@@ -104,6 +104,8 @@ def test_the_mapped_comparison_fails_if_the_old_phrase_returns_or_any_other_text
     for n, o in _d2_wording.PAIRS:                                   # 1) each old phrase coming back
         back = json.loads(json.dumps(new).replace(n, o))
         assert back != new, n
+        if n not in json.dumps({k: v for k, v in new.items() if k not in INTENTIONAL}):
+            continue          # P1-05(a) (deliberate edit): this phrase now lives only in entries that INTENTIONAL excludes (pinned by tests/test_p1_05a_h2_lhv.py)
         assert _differences(expected, back), f"the old phrase {o!r} came back and the comparison did not notice"
     assert _differences(expected, _d2_wording.undo(new))             # all four at once (what the old, unmapped fixture expected)
 

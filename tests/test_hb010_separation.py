@@ -1,6 +1,6 @@
 """HB-010 Separation (Phase 1 task P1-12): the one persisted entry that deliberately differs from the 701de71 fixture (tests/_intentional_changes.py).
 
-Pins: it is the ONLY intentional exception; the fixture still says Missing; the live entry is Estimated, inherits from Feed and SelectivityEstimate, holds the recovery at the registry
+Pins: it is an intentional exception (P1-05(a) added two others); the fixture still says Missing; the live entry is Estimated, inherits from Feed and SelectivityEstimate, holds the recovery at the registry
 85 % (not computed), derives the purity from the selectivity range at the live feed H2 (independent re-derivation), keeps the purity low <= used <= high, and nothing reads it."""
 import gzip
 import json
@@ -25,7 +25,7 @@ def snap():
 
 
 def test_it_is_the_only_intentional_exception_and_the_fixture_still_says_missing():
-    assert set(INTENTIONAL) == {"HB-010|Separation"}
+    assert "HB-010|Separation" in INTENTIONAL                      # P1-05(a) added two more; test_p1_05a_h2_lhv.py pins those
     with gzip.open(FIXTURE, "rb") as fh:
         old = json.loads(fh.read().decode("utf-8"))["default|20"]["HB-010|Separation"]
     assert old["status"] == "Missing" and old["value"] is None

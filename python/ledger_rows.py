@@ -182,7 +182,7 @@ _l("HB-016.reference_batch_time_h", "hb_remaining_chain", "hb016_kinetics_baseli
 # utilities
 _c("EU-003.syngas_lhv_mj_per_nm3", "eu_utilities_chp", "SYNGAS_LHV_MJ_PER_NM3", "MJ/Nm3", ("EU-003", "Fuel gas LHV required"), None, "A static design-point figure, not the live syngas LHV.")
 _c("EU-006.h2_lhv_mj_per_nm3", "eu_utilities_chp", "H2_LHV_MJ_PER_NM3", "MJ/Nm3", None, None,
-   "EU-006's stated basis (10.8); the species table SYNGAS_SPECIES_LHV_MJ_PER_NM3 holds 10.783 for H2 and balance_audit.efficiency_check repeats 10.8 as a literal (see that row's note).")
+   "EU-006's stated basis (10.8). Since P1-05(a) it is the single hydrogen LHV: the species table SYNGAS_SPECIES_LHV_MJ_PER_NM3 H2 entry is this constant and balance_audit.efficiency_check reads it.")
 _c("EU-004.jacket_kwth_rated", "eu_utilities_chp", "EU004_JACKET_KWTH_RATED", "kWth", ("EU-004", "Jacket cooling heat recovery"))
 _c("EU-004.exhaust_kwth_rated", "eu_utilities_chp", "EU004_EXHAUST_KWTH_RATED", "kWth", ("EU-004", "Exhaust heat recovery"))
 _c("EU-005.exhaust_flow_nm3_h_rated", "eu_utilities_chp", "EU005_EXHAUST_FLOW_NM3_H_RATED", "Nm3/h", ("EU-005", "Exhaust flow rate"))
@@ -248,7 +248,6 @@ _l("GC-014.consistency_tolerance_fraction", "gc_gas_cleaning_chain", "gc014_blow
 _l("PLANT.audit_vent_and_knockout_temperature_C", "balance_audit", "plant_energy", [40.0], "degC", None, None, "Default vent and knock-out temperatures of the plant energy audit (parameters vent_temp_c, knockout_temp_c).")
 _l("PLANT.audit_quench_inlet_temperature_C", "balance_audit", "plant_energy", [860.0], "degC", ("GC-004", "Inlet gas temperature"), None, "A second hard-coded copy of the GC-004 inlet temperature (gc_gas_cleaning_chain gc004_cooling_duty holds the first).")
 _l("PLANT.audit_lts_steam_temperature_C", "balance_audit", "plant_energy", [220.0], "degC", ("HB-004", "Inlet temperature (design)"), None, "Unreacted steam leaves the LTS at >= its 220 degC inlet (code comment).")
-_l("EU-006.h2_lhv_mj_nm3_audit_copy", "balance_audit", "efficiency_check", [10.8], "MJ/Nm3", None, None, "A literal copy of eu_utilities_chp.H2_LHV_MJ_PER_NM3 (code comment: 'EU-006 10.8 MJ/Nm3').")
 _c("CIRC.ash_price_eur_per_kg", "circularity", "ASH_PRICE_EUR_PER_KG", "EUR/kg", None, None, "An economic assumption of the circularity estimate; no source in the repo.")
 _c("CIRC.carbon_black_price_eur_per_kg", "circularity", "CARBON_BLACK_PRICE_EUR_PER_KG", "EUR/kg", None, None, "An economic assumption of the circularity estimate; no source in the repo.")
 # uncertainty
