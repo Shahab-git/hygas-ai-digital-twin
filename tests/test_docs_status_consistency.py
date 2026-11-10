@@ -105,7 +105,7 @@ def test_every_status_in_every_docs_table_is_the_ledger_or_table_status(known):
         if p:
             problems[name] = p
     assert problems == {}, problems
-    assert checked["data_replacement_layer.md"] >= 40 and checked["design_basis_ledger.md"] == 179, "not vacuous: the two documents that state statuses per tag are read"
+    assert checked["data_replacement_layer.md"] >= 40 and checked["design_basis_ledger.md"] == 180, "not vacuous: the two documents that state statuses per tag are read"
 
 
 def test_the_generated_tables_of_data_replacement_layer_equal_the_live_table(table):

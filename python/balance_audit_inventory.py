@@ -29,7 +29,7 @@ GA001_STREAMS = [
     ("feed C/H/O/N (dry, ash-free: 0.50/0.06/0.43/0.01)", "in", "literature stand-in (Tchobanoglous et al.), cross-checked against DOK-ING floors only",
      "Assumed", (G, 193, "FEEDSTOCK_C_FRACTION = 0.50"), "input"),
     ("feed ash (10 % of dry feed)", "in", "ASH_FRACTION, GA-005 registry 'Ash discharge rate 10 % of feed'", "Confirmed registry value (tag Assumed in the engine)",
-     (MB, 61, "ASH_FRACTION = 0.10"), "not used by the gas closure; carried by the byproduct module only"),
+     (MB, 68, "ASH_FRACTION = 0.10"), "not used by the gas closure; carried by the byproduct module only"),
     ("feed S, Cl, trace", "in", "no S/Cl in the composition; GC-008/GC-009 inlets are fixed 200 / 150 ppm", "Missing", (GC, 413, "def gc008_h2s"), "no"),
     ("residual moisture in the dry feed", "in", "FE-005 residual_water_kg_h (0.379 kg/h), read one cycle late, added to the steam pool", "Calculated",
      (G, 719, "def _moisture_water_moles"), "Y (H, O)"),
@@ -44,9 +44,9 @@ GA001_STREAMS = [
     ("product gas, water", "out", "wet_flow_nm3_h and H2O_mol_pct_wet", "Calculated", (G, 817, "\"wet_flow_nm3_h\""), "Y (H, O)"),
     ("unconverted carbon / char", "out", "(1 - 0.90) x total C does not appear in the gas (also applied to the recycled CO and CH4 carbon); since the carbon-bookkeeping task it is "
      "published as (GA-001, CarbonAccounting).unconverted_carbon_kg_h", "Calculated (conversion 0.90 Assumed)", (G, 303, "carbon_gas = carbon_conv_eff"), "Y (published, carbon closes)"),
-    ("ash", "out", "10 % of dry feed from the byproduct module, independent of the gas closure", "Assumed", (MB, 65, "def byproduct_mass_flows"), "by an independent constant"),
+    ("ash", "out", "10 % of dry feed from the byproduct module, independent of the gas closure", "Assumed", (MB, 72, "def byproduct_mass_flows"), "by an independent constant"),
     ("carbon black", "out", "DERIVED: unconverted carbon x the Assumed split (1.0) in (GA-001, CarbonAccounting); the old 5 % of dry feed (CARBON_BLACK_FRACTION) and GA-008's 1.88 kg/h "
-     "are a cross-check only; the static byproduct_mass_flows() used by the app cards and circularity still uses the 5 % rule", "Calculated (split Assumed)", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"),
+     "are a cross-check only; the static byproduct_mass_flows() used by the app cards and circularity still uses the 5 % rule", "Calculated (split Assumed)", (MB, 69, "CARBON_BLACK_FRACTION = 0.05"),
      "Y (tied to the gas closure)"),
     ("tar", "out", "permanently Missing", "Missing", (G, 864, "def ga001_tar_content"), "N"),
     ("fly ash / dust leaving with the gas", "out", "GC-001 Dust Missing; GC-003 inlet fixed 2 g/Nm3", "Missing", (GC, 132, "def gc001_particulate"), "N"),
@@ -101,8 +101,8 @@ REGISTRY_HARD_CODES = [
     # (what, value, file:line ref, effect)
     ("carbon conversion efficiency", "0.90 (range 0.85-0.98), Assumed", (G, 217, "CARBON_CONVERSION_EFFICIENCY = 0.90"), "sets the unconverted carbon; independent of temperature"),
     ("CH4 carbon fraction", "0.05, Assumed", (G, 224, "CH4_CARBON_FRACTION = 0.05"), "CH4 is not an equilibrium result"),
-    ("ash fraction", "0.10 of dry feed, Confirmed registry value", (MB, 61, "ASH_FRACTION = 0.10"), "a constant, not tied to the composition"),
-    ("carbon-black fraction", "0.05 of dry feed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "cross-check only since the carbon-bookkeeping task; still drives the static byproduct_mass_flows()"),
+    ("ash fraction", "0.10 of dry feed, Confirmed registry value", (MB, 68, "ASH_FRACTION = 0.10"), "a constant, not tied to the composition"),
+    ("carbon-black fraction", "0.05 of dry feed", (MB, 69, "CARBON_BLACK_FRACTION = 0.05"), "cross-check only since the carbon-bookkeeping task; still drives the static byproduct_mass_flows()"),
     ("gasifier operating temperature", "950 degC, registry value", (G, 230, "GA001_OPERATING_TEMPERATURE_C = 950.0"), "enters only the WGS Keq"),
     ("steam-to-CO ratio in the WGS", "4.0 mol/mol", (HB, 98, "STEAM_TO_CO_MOLAR_RATIO = 4.0"), "sets the steam raised and the water knocked out"),
     ("quench inlet / outlet temperature", "860 / 65 degC", (GC, 295, "T_in, T_out = 860.0, 65.0"), "duty excludes latent heat"),
@@ -150,13 +150,13 @@ def unaccounted_items(snapshot):
     hb009 = v(("HB-009", "TailGas"))
     wgs = v(("WGS", "Composition"))
     rows = []
-    rows.append(("ash leaving as bottom ash (10 % of dry feed)", 0.10 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 61, "ASH_FRACTION = 0.10"), "carries no C/H/O/N; closed by an independent constant"))
+    rows.append(("ash leaving as bottom ash (10 % of dry feed)", 0.10 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 68, "ASH_FRACTION = 0.10"), "carries no C/H/O/N; closed by an independent constant"))
     rows.append(("fly ash implied by GC-003's fixed 2 g/Nm3 inlet", 2.0 * dry_nm3 / 1000.0, "kg/h", "Assumed", (GC, 206, "inlet_mg_nm3 = 2000.0"), "not subtracted from the 10 % bottom ash"))
     cb_entry = snapshot.get(("GA-001", "CarbonAccounting"))
     if cb_entry is not None and cb_entry["status"] != ps.STATUS_MISSING:
-        rows.append(("carbon black, derived from the unconverted carbon", cb_entry["value"]["carbon_black_kg_h"], "kg/h", "Calculated", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"),
+        rows.append(("carbon black, derived from the unconverted carbon", cb_entry["value"]["carbon_black_kg_h"], "kg/h", "Calculated", (MB, 69, "CARBON_BLACK_FRACTION = 0.05"),
                      "the 5 % datasheet rule is now a cross-check; the app cards and circularity still show the 5 % rule"))
-    rows.append(("carbon black by the 5 % datasheet rule (cross-check)", 0.05 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 62, "CARBON_BLACK_FRACTION = 0.05"), "not used by the gas closure"))
+    rows.append(("carbon black by the 5 % datasheet rule (cross-check)", 0.05 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (MB, 69, "CARBON_BLACK_FRACTION = 0.05"), "not used by the gas closure"))
     rows.append(("tar mass removed by GC-006/GC-007 (500 -> 50 mg/Nm3)", (500.0 - 50.0) * dry_nm3 / 1.0e6, "kg/h", "Assumed", (GC, 364, "def gc007_tar"), "tar that GA-001 does not produce (Missing) is removed here"))
     rows.append(("H2S entering GC-008 (200 ppm of the dry gas), as sulfur", 200e-6 * dry_nm3 / 0.022414 * 32.06 / 1000.0, "kg S/h", "Assumed", (GC, 413, "def gc008_h2s"), "no sulfur in the feed composition: S appears from nowhere"))
     rows.append(("HCl entering GC-009 (150 ppm of the dry gas), as chlorine", 150e-6 * dry_nm3 / 0.022414 * 35.45 / 1000.0, "kg Cl/h", "Assumed", (GC, 463, "def gc009_hcl"), "no chlorine in the feed composition"))

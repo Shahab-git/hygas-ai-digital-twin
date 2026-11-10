@@ -87,9 +87,11 @@ def test_s0_reproduces_the_main_snapshot_values_exactly(runs, main_snap):
     r = runs["S0"]
     out = main_snap["GA-001|Outputs"]["value"]
     # P1-05(b) (deliberate edit): the water molar mass is now 18.016, which moves HB-012 h2_kg_h by 1.1e-7 relative (tests/test_p1_05b_water_molar_mass.py); was an exact comparison.
-    assert r["h2_kg_day"] == pytest.approx(main_snap["HB-012|Compressor"]["value"]["h2_kg_h"] * 24.0, rel=1e-6)
+    # P1-05(c) (deliberate edit): the cycle-1 dry feed is now 37.503; the start-up transient leaves 2e-4 relative on this N-cycle figure (measured 77.988 vs 78.004 kg/day); was rel=1e-6.
+    assert r["h2_kg_day"] == pytest.approx(main_snap["HB-012|Compressor"]["value"]["h2_kg_h"] * 24.0, rel=5e-4)
     # P1-05(b) (deliberate edit): the composition moves by <= 3e-5 relative with the water molar mass (GA-001|Outputs, tests/test_p1_05b_water_molar_mass.py); was an exact comparison.
-    assert r["pct"]["N2"] == pytest.approx(out["N2_mol_pct_dry"], rel=1e-4) and r["pct"]["H2"] == pytest.approx(out["H2_mol_pct_dry"], rel=1e-4) and r["dry_flow"] == pytest.approx(out["dry_flow_nm3_h"], rel=1e-4)
+    assert r["pct"]["N2"] == pytest.approx(out["N2_mol_pct_dry"], rel=5e-4) and r["pct"]["H2"] == pytest.approx(out["H2_mol_pct_dry"], rel=5e-4) and r["dry_flow"] == pytest.approx(out["dry_flow_nm3_h"], rel=5e-4)
+    # P1-05(c) (deliberate edit): the composition and dry flow tolerances below are 5e-4 (were 1e-4): the cycle-1 transient leaves 1.7e-4 on the dry flow.
     # P1-05(a) (deliberate edit): the fixture's SA-006 reading used H2 = 10.783; since P1-05(a) the H2 term uses 10.8 (one hydrogen LHV). Same function, same composition, so the reading differs by
     # exactly y_H2 x (10.8 - 10.783); pinned independently in tests/test_p1_05a_h2_lhv.py.
     assert r["lhv"] == pytest.approx(main_snap["SA-006|Reading"]["value"] + r["pct"]["H2"] / 100.0 * (10.8 - 10.783), rel=1e-4)       # P1-05(b): was 1e-12; the composition shifts by <= 3e-5 with the water molar mass

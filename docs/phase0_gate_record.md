@@ -133,6 +133,16 @@ Gate 4 scope: **no engine entry changes** (no model, constant or persisted key i
 
 How: a pinned fraction `circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED` (0.0536807889, the converged engine value / dry feed at the default feed and tail-gas mode) because a static module cannot import the live engine; `tests/test_p1_05d_carbon_black.py` fails if it drifts from the engine. Simplifications, stated in the code: it is the default-mode value (`heat_only`, other conversions or splits give other values), and scaling it linearly with an entered feed is approximate (the engine gives 2.416 kg/h at +30 % feed against 2.617 linear). The legacy rule stays in `gasifier_mass_balance.py` and as the engine's cross-check (`carbon_black_rule_kg_h` is kept in the summary). Not changed: the feed-basis question of the static default 41.67 (that is P1-05(c)).
 
+### 3i. Task P1-05(c) (owner instruction, 2026-11-10)
+
+The owner answered the reply that listed P1-05(c) as the larger remaining part with "do this: P1-05(c), the full feed-basis correction ... I need your explicit go-ahead, and I'd state the measured effect first". **Read as authorising P1-05(c) only.** P1-06 and everything else stay unauthorised.
+
+Change: `gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H` is now the dry solids, 41.67 x (1 - 0.10) = 37.503 kg/h (it held the as-received 41.67); the as-received rate has its own name `DEFAULT_AS_RECEIVED_FEED_KG_H`, and the 10 % moisture is `DEFAULT_INLET_MOISTURE_FRACTION` (a static copy of `fe_feed_handling.FE005_INLET_MOISTURE_FRACTION`, equality pinned). GA-001's cycle-1 fallback and the default of `byproduct_mass_flows()` follow the constant. Nothing else in the engine is touched.
+
+Measured effect (against the tip of the P1-05(d) branch, be7a92a): **converged GA-001 outputs do not move** (30 cycles: zero GA-001 entries differ). Cycle 1: GA-001 dry gas flow 87.4 -> 78.7 Nm3/h (-10 %), 34 entries move. The default 5-cycle run: 50 entries move (the GA-001 dry flow 102.73 -> 102.71), mainly through lagged and accumulating states (e.g. the PEM fuel-cell fuel use and the H2 budget go 0 -> 8.7 and 6.8 kW); the 20-cycle runs move 16 (default) and 13 (heat_only) entries, the 30-cycle default run 8 (HB-013 storage, HB-018 dispensing, EU-CHP dispatch, EU-008 cooling supply and mirrors). The default five-cycle storage state no longer sits on the empty-tank clamp (0.133 kg of H2 created by the clamp before, 0 now; test_balance_audit.py edited). Static: `byproduct_mass_flows()` default 4.167 / 2.0835 -> 3.7503 / 1.87515 kg/h.
+
+Gate 4 scope: 51 persisted keys can differ from the pre-change snapshot in the five runs pinned by `tests/test_p1_05c_feed_basis.py`; 46 were already excluded by earlier decisions and five are added to `tests/_intentional_changes.py` (`P1_05C_KEYS`). The pin test compares against a new committed fixture of the pre-change snapshot (`tests/fixtures/snapshot_origin_main_be7a92a.json.gz`: default 1/5/20/30 and heat_only 20 cycles) and proves attribution: with the constant put back to 41.67 the snapshot equals the fixture in every entry. Not changed: P1-06 (the tail-gas default), the feed composition and ash fraction, and the data-replacement plumbing.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -168,7 +178,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h and P1-05(c) of section 3i; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

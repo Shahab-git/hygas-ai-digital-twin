@@ -26,8 +26,10 @@ def snap():
     # P1-05(b) (deliberate edit): these pins isolate the H2 LHV change, so the water molar mass is put back to its old 18.015 here (P1-05(b) moves the same entries by <= 7e-6 more;
     # tests/test_p1_05b_water_molar_mass.py pins that separately).
     from python import ga001_gasifier_model as ga
+    from python import gasifier_mass_balance as gmb
     mp = pytest.MonkeyPatch()
     mp.setattr(ga, "M_H2O", 18.015)
+    mp.setattr(gmb, "DEFAULT_DRY_FEED_KG_H", 41.67)         # P1-05(c) (deliberate edit): likewise the cycle-1 dry feed is put back to the old 41.67 (tests/test_p1_05c_feed_basis.py pins that change)
     try:
         with patched_supabase(FakeSupabase()):
             return t1.build_live_snapshot(20)[0]
