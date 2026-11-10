@@ -133,6 +133,10 @@ def _run(mode):
 
 @pytest.fixture(scope="module")
 def runs():
+    # P1-05(c) (deliberate edit): these pins isolate the water molar mass, so the cycle-1 dry feed is put back to the old 41.67 (P1-05(c) moves entries separately, tests/test_p1_05c_feed_basis.py).
+    from python import gasifier_mass_balance as gmb
+    mp_feed = pytest.MonkeyPatch()
+    mp_feed.setattr(gmb, "DEFAULT_DRY_FEED_KG_H", 41.67)
     new = {m: _run(m) for m in ("default", "heat_only")}
     mp = pytest.MonkeyPatch()
     mp.setattr(ga, "M_H2O", OLD_M_H2O)
@@ -142,6 +146,7 @@ def runs():
         old = {m: _run(m) for m in ("default", "heat_only")}
     finally:
         mp.undo()
+        mp_feed.undo()
     return new, old
 
 

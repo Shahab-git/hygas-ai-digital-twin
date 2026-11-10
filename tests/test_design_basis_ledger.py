@@ -146,7 +146,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 364 and len(exceptions) == 188 and len(items) - len(exceptions) == 176     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 365 and len(exceptions) == 188 and len(items) - len(exceptions) == 177     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -560,7 +560,7 @@ def test_the_two_constants_nothing_uses_are_still_unused(built):
 # Phase 1 task P1-15 (new hb003_duty_estimate says "not DOK-ING-confirmed" twice, for the registry 5 kW): eu_utilities_chp generic 20 -> 22, total 287 -> 289.
 # Phase 1 task P1-04 (confirmed_overrides in uncertainty.py: new docstring / comment lines that explain the stored-confirmation versus override mechanism, no value called Confirmed): uncertainty (0, 26, 4) -> (0, 33, 3), total 289 -> 295.
 CONFIRMED_PIN = {
-    "ga001_gasifier_model.py": (16, 25, 19), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (2, 0, 1), "gc_gas_cleaning_chain.py": (0, 28, 11),
+    "ga001_gasifier_model.py": (15, 25, 19), "ga001_energy_balance.py": (1, 0, 0), "gasifier_mass_balance.py": (1, 0, 0), "gc_gas_cleaning_chain.py": (0, 28, 11),
     "hb_wgs_psa_storage_chain.py": (2, 6, 6), "hb_remaining_chain.py": (1, 38, 14), "eu_utilities_chp.py": (2, 22, 8), "balance_audit.py": (2, 3, 4), "fe_feed_handling.py": (5, 12, 4),
     "uncertainty.py": (0, 33, 3), "reference_feeds.py": (1, 1, 2), "tab1_integration.py": (12, 4, 7),
 }
@@ -573,7 +573,7 @@ def test_the_confirmed_mentions_are_pinned_per_class_and_file():
     mentions = lc.confirmed_mentions()
     got = {k.split("/")[-1]: tuple(v[c] for c in lc.MENTION_CLASSES) for k, v in lc.mention_counts(mentions).items()}
     assert got == CONFIRMED_PIN, {k: (got.get(k), CONFIRMED_PIN.get(k)) for k in set(got) | set(CONFIRMED_PIN) if got.get(k) != CONFIRMED_PIN.get(k)}
-    assert len(mentions) == 295 and len(lc.CONFIRMED_SCOPE) == 18
+    assert len(mentions) == 292 and len(lc.CONFIRMED_SCOPE) == 18
     assert {m["class"] for m in mentions} == set(lc.MENTION_CLASSES)
 
 
@@ -688,7 +688,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency"} <= none      # constants nothing in the code uses (HB-010.h2_recovery left the list in P1-12)
-    assert len(ledger) == 179                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
+    assert len(ledger) == 180                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
@@ -893,7 +893,7 @@ def _differing_leaves(a, b, path=""):
 
 
 # P1-05(b) (deliberate edit): (72, 44) -> (41, 26): the 42 entries the water molar mass moves are excluded from this comparison through tests/_intentional_changes.py (pinned by tests/test_p1_05b_water_molar_mass.py).
-EXPECTED_DIFFERING_LEAVES = (41, 26)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
+EXPECTED_DIFFERING_LEAVES = (34, 25)      # P1-05(c) (deliberate edit): was (41, 26); five more entries are excluded as INTENTIONAL and carry some of the text differences. (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
 
 
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
@@ -928,7 +928,7 @@ COMMITTED = {n: open(os.path.join(ROOT, "docs", n), encoding="utf-8", newline=""
 def test_every_row_has_a_symbolic_anchor_and_no_two_rows_share_one(built):
     ledger = built[0]
     rep = la.anchor_report(ledger)
-    assert rep["rows"] == len(ledger) == 179 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
+    assert rep["rows"] == len(ledger) == 180 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
     for r in ledger:
         a = r["anchor"]
         assert re.match(r"^(registry:[A-Z]+-\d+/.+|[a-z_0-9]+:[A-Za-z_0-9#+:'\[\]\(\)\. /,-]+)$", a), (r["ledger_id"], a)

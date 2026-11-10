@@ -58,3 +58,16 @@ P1_05B_KEYS = (
 )
 for _k in P1_05B_KEYS:
     INTENTIONAL[_k] = "Phase 1 task P1-05(b): water molar mass 18.016 (was 18.015); pinned by tests/test_p1_05b_water_molar_mass.py"
+
+# Phase 1 task P1-05(c): the cycle-1 fallback of GA-001's dry feed is the DRY solids (37.503), not the as-received 41.67. Converged GA-001 outputs are unchanged; the start-up transient and
+# everything that accumulates from it moves. Five keys not already excluded above are added here; the other keys that move are already excluded by an earlier decision and are pinned
+# one by one, together with these, against the committed pre-change snapshot tests/fixtures/snapshot_origin_main_be7a92a.json.gz by tests/test_p1_05c_feed_basis.py.
+P1_05C_KEYS = (
+    "EU-006|FuelCell",
+    "GA-001-INPUT|dry_feed_rate_kg_h",           # the confidence note quotes the constant
+    "GA-001|AgentConsistency",
+    "GA-001|OxygenCarrierCirculationEstimate",
+    "HB-003|DutyEstimate",
+)
+for _k in P1_05C_KEYS:
+    INTENTIONAL[_k] = "Phase 1 task P1-05(c): cycle-1 dry feed 37.503 (was 41.67 as-received); pinned by tests/test_p1_05c_feed_basis.py"

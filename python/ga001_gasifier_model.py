@@ -414,11 +414,11 @@ def _input_dry_feed_rate(get_input):
     own 10% inlet moisture converts it to ~37.5 kg/h dry, matching
     equipment_engineering_estimates.py's own existing FE-007 static fill).
 
-    Falls back, gracefully, to the SAME static placeholder as before
-    (DOK-ING's own confirmed feed rate, RFI #1, misapplied here as a dry
-    figure for want of a live Feed Handling model -- the honest interim
-    state this function's PRE-Phase-3 docstring described) when FE-005
-    isn't registered/hasn't produced a value yet -- this is what keeps
+    Falls back, gracefully, to the static placeholder
+    gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H when FE-005
+    isn't registered/hasn't produced a value yet. P1-05(c): that placeholder is now
+    the DRY solids (41.67 x (1 - 0.10) = 37.503 kg/h, what FE-005 produces); until P1-05(c)
+    it was DOK-ING's as-received 41.67 misapplied as a dry figure, so cycle 1 ran 11 % too high -- this is what keeps
     every PRE-Phase-3 self-test (Phase 1a/1b/1c/1d/2, none of which
     register FE-001..008) producing byte-for-byte identical output,
     verified in this module's own self-test."""

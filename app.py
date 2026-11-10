@@ -1219,9 +1219,8 @@ with tab1:
         "**including ash**, the same figure the live engine feeds GA-001 from the second cycle on, so the 10% ash fraction "
         "gives the live engine's ash (3.750 kg/h). The 33.753 kg/h figure is the dry ash-free part that carries the C/H/O/N "
         "atoms. The 10% moisture and 10% ash are project assumptions inside DOK-ING's stated 5-15% ranges, not DOK-ING-stated "
-        "points. **Known limitations that remain:** cycle 1 of the live engine still uses 41.67 kg/h as a fallback, the "
-        "constant `DEFAULT_DRY_FEED_KG_H` still holds the as-received value under a dry name, and the equipment datasheet "
-        "estimates (GA-006 to GA-010) still use that constant. The carbon black here is the live engine's derived value, "
+        "points. **Closed by P1-05(c):** cycle 1 of the live engine now starts from the same dry solids, and `DEFAULT_DRY_FEED_KG_H` is now the dry solids (37.503 kg/h; the as-received figure is `DEFAULT_AS_RECEIVED_FEED_KG_H`). "
+        "The carbon black here is the live engine's derived value, "
         "which replaced the legacy 5% datasheet rule (P1-05(d)). See the Design Basis tab (RFI #1).",
         icon="ℹ️",
     )

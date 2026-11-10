@@ -55,9 +55,16 @@ capacity is exceeded — but the close numeric agreement between the
 computed mass-balance figures and the equipment's own nominal sizing,
 which existed at the old design point, is now a real, growing gap
 worth knowing about, not a discrepancy to hide.
+
+P1-05(c) (2026-11-10, feed-basis correction): DEFAULT_DRY_FEED_KG_H is now what its name says, the DRY solids (41.67 x (1 - 0.10) = 37.503 kg/h, the figure FE-005 hands
+to GA-001); the as-received 41.67 has its own name, DEFAULT_AS_RECEIVED_FEED_KG_H. The default of byproduct_mass_flows() and GA-001's cycle-1 fallback follow it, so ash and
+the 5 % carbon-black rule at the default are 3.7503 / 1.87515 kg/h (they were 4.167 / 2.0835 on the as-received figure). The history above is kept as written.
 """
 
-DEFAULT_DRY_FEED_KG_H = 41.67  # RECALIBRATED 2026: DOK-ING's confirmed 1,000 kg/day (data/dokink_rfi_answers.md, RFI #1). Was 37.5 (900 kg/day) before the real RFI response.
+DEFAULT_AS_RECEIVED_FEED_KG_H = 41.67  # DOK-ING's stated 1 tonne/day (1,000 kg/day, data/dokink_rfi_answers.md, RFI #1) / 24 h. DOK-ING did NOT state wet or dry; treating it as AS-RECEIVED is a project decision (Phase 3).
+DEFAULT_INLET_MOISTURE_FRACTION = 0.10  # Assumed (DOK-ING gave 5-15 (20) %, basis not stated); the same value as fe_feed_handling.FE005_INLET_MOISTURE_FRACTION (tests/test_p1_05c_feed_basis.py pins the equality; this module imports nothing).
+# P1-05(c): this constant is now what its name says, DRY solids (including ash): 41.67 x (1 - 0.10) = 37.503 kg/h, the figure FE-005 hands to GA-001. It held the as-received 41.67 before.
+DEFAULT_DRY_FEED_KG_H = DEFAULT_AS_RECEIVED_FEED_KG_H * (1.0 - DEFAULT_INLET_MOISTURE_FRACTION)
 ASH_FRACTION = 0.10           # UNCHANGED by the recalibration — GA-005: "10% ash content (dry basis)", a fraction of feed mass, not an absolute quantity
 CARBON_BLACK_FRACTION = 0.05  # UNCHANGED by the recalibration — derived from GA-008's stated 1.88 kg/h nominal / the ORIGINAL 37.5 kg/h dry feed design point
 
@@ -73,11 +80,11 @@ def byproduct_mass_flows(dry_feed_kg_h=DEFAULT_DRY_FEED_KG_H):
 
 if __name__ == "__main__":
     flows = byproduct_mass_flows()
-    print(f"At design dry feed rate ({DEFAULT_DRY_FEED_KG_H} kg/h, recalibrated from DOK-ING's confirmed 1,000 kg/day):")
-    print(f"  Ash:          {flows['ash_kg_h']:.4f} kg/h  (was 3.750 kg/h at the old 37.5 kg/h design point; "
-          f"GA-009's own stated nominal is ~3.75 kg/h -- no longer an exact match, see module docstring)")
-    print(f"  Carbon black: {flows['carbon_black_kg_h']:.4f} kg/h  (was 1.875 kg/h at the old 37.5 kg/h design point; "
-          f"GA-008's own stated nominal is ~1.88 kg/h -- no longer an exact match, see module docstring)")
+    print(f"At design dry feed rate ({DEFAULT_DRY_FEED_KG_H} kg/h, dry solids of DOK-ING's stated 1,000 kg/day as-received):")
+    print(f"  Ash:          {flows['ash_kg_h']:.4f} kg/h  (the old 37.5 kg/h design point gave 3.750; "
+          f"GA-009's own stated nominal is ~3.75 kg/h -- since P1-05(c) the dry solids 37.503 kg/h nearly match it again)")
+    print(f"  Carbon black: {flows['carbon_black_kg_h']:.4f} kg/h  (the old 37.5 kg/h design point gave 1.875; "
+          f"GA-008's own stated nominal is ~1.88 kg/h)")
     print(f"  Scale factor vs. the old 37.5 kg/h design point: {DEFAULT_DRY_FEED_KG_H / 37.5:.4f} "
           f"(+{(DEFAULT_DRY_FEED_KG_H / 37.5 - 1) * 100:.2f}%)")
 

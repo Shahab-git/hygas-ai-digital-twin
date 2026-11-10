@@ -109,12 +109,14 @@ repository; do not interchange them:
   DOK-ING did NOT state whether it is wet or dry. This project TREATS it
   as the **as-received** feed (a project decision, Phase 3); that basis is
   not DOK-ING-confirmed. In code: `FE001_DEFAULT_DELIVERY_RATE_KG_H`,
-  `FE003_NOMINAL_KG_H` and, under a misleading name,
-  `gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H`.
+  `FE003_NOMINAL_KG_H` and, since P1-05(c) (2026-11-10),
+  `gasifier_mass_balance.DEFAULT_AS_RECEIVED_FEED_KG_H` (it was held, under a
+  misleading "dry" name, by `DEFAULT_DRY_FEED_KG_H`).
 - **37.503 kg/h** = dry solids INCLUDING ash = 41.67 x (1 - 0.10), the
   FE-005 moisture balance with the assumed 10% inlet moisture (Unverified;
   DOK-ING gave 5-15(20)%, basis not stated). This is what the live engine
-  feeds GA-001 as `("GA-001-INPUT","dry_feed_rate_kg_h")` from cycle 2. Since
+  feeds GA-001 as `("GA-001-INPUT","dry_feed_rate_kg_h")` from cycle 2, and, since P1-05(c),
+  on cycle 1 as well (`gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H` is now this value). Since
   P0-FB2 step 1 (2026-11-06) it is also the Circularity Scoring default, derived
   as `circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H` from the two feed-chain constants.
 - **33.753 kg/h** = dry ASH-FREE = 37.503 x (1 - 0.10 ash), computed
@@ -125,7 +127,9 @@ repository; do not interchange them:
   still quoted in registry remarks (GA-003 steam, GA-008, GA-009) and in a
   few scripts. It is close to, but not the same as, 37.503.
 
-**Known limitations (recorded for correction; each needs an owner
+**CLOSED by P1-05(c) (2026-11-10, `docs/phase0_gate_record.md` 3i): limitations (1) and
+the 41.67-as-dry cycle-1 fallback below no longer hold; `DEFAULT_DRY_FEED_KG_H` is 37.503 and
+the paragraph is kept as history.** **Known limitations (recorded for correction; each needs an owner
 decision). P0-FB2 steps 1 and 2 (2026-11-06) corrected the Circularity Scoring
 section, its `app.py` input and the equipment datasheet fills (GA-006 to
 GA-010); the rest remains:** (1) `DEFAULT_DRY_FEED_KG_H` holds an

@@ -288,7 +288,7 @@ def carbon_black_flows(snapshot, dry_feed_kg_h, derived=True):
     if e is not None and e["status"] != ps.STATUS_MISSING:
         v = e["value"]
         return float(v["carbon_black_kg_h"]), float(v["remainder_kg_h"]), "derived: unconverted carbon x split, (GA-001, CarbonAccounting)"
-    return float(gmb.byproduct_mass_flows(dry_feed_kg_h)["carbon_black_kg_h"]), 0.0, "5 % datasheet rule (gasifier_mass_balance.py:62)"
+    return float(gmb.byproduct_mass_flows(dry_feed_kg_h)["carbon_black_kg_h"]), 0.0, "5 % datasheet rule (gasifier_mass_balance.py:69)"
 
 
 def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
@@ -310,12 +310,12 @@ def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
     o2_name, n2_name = ("air O2", "air N2") if agent == ga001.GASIFYING_AGENT_DEFAULT else (f"oxidant O2 (agent {agent})", f"oxidant N2 (agent {agent})")
     steam = inp["steam_to_feed_ratio"] * f * 1000.0 / M_H2O_ENGINE               # ga001_gasifier_model.py:752
     moist = inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE                   # ga001_gasifier_model.py:715
-    byp = gmb.byproduct_mass_flows(f)                                            # gasifier_mass_balance.py:65-71
+    byp = gmb.byproduct_mass_flows(f)                                            # gasifier_mass_balance.py:72-78
     cb_kg, cb_remainder_kg, cb_source = carbon_black_flows(snapshot, f, derived_carbon_black)
 
     terms = [
         make_term("dry feed (C,H,O,N + ash)", "in", feed, ash_kg_h=ga001.ASH_FRACTION * f, status=ps.STATUS_ASSUMED,
-                  source="GA-001-INPUT dry_feed_rate_kg_h (Calculated, FE-005) x feedstock_composition (Assumed, ga001:193-196); ash 10 % (gasifier_mass_balance.py:61, GA-005)",
+                  source="GA-001-INPUT dry_feed_rate_kg_h (Calculated, FE-005) x feedstock_composition (Assumed, ga001:193-196); ash 10 % (gasifier_mass_balance.py:68, GA-005)",
                   note="composition is the literature stand-in, not DOK-ING data"),
         make_term("residual moisture in dry feed", "in", {"H2O": moist}, status=ps.STATUS_CALCULATED,
                   source="FE-005 MoistureBalance.residual_water_kg_h (fe_feed_handling.py:290), folded in at ga001:761-763"),
@@ -338,7 +338,7 @@ def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
         make_term("product gas (wet)", "out", gas_species_mol_h(out), status=ps.STATUS_CALCULATED,
                   source="GA-001 Outputs dry_flow_nm3_h x mol% and (wet - dry) water (ga001:793-803)"),
         make_term("ash", "out", {}, ash_kg_h=byp["ash_kg_h"], mass_kg_h=byp["ash_kg_h"], status=ps.STATUS_ASSUMED,
-                  source="ASH_FRACTION x dry feed, gasifier_mass_balance.py:65-71 (GA-005 'Ash discharge rate 10 % of feed')"),
+                  source="ASH_FRACTION x dry feed, gasifier_mass_balance.py:72-78 (GA-005 'Ash discharge rate 10 % of feed')"),
         make_term("carbon black (taken as pure C)", "out", {"C": cb_kg * 1000.0 / ATOMIC_MASS["C"]}, status=ps.STATUS_ASSUMED,
                   source=cb_source + "; pure carbon is an audit assumption (GA-008 'product ash < 1 wt%')"),
         make_term("tar", "out", None, affects=("C", "H", "O"), source="GA-001 'Tar content' is permanently Missing (ga001_gasifier_model.py:842-857)"),

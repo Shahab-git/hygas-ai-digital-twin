@@ -37,7 +37,7 @@ TABLE_COVERS = {
     "GA-001.ch4_carbon_fraction": [lc.const_key(_G, "CH4_CARBON_FRACTION"), lc.const_key(_G, "CH4_CARBON_FRACTION_RANGE")],
     "GA-001.T_gasifier_C": [lc.const_key(_G, "GA001_OPERATING_TEMPERATURE_C")],
     "GA-001.unconverted_C_to_carbon_black": [lc.const_key(_G, "CARBON_BLACK_SPLIT_DEFAULT"), lc.const_key(_G, "CARBON_BLACK_SPLIT_RANGE")],
-    "GA-001.dry_feed_kg_h": [lc.const_key(_GM, "DEFAULT_DRY_FEED_KG_H")],
+    "GA-001.dry_feed_kg_h": [lc.const_key(_GM, "DEFAULT_AS_RECEIVED_FEED_KG_H")],     # P1-05(c): the literal 41.67 is now DEFAULT_AS_RECEIVED_FEED_KG_H; DEFAULT_DRY_FEED_KG_H is derived from it
     "GA-001.ash_fraction": [lc.const_key(_GM, "ASH_FRACTION")],
     "GA-001.ER": [lc.const_key(_U, "ASSUMPTIONS")],
     "GA-001.steam_to_feed_kg_kg": [lc.const_key(_U, "ASSUMPTIONS")],
@@ -92,6 +92,8 @@ _c("GA-008.old_design_dry_feed_kg_h", "ga001_carbon_accounting", "OLD_DESIGN_DRY
 _c("GA-008.capacity_kg_h", "ga001_carbon_accounting", "GA008_CAPACITY_KG_H", "kg/h", ("GA-008", "Design capacity"), None, "GA-008 'Design capacity'; the cross-check flags a derived carbon black above it.")
 _c("GA-001.carbon_black_fraction_legacy", "gasifier_mass_balance", "CARBON_BLACK_FRACTION", "mass fraction of dry feed", None, None,
    "Legacy fixed 5 % carbon black; since the carbon bookkeeping task the carbon black is DERIVED in (GA-001, CarbonAccounting), so this constant may have no live consumer (see consumers).")
+_c("GA-001.inlet_moisture_fraction_static", "gasifier_mass_balance", "DEFAULT_INLET_MOISTURE_FRACTION", "mass fraction", None, Q_FEED,
+   "P1-05(c): Assumed 10 % inlet moisture (DOK-ING gave 5-15 (20) %, basis not stated); the static copy of fe_feed_handling.FE005_INLET_MOISTURE_FRACTION, equality pinned by tests/test_p1_05c_feed_basis.py.")
 # gas cleaning
 _c("GC-005.blowdown_to_circulation_ratio", "gc_gas_cleaning_chain", "QUENCH_BLOWDOWN_TO_CIRCULATION_RATIO", "-", ("GC-005", "Blowdown rate"), None,
    "0.05 / 0.5 = registry blowdown 0.05 m3/h over water consumption 0.5 m3/h (a ratio of two GC-005 rows); reused for GC-007/008/009 as well.")

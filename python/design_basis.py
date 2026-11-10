@@ -1105,28 +1105,29 @@ if __name__ == "__main__":
 
     print("\n=== Physics-core recalibration check (cross-module, not just this module's own text) ===")
     from . import gasifier_mass_balance, circularity
-    assert gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H == 41.67, (
-        f"REGRESSION: gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H is "
-        f"{gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H}, expected 41.67 (the recalibrated value)."
+    # P1-05(c): 41.67 is the AS-RECEIVED default; DEFAULT_DRY_FEED_KG_H is the dry solids, 41.67 x (1 - 0.10) = 37.503
+    assert gasifier_mass_balance.DEFAULT_AS_RECEIVED_FEED_KG_H == 41.67, (
+        f"REGRESSION: gasifier_mass_balance.DEFAULT_AS_RECEIVED_FEED_KG_H is "
+        f"{gasifier_mass_balance.DEFAULT_AS_RECEIVED_FEED_KG_H}, expected 41.67 (the recalibrated value)."
     )
+    assert abs(gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H - 37.503) < 1e-9
     assert gasifier_mass_balance.ASH_FRACTION == 0.10 and gasifier_mass_balance.CARBON_BLACK_FRACTION == 0.05, (
         "REGRESSION: the ash/carbon-black FRACTIONS changed -- they should be untouched by the "
         "feed-rate recalibration, only the absolute feed rate should have changed."
     )
     _flows = gasifier_mass_balance.byproduct_mass_flows()
-    assert abs(_flows["ash_kg_h"] - 4.167) < 1e-6, f"REGRESSION: recalibrated ash_kg_h is {_flows['ash_kg_h']}, expected 4.167."
-    assert abs(_flows["carbon_black_kg_h"] - 2.0835) < 1e-6, (
-        f"REGRESSION: recalibrated carbon_black_kg_h is {_flows['carbon_black_kg_h']}, expected 2.0835."
+    assert abs(_flows["ash_kg_h"] - 3.7503) < 1e-6, f"REGRESSION: ash_kg_h is {_flows['ash_kg_h']}, expected 3.7503 (10 % of the 37.503 dry solids; was 4.167 on the as-received figure before P1-05(c))."
+    assert abs(_flows["carbon_black_kg_h"] - 1.87515) < 1e-6, (
+        f"REGRESSION: the 5 % rule carbon_black_kg_h is {_flows['carbon_black_kg_h']}, expected 1.87515 (was 2.0835 before P1-05(c))."
     )
     _circ = circularity.circularity_summary()
-    assert abs(_circ["diversion_fraction"] - 0.15) < 1e-9, (
-        f"REGRESSION: diversion_fraction is {_circ['diversion_fraction']}, expected exactly 0.15 (10%+5%) "
-        f"-- a pure ratio, must be UNCHANGED by the recalibration."
+    assert abs(_circ["diversion_fraction"] - (0.10 + circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED)) < 1e-9, (
+        f"REGRESSION: diversion_fraction is {_circ['diversion_fraction']}, expected 10 % ash + the engine's carbon black fraction (P1-05(d); a pure ratio)."
     )
-    print(f"PASSED -- gasifier_mass_balance.DEFAULT_DRY_FEED_KG_H = 41.67 kg/h (recalibrated), "
+    print(f"PASSED -- gasifier_mass_balance.DEFAULT_AS_RECEIVED_FEED_KG_H = 41.67 kg/h (recalibrated), DEFAULT_DRY_FEED_KG_H = 37.503, "
           f"ASH_FRACTION/CARBON_BLACK_FRACTION untouched (0.10/0.05), computed ash/carbon-black "
-          f"flows match the recalibrated values (4.167/2.0835 kg/h), and circularity.py's "
-          f"diversion_fraction is still exactly 15% -- a pure ratio, correctly unaffected.")
+          f"flows are on the dry solids (3.7503/1.87515 kg/h, P1-05(c)), and circularity.py's "
+          f"diversion_fraction is ash 10 % + the engine's carbon black fraction (P1-05(d)).")
 
     print("\n=== Final count (task requirement 6 — not rounded up) ===")
     counts = summarize()

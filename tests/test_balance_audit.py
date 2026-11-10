@@ -61,7 +61,7 @@ def test_ga001_h_o_n_balances_close_at_verify_atom_balance_tolerance(snaps, n):
 def test_ga001_cycle_one_has_no_recycle_and_uses_the_placeholder_feed(snaps):
     out = snaps[1][("GA-001", "Outputs")]["value"]
     assert out["recycle_active"] is False
-    assert snaps[1][("GA-001-INPUT", "dry_feed_rate_kg_h")]["value"] == gmb.DEFAULT_DRY_FEED_KG_H     # 41.67 wet figure used as dry (ga001:418-435)
+    assert snaps[1][("GA-001-INPUT", "dry_feed_rate_kg_h")]["value"] == gmb.DEFAULT_DRY_FEED_KG_H     # P1-05(c) (deliberate edit): the dry solids 37.503 (it was the 41.67 wet figure used as dry, ga001:418-435)
     bal = ba.ga001_balance(snaps[1], None)
     for el in ("H", "O", "N"):
         assert abs(bal["rows"][el]["rel"]) < 1e-12
@@ -196,7 +196,8 @@ def test_the_whole_plant_residuals_are_fully_explained(snaps, n):
 def test_the_storage_clamp_is_measured_from_the_inventory_change(snaps):
     s = ba.storage_inventory_check(snaps[5], snaps[4])
     assert s["h2_created_by_clamp_kg"] == pytest.approx(s["level_kg"] - s["expected_level_without_clamp_kg"])
-    assert s["h2_created_by_clamp_kg"] > 0.0 and s["verdict"] == ba.VERDICT_NO       # the default five-cycle state sits on the lower clamp
+    # P1-05(c) (deliberate edit): the default five-cycle state used to sit on the lower clamp (0.133 kg of H2 created); with the dry-solids cycle-1 feed the tank holds 0.205 kg and nothing is created
+    assert s["h2_created_by_clamp_kg"] == pytest.approx(0.0, abs=1e-9) and s["verdict"] == ba.VERDICT_NUMERICAL and s["level_kg"] > 0.0
     quiet = ba.storage_inventory_check(snaps[N_CONV], snaps[N_CONV - 1])
     assert quiet["h2_created_by_clamp_kg"] == pytest.approx(quiet["level_kg"] - quiet["expected_level_without_clamp_kg"])
     assert quiet["previous_level_kg"] == snaps[N_CONV - 1][("HB-013", "Storage")]["value"]["level_kg"]
