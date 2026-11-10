@@ -66,6 +66,7 @@ GA-008's 3 kg/h capacity holds in every case; at the bottom of the conversion ra
 No engine entry published carbon black or ash before this task, so **no existing entry changed**: only two keys were added, `("GA-001-INPUT","unconverted_carbon_to_carbon_black")` and `("GA-001","CarbonAccounting")` (persisted keys 120 -> 122; no key is lost, growth does not trip the 90 % shrink guard).
 Places that still compute the carbon black from the 5 % rule, on demand and outside the engine: `gasifier_mass_balance.byproduct_mass_flows` (`gasifier_mass_balance.py:65`), the app cards (`app.py` GA-008 / GA-010 / "Carbon black recovery (derived)" cards, `app.py:4802, 5069, 5355`), `circularity.py:42` and the static equipment fills in `equipment_engineering_estimates.py:1617`. They show 1.875 kg/h
 while the engine publishes 2.013 kg/h. Changing them is a UI / static-tool change, out of scope here (one line in `CLAUDE.md` Known limitations).
+**Update 2026-11-10 (P1-05(d)):** `circularity.py`, the GA-008 / GA-010 fills and the app's Circularity section now use the engine's derived value as a pinned fraction (`circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED`, 2.013 kg/h at the default); the Tab 4 cards already did. The 5 % rule is kept only as the cross-check. See `docs/phase0_gate_record.md` 3h.
 
 ## 5. Still `Missing` or out of scope
 

@@ -250,6 +250,7 @@ _l("PLANT.audit_quench_inlet_temperature_C", "balance_audit", "plant_energy", [8
 _l("PLANT.audit_lts_steam_temperature_C", "balance_audit", "plant_energy", [220.0], "degC", ("HB-004", "Inlet temperature (design)"), None, "Unreacted steam leaves the LTS at >= its 220 degC inlet (code comment).")
 _c("CIRC.ash_price_eur_per_kg", "circularity", "ASH_PRICE_EUR_PER_KG", "EUR/kg", None, None, "An economic assumption of the circularity estimate; no source in the repo.")
 _c("CIRC.carbon_black_price_eur_per_kg", "circularity", "CARBON_BLACK_PRICE_EUR_PER_KG", "EUR/kg", None, None, "An economic assumption of the circularity estimate; no source in the repo.")
+_c("CIRC.carbon_black_fraction_engine_derived", "circularity", "ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED", "mass fraction of dry feed", None, None, "P1-05(d): the engine's DERIVED carbon black (GA-001 CarbonAccounting: unconverted carbon x split, converged, default feed and tail-gas mode) pinned as a fraction for the static modules; replaces the legacy 5 % rule there; tests/test_p1_05d_carbon_black.py fails on drift.")
 # uncertainty
 _c("UNC.uncertainty_fraction", "uncertainty", "UNCERTAINTY_FRACTION", "-", None, None, "The +/-15 % band width the code calls 'our own assumed default'.")
 _p("UNC.feed_sulfur_ppm", "uncertainty", ("ASSUMPTIONS", "feed_sulfur_ppm", "point"), "ppm", None, None, "wired_in=False: used by the Monte Carlo bookkeeping only.")

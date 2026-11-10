@@ -146,7 +146,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 363 and len(exceptions) == 188 and len(items) - len(exceptions) == 175     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 364 and len(exceptions) == 188 and len(items) - len(exceptions) == 176     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -688,7 +688,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency"} <= none      # constants nothing in the code uses (HB-010.h2_recovery left the list in P1-12)
-    assert len(ledger) == 178                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
+    assert len(ledger) == 179                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
@@ -928,7 +928,7 @@ COMMITTED = {n: open(os.path.join(ROOT, "docs", n), encoding="utf-8", newline=""
 def test_every_row_has_a_symbolic_anchor_and_no_two_rows_share_one(built):
     ledger = built[0]
     rep = la.anchor_report(ledger)
-    assert rep["rows"] == len(ledger) == 178 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
+    assert rep["rows"] == len(ledger) == 179 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
     for r in ledger:
         a = r["anchor"]
         assert re.match(r"^(registry:[A-Z]+-\d+/.+|[a-z_0-9]+:[A-Za-z_0-9#+:'\[\]\(\)\. /,-]+)$", a), (r["ledger_id"], a)
