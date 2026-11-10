@@ -162,9 +162,10 @@ SYNGAS_LHV_MJ_PER_NM3 = 9.8    # registry-stated [Unverified (registry)] STATIC 
                                  # SA-006 directly) -- used ONLY as an honest cross-check
                                  # reference below, NOT for the live budget calc itself; see
                                  # _syngas_lhv_mj_per_nm3().
-SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": 10.783, "CO": 12.622, "CH4": 35.883}  # standard
-                                 # combustion-engineering reference values (ideal-gas, 25C)
 H2_LHV_MJ_PER_NM3 = 10.8       # EU-006's own stated basis [Assumed; no DOK-ING source line]
+                                 # P1-05(a): the ONE hydrogen LHV of this module; within +0.1 % of 241.826 kJ/mol / 0.022414 Nm3/mol = 10.789.
+SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": H2_LHV_MJ_PER_NM3, "CO": 12.622, "CH4": 35.883}  # CO, CH4: standard
+                                 # combustion-engineering reference values (ideal-gas, 25C); H2 is the single value above (was 10.783 before P1-05(a))
 
 # EU-004 Gas Engine thermal split (both registry-stated, Unverified (registry)).
 EU004_JACKET_KWTH_RATED = 12.0
@@ -237,8 +238,8 @@ WGS_PSA_SYNGAS_CLAIM_FRACTION = 1.0
 
 def _syngas_lhv_mj_per_nm3(gc013_value):
     """Real, LIVE composition-weighted LHV -- standard combustion-
-    engineering reference heating values (H2 10.783 MJ/Nm3, matching
-    EU-006's own stated 10.8 basis; CO 12.622; CH4 35.883 -- CO2/N2
+    engineering reference heating values (H2 = H2_LHV_MJ_PER_NM3 =
+    10.8 MJ/Nm3, the single hydrogen value since P1-05(a); CO 12.622; CH4 35.883 -- CO2/N2
     contribute 0), weighted by GC-013's own live dry mole fractions. Same
     composition-weighting discipline as gc_gas_cleaning_chain.py's own
     gc004_cooling_duty()/_cp_mix_avg(). Used here INSTEAD OF EU-003's/

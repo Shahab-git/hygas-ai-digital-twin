@@ -6,14 +6,14 @@ Statuses are the project's: Confirmed (DOK-ING source cited), Calculated, Estima
 
 ## Counts
 
-- Rows: **179** (175 distinct `ledger_id`; a quantity held in two places has two rows with the same id and different `source`: one row for the engine's own value, one for the registry record; the duplicates are intentional, so `ledger_id` is NOT unique and `anchor` is the unique row identifier, which a test asserts).
-- By status: Assumed 113, Calculated 1, Confirmed 2, Estimated 1, Unverified (registry) 62.
-- By `status_via`: own 116, registry counterpart 63.
-- By origin (provenance overlay): ASSUMED 3, CALCULATED 1, DOK-ING 2, NOT STATED 172, SIMILAR_PLANT 1.
-- By `overridable_via`: code only 158, dynamics argument 5, engine input 10, registry 6.
-- Rows with no `upgrade_question` (no question in the repo would upgrade them): **114**.
+- Rows: **178** (174 distinct `ledger_id`; a quantity held in two places has two rows with the same id and different `source`: one row for the engine's own value, one for the registry record; the duplicates are intentional, so `ledger_id` is NOT unique and `anchor` is the unique row identifier, which a test asserts).
+- By status: Assumed 112, Calculated 1, Confirmed 2, Estimated 1, Unverified (registry) 62.
+- By `status_via`: own 115, registry counterpart 63.
+- By origin (provenance overlay): ASSUMED 3, CALCULATED 1, DOK-ING 2, NOT STATED 171, SIMILAR_PLANT 1.
+- By `overridable_via`: code only 157, dynamics argument 5, engine input 10, registry 6.
+- Rows with no `upgrade_question` (no question in the repo would upgrade them): **113**.
 - Rows with no consumer found (8): `LEDGER.FE-001.total_capacity_t (code only)`, `LEDGER.FE-002.removal_efficiency (code only)`, `LEDGER.GA-001.ER (registry)`, `LEDGER.GA-001.T_gasifier_C (registry)`, `LEDGER.GA-003.air_flow_design_Nm3_h (registry)`, `LEDGER.GA-003.steam_flow_design_kg_h (registry)`, `LEDGER.GA-004.air_preheat_C (registry)`, `LEDGER.GA-004.steam_T_C (registry)`.
-- Coverage scan of the 17 modules that feed published keys: **365** numeric items (composite 6, const 138, literal 221); **176** are PARAMETERs (every one is a ledger row) and **189** are listed exceptions (NUMERICAL 27, PHYSICAL CONSTANT 127, PUBLISHED CORRELATION COEFFICIENT 11, SELF-TEST FIXTURE 24).
+- Coverage scan of the 17 modules that feed published keys: **364** numeric items (composite 7, const 137, literal 220); **175** are PARAMETERs (every one is a ledger row) and **189** are listed exceptions (NUMERICAL 27, PHYSICAL CONSTANT 127, PUBLISHED CORRELATION COEFFICIENT 11, SELF-TEST FIXTURE 24).
 
 ## The ledger
 
@@ -28,8 +28,7 @@ Statuses are the project's: Confirmed (DOK-ING source cited), Calculated, Estima
 | LEDGER.EU-004.jacket_kwth_rated | 12.0 | kWth | Unverified (registry) | registry counterpart: EU-004/Jacket cooling heat recovery | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:EU004_JACKET_KWTH_RATED | eu_utilities_chp.eu004_gas_engine_thermal |  | module constant eu_utilities_chp.EU004_JACKET_KWTH_RATED | Value read from the code; status, origin and source_line are those of its registry counterpart EU-004 'Jacket cooling heat recovery' (registry value 12 kWth; same quantity, same unit, same basis): no stated origin |
 | LEDGER.EU-005.exhaust_flow_nm3_h_rated | 150.0 | Nm3/h | Unverified (registry) | registry counterpart: EU-005/Exhaust flow rate | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:EU005_EXHAUST_FLOW_NM3_H_RATED | eu_utilities_chp.<module level>; eu_utilities_chp.eu005_microturbine |  | module constant eu_utilities_chp.EU005_EXHAUST_FLOW_NM3_H_RATED | Value read from the code; status, origin and source_line are those of its registry counterpart EU-005 'Exhaust flow rate' (registry value 150 Nm³/h; same quantity, same unit, same basis): no stated origin |
 | LEDGER.EU-006.chp_rated_efficiency | {SOFC: 0.55, Gas Engine: 0.35, Microturbine: 0.28, PEM Fuel Cell: 0.5} | - | Assumed | own | NOT STATED |  | Missing | Missing | code only | chp:RATED_EFFICIENCY | chp.<module level>; chp.chp_efficiency; eu_utilities_chp.<module level> |  | module constant chp.RATED_EFFICIENCY | Rated electrical efficiency per CHP unit type (SOFC, gas engine, microturbine, PEM fuel cell). STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
-| LEDGER.EU-006.h2_lhv_mj_nm3_audit_copy | 10.8 | MJ/Nm3 | Assumed | own | NOT STATED |  | Missing | Missing | code only | balance_audit:efficiency_check:h2_kw_engine#1 | balance_audit.efficiency_check |  | literal 10.8 inside balance_audit.efficiency_check() (read from its ast) | A literal copy of eu_utilities_chp.H2_LHV_MJ_PER_NM3 (code comment: 'EU-006 10.8 MJ/Nm3'). STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
-| LEDGER.EU-006.h2_lhv_mj_per_nm3 | 10.8 | MJ/Nm3 | Assumed | own | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:H2_LHV_MJ_PER_NM3 | eu_utilities_chp.<module level>; eu_utilities_chp._h2_budget_kw; eu_utilities_chp.eu006_fuel_cell; eu_utilities_chp.eu_chp_dispatch; tab1_integration.<module level>; tab1_integration.compute_tab1_kpis |  | module constant eu_utilities_chp.H2_LHV_MJ_PER_NM3 | EU-006's stated basis (10.8); the species table SYNGAS_SPECIES_LHV_MJ_PER_NM3 holds 10.783 for H2 and balance_audit.efficiency_check repeats 10.8 as a literal (see that row's note). STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
+| LEDGER.EU-006.h2_lhv_mj_per_nm3 | 10.8 | MJ/Nm3 | Assumed | own | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:H2_LHV_MJ_PER_NM3 | balance_audit.efficiency_check; eu_utilities_chp.<module level>; eu_utilities_chp._h2_budget_kw; eu_utilities_chp.eu006_fuel_cell; eu_utilities_chp.eu_chp_dispatch; tab1_integration.<module level>; tab1_integration.compute_tab1_kpis |  | module constant eu_utilities_chp.H2_LHV_MJ_PER_NM3 | EU-006's stated basis (10.8). Since P1-05(a) it is the single hydrogen LHV: the species table SYNGAS_SPECIES_LHV_MJ_PER_NM3 H2 entry is this constant and balance_audit.efficiency_check reads it. STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
 | LEDGER.EU-006.part_load_efficiency_coefficients | [0.01, 0.06, 0.35, 0.3, 1.5, 0.55, 0.03, 0.4] | - | Assumed | own | NOT STATED |  | Missing | Missing | code only | chp:chp_efficiency:x+eta#1+eta#2+eta#3+eta#4+eta#5+eta#6+eta#7 | chp.chp_efficiency |  | literal [0.01, 0.06, 0.35, 0.3, 1.5, 0.55, 0.03, 0.4] inside chp.chp_efficiency() (read from its ast) | Floor 0.01 and the part-load curve coefficients of the four CHP unit types (eta = eta_rated x (1 + a(1-x) - b(1-x)^n)); no source is named in the code. STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
 | LEDGER.EU-007.destruction_efficiency | 0.98 | - | Assumed | own | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:EU007_DESTRUCTION_EFFICIENCY | eu_utilities_chp.eu007_flare |  | module constant eu_utilities_chp.EU007_DESTRUCTION_EFFICIENCY | Flare destruction efficiency; no registry row states it. STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
 | LEDGER.EU-008.adequacy_derogation_span_C | 10.0 | degC | Assumed | own | NOT STATED |  | Missing | Missing | code only | eu_utilities_chp:EU008_ADEQUACY_DEROGATION_SPAN_C | eu_utilities_chp.eu008_consumer_adequacy | master_open_questions:1.1 | module constant eu_utilities_chp.EU008_ADEQUACY_DEROGATION_SPAN_C | Code comment: Assumed. STATUS ASSIGNED BY THIS TABLE (the repo carries no status tag for this constant): no registry row states this quantity, or the code holds it as a model choice. |
@@ -341,16 +340,6 @@ Ledger rows with no consumer. They are reported, not removed.
 
 ## Inconsistencies recorded, not fixed
 
-### H2 lower heating value, three places
-
-- 10.783 MJ/Nm3 (SYNGAS_SPECIES_LHV_MJ_PER_NM3['H2']): `python/eu_utilities_chp.py (SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": 10.783)`
-- 10.8 MJ/Nm3 (H2_LHV_MJ_PER_NM3, EU-006's stated basis): `python/eu_utilities_chp.py (H2_LHV_MJ_PER_NM3 = 10.8)`
-- 10.8 MJ/Nm3 (a literal in balance_audit.efficiency_check): `python/balance_audit.py (h2_kw_engine = n_h2 * NM3_PER_MOL * 10.8 / 3.6)`
-
-- Affects: 10.8 feeds the H2 energy and efficiency KPIs (`eu_utilities_chp._h2_budget_kw`, `eu006_fuel_cell`, `eu_chp_dispatch`, `tab1_integration.compute_tab1_kpis`, i.e. the EU-006 / EU-010 / Tab 1 values); 10.783 feeds the syngas LHV (`eu_utilities_chp._syngas_lhv_mj_per_nm3`, EU-003); the audit literal only `balance_audit.efficiency_check`.
-- Size: 10.8 against 10.783 is +0.158 %.
-- Hidden by the tolerance: No verdict compares the two: balance_audit.TOL_STATED (1e-3) is applied only to relative mass residuals (`balance_audit.verdict`), so it neither hides nor tests this difference (and 1.58e-3 is above it anyway). It is measured in task A5, not fixed.
-
 ### molar mass of water, 18.015 against 18.016
 
 - 18.015 g/mol (M_H2O): `python/ga001_gasifier_model.py (M_H2O = 18.015)`
@@ -394,6 +383,8 @@ Ledger rows with no consumer. They are reported, not removed.
 **The pinned counts changed again in Phase 1 task P1-15 (HB-003 duty estimate).** eu_utilities_chp generic mentions 20 to 22 (total 287 to 289): the new `hb003_duty_estimate` code and its text say "not DOK-ING-confirmed" twice, about the registry 5 kW. No value was called Confirmed; the registry row is untouched.
 
 **The pinned counts changed again in Phase 1 task P1-04 (safety items).** uncertainty.py generic mentions 26 to 33 and the third class 4 to 3 (total 289 to 295): new docstring lines about `confirmed_overrides`, the optional argument that lets `performance_guarantee` apply a hypothetical range without writing to `ASSUMPTIONS`. No value was called Confirmed.
+
+**Resolved in Phase 1 task P1-05(a): the H2 lower heating value is one value.** `SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"]` is now `H2_LHV_MJ_PER_NM3` (10.8 MJ/Nm3, Assumed, EU-006's stated basis; it was 10.783) and `balance_audit.efficiency_check` reads that constant instead of repeating the literal 10.8. The ledger row `EU-006.h2_lhv_mj_nm3_audit_copy` is removed with the literal. Moved: the syngas LHV (+0.0745 % at the default) and with it `EU-CHP|Dispatch` total_syngas_kw / wgs_psa_claim_kw and the SA-006 reading; nothing else (checked key by key).
 
 ## Exceptions (numeric constants that are not parameters)
 

@@ -121,6 +121,10 @@ Conditions that apply to all five (stated by Claude when the list was offered; t
 
 After the five tasks of section 3e were merged, the owner was offered the list of tasks that do not wait for DOK-ING and wrote "start please". **Read as authorising P1-04 only** (the first item of the recommendation made in the same reply: the two safety items of G5-08, no number changes). P1-05 (number-changing fixes) and P1-06 (tail-gas default decision) still need the owner's own authorisation. This reading is Claude's; the owner is asked to confirm or correct it.
 
+### 3g. Task P1-05 parts (a) and (b) (owner instruction, 2026-11-10)
+
+The owner answered "yes please" to the reply that proposed starting P1-05 with parts (a) and (b), after the measured effect of each had been stated in chat. **Read as authorising P1-05(a) (one hydrogen LHV) and P1-05(b) (water molar mass from the atomic masses), as two PRs, (a) first.** P1-05(c) (feed-basis correction) and P1-05(d) (carbon-black alignment) and P1-06 stay unauthorised. Claude's choice inside (a): the single value is 10.8 MJ/Nm3 (EU-006's stated basis, +0.1 % above 241.826 kJ/mol / 0.022414 = 10.789), because it moves the fewest persisted entries (2 of 124, +0.0745 %); 10.783 would have moved 6, by up to 0.38 %. The owner is asked to confirm or correct that choice.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -156,7 +160,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e and P1-04 of section 3f; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f and P1-05(a)/(b) of section 3g; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

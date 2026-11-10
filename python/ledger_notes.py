@@ -44,14 +44,6 @@ UNUSED_CONSTANTS = [
 
 # id, what, [(label, file, token)], who reads each, how big, why it is not hidden or hidden
 INCONSISTENCIES = [
-    {"id": "H2 lower heating value, three places",
-     "values": [("10.783 MJ/Nm3 (SYNGAS_SPECIES_LHV_MJ_PER_NM3['H2'])", "python/eu_utilities_chp.py", 'SYNGAS_SPECIES_LHV_MJ_PER_NM3 = {"H2": 10.783'),
-                ("10.8 MJ/Nm3 (H2_LHV_MJ_PER_NM3, EU-006's stated basis)", "python/eu_utilities_chp.py", "H2_LHV_MJ_PER_NM3 = 10.8"),
-                ("10.8 MJ/Nm3 (a literal in balance_audit.efficiency_check)", "python/balance_audit.py", "h2_kw_engine = n_h2 * NM3_PER_MOL * 10.8 / 3.6")],
-     "affects": "10.8 feeds the H2 energy and efficiency KPIs (`eu_utilities_chp._h2_budget_kw`, `eu006_fuel_cell`, `eu_chp_dispatch`, `tab1_integration.compute_tab1_kpis`, i.e. the EU-006 / EU-010 / Tab 1 values); 10.783 feeds the syngas LHV "
-                "(`eu_utilities_chp._syngas_lhv_mj_per_nm3`, EU-003); the audit literal only `balance_audit.efficiency_check`.",
-     "size": "10.8 against 10.783 is +0.158 %.",
-     "hidden": "No verdict compares the two: balance_audit.TOL_STATED (1e-3) is applied only to relative mass residuals (`balance_audit.verdict`), so it neither hides nor tests this difference (and 1.58e-3 is above it anyway). It is measured in task A5, not fixed."},
     {"id": "molar mass of water, 18.015 against 18.016",
      "values": [("18.015 g/mol (M_H2O)", "python/ga001_gasifier_model.py", "M_H2O = 18.015"),
                 ("M_H = 1.008", "python/ga001_gasifier_model.py", "M_H = 1.008"),
@@ -156,7 +148,8 @@ def render_confirmed():
           "(so no persisted note) was touched; the 80 registry-stated lines that remain are 53 string literals (not touched in this step; some reach persisted notes) and 27 docstring or comment lines left as written (they name DOK-ING's answers, concern the confirmation tracker, or are true under the rule).",
           "", "**The pinned counts changed again in Phase 1 task P1-12 (HB-010 Separation).** hb_remaining_chain generic mentions 35 to 38 (total 284 to 287): the new `hb010_separation` code and its docstring name the existing identifier `HB010_CONFIRMED_RECOVERY` and say \"not DOK-ING-confirmed\". No value was called Confirmed. The constant `HB010_CONFIRMED_RECOVERY` is no longer unused (the new function reads it), so it left the list of constants nothing uses (three became two).",
           "", "**The pinned counts changed again in Phase 1 task P1-15 (HB-003 duty estimate).** eu_utilities_chp generic mentions 20 to 22 (total 287 to 289): the new `hb003_duty_estimate` code and its text say \"not DOK-ING-confirmed\" twice, about the registry 5 kW. No value was called Confirmed; the registry row is untouched.",
-          "", "**The pinned counts changed again in Phase 1 task P1-04 (safety items).** uncertainty.py generic mentions 26 to 33 and the third class 4 to 3 (total 289 to 295): new docstring lines about `confirmed_overrides`, the optional argument that lets `performance_guarantee` apply a hypothetical range without writing to `ASSUMPTIONS`. No value was called Confirmed."]
+          "", "**The pinned counts changed again in Phase 1 task P1-04 (safety items).** uncertainty.py generic mentions 26 to 33 and the third class 4 to 3 (total 289 to 295): new docstring lines about `confirmed_overrides`, the optional argument that lets `performance_guarantee` apply a hypothetical range without writing to `ASSUMPTIONS`. No value was called Confirmed.",
+          "", "**Resolved in Phase 1 task P1-05(a): the H2 lower heating value is one value.** `SYNGAS_SPECIES_LHV_MJ_PER_NM3[\"H2\"]` is now `H2_LHV_MJ_PER_NM3` (10.8 MJ/Nm3, Assumed, EU-006's stated basis; it was 10.783) and `balance_audit.efficiency_check` reads that constant instead of repeating the literal 10.8. The ledger row `EU-006.h2_lhv_mj_nm3_audit_copy` is removed with the literal. Moved: the syngas LHV (+0.0745 % at the default) and with it `EU-CHP|Dispatch` total_syngas_kw / wgs_psa_claim_kw and the SA-006 reading; nothing else (checked key by key)."]
     return L
 
 

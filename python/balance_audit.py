@@ -33,6 +33,7 @@ import math
 from . import balance_closure_kind
 from . import cycle_clock
 from . import design_basis
+from . import eu_utilities_chp as eu
 from . import ga001_gasifier_model as ga001
 from . import gasifier_mass_balance as gmb
 from . import gc_gas_cleaning_chain as gc
@@ -843,7 +844,7 @@ def efficiency_check(snapshot, previous_snapshot, kpis, lhv_range=None):
     h2_kg_h = float(_val(snapshot, ("HB-012", "Compressor"))["h2_kg_h"])
     n_h2 = h2_kg_h * 1000.0 / M_H2_ENGINE
     h2_kw_balance = _lhv_kw({"H2": n_h2})
-    h2_kw_engine = n_h2 * NM3_PER_MOL * 10.8 / 3.6                    # EU-006 10.8 MJ/Nm3 (eu_utilities_chp.py:167), as tab1_integration.py:213
+    h2_kw_engine = n_h2 * NM3_PER_MOL * eu.H2_LHV_MJ_PER_NM3 / 3.6    # EU-006 H2_LHV_MJ_PER_NM3 (10.8 MJ/Nm3), as tab1_integration.py:213; P1-05(a): no longer a literal
     feed_lo, feed_hi = dry * lhv_range[0] / 3.6, dry * lhv_range[1] / 3.6
     ov = kpis["overall_efficiency"]["value"]
     el_total = float(_val(snapshot, ("EU-009", "GridBalance"))["consumption_kw"]) + float(_val(snapshot, ("FE-004", "ShredderPower"))["power_kw"])

@@ -146,7 +146,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 365 and len(exceptions) == 189 and len(items) - len(exceptions) == 176     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 364 and len(exceptions) == 189 and len(items) - len(exceptions) == 175     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -522,9 +522,9 @@ def test_the_known_undeclared_reads_in_the_docs_are_the_ones_the_test_pins():
     assert docs == KNOWN_UNDECLARED_READS
 
 
-def test_the_two_recorded_inconsistencies_are_the_values_in_the_code():
+def test_the_recorded_inconsistency_and_the_resolved_h2_lhv_are_the_values_in_the_code():
     from python import eu_utilities_chp as eu, ga001_gasifier_model as ga
-    assert eu.H2_LHV_MJ_PER_NM3 == 10.8 and eu.SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"] == 10.783
+    assert eu.H2_LHV_MJ_PER_NM3 == 10.8 and eu.SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"] == eu.H2_LHV_MJ_PER_NM3     # P1-05(a): the H2 LHV inconsistency is resolved; only the water molar mass remains
     assert ga.M_H2O == 18.015 and abs((2 * ga.M_H + ga.M_O) - 18.016) < 1e-9
     docs = open(os.path.join(ROOT, "docs", "design_basis_ledger.md"), encoding="utf-8").read()
     for heading in ("## Known undeclared reads", "## Inline literals", "## Constants nothing uses", "## Inconsistencies recorded, not fixed", "## Question references", "## RFI mapping"):
@@ -688,7 +688,7 @@ def test_rows_without_a_consumer_are_reported_not_deleted(built):
     ledger = built[0]
     none = {r["ledger_id"] for r in ledger if not r["consumers"]}
     assert {"LEDGER.FE-001.total_capacity_t", "LEDGER.FE-002.removal_efficiency"} <= none      # constants nothing in the code uses (HB-010.h2_recovery left the list in P1-12)
-    assert len(ledger) == 179                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
+    assert len(ledger) == 178                                  # A3b 2.3: PLANT.hhv_correlation_coefficients is no longer a row (-1); 2.4: two verdict-threshold rows (+2)
 
 
 def test_every_code_row_has_the_function_that_names_it(built):
@@ -782,6 +782,10 @@ def test_the_persisted_comparison_still_catches_a_real_change(runs, main_snap):
     for n_, o_ in _d2_wording.PAIRS:                                              # 0) every old phrase coming back, one at a time, fails
         back = json.loads(json.dumps(new).replace(n_, o_))
         assert back != new, n_
+        if n_ not in json.dumps({k: v for k, v in new.items() if k not in INTENTIONAL}):
+            # P1-05(a) (deliberate edit): this phrase now lives only in entries that INTENTIONAL excludes from the comparison (EU-CHP|Dispatch, SA-006|Reading, pinned by
+            # tests/test_p1_05a_h2_lhv.py), so putting the old phrase back there cannot be seen here. It is still seen wherever it appears in a compared entry.
+            continue
         with pytest.raises(AssertionError):
             _assert_only_the_d2_phrases_differ(old, back, "default")
 
@@ -888,7 +892,7 @@ def _differing_leaves(a, b, path=""):
     return [] if a == b else [(path, type(a).__name__)]
 
 
-EXPECTED_DIFFERING_LEAVES = (73, 45)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
+EXPECTED_DIFFERING_LEAVES = (72, 44)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
 
 
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
@@ -923,7 +927,7 @@ COMMITTED = {n: open(os.path.join(ROOT, "docs", n), encoding="utf-8", newline=""
 def test_every_row_has_a_symbolic_anchor_and_no_two_rows_share_one(built):
     ledger = built[0]
     rep = la.anchor_report(ledger)
-    assert rep["rows"] == len(ledger) == 179 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
+    assert rep["rows"] == len(ledger) == 178 and rep["shared"] == []          # A1 (deliberate edit): 173 + the gasifying_agent switch + 4 agent constants
     for r in ledger:
         a = r["anchor"]
         assert re.match(r"^(registry:[A-Z]+-\d+/.+|[a-z_0-9]+:[A-Za-z_0-9#+:'\[\]\(\)\. /,-]+)$", a), (r["ledger_id"], a)
@@ -933,7 +937,7 @@ def test_every_row_has_a_symbolic_anchor_and_no_two_rows_share_one(built):
 def test_the_ambiguous_and_fallback_anchors_are_exactly_these(built):
     ledger = built[0]
     rep = la.anchor_report(ledger)
-    assert rep["ambiguous"] == ["balance_audit:efficiency_check:h2_kw_engine#1", "chp:chp_efficiency:x+eta#1+eta#2+eta#3+eta#4+eta#5+eta#6+eta#7", "hb_wgs_psa_storage_chain:hb012_compressor:T1_K#1"]
+    assert rep["ambiguous"] == ["chp:chp_efficiency:x+eta#1+eta#2+eta#3+eta#4+eta#5+eta#6+eta#7", "hb_wgs_psa_storage_chain:hb012_compressor:T1_K#1"]
     assert rep["fallback"] == ["gc_gas_cleaning_chain:gc004_cooling_duty#1", "gc_gas_cleaning_chain:gc004_cooling_duty#2"]
 
 
