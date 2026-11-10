@@ -141,15 +141,16 @@ def test_the_circularity_section_names_its_feed_basis_and_its_remaining_limitati
 
 def test_the_circularity_default_is_the_dry_solids_the_live_engine_feeds_ga001(snaps):
     """P0-FB2 step 1 (replaces the known-limitation test of the same default): the circularity default is derived from the two feed-chain
-    constants, equals FE-005's dry solids and the live GA-001 feed, and its static ash and 5 % carbon black equal the same fractions on the live feed."""
+    constants, equals FE-005's dry solids and the live GA-001 feed, and its static ash equals the same fraction on the live feed. P1-05(d) (deliberate edit): its carbon black is now the engine's derived value (was the 5 % rule, 1.87515)."""
     s = circularity.circularity_summary()
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     assert circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == fe.FE001_DEFAULT_DELIVERY_RATE_KG_H * (1.0 - fe.FE005_INLET_MOISTURE_FRACTION)
     assert s["dry_feed_kg_h"] == circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == pytest.approx(DRY_INCL_ASH, abs=1e-9) == pytest.approx(live_feed, abs=1e-9)
-    assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(1.87515, abs=1e-9)
+    assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(2.01319, abs=1e-5)
+    assert s["carbon_black_rule_kg_h"] == pytest.approx(1.87515, abs=1e-9)             # the legacy rule, kept as the cross-check
     assert s["ash_kg_h"] == pytest.approx(gmb.byproduct_mass_flows(live_feed)["ash_kg_h"], rel=1e-12)
-    assert s["carbon_black_kg_h"] == pytest.approx(gmb.CARBON_BLACK_FRACTION * live_feed, rel=1e-12)
-    assert s["diversion_fraction"] == pytest.approx(gmb.ASH_FRACTION + gmb.CARBON_BLACK_FRACTION, rel=1e-12)       # a pure ratio: unaffected by the basis
+    assert s["carbon_black_rule_kg_h"] == pytest.approx(gmb.CARBON_BLACK_FRACTION * live_feed, rel=1e-12)
+    assert s["diversion_fraction"] == pytest.approx(gmb.ASH_FRACTION + circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED, rel=1e-12)       # P1-05(d): was 0.15 (ash + 5 % rule), now 0.1537
     assert gmb.DEFAULT_DRY_FEED_KG_H == AS_RECEIVED, "step 1 does not change the constant: the cycle-1 fallback and byproduct_mass_flows() keep it (step 2)"
 
 
@@ -172,20 +173,21 @@ def test_known_limitation_the_dry_named_default_constant_holds_the_as_received_v
 
 
 def test_the_equipment_datasheet_ga_fills_use_the_dry_solids_feed_the_live_engine_feeds_ga001(snaps):
-    """P0-FB2 step 2: the GA-006/007/008/010 estimate fills are computed from the dry solids (37.503 kg/h), so they equal the live GA-001 ash and the 5 % rule on the live feed."""
+    """P0-FB2 step 2: the GA-006/007/008/010 estimate fills are computed from the dry solids (37.503 kg/h), so they equal the live GA-001 ash and, since P1-05(d) (deliberate edit), the engine's derived carbon black (was the 5 % rule)."""
     from python import equipment_engineering_estimates as eee
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     live = gmb.byproduct_mass_flows(live_feed)
     assert eee._GA_ASH_KG_H == pytest.approx(live["ash_kg_h"], rel=1e-12) == pytest.approx(3.7503, abs=1e-9)
-    assert eee._GA_CARBON_BLACK_KG_H == pytest.approx(live["carbon_black_kg_h"], rel=1e-12)
-    assert eee._GA_RECOVERED_CARBON_BLACK_KG_H == pytest.approx(0.95 * 1.87515, abs=1e-9)
+    derived = _val(snaps[N], ("GA-001", "CarbonAccounting"))["carbon_black_kg_h"]
+    assert eee._GA_CARBON_BLACK_KG_H == pytest.approx(derived, rel=1e-4) and eee._GA_CARBON_BLACK_KG_H != pytest.approx(live["carbon_black_kg_h"], rel=1e-3)
+    assert eee._GA_RECOVERED_CARBON_BLACK_KG_H == pytest.approx(0.95 * derived, rel=1e-4)
     fills = eee.ESTIMATE_FILLS
     got = {(i, r["parameter"]): r["value"] for i, secs in fills.items() for rows in secs.values() for r in rows}
     assert got[("GA-006", "Estimated ash mass flow rate (to GA-007)")] == "~3.750"
     assert got[("GA-007", "Estimated ash mass inflow rate (from GA-006)")] == "~3.750"
     assert got[("GA-007", "Estimated ash mass outflow rate (to GA-008/GA-009)")] == "~3.750"
-    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~1.875"
-    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.78"
+    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~2.013"
+    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.91"
 
 
 def test_known_limitation_static_ash_and_carbon_black_apply_the_dry_fractions_to_the_as_received_figure(snaps):

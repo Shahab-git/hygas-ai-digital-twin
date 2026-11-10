@@ -125,6 +125,14 @@ After the five tasks of section 3e were merged, the owner was offered the list o
 
 The owner answered "yes please" to the reply that proposed starting P1-05 with parts (a) and (b), after the measured effect of each had been stated in chat. **Read as authorising P1-05(a) (one hydrogen LHV) and P1-05(b) (water molar mass from the atomic masses), as two PRs, (a) first.** P1-05(c) (feed-basis correction) and P1-05(d) (carbon-black alignment) and P1-06 stay unauthorised. Claude's choice inside (a): the single value is 10.8 MJ/Nm3 (EU-006's stated basis, +0.1 % above 241.826 kJ/mol / 0.022414 = 10.789), because it moves the fewest persisted entries (2 of 124, +0.0745 %); 10.783 would have moved 6, by up to 0.38 %. The owner is asked to confirm or correct that choice.
 
+### 3h. Task P1-05(d) (owner instruction, 2026-11-10)
+
+The owner answered "yes please: I'd take (d) before (c). It is the smaller of the two" to the reply that listed (c) and (d) as the remaining P1-05 parts. **Read as authorising P1-05(d) only**: the carbon black in the Circularity section of the app, `circularity.py` and the static GA-008 / GA-010 equipment fills is the engine's derived value (`(GA-001, CarbonAccounting)`, 2.013 kg/h at the default), no longer the legacy 5 % rule (1.875 kg/h on the same 37.503 kg/h dry feed). P1-05(c), P1-06 and everything else stay unauthorised.
+
+Gate 4 scope: **no engine entry changes** (no model, constant or persisted key is touched; the four persisted-snapshot fixtures compare unchanged). What moves is static: `circularity_summary()` carbon black 1.875 -> 2.013 kg/h, its revenue 0.750 -> 0.805 EUR/h, the diversion fraction 15.00 -> 15.37 %; the GA-008 fill "~1.875" -> "~2.013" and the GA-010 fill ">=1.78" -> ">=1.91" kg/h (with their remarks); two cells of the provenance worksheet (the fill values; no origin answer touched) and the overlay's hash and timestamp; the app's Circularity captions. Ash is untouched. The Tab 4 cards already showed the engine value.
+
+How: a pinned fraction `circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED` (0.0536807889, the converged engine value / dry feed at the default feed and tail-gas mode) because a static module cannot import the live engine; `tests/test_p1_05d_carbon_black.py` fails if it drifts from the engine. Simplifications, stated in the code: it is the default-mode value (`heat_only`, other conversions or splits give other values), and scaling it linearly with an entered feed is approximate (the engine gives 2.416 kg/h at +30 % feed against 2.617 linear). The legacy rule stays in `gasifier_mass_balance.py` and as the engine's cross-check (`carbon_black_rule_kg_h` is kept in the summary). Not changed: the feed-basis question of the static default 41.67 (that is P1-05(c)).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -160,7 +168,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f and P1-05(a)/(b) of section 3g; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); the full feed-basis correction; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

@@ -4,9 +4,11 @@ Circularity scoring v1 — ash and carbon black byproduct value.
 Builds on the ported gasifier mass balance in gasifier_mass_balance.py
 to produce three things:
 
-  1. Byproduct mass flow rates (kg/h) — real, linear mass-balance
-     numbers sourced from the equipment datasheets (see
-     gasifier_mass_balance.py's docstring), not assumptions.
+  1. Byproduct mass flow rates (kg/h): ash from the 10 % ash fraction
+     (gasifier_mass_balance.py, a project assumption inside DOK-ING's 5-15 %
+     range); carbon black from the live engine's DERIVED figure (P1-05(d), see
+     ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED below), no longer from the legacy
+     5 % datasheet rule.
 
   2. A revenue-potential estimate, using an assumed market price per kg
      for each byproduct. These prices are OUR OWN reasonable placeholder
@@ -32,6 +34,20 @@ from . import fe_feed_handling, gasifier_mass_balance
 DEFAULT_DRY_SOLIDS_FEED_KG_H = (fe_feed_handling.FE001_DEFAULT_DELIVERY_RATE_KG_H
                                 * (1.0 - fe_feed_handling.FE005_INLET_MOISTURE_FRACTION))
 
+# P1-05(d): carbon black comes from the engine's derived value, not the legacy 5 % rule. The engine publishes it in ("GA-001","CarbonAccounting")
+# as unconverted carbon x split (carbon_black_kg_h, Calculated; conversion 0.90 and split 1.0 are Assumed). This static module cannot import the
+# live engine, so the converged engine value at the DEFAULT feed (2.01319 kg/h on 37.503 kg/h dry solids, default tail_gas_mode "regasify",
+# 30 cycles) is PINNED here as a fraction of the dry feed. tests/test_p1_05d_carbon_black.py recomputes it from the engine and fails on drift.
+# SIMPLIFICATIONS: (1) it is the default-mode figure ("heat_only" and other conversions/splits give other values); (2) scaling it linearly with the
+# feed is approximate (the engine is not linear above about +20 % feed: 2.416 kg/h at +30 % against 2.617 linear); (3) the legacy rule gave 5 %.
+ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED = 0.0536807889
+
+
+def derived_carbon_black_kg_h(dry_feed_kg_h):
+    """Carbon black (kg/h) at the engine's derived fraction of the dry feed (see ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED for its limits)."""
+    return dry_feed_kg_h * ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED
+
+
 # Our own assumed placeholder market prices — NOT sourced from any real
 # market data. Directional reasoning only: ash aggregate (GA-009: EN
 # 12620 construction-grade, crushed/stabilized/screened bulk material)
@@ -50,7 +66,8 @@ def circularity_summary(dry_feed_kg_h=DEFAULT_DRY_SOLIDS_FEED_KG_H):
     assumption)."""
     flows = gasifier_mass_balance.byproduct_mass_flows(dry_feed_kg_h)
     ash_kg_h = flows["ash_kg_h"]
-    cb_kg_h = flows["carbon_black_kg_h"]
+    cb_rule_kg_h = flows["carbon_black_kg_h"]                    # legacy 5 % rule, kept only as the cross-check
+    cb_kg_h = derived_carbon_black_kg_h(dry_feed_kg_h)
 
     ash_revenue = ash_kg_h * ASH_PRICE_EUR_PER_KG
     cb_revenue = cb_kg_h * CARBON_BLACK_PRICE_EUR_PER_KG
@@ -61,6 +78,7 @@ def circularity_summary(dry_feed_kg_h=DEFAULT_DRY_SOLIDS_FEED_KG_H):
         "dry_feed_kg_h": dry_feed_kg_h,
         "ash_kg_h": ash_kg_h,
         "carbon_black_kg_h": cb_kg_h,
+        "carbon_black_rule_kg_h": cb_rule_kg_h,
         "ash_revenue_eur_h": ash_revenue,
         "carbon_black_revenue_eur_h": cb_revenue,
         "total_revenue_eur_h": ash_revenue + cb_revenue,

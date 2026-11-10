@@ -667,18 +667,19 @@ FILLED — 10 of 29:
     standard steady-state mass-balance principle for buffer/silo
     equipment, not a claim about any single instant.
 
-  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~1.875
-    kg/h carbon-black-laden fines inflow rate. Basis: the project's own
-    established 5% CARBON_BLACK_FRACTION (gasifier_mass_balance.py)
-    applied to the 37.503 kg/h dry solids feed (41.67 as-received x
-    (1 - 0.10 assumed moisture)), computed live via byproduct_mass_flows() — the same relationship this item's OWN
-    registry remarks already reference for its design-capacity margin
-    ("~1.88 kg/h nominal... already used in the mass/energy balance"),
-    so this is not a new external estimate, just the same internally-
-    consistent project figure applied to this item's own missing
-    Inputs slot. DELIBERATELY did NOT use RFI #2's "Carbon >45%" figure
+  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~2.013
+    kg/h carbon-black-laden fines inflow rate. Basis (P1-05(d)): the live
+    engine's DERIVED carbon black ((GA-001, CarbonAccounting), unconverted
+    carbon x split), carried as its converged fraction of the 37.503 kg/h
+    dry solids feed (41.67 as-received x (1 - 0.10 assumed moisture)) by
+    circularity.derived_carbon_black_kg_h(). It replaces the legacy 5%
+    CARBON_BLACK_FRACTION rule (1.875 kg/h), now only the engine's
+    cross-check; this item's OWN registry remark ("~1.88 kg/h nominal...
+    already used in the mass/energy balance") is about 7% below it.
+    Not a new external estimate: the engine's own figure applied to this
+    item's own missing Inputs slot. DELIBERATELY did NOT use RFI #2's "Carbon >45%" figure
     here — that is FEEDSTOCK ELEMENTAL carbon content, a fundamentally
-    different metric from this 5% CARBON-BLACK BYPRODUCT YIELD
+    different metric from this CARBON-BLACK BYPRODUCT YIELD
     fraction (the exact conflation trap equipment_rfi_fills.py already
     identified and avoided; re-confirmed avoided here).
 
@@ -704,11 +705,11 @@ FILLED — 10 of 29:
     a real, stated additive/transformation step), so the added cement/
     lime mass is explicitly accounted for rather than assumed away.
 
-  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.78 kg/h
+  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.91 kg/h
     recovered carbon-black inflow rate from GA-008. Basis: GA-008's OWN
     confirmed Performance Indicator ("Collection efficiency = >95%")
-    applied to the raw carbon-black generation rate (1.875 kg/h, same
-    gasifier_mass_balance.py figure as GA-008's own Inputs fill above)
+    applied to the raw carbon-black generation rate (2.013 kg/h, same
+    engine-derived figure as GA-008's own Inputs fill above)
     — GA-010 receives what GA-008 actually RECOVERS, not the raw pre-
     separation fines figure. DELIBERATELY does NOT assume 100% recovery
     from GA-008 to GA-010 — that would be exactly the same category of
@@ -1620,7 +1621,7 @@ _Q = equipment_datasheet
 # the live engine feeds GA-001), not to the as-received 41.67 kg/h as before.
 _GA_FLOWS = gasifier_mass_balance.byproduct_mass_flows(circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H)
 _GA_ASH_KG_H = _GA_FLOWS["ash_kg_h"]
-_GA_CARBON_BLACK_KG_H = _GA_FLOWS["carbon_black_kg_h"]
+_GA_CARBON_BLACK_KG_H = circularity.derived_carbon_black_kg_h(circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H)   # P1-05(d): the engine's derived figure (was the 5 % rule, 1.875)
 _GA_RECOVERED_CARBON_BLACK_KG_H = 0.95 * _GA_CARBON_BLACK_KG_H  # GA-008's own confirmed ">95%" collection-efficiency floor
 
 
@@ -1893,22 +1894,23 @@ ESTIMATE_FILLS = {
                 "parameter": "Estimated carbon-black-laden fines inflow rate",
                 "value": f"~{_GA_CARBON_BLACK_KG_H:.3f}", "unit": "kg/h",
                 "remarks": (
-                    f"The project's own established 5% carbon-black byproduct-yield fraction "
-                    f"(gasifier_mass_balance.py CARBON_BLACK_FRACTION) applied to the "
-                    f"37.503 kg/h dry solids feed (41.67 kg/h as-received x (1 - 0.10 assumed moisture)), computed live via byproduct_mass_flows() "
-                    f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h) — the same relationship this item's OWN "
-                    f"registry remarks already reference for its design-capacity margin ('~1.88 "
-                    f"kg/h nominal... already used in the mass/energy balance'), so this is not a "
-                    f"new external estimate, just the same internally-consistent project figure "
+                    f"The live engine's DERIVED carbon black (P1-05(d): unconverted carbon x split, "
+                    f"(GA-001, CarbonAccounting), Calculated from Assumed conversion 0.90 and split 1.0), carried here as "
+                    f"its converged fraction of the 37.503 kg/h dry solids feed (41.67 kg/h as-received x (1 - 0.10 assumed moisture)) "
+                    f"via circularity.derived_carbon_black_kg_h() ({_GA_CARBON_BLACK_KG_H:.4f} kg/h). It replaces the legacy 5% "
+                    f"datasheet rule (gasifier_mass_balance.py CARBON_BLACK_FRACTION, 1.875 kg/h on the same feed), which stays only as the "
+                    f"engine's cross-check. Against this item's OWN registry remarks ('~1.88 "
+                    f"kg/h nominal... already used in the mass/energy balance') the derived figure is about 7% higher; "
+                    f"not a new external estimate, but the engine's own figure "
                     f"applied to this item's own missing Inputs slot. DELIBERATELY did NOT use "
                     f"RFI #2's 'Carbon >45%' figure here — that is FEEDSTOCK ELEMENTAL carbon "
-                    f"content, a fundamentally different metric from this 5% CARBON-BLACK "
+                    f"content, a fundamentally different metric from this CARBON-BLACK "
                     f"BYPRODUCT YIELD fraction (the exact conflation trap "
                     f"equipment_rfi_fills.py already identified and avoided; re-confirmed avoided "
                     f"here)."
                 ),
                 "status": _Q.STATUS_ESTIMATE,
-                "source": _source_ga("carbon-black mass-balance fraction computed live via gasifier_mass_balance.py, deliberately NOT the RFI's unrelated feedstock elemental-carbon figure"),
+                "source": _source_ga("carbon-black figure derived by the live engine (GA-001 CarbonAccounting) and carried as a pinned fraction in circularity.py, deliberately NOT the RFI's unrelated feedstock elemental-carbon figure"),
             },
         ],
     },
@@ -1957,7 +1959,7 @@ ESTIMATE_FILLS = {
                 "remarks": (
                     f"GA-008's OWN confirmed Performance Indicator ('Collection efficiency = "
                     f">95%') applied to the raw carbon-black generation rate "
-                    f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h, same gasifier_mass_balance.py figure as "
+                    f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h, same engine-derived figure as "
                     f"GA-008's own estimated Inputs) — GA-010 receives what GA-008 actually "
                     f"RECOVERS, not the raw pre-separation fines figure. DELIBERATELY does NOT "
                     f"assume 100% recovery from GA-008 to GA-010 — that would be exactly the same "
