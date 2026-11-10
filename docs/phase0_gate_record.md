@@ -143,6 +143,16 @@ Measured effect (against the tip of the P1-05(d) branch, be7a92a): **converged G
 
 Gate 4 scope: 51 persisted keys can differ from the pre-change snapshot in the five runs pinned by `tests/test_p1_05c_feed_basis.py`; 46 were already excluded by earlier decisions and five are added to `tests/_intentional_changes.py` (`P1_05C_KEYS`). The pin test compares against a new committed fixture of the pre-change snapshot (`tests/fixtures/snapshot_origin_main_be7a92a.json.gz`: default 1/5/20/30 and heat_only 20 cycles) and proves attribution: with the constant put back to 41.67 the snapshot equals the fixture in every entry. Not changed: P1-06 (the tail-gas default), the feed composition and ash fraction, and the data-replacement plumbing.
 
+### 3j. Task P1-06 (owner decision, 2026-11-10)
+
+The owner asked for P1-06 and, when asked which default to use, chose `heat_only`. **Read as authorising P1-06 only: the default of `GA-001-INPUT tail_gas_mode` becomes `heat_only`.** Nothing was tuned; no other default, equation or registry value changes.
+
+Measured effect (against origin/main after P1-05(c)): headline hydrogen 78.0 -> 55.7 kg/day (3.251 -> 2.323 kg/h; still +11 % over DOK-ING's about 50 and +25 % over the registry's 44.4); 49 to 50 of the 124 persisted entries move in the default 5-, 20- and 30-cycle runs and 5 on cycle 1. The new default snapshot equals the previous explicit `heat_only` snapshot in every entry except the switch's own note. The plant heat deficit is the documented -18 kW; the energy balance does not close. Because the tail gas is no longer recycled the engine's carbon black is exactly 4.5 % of the dry feed, so the static pinned fraction of P1-05(d) follows (`circularity.ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED` 0.0537 -> 0.045): carbon black 2.013 -> 1.688 kg/h, its revenue 0.805 -> 0.675 EUR/h, diversion 15.37 -> 14.5 %, GA-008 fill ~2.013 -> ~1.688, GA-010 fill >=1.91 -> >=1.60 kg/h (two cells of the provenance worksheet and the overlay hash regenerated; no origin answer touched).
+
+Gate 4 scope: the existing test modules were written and measured on `regasify`, so `tests/conftest.py` restores that default for them (module scope; a module sets `REAL_TAIL_GAS_DEFAULT = True` to opt out). `tests/test_p1_06_tail_gas_default.py` and `tests/test_p1_05d_carbon_black.py` run on the real default. The new test compares against a committed pre-flip fixture (`tests/fixtures/snapshot_origin_main_8282f4a.json.gz`) and proves attribution: with the old default put back the snapshot equals the fixture in every entry. The switch's own entry (its note) is added to `tests/_intentional_changes.py`. This means the older Gate 4 comparisons exercise the `regasify` path under the name "default"; the real default is covered by the new test and by the explicit `heat_only` runs those modules already contained.
+
+Deliberate test edits: `test_feed_basis.py` (static values compared with a `heat_only` snapshot), `test_transient_tab.py` (under `heat_only` there is no recycle delay, so all three scenarios show the overlap caption; the non-vacuity check allows that), `test_design_basis_ledger.py` (the committed ledger files are generated on the real default), `test_p1_05b`/`05c` (the switch entry is skipped), `test_p1_05d` (new numbers).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -178,7 +188,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h and P1-05(c) of section 3i; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

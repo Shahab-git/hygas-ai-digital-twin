@@ -20,6 +20,7 @@ from test_tail_gas_mode import _mode
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_be7a92a.json.gz")
+SWITCH = "GA-001-INPUT|tail_gas_mode"          # P1-06 (deliberate edit): its note names the new default, so it differs from this older fixture; pinned by tests/test_p1_06_tail_gas_default.py
 RUNS = ("default|1", "default|5", "default|20", "default|30", "heat_only|20")
 MOVED = {
     "default|1": 34, "default|5": 50, "default|20": 8,       # at 9 significant digits in text; 16 entries differ if long floats in notes are compared exactly (convergence residue)
@@ -121,14 +122,14 @@ def test_the_intentional_list_has_the_five_new_keys():
 def test_with_the_old_constant_the_snapshot_equals_the_pre_change_fixture_so_the_change_is_the_only_cause(old_runs, fixture_entries, run):
     fx = fixture_entries[run]
     assert set(fx) == set(old_runs[run])
-    bad = [k for k, e in fx.items() if _differs(e, old_runs[run][k])]
+    bad = [k for k, e in fx.items() if k != SWITCH and _differs(e, old_runs[run][k])]
     assert bad == []
 
 
 @pytest.mark.parametrize("run", RUNS)
 def test_exactly_these_entries_move_and_all_are_in_the_pinned_set(new_runs, fixture_entries, run):
     fx = fixture_entries[run]
-    moved = {k for k, e in fx.items() if _differs(e, new_runs[run][k])}
+    moved = {k for k, e in fx.items() if k != SWITCH and _differs(e, new_runs[run][k])}
     assert len(moved) == MOVED[run]
     assert moved <= UNION
     assert moved <= set(INTENTIONAL)             # every moved key is excluded from the Gate 4 comparisons and pinned here
@@ -137,7 +138,7 @@ def test_exactly_these_entries_move_and_all_are_in_the_pinned_set(new_runs, fixt
 def test_the_union_is_what_moves_in_the_five_runs(new_runs, fixture_entries):
     moved = set()
     for run in RUNS:
-        moved |= {k for k, e in fixture_entries[run].items() if _differs(e, new_runs[run][k])}
+        moved |= {k for k, e in fixture_entries[run].items() if k != SWITCH and _differs(e, new_runs[run][k])}
     assert moved == UNION
 
 

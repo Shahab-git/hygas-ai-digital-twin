@@ -36,11 +36,13 @@ DEFAULT_DRY_SOLIDS_FEED_KG_H = (fe_feed_handling.FE001_DEFAULT_DELIVERY_RATE_KG_
 
 # P1-05(d): carbon black comes from the engine's derived value, not the legacy 5 % rule. The engine publishes it in ("GA-001","CarbonAccounting")
 # as unconverted carbon x split (carbon_black_kg_h, Calculated; conversion 0.90 and split 1.0 are Assumed). This static module cannot import the
-# live engine, so the converged engine value at the DEFAULT feed (2.01319 kg/h on 37.503 kg/h dry solids, default tail_gas_mode "regasify",
-# 30 cycles) is PINNED here as a fraction of the dry feed. tests/test_p1_05d_carbon_black.py recomputes it from the engine and fails on drift.
-# SIMPLIFICATIONS: (1) it is the default-mode figure ("heat_only" and other conversions/splits give other values); (2) scaling it linearly with the
-# feed is approximate (the engine is not linear above about +20 % feed: 2.416 kg/h at +30 % against 2.617 linear); (3) the legacy rule gave 5 %.
-ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED = 0.0536807889
+# live engine, the engine value at the DEFAULT feed is PINNED here as a fraction of the dry feed. P1-06 (2026-11-10): the engine default tail_gas_mode is now
+# "heat_only", where nothing is recycled, so the derived carbon black is exactly (1 - conversion 0.90) x the feed carbon (0.45 of the dry feed) x split 1.0
+# = 4.5 % of the dry feed (1.6876 kg/h on 37.503 kg/h); under the previous default "regasify" it was 5.368 % (2.013 kg/h, the recycled carbon is cut by the
+# same conversion). tests/test_p1_05d_carbon_black.py recomputes it from the engine and fails on drift.
+# SIMPLIFICATIONS: (1) it is the default-mode figure ("regasify" and other conversions/splits give other values); (2) scaling it with the feed is approximate: in "heat_only" it is linear in the feed
+# (no recycle loop), but the feed itself is capped by the GA-001 turndown above about +20 %; (3) the legacy rule gave 5 %.
+ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED = 0.045
 
 
 def derived_carbon_black_kg_h(dry_feed_kg_h):

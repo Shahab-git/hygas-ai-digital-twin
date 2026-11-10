@@ -667,7 +667,7 @@ FILLED — 10 of 29:
     standard steady-state mass-balance principle for buffer/silo
     equipment, not a claim about any single instant.
 
-  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~2.013
+  GA-008 (Carbon Black Recovery & Classification Unit) Inputs: ~1.688
     kg/h carbon-black-laden fines inflow rate. Basis (P1-05(d)): the live
     engine's DERIVED carbon black ((GA-001, CarbonAccounting), unconverted
     carbon x split), carried as its converged fraction of the 37.503 kg/h
@@ -675,7 +675,7 @@ FILLED — 10 of 29:
     circularity.derived_carbon_black_kg_h(). It replaces the legacy 5%
     CARBON_BLACK_FRACTION rule (1.875 kg/h), now only the engine's
     cross-check; this item's OWN registry remark ("~1.88 kg/h nominal...
-    already used in the mass/energy balance") is about 7% below it.
+    already used in the mass/energy balance") is about 11% above it.
     Not a new external estimate: the engine's own figure applied to this
     item's own missing Inputs slot. DELIBERATELY did NOT use RFI #2's "Carbon >45%" figure
     here — that is FEEDSTOCK ELEMENTAL carbon content, a fundamentally
@@ -705,10 +705,10 @@ FILLED — 10 of 29:
     a real, stated additive/transformation step), so the added cement/
     lime mass is explicitly accounted for rather than assumed away.
 
-  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.91 kg/h
+  GA-010 (Carbon Black Packaging & Storage Silo) Inputs: >=1.60 kg/h
     recovered carbon-black inflow rate from GA-008. Basis: GA-008's OWN
     confirmed Performance Indicator ("Collection efficiency = >95%")
-    applied to the raw carbon-black generation rate (2.013 kg/h, same
+    applied to the raw carbon-black generation rate (1.688 kg/h, same
     engine-derived figure as GA-008's own Inputs fill above)
     — GA-010 receives what GA-008 actually RECOVERS, not the raw pre-
     separation fines figure. DELIBERATELY does NOT assume 100% recovery
@@ -1900,7 +1900,7 @@ ESTIMATE_FILLS = {
                     f"via circularity.derived_carbon_black_kg_h() ({_GA_CARBON_BLACK_KG_H:.4f} kg/h). It replaces the legacy 5% "
                     f"datasheet rule (gasifier_mass_balance.py CARBON_BLACK_FRACTION, 1.875 kg/h on the same feed), which stays only as the "
                     f"engine's cross-check. Against this item's OWN registry remarks ('~1.88 "
-                    f"kg/h nominal... already used in the mass/energy balance') the derived figure is about 7% higher; "
+                    f"kg/h nominal... already used in the mass/energy balance') the derived figure is about 10% lower; "
                     f"not a new external estimate, but the engine's own figure "
                     f"applied to this item's own missing Inputs slot. DELIBERATELY did NOT use "
                     f"RFI #2's 'Carbon >45%' figure here — that is FEEDSTOCK ELEMENTAL carbon "

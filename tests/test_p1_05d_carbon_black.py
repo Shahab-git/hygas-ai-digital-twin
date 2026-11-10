@@ -6,6 +6,8 @@ import sys
 
 import pytest
 
+REAL_TAIL_GAS_DEFAULT = True      # P1-06: this module tests the engine on its REAL default (heat_only); tests/conftest.py does not restore the old default for it
+
 sys.path.insert(0, os.path.dirname(__file__))
 from _fakes import FakeSupabase, patched_supabase
 from python import circularity, cycle_clock
@@ -31,17 +33,17 @@ def test_the_pinned_fraction_equals_the_converged_engine_value(snap):
 
 def test_circularity_summary_before_and_after():
     s = circularity.circularity_summary()
-    assert s["carbon_black_kg_h"] == pytest.approx(2.01319, abs=1e-5)            # was 1.87515
+    assert s["carbon_black_kg_h"] == pytest.approx(1.687635, abs=1e-5)            # was 1.87515 (2.01319 with the previous regasify default, P1-06)
     assert s["carbon_black_rule_kg_h"] == pytest.approx(1.87515, abs=1e-9)
-    assert s["carbon_black_revenue_eur_h"] == pytest.approx(2.01319 * circularity.CARBON_BLACK_PRICE_EUR_PER_KG, abs=1e-5)     # 0.805, was 0.750
+    assert s["carbon_black_revenue_eur_h"] == pytest.approx(1.687635 * circularity.CARBON_BLACK_PRICE_EUR_PER_KG, abs=1e-5)     # 0.675, was 0.750 (0.805 with regasify)
     assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["ash_revenue_eur_h"] == pytest.approx(3.7503 * 0.03, abs=1e-9)   # ash untouched
-    assert s["diversion_fraction"] == pytest.approx(0.10 + 0.0536807889, rel=1e-9)   # 15.37 %, was 15.00 %
+    assert s["diversion_fraction"] == pytest.approx(0.10 + 0.045, rel=1e-9)   # 14.5 % (P1-06; 15.37 % with regasify), was 15.00 %
 
 
 def test_the_fills_carry_the_derived_figure():
     got = {(i, r["parameter"]): r["value"] for i, secs in eee.ESTIMATE_FILLS.items() for rows in secs.values() for r in rows}
-    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~2.013"
-    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.91"
+    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~1.688"
+    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.60"
     assert eee._GA_ASH_KG_H == pytest.approx(3.7503, abs=1e-9)
 
 
