@@ -109,18 +109,24 @@ def test_the_mapped_comparison_fails_if_the_old_phrase_returns_or_any_other_text
         assert _differences(expected, back), f"the old phrase {o!r} came back and the comparison did not notice"
     assert _differences(expected, _d2_wording.undo(new))             # all four at once (what the old, unmapped fixture expected)
 
+    # P1-05(b) (deliberate edit): the probes below used EU-008|RecommendedCapacityEstimate and HB-013|Storage, which the water molar mass moves, so INTENTIONAL now excludes them from the
+    # comparison; the same three probes now use entries that are still compared (a D2 entry, a non-D2 entry, and one with a plain float field).
+    d2_key = next(k for k in sorted(new) if k.startswith(_d2_wording.ENTRIES) and k not in INTENTIONAL)
+    plain_key = next(k for k in sorted(new) if not k.startswith(_d2_wording.ENTRIES) and k not in INTENTIONAL and k != "GA-001-INPUT|tail_gas_mode")
+    num_key, num_field = next((k, f) for k in sorted(new) if k not in INTENTIONAL and isinstance(new[k].get("value"), dict)
+                              for f, x in new[k]["value"].items() if isinstance(x, float) and x != 0.0)
     other = copy.deepcopy(new)                                       # 2) one character of other text, in a D2 entry and in a non-D2 entry
-    other["EU-008|RecommendedCapacityEstimate"]["confidence_note"] += "x"
+    other[d2_key]["confidence_note"] += "x"
     assert _differences(expected, other)
     other = copy.deepcopy(new)
-    other["HB-013|Storage"]["confidence_note"] += "x"
+    other[plain_key]["confidence_note"] += "x"
     assert _differences(expected, other)
 
     num = copy.deepcopy(new)                                         # 3) a number: 1e-9 relative fails, 1e-13 (a 3.11 last-bit difference) passes
-    v = num["HB-013|Storage"]["value"]["level_kg"]
-    num["HB-013|Storage"]["value"]["level_kg"] = v * (1.0 + 1e-9)
+    v = num[num_key]["value"][num_field]
+    num[num_key]["value"][num_field] = v * (1.0 + 1e-9)
     assert _differences(expected, num)
-    num["HB-013|Storage"]["value"]["level_kg"] = v * (1.0 + 1e-13)
+    num[num_key]["value"][num_field] = v * (1.0 + 1e-13)
     assert _differences(expected, num) == {}
 
 

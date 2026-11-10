@@ -9,6 +9,7 @@ silently going stale.
 Status uses the project's five tags (Measured / Calculated / Estimated / Assumed / Missing).
 Conserved: "Y" = by construction, "explicit" = an explicit balance check exists, "partly", "N" = not at all, "n/a".
 """
+from . import ga001_gasifier_model as ga001
 from . import plant_status as ps
 
 G = "ga001_gasifier_model.py"
@@ -161,7 +162,7 @@ def unaccounted_items(snapshot):
     rows.append(("HCl entering GC-009 (150 ppm of the dry gas), as chlorine", 150e-6 * dry_nm3 / 0.022414 * 35.45 / 1000.0, "kg Cl/h", "Assumed", (GC, 463, "def gc009_hcl"), "no chlorine in the feed composition"))
     rows.append(("quench-loop blowdown GC-005 (fixed 0.05 m3/h)", 50.0, "kg/h", "Assumed", (GC, 312, "def gc005_blowdown"), "leaves with no make-up stream"))
     rows.append(("GC-007/008/009 blowdowns (scaled to gas flow)", 1000.0 * (v(("GC-007", "Blowdown")) + v(("GC-008", "Blowdown")) + v(("GC-009", "Blowdown"))), "kg/h", "Assumed", (GC, 389, "def gc007_blowdown"), "no make-up stream"))
-    rows.append(("WGS unreacted steam knocked out", wgs["H2O"] * dry_nm3 / 0.022414 * 18.015 / 1000.0, "kg/h", "Calculated", (HB, 270, "\"H2O\": max(y_H2O_in"), "no condensate stream, no unit, no heat rejection"))
+    rows.append(("WGS unreacted steam knocked out", wgs["H2O"] * dry_nm3 / 0.022414 * ga001.M_H2O / 1000.0, "kg/h", "Calculated", (HB, 270, "\"H2O\": max(y_H2O_in"), "no condensate stream, no unit, no heat rejection"))
     rows.append(("WGS steam raised (HB-005)", v(("HB-005", "Steam"), "steam_kg_h"), "kg/h", "Calculated", (HB, 189, "steam_kg_h = steam_mol_h"), "feedwater source and boiler energy not modelled"))
     rows.append(("gasifier steam (GA-003 / GA-004)", 0.4 * fe5["dry_solids_kg_h"], "kg/h", "Assumed", (G, 774, "steam_mol_per_molc = (steam_ratio"), "source and energy of this steam not modelled"))
     rows.append(("dryer vapour (FE-005)", fe5["water_evaporated_kg_h"], "kg/h", "Calculated", (FE, 291, "water_evaporated_kg_h = wet_inlet"), "no destination, no heat duty"))

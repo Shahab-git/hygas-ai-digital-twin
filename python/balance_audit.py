@@ -58,7 +58,7 @@ FORMULA = {
     "H2": {"H": 2}, "O2": {"O": 2}, "N2": {"N": 2}, "CO": {"C": 1, "O": 1}, "CO2": {"C": 1, "O": 2},
     "CH4": {"C": 1, "H": 4}, "H2O": {"H": 2, "O": 1},
 }
-M_H2O_ENGINE = ga001.M_H2O      # 18.015 (ga001_gasifier_model.py:165); atomic sum is 18.016 -- see audit finding F-M1
+M_H2O_ENGINE = ga001.M_H2O      # 18.016 = 2 M_H + M_O since P1-05(b) (it was the literal 18.015, audit finding F-M1)
 M_H2_ENGINE = hbchain.M_H2      # 2.016 (hb_wgs_psa_storage_chain.py:93)
 NM3_PER_MOL = ga001.NM3_PER_MOL  # 0.022414 (ga001_gasifier_model.py:172)
 
@@ -85,7 +85,7 @@ T_REF_C = 25.0
 CP_J_MOLK = dict(gc.CP_MEAN_J_MOLK)                          # gc_gas_cleaning_chain.py:106 (mean 300-1200 K)
 CP_J_MOLK_O2_NOTE = "O2 uses the N2 mean cp (same diatomic, within a few %): Estimated"
 CP_J_MOLK["O2"] = CP_J_MOLK["N2"]
-CP_LIQUID_WATER_J_MOLK = hbchain.CP_WATER_KJ_KGK * M_H2O_ENGINE   # hb_wgs_psa_storage_chain.py:94 x 18.015 g/mol
+CP_LIQUID_WATER_J_MOLK = hbchain.CP_WATER_KJ_KGK * M_H2O_ENGINE   # hb_wgs_psa_storage_chain.py:94 x 18.016 g/mol
 KW_PER_KJ_H = 1.0 / 3600.0
 
 # --- registry static values used as stream temperatures (data/equipment_registry.json) ---
@@ -574,7 +574,7 @@ def explain_plant_mass_residual(snapshot, previous_snapshot=None):
        1. carbon: see explain_carbon_residual;
        2. the electrolyser's water: HB-011 draws 1 L/Nm3 (hb_remaining_chain.py:170,307) but 2 H2O -> 2 H2 + O2 needs 0.80 L/Nm3, and the
           engine publishes no stream for the excess (H residual 2e, O residual e, with e = water mol/h - H2 mol/h);
-       3. the water molar-mass basis: the engine converts water with 18.015 (ga001_gasifier_model.py:165) while the atomic masses give 18.016, so a
+       3. the water molar-mass basis: until P1-05(b) the engine converted water with 18.015 while the atomic masses give 18.016 (now one value, so this term is ~0), so a
           term whose mass is the engine's published kg differs from its mole-based mass by ~5.5e-5 of the water (signed sum over such terms)."""
     pt = plant_terms(snapshot, previous_snapshot, "plant")
     bal = closure(pt["terms"])

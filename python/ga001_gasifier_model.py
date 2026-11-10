@@ -162,7 +162,7 @@ M_C = 12.011
 M_H = 1.008
 M_O = 16.00
 M_N = 14.007
-M_H2O = 18.015
+M_H2O = 2 * M_H + M_O     # P1-05(b): 18.016, from the atomic masses above (it was the separate literal 18.015, 5.5e-5 lower)
 # Normal cubic meter convention adopted here: 0 degC, 1 atm (101.325 kPa) --
 # 22.414 L/mol, the standard IUPAC/European-engineering "Nm3" reference
 # condition. Stated as an explicit convention choice: no reference

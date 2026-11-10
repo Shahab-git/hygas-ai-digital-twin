@@ -23,8 +23,16 @@ KEYS = ("EU-CHP|Dispatch", "SA-006|Reading")
 
 @pytest.fixture(scope="module")
 def snap():
-    with patched_supabase(FakeSupabase()):
-        return t1.build_live_snapshot(20)[0]
+    # P1-05(b) (deliberate edit): these pins isolate the H2 LHV change, so the water molar mass is put back to its old 18.015 here (P1-05(b) moves the same entries by <= 7e-6 more;
+    # tests/test_p1_05b_water_molar_mass.py pins that separately).
+    from python import ga001_gasifier_model as ga
+    mp = pytest.MonkeyPatch()
+    mp.setattr(ga, "M_H2O", 18.015)
+    try:
+        with patched_supabase(FakeSupabase()):
+            return t1.build_live_snapshot(20)[0]
+    finally:
+        mp.undo()
 
 
 @pytest.fixture(scope="module")
