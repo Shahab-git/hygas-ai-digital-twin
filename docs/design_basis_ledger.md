@@ -13,7 +13,7 @@ Statuses are the project's: Confirmed (DOK-ING source cited), Calculated, Estima
 - By `overridable_via`: code only 157, dynamics argument 5, engine input 10, registry 6.
 - Rows with no `upgrade_question` (no question in the repo would upgrade them): **113**.
 - Rows with no consumer found (8): `LEDGER.FE-001.total_capacity_t (code only)`, `LEDGER.FE-002.removal_efficiency (code only)`, `LEDGER.GA-001.ER (registry)`, `LEDGER.GA-001.T_gasifier_C (registry)`, `LEDGER.GA-003.air_flow_design_Nm3_h (registry)`, `LEDGER.GA-003.steam_flow_design_kg_h (registry)`, `LEDGER.GA-004.air_preheat_C (registry)`, `LEDGER.GA-004.steam_T_C (registry)`.
-- Coverage scan of the 17 modules that feed published keys: **364** numeric items (composite 7, const 137, literal 220); **175** are PARAMETERs (every one is a ledger row) and **189** are listed exceptions (NUMERICAL 27, PHYSICAL CONSTANT 127, PUBLISHED CORRELATION COEFFICIENT 11, SELF-TEST FIXTURE 24).
+- Coverage scan of the 17 modules that feed published keys: **363** numeric items (composite 7, const 136, literal 220); **175** are PARAMETERs (every one is a ledger row) and **188** are listed exceptions (NUMERICAL 27, PHYSICAL CONSTANT 126, PUBLISHED CORRELATION COEFFICIENT 11, SELF-TEST FIXTURE 24).
 
 ## The ledger
 
@@ -340,16 +340,7 @@ Ledger rows with no consumer. They are reported, not removed.
 
 ## Inconsistencies recorded, not fixed
 
-### molar mass of water, 18.015 against 18.016
-
-- 18.015 g/mol (M_H2O): `python/ga001_gasifier_model.py (M_H2O = 18.015)`
-- M_H = 1.008: `python/ga001_gasifier_model.py (M_H = 1.008)`
-- M_O = 16.00 (so H2O from atoms = 18.016): `python/ga001_gasifier_model.py (M_O = 16.00)`
-- the atom sum, used by the audit: `python/balance_audit.py (return sum(ATOMIC_MASS[e] * n for e, n in FORMULA[species].items()))`
-
-- Affects: 18.015 converts water between kg and mol in `ga001_gasifier_model` (steam and moisture, GA-001 outputs), `gc_gas_cleaning_chain.gc004_condensed_water` (GC-004) and `hb_wgs_psa_storage_chain.hb005_steam_generation` (HB-005); the atom masses (18.016) are used by `ga001_gasifier_model.elemental_atomic_ratios` and, in the audit, `balance_audit.molar_mass`. Both values are defined in ga001_gasifier_model.py; the atom sum is a second route to the same molecule.
-- Size: 5.5e-5 of the water mass; in scenario S4a it equals the whole A5 loop-mass residual (3.2e-5 of the loop inflow).
-- Hidden by the tolerance: Yes: balance_audit.TOL_STATED = 1e-3 (used in balance_audit.verdict) classes a mass residual below 1e-3 as 'closes to a stated tolerance', and 3.2e-5 is far below it, so the verdict does not show it. Not fixed.
+None remain: the two that were recorded (the H2 lower heating value, task P1-05(a); the molar mass of water, task P1-05(b)) are resolved, see the notes above.
 
 
 ## Confirmed mentions in the engine modules
@@ -386,6 +377,8 @@ Ledger rows with no consumer. They are reported, not removed.
 
 **Resolved in Phase 1 task P1-05(a): the H2 lower heating value is one value.** `SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"]` is now `H2_LHV_MJ_PER_NM3` (10.8 MJ/Nm3, Assumed, EU-006's stated basis; it was 10.783) and `balance_audit.efficiency_check` reads that constant instead of repeating the literal 10.8. The ledger row `EU-006.h2_lhv_mj_nm3_audit_copy` is removed with the literal. Moved: the syngas LHV (+0.0745 % at the default) and with it `EU-CHP|Dispatch` total_syngas_kw / wgs_psa_claim_kw and the SA-006 reading; nothing else (checked key by key).
 
+**Resolved in Phase 1 task P1-05(b): the molar mass of water is the atom sum.** `ga001_gasifier_model.M_H2O` is now `2 * M_H + M_O` = 18.016 g/mol (it was the separate literal 18.015, 5.5e-5 lower), so the engine's kg-to-mol conversions of water (GA-001 steam and moisture, GC-004, HB-005) and the audit's atom-sum route use one value, and the ledger exception for the old literal is removed. Moved: 47 persisted entries by at most 7e-5 relative (3.5e-4 in the `heat_only` energy report), listed key by key in `tests/test_p1_05b_water_molar_mass.py`, which also shows that putting 18.015 back reproduces the 701de71 fixture.
+
 ## Exceptions (numeric constants that are not parameters)
 
 | key | class | reason |
@@ -404,7 +397,6 @@ Ledger rows with no consumer. They are reported, not removed.
 | const/python/ga001_gasifier_model.py/M_FE2O3 | PHYSICAL CONSTANT | molar mass of Fe2O3, g/mol |
 | const/python/ga001_gasifier_model.py/M_FE3O4 | PHYSICAL CONSTANT | molar mass of Fe3O4, g/mol |
 | const/python/ga001_gasifier_model.py/M_H | PHYSICAL CONSTANT | atomic mass of hydrogen, g/mol (IUPAC standard atomic weight) |
-| const/python/ga001_gasifier_model.py/M_H2O | PHYSICAL CONSTANT | molar mass of water, g/mol |
 | const/python/ga001_gasifier_model.py/M_N | PHYSICAL CONSTANT | atomic mass of nitrogen, g/mol (IUPAC standard atomic weight) |
 | const/python/ga001_gasifier_model.py/M_O | PHYSICAL CONSTANT | atomic mass of oxygen, g/mol (IUPAC standard atomic weight) |
 | const/python/ga001_gasifier_model.py/M_O2 | PHYSICAL CONSTANT | molar mass of O2, g/mol |

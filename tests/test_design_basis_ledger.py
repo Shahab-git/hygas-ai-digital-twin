@@ -146,7 +146,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 364 and len(exceptions) == 189 and len(items) - len(exceptions) == 175     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 363 and len(exceptions) == 188 and len(items) - len(exceptions) == 175     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -522,10 +522,10 @@ def test_the_known_undeclared_reads_in_the_docs_are_the_ones_the_test_pins():
     assert docs == KNOWN_UNDECLARED_READS
 
 
-def test_the_recorded_inconsistency_and_the_resolved_h2_lhv_are_the_values_in_the_code():
+def test_the_resolved_inconsistencies_are_the_values_in_the_code():
     from python import eu_utilities_chp as eu, ga001_gasifier_model as ga
     assert eu.H2_LHV_MJ_PER_NM3 == 10.8 and eu.SYNGAS_SPECIES_LHV_MJ_PER_NM3["H2"] == eu.H2_LHV_MJ_PER_NM3     # P1-05(a): the H2 LHV inconsistency is resolved; only the water molar mass remains
-    assert ga.M_H2O == 18.015 and abs((2 * ga.M_H + ga.M_O) - 18.016) < 1e-9
+    assert ga.M_H2O == 2 * ga.M_H + ga.M_O and abs(ga.M_H2O - 18.016) < 1e-9        # P1-05(b): the water molar mass is the atom sum; both recorded inconsistencies are resolved
     docs = open(os.path.join(ROOT, "docs", "design_basis_ledger.md"), encoding="utf-8").read()
     for heading in ("## Known undeclared reads", "## Inline literals", "## Constants nothing uses", "## Inconsistencies recorded, not fixed", "## Question references", "## RFI mapping"):
         assert heading in docs, heading
@@ -892,7 +892,8 @@ def _differing_leaves(a, b, path=""):
     return [] if a == b else [(path, type(a).__name__)]
 
 
-EXPECTED_DIFFERING_LEAVES = (72, 44)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
+# P1-05(b) (deliberate edit): (72, 44) -> (41, 26): the 42 entries the water molar mass moves are excluded from this comparison through tests/_intentional_changes.py (pinned by tests/test_p1_05b_water_molar_mass.py).
+EXPECTED_DIFFERING_LEAVES = (41, 26)      # (string fields, entries) at which the live snapshot differs from the 701de71 fixture; no number is among them
 
 
 @pytest.mark.parametrize("mode,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])

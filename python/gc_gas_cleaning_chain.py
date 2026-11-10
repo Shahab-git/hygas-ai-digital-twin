@@ -258,7 +258,7 @@ def gc004_condensed_water(get_input):
     Calculated directly from GA-001's own wet-vs-dry mole split (a real,
     already-computed quantity, not a new assumption). Converted to a
     volumetric liquid-water flow using water's standard density
-    (1000 kg/m3) and molar mass (18.015 g/mol)."""
+    (1000 kg/m3) and molar mass (2*M_H+M_O = 18.016 g/mol; P1-05(b))."""
     ga_out = get_input(("GA-001", "Outputs"))["value"]
     wet_flow = ga_out["wet_flow_nm3_h"]
     dry_flow = ga_out["dry_flow_nm3_h"]

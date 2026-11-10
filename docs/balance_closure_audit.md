@@ -119,6 +119,7 @@ in `detail` and never compared; nitrogen is not tested. The model's own guard th
 
 **M4. Water molar mass.** The engine converts water with 18.015 (ga001_gasifier_model.py:165); the atomic masses defined four lines above give
 18.016. Wherever a water mass is the engine's published kg, the total differs from the mole-based mass by 5.5e-5: -0.0029 kg/h of the plant total.
+**Update 2026-11-10, Phase 1 task P1-05(b): resolved.** `M_H2O` is now `2 * M_H + M_O` (18.016). The default-case loop mass residual went from -2.90e-3 kg/h to numerical zero (-2.8e-14 at 5 cycles, 0.0 at 40), which confirms this attribution; the plant mass residual went from +1.035e-2 to +1.327e-2 kg/h (the electrolyser water, 0.0133 kg/h, is now the whole of it, because the molar-mass term that partly cancelled it is gone). `docs/balance_audit_baseline.json` is regenerated. The paragraphs of this document that quote the old residuals are the 2026-10-29 measurement, before the change.
 
 **M5. H2 storage creates hydrogen.** HB-013 clamps the level to [0, 50] kg (hb_wgs_psa_storage_chain.py:537) while HB-018 dispenses
 `min(72 kg/h, previous level)` and EU-006 draws lagged. The coupled lags oscillate; at the default five-cycle state the level would go to -0.133 kg and

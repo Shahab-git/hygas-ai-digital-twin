@@ -108,13 +108,6 @@
    "name": "M_H"
   },
   {
-   "key": "const|python/ga001_gasifier_model.py|M_H2O",
-   "file": "python/ga001_gasifier_model.py",
-   "class": "PHYSICAL CONSTANT",
-   "reason": "molar mass of water, g/mol",
-   "name": "M_H2O"
-  },
-  {
    "key": "const|python/ga001_gasifier_model.py|M_N",
    "file": "python/ga001_gasifier_model.py",
    "class": "PHYSICAL CONSTANT",

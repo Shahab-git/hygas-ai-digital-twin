@@ -43,7 +43,7 @@ TABLE = {
                      [(G, "n1, n2, n3, n6 = B - n4"), (G, "n2_from_air = o2_actual")]),
     ("ga001", "ash"): (ENFORCED, "Both sides are ASH_FRACTION x dry feed (ga001 uses gasifier_mass_balance.ASH_FRACTION, the byproduct module uses the same constant).",
                        [(GMB, "ASH_FRACTION = 0.10"), (GMB, "def byproduct_mass_flows")]),
-    ("ga001", "mass"): (ENFORCED, "Sum of the element rows and ash, which are enforced; the water molar-mass basis (18.015 versus 18.016) is the only extra term.",
+    ("ga001", "mass"): (ENFORCED, "Sum of the element rows and ash, which are enforced; the water molar-mass basis (one value since P1-05(b); it was 18.015 versus 18.016) is the only extra term.",
                         [(BA, "def closure(terms")]),
     ("loop", "C"): (PARTLY, "Independent: " + _CHAIN + ", so carbon carried through the gas path is checked. Enforced: the carbon black and its remainder (remainders of the unconverted carbon) and the "
                     "'recycle inventory in transit' (a difference: this cycle's tail gas minus the tail gas GA-001 read).",

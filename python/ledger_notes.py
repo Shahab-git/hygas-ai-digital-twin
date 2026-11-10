@@ -43,17 +43,7 @@ UNUSED_CONSTANTS = [
 ]
 
 # id, what, [(label, file, token)], who reads each, how big, why it is not hidden or hidden
-INCONSISTENCIES = [
-    {"id": "molar mass of water, 18.015 against 18.016",
-     "values": [("18.015 g/mol (M_H2O)", "python/ga001_gasifier_model.py", "M_H2O = 18.015"),
-                ("M_H = 1.008", "python/ga001_gasifier_model.py", "M_H = 1.008"),
-                ("M_O = 16.00 (so H2O from atoms = 18.016)", "python/ga001_gasifier_model.py", "M_O = 16.00"),
-                ("the atom sum, used by the audit", "python/balance_audit.py", "return sum(ATOMIC_MASS[e] * n for e, n in FORMULA[species].items())")],
-     "affects": "18.015 converts water between kg and mol in `ga001_gasifier_model` (steam and moisture, GA-001 outputs), `gc_gas_cleaning_chain.gc004_condensed_water` (GC-004) and `hb_wgs_psa_storage_chain.hb005_steam_generation` (HB-005); the atom "
-                "masses (18.016) are used by `ga001_gasifier_model.elemental_atomic_ratios` and, in the audit, `balance_audit.molar_mass`. Both values are defined in ga001_gasifier_model.py; the atom sum is a second route to the same molecule.",
-     "size": "5.5e-5 of the water mass; in scenario S4a it equals the whole A5 loop-mass residual (3.2e-5 of the loop inflow).",
-     "hidden": "Yes: balance_audit.TOL_STATED = 1e-3 (used in balance_audit.verdict) classes a mass residual below 1e-3 as 'closes to a stated tolerance', and 3.2e-5 is far below it, so the verdict does not show it. Not fixed."},
-]
+INCONSISTENCIES = []        # both recorded inconsistencies (H2 LHV: P1-05(a); water molar mass: P1-05(b)) are resolved; see the notes paragraphs
 
 
 def _loc(file, token, after=None):
@@ -78,6 +68,8 @@ def render_prose():
     for name, f, tok, says in UNUSED_CONSTANTS:
         L.append(f"- `{name}` (`{_loc(f, tok)}`): {says}")
     L += ["", "## Inconsistencies recorded, not fixed", ""]
+    if not INCONSISTENCIES:
+        L += ["None remain: the two that were recorded (the H2 lower heating value, task P1-05(a); the molar mass of water, task P1-05(b)) are resolved, see the notes above.", ""]
     for i in INCONSISTENCIES:
         L.append(f"### {i['id']}")
         L.append("")
@@ -149,7 +141,8 @@ def render_confirmed():
           "", "**The pinned counts changed again in Phase 1 task P1-12 (HB-010 Separation).** hb_remaining_chain generic mentions 35 to 38 (total 284 to 287): the new `hb010_separation` code and its docstring name the existing identifier `HB010_CONFIRMED_RECOVERY` and say \"not DOK-ING-confirmed\". No value was called Confirmed. The constant `HB010_CONFIRMED_RECOVERY` is no longer unused (the new function reads it), so it left the list of constants nothing uses (three became two).",
           "", "**The pinned counts changed again in Phase 1 task P1-15 (HB-003 duty estimate).** eu_utilities_chp generic mentions 20 to 22 (total 287 to 289): the new `hb003_duty_estimate` code and its text say \"not DOK-ING-confirmed\" twice, about the registry 5 kW. No value was called Confirmed; the registry row is untouched.",
           "", "**The pinned counts changed again in Phase 1 task P1-04 (safety items).** uncertainty.py generic mentions 26 to 33 and the third class 4 to 3 (total 289 to 295): new docstring lines about `confirmed_overrides`, the optional argument that lets `performance_guarantee` apply a hypothetical range without writing to `ASSUMPTIONS`. No value was called Confirmed.",
-          "", "**Resolved in Phase 1 task P1-05(a): the H2 lower heating value is one value.** `SYNGAS_SPECIES_LHV_MJ_PER_NM3[\"H2\"]` is now `H2_LHV_MJ_PER_NM3` (10.8 MJ/Nm3, Assumed, EU-006's stated basis; it was 10.783) and `balance_audit.efficiency_check` reads that constant instead of repeating the literal 10.8. The ledger row `EU-006.h2_lhv_mj_nm3_audit_copy` is removed with the literal. Moved: the syngas LHV (+0.0745 % at the default) and with it `EU-CHP|Dispatch` total_syngas_kw / wgs_psa_claim_kw and the SA-006 reading; nothing else (checked key by key)."]
+          "", "**Resolved in Phase 1 task P1-05(a): the H2 lower heating value is one value.** `SYNGAS_SPECIES_LHV_MJ_PER_NM3[\"H2\"]` is now `H2_LHV_MJ_PER_NM3` (10.8 MJ/Nm3, Assumed, EU-006's stated basis; it was 10.783) and `balance_audit.efficiency_check` reads that constant instead of repeating the literal 10.8. The ledger row `EU-006.h2_lhv_mj_nm3_audit_copy` is removed with the literal. Moved: the syngas LHV (+0.0745 % at the default) and with it `EU-CHP|Dispatch` total_syngas_kw / wgs_psa_claim_kw and the SA-006 reading; nothing else (checked key by key).",
+          "", "**Resolved in Phase 1 task P1-05(b): the molar mass of water is the atom sum.** `ga001_gasifier_model.M_H2O` is now `2 * M_H + M_O` = 18.016 g/mol (it was the separate literal 18.015, 5.5e-5 lower), so the engine's kg-to-mol conversions of water (GA-001 steam and moisture, GC-004, HB-005) and the audit's atom-sum route use one value, and the ledger exception for the old literal is removed. Moved: 47 persisted entries by at most 7e-5 relative (3.5e-4 in the `heat_only` energy report), listed key by key in `tests/test_p1_05b_water_molar_mass.py`, which also shows that putting 18.015 back reproduces the 701de71 fixture."]
     return L
 
 
