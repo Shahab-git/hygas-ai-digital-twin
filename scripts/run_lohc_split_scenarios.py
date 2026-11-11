@@ -89,7 +89,7 @@ def _const(v):
 def live_psa_h2_kg_h(mode):
     """The engine's hydrogen flow at HB-012 (converged), as in the operating-point study. Read-only."""
     from _fakes import FakeSupabase, patched_supabase
-    ov = None if mode == "regasify" else {("GA-001-INPUT", "tail_gas_mode"): _const(mode)}
+    ov = {("GA-001-INPUT", "tail_gas_mode"): _const(mode)}      # P1-06e: always explicit ("regasify" used to mean "no override" because it was the default; since P1-06 that ran heat_only under the regasify label)
     fake = FakeSupabase()
     with patched_supabase(fake):
         snap = t1.build_live_snapshot(n_cycles=N_CONV, overrides=ov)[0]

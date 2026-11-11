@@ -21,6 +21,10 @@ OLD_H2 = 10.783          # the species-table value before P1-05(a)
 KEYS = ("EU-CHP|Dispatch", "SA-006|Reading")
 
 
+def _regasify(get_input):
+    return {"value": "regasify", "status": "Assumed", "inputs": [], "validation_basis": "N/A", "confidence_note": "test"}
+
+
 @pytest.fixture(scope="module")
 def snap():
     # P1-05(b) (deliberate edit): these pins isolate the H2 LHV change, so the water molar mass is put back to its old 18.015 here (P1-05(b) moves the same entries by <= 7e-6 more;
@@ -32,7 +36,8 @@ def snap():
     mp.setattr(gmb, "DEFAULT_DRY_FEED_KG_H", 41.67)         # P1-05(c) (deliberate edit): likewise the cycle-1 dry feed is put back to the old 41.67 (tests/test_p1_05c_feed_basis.py pins that change)
     try:
         with patched_supabase(FakeSupabase()):
-            return t1.build_live_snapshot(20)[0]
+            # P1-06f (deliberate edit): the 701de71 fixture's "default|20" entries are the regasify default of that time, so the snapshot is built with regasify explicitly
+            return t1.build_live_snapshot(20, overrides={("GA-001-INPUT", "tail_gas_mode"): _regasify})[0]
     finally:
         mp.undo()
 
@@ -89,4 +94,3 @@ def test_the_dispatch_entry_moved_only_in_the_two_syngas_fields_by_the_same_rati
     assert 1.0007 < ratio < 1.0008                      # +0.0745 %, the size quoted in the PR
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): its moved-entry pins were measured on regasify; tests/conftest.py restores the old default for this module

@@ -194,6 +194,15 @@ Fourth item of "all work that does not wait for DOK-ING"; **read as authorising 
 - `test_closure_scenarios.py`: the module's "S0 current" case is now the real default (`| heat_only`), compared with the committed baseline entry of that name (the baseline already holds all 30 cases in both modes, so the drift test now checks the real default against it); the `regasify` S0 case is built explicitly and checked against its own baseline entry as before. The "every persisted entry equals the pre-change fixture" test runs three cases: explicit `regasify` against the fixture's `default|20` entries (the check that the regasify path is unchanged is real), explicit `heat_only`, and the real default against `heat_only|20`.
 - `test_operating_point_study.py`: the starting point of `test_default_point_reproduces_the_engine_default_and_overrides_do_not_leak` is now `heat_only` (55.7 kg/day, the engine default); the 78.0 kg/day `regasify` case of `docs/tail_gas_heat.md` is run explicitly and still pinned; the "overrides do not leak" check is unchanged in kind (a plain default run after the study cases is still the default one).
 
+### 3p. Task P1-06f: `test_tail_gas_mode`, `test_p1_05a_h2_lhv` and `test_lohc_split_scenarios` on the real default; one script fixed (owner instruction, 2026-11-11)
+
+Fifth item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only**. The three modules no longer declare `LEGACY_REGASIFY_DEFAULT` (4 modules still do: `test_gasifying_agent`, `test_p1_05c_feed_basis`, `test_p1_05b_water_molar_mass`, `test_feed_basis`). No model code and no persisted number change; **one script changes**, see the first bullet.
+
+- **Script found mislabelled by the conversion (fixed):** `scripts/run_lohc_split_scenarios.py::live_psa_h2_kg_h` ran the label `regasify` with NO override, because `regasify` was the engine default when it was written. Since P1-06 it therefore ran `heat_only` under the `regasify` label (the "regasify" row of the study would have shown 2.32 kg/h instead of 3.25). It now always sets the mode explicitly; `docs/lohc_split_scenarios.md` (3.251 kg/h `regasify`, 2.323 `heat_only`) is reproduced again and was never wrong. A search of `scripts/`, `python/` and `app.py` for the same pattern (a mode label that means "no override") found no other instance.
+- `test_tail_gas_mode.py`: two new explicit `regasify` runs (5 and 30 cycles) make the comparison with the pre-change fixture real (its entries are the `regasify` default of that time); the real-default runs stay. `test_default_is_regasify_and_...` is split into `test_default_is_heat_only_and_...` (value, note "since P1-06", no recycle) and `test_regasify_recycles_and_...` (no test removed; one renamed and one added).
+- `test_p1_05a_h2_lhv.py`: its snapshot is built with `regasify` explicitly, because it is compared with the 701de71 fixture's `default|20` entries; the pins are unchanged.
+- `test_lohc_split_scenarios.py`: the 78.0 kg/day `regasify` hydrogen is pinned as before and the 55.7 kg/day `heat_only` one is added.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -229,7 +238,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

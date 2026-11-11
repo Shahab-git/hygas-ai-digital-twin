@@ -84,6 +84,8 @@ def runs(fake):
     with patched_supabase(fake):
         out["default5"] = t1.build_live_snapshot(n_cycles=5)
         out["default30"] = t1.build_live_snapshot(n_cycles=30)
+        out["regasify5"] = t1.build_live_snapshot(n_cycles=5, overrides=_mode("regasify"))      # P1-06f: the pre-P1-06 default, explicit
+        out["regasify30"] = t1.build_live_snapshot(n_cycles=30, overrides=_mode("regasify"))
         for m in ("regasify", "heat_only"):
             out[m] = t1.build_live_snapshot(n_cycles=N, overrides=_mode(m))
             out[m + "_prev"] = t1.build_live_snapshot(n_cycles=N - 1, overrides=_mode(m))
@@ -97,7 +99,7 @@ def baseline():
 
 
 # ---------------------------------------------------------------- (a) the default changes nothing
-@pytest.mark.parametrize("label,n", [("default5", "5"), ("default30", "30")])
+@pytest.mark.parametrize("label,n", [("default5", "5"), ("default30", "30"), ("regasify5", "5"), ("regasify30", "30")])      # P1-06f: the fixture's entries are the regasify default of that time; the regasify runs make that comparison real
 def test_default_mode_snapshot_equals_origin_main_for_every_existing_entry(runs, baseline, label, n):
     new = _ser(runs[label][0])
     # LEDGER D2 / WORDING W1 (deliberate edit): notes were reworded after this fixture was made. forward() applies the old -> new pairs of tests/_d2_wording.py to the FIXTURE, so the live
@@ -111,11 +113,19 @@ def test_default_mode_snapshot_equals_origin_main_for_every_existing_entry(runs,
     assert bad == {}, bad
 
 
-def test_default_is_regasify_and_the_switch_is_not_in_the_published_input_list(runs):
+def test_default_is_heat_only_and_the_switch_is_not_in_the_published_input_list(runs):
+    """P1-06f (deliberate edit; was test_default_is_regasify_...): the real default is "heat_only" since P1-06; the regasify case is the next test."""
     s = runs["default30"][0]
-    assert s[("GA-001-INPUT", "tail_gas_mode")]["value"] == "regasify" == ga001.TAIL_GAS_MODE_DEFAULT
+    assert s[("GA-001-INPUT", "tail_gas_mode")]["value"] == "heat_only" == ga001.TAIL_GAS_MODE_DEFAULT
     assert s[("GA-001-INPUT", "tail_gas_mode")]["status"] == ps.STATUS_ASSUMED
-    assert "supplemental fuel" in s[("GA-001-INPUT", "tail_gas_mode")]["confidence_note"]
+    assert "supplemental fuel" in s[("GA-001-INPUT", "tail_gas_mode")]["confidence_note"] and "since P1-06" in s[("GA-001-INPUT", "tail_gas_mode")]["confidence_note"]
+    assert ("GA-001-INPUT", "tail_gas_mode") not in [tuple(k) for k in s[("GA-001", "Outputs")]["source"]["inputs"]]
+    assert s[("GA-001", "Outputs")]["value"]["recycle_active"] is False
+
+
+def test_regasify_recycles_and_the_switch_is_not_in_the_published_input_list(runs):
+    s = runs["regasify30"][0]
+    assert s[("GA-001-INPUT", "tail_gas_mode")]["value"] == "regasify"
     assert ("GA-001-INPUT", "tail_gas_mode") not in [tuple(k) for k in s[("GA-001", "Outputs")]["source"]["inputs"]]
     assert s[("GA-001", "Outputs")]["value"]["recycle_active"] is True
 
@@ -226,4 +236,3 @@ def test_zero_database_calls_and_no_client_import(runs, fake):
         assert not (set(names) & forbidden)
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): its 'default' runs document the regasify path; tests/conftest.py restores the old default for this module
