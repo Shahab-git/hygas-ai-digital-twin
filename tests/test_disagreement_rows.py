@@ -51,3 +51,6 @@ def test_cooling_heat_exchanger_scrubber_and_carbon_black_figures(table):
 def test_the_formatted_table_lists_every_row(table):
     text = dr.format_table(list(table.values()))
     assert text.count("\n") == len(table) + 1 and "No tolerance" not in text
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): G5-07 rows 1-4, 7 and 9 quote numbers measured on regasify; tests/conftest.py restores the old default for this module

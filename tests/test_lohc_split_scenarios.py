@@ -63,3 +63,6 @@ def test_the_script_wires_nothing_in_and_the_branch_stays_missing(study):
     assert snap[("HB-014", "MassBalance")]["status"] == ps.STATUS_MISSING
     assert [c for c in fake.calls if c[0] != "select"] == []
     assert h2 == pytest.approx(78.0 / 24.0, abs=0.01)                                  # the same hydrogen as the operating-point study's default
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): reproduces its script's regasify baseline; tests/conftest.py restores the old default for this module

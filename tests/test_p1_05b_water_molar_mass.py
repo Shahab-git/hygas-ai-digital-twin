@@ -233,3 +233,6 @@ def test_hb005_steam_moves_by_about_the_molar_mass_ratio(runs):
     a = old["default"]["HB-005|Steam"]["value"]["steam_kg_h"]
     b = new["default"]["HB-005|Steam"]["value"]["steam_kg_h"]
     assert 1.00005 < b / a < 1.00007
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): compares against the pre-change fixture whose 'default' runs are regasify; tests/conftest.py restores the old default for this module

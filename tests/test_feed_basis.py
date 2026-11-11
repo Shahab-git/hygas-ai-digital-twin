@@ -221,3 +221,6 @@ def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps):
     assert rule_live < derived < rule_static, FIX
     cross = _val(snaps[N], ("GA-001", "CarbonAccounting"))["datasheet_cross_check"]
     assert cross["datasheet_rule_kg_h"] == pytest.approx(rule_live, rel=1e-12)             # the engine's own cross-check uses the live feed, not 41.67
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): the three-carbon-black known-limitation tests are written on regasify; tests/conftest.py restores the old default for this module

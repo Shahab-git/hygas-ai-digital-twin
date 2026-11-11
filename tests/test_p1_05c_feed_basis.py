@@ -152,3 +152,6 @@ def test_cycle_one_now_feeds_the_dry_solids_and_the_dry_flow_drops_ten_percent(n
     old = fixture_entries["default|1"]["GA-001|Outputs"]["value"]["dry_flow_nm3_h"]
     new = new_runs["default|1"]["GA-001|Outputs"]["value"]["dry_flow_nm3_h"]
     assert new / old == pytest.approx(37.503 / 41.67, rel=2e-2) and new < old
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): compares against the pre-flip fixture whose 'default' runs are regasify; tests/conftest.py restores the old default for this module

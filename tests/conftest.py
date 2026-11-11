@@ -28,11 +28,12 @@ def _no_real_step_summary():
 
 @pytest.fixture(scope="module", autouse=True)
 def _legacy_tail_gas_default(request):
-    """P1-06 (owner decision 2026-11-10): the engine default tail-gas mode is now "heat_only". Every test module written before that change was written, and its
-    fixtures and pins were measured, on the "regasify" path that used to be the default, so those modules run with the old default restored (module scope, so that module-scoped
-    snapshot fixtures see it). A module that tests the REAL default sets `REAL_TAIL_GAS_DEFAULT = True` at module level and is not patched; tests/test_p1_06_tail_gas_default.py proves
-    that the patch is the only difference (with it the snapshot equals the committed pre-flip fixture) and that the real default is "heat_only"."""
-    if getattr(request.module, "REAL_TAIL_GAS_DEFAULT", False):
+    """P1-06 (owner decision 2026-11-10) made "heat_only" the engine default; P1-06b inverted the arrangement of that task. Every test module runs on the REAL default unless it
+    declares `LEGACY_REGASIFY_DEFAULT = True` at module level, with the reason next to the line. Such a module was written and its fixtures and pins were measured on the "regasify"
+    path that used to be the default, and is run with that default restored (module scope, so module-scoped snapshot fixtures see it). The list of declaring modules is the list of
+    what is still NOT exercised on the real default (docs/phase0_gate_record.md section 3l); tests/test_p1_06_tail_gas_default.py proves that the restored default is the only
+    difference (with it the snapshot equals the committed pre-flip fixture) and pins the real default as "heat_only"."""
+    if not getattr(request.module, "LEGACY_REGASIFY_DEFAULT", False):
         yield
         return
     from python import ga001_gasifier_model as ga

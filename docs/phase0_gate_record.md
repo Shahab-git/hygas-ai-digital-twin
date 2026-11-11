@@ -168,6 +168,12 @@ Source: the owner opened the repository's Actions page, selected the Tests workf
 
 Limits: the `is:failure` filter shows no cancelled runs and says nothing about a PR that never ran the workflow; a missing failure is not a recorded success for each PR. The "Continuous Simulation Cycle" workflow was not read. No Tests run exists on a merge commit of `main` (section 3b); that gap and the hold on CI changes are unchanged. PR #55 (P1-06) was not read.
 
+### 3l. Task P1-06b: the real tail-gas default is the test default (owner instruction, 2026-11-11)
+
+The owner asked for all work that does not wait for DOK-ING; this is the first item, **read as authorising P1-06b only** (tests only; no model code, no persisted number, no registry value changes). The blind spot named in section 3j is narrowed: `tests/conftest.py` used to restore the old `regasify` default for every module except two. It now does so only for modules that declare `LEGACY_REGASIFY_DEFAULT = True`; every other module runs on the real default (`heat_only`).
+
+Measurement before the change (container, Python 3.13, fixture switched off, nothing else changed): 43 failures in 12 modules, 941 passed, 4 skipped; one of the 43 is the known container-only file-listing-order failure. The 12 modules declare the marker, each with its reason on the same line: `test_gasifying_agent` (12 failures), `test_p1_05c_feed_basis` (8), `test_balance_audit` (5), `test_plant_heat_integration` (4, one the known one), `test_disagreement_rows` (3), `test_tail_gas_mode`, `test_p1_05b_water_molar_mass`, `test_p1_05a_h2_lhv`, `test_feed_basis` (2 each), `test_operating_point_study`, `test_lohc_split_scenarios`, `test_closure_scenarios` (1 each). So the suite exercises the real default everywhere else, and these 12 modules remain on `regasify` by declaration: converting them means re-measuring their pins or fixtures on `heat_only` and is not done here. The `REAL_TAIL_GAS_DEFAULT` marker of P1-06 is removed (it is the default behaviour now). One assertion changed: `test_tail_gas_mode` no longer pins `TAIL_GAS_MODE_DEFAULT == "regasify"` (in that module it is the patched value; the real default is pinned by `test_p1_06_tail_gas_default.py`).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -203,7 +209,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

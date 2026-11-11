@@ -530,3 +530,6 @@ def test_no_engine_gate_maturity_or_ai_module_names_the_entry():
             if f.endswith(".py") and "AgentConsistency" in open(os.path.join(ROOT, folder, f), encoding="utf-8").read():
                 names.append(f"{folder}/{f}")
     assert names == ["python/ga001_gasifier_model.py"], names                  # the model that publishes it; the readiness gate, maturity, AI and engine modules never mention it
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): agent scenarios are compared with the regasify default of the study; tests/conftest.py restores the old default for this module
