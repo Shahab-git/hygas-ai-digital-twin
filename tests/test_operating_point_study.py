@@ -75,3 +75,6 @@ def test_default_point_reproduces_the_engine_default_and_overrides_do_not_leak(s
     assert h2_plain == pytest.approx(78.0, abs=0.05)
     assert shifted["h2_kg_day"] == pytest.approx(54.3, abs=0.05) and shifted["levers_moved"] == 2
     assert shifted["psa_recovery_pct"] == pytest.approx(75.0, abs=1e-9)
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): reproduces the engine default of the study (regasify); tests/conftest.py restores the old default for this module

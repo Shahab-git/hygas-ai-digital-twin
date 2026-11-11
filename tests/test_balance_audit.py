@@ -334,3 +334,6 @@ def test_the_audit_modules_change_no_engine_state(snaps):
     after = json.dumps({f"{k[0]}|{k[1]}": v["value"] for k, v in snaps[N_CONV].items()}, sort_keys=True, default=str)
     assert before == after
     assert {k: v["residual_kg_h"] for k, v in a["plant"]["rows"].items()} == {k: v["residual_kg_h"] for k, v in b["plant"]["rows"].items()}
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): recycle, carbon-residual and clamp tests are written for an active tail-gas recycle; tests/conftest.py restores the old default for this module

@@ -356,3 +356,6 @@ def test_this_tasks_commits_touch_the_engine_only_at_the_registration_line():
     removed = [l for l in diff.splitlines() if l.startswith("-") and not l.startswith("---")]
     assert removed == [] and added == ["# Read-only plant heat source / sink inventory ((\"PLANT\", \"HeatIntegration\"), a leaf like the two above; heat-integration stage 1).",
                                       "from . import plant_heat_integration", "plant_heat_integration.register(engine)"], (added, removed)
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): heat-integration tests assume a recycle exists in the default mode; tests/conftest.py restores the old default for this module

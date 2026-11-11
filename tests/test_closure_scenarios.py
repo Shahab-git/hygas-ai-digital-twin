@@ -328,3 +328,6 @@ def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes_and_the
 
 def test_no_database_or_network_call_was_made(fake):
     assert [c for c in fake.calls if c[0] != "select"] == []
+
+
+LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): the committed scenario baseline was generated on regasify; tests/conftest.py restores the old default for this module

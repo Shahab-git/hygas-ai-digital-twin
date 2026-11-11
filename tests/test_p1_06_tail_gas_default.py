@@ -1,6 +1,5 @@
 """P1-06 (owner decision 2026-11-10): the engine's default tail-gas mode is "heat_only" (the PSA tail gas is a heat source; nothing is re-gasified), no longer "regasify".
 
-REAL_TAIL_GAS_DEFAULT = True below tells tests/conftest.py NOT to restore the old default for this module. Pins (1) the constant and that both modes stay selectable; (2) ATTRIBUTION: with the
 old default put back the snapshot equals the committed pre-flip fixture (tests/fixtures/snapshot_origin_main_8282f4a.json.gz, origin/main after P1-05(c)) in every entry; (3) the new default
 snapshot equals that fixture's explicit heat_only runs in every entry except the mode switch's own note; (4) the headline hydrogen (78.0 -> 55.7 kg/day); (5) nothing was tuned: every other
 Assumed default is unchanged."""
@@ -11,7 +10,6 @@ import re
 
 import pytest
 
-REAL_TAIL_GAS_DEFAULT = True
 
 from _fakes import FakeSupabase, patched_supabase
 from python import ga001_gasifier_model as ga

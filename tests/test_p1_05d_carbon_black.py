@@ -6,7 +6,6 @@ import sys
 
 import pytest
 
-REAL_TAIL_GAS_DEFAULT = True      # P1-06: this module tests the engine on its REAL default (heat_only); tests/conftest.py does not restore the old default for it
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _fakes import FakeSupabase, patched_supabase
