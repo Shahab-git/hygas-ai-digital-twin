@@ -24,7 +24,9 @@ jobs:
   tests:
     name: tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 25 min (was 15): the suite takes 12-14 min per job on the hosted runners, so 15 sat on the edge; the Python 3.11 job of the P1-06c run (43029155542) was cancelled by this
+    # limit in 'Run tests' at 15 min while 3.12 passed in 10 min. Nothing else in this file changed.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:

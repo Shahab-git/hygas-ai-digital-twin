@@ -93,6 +93,8 @@ The owner chose an **indirect record** instead of a manual `workflow_dispatch` r
 
 Update 2026-11-10: the owner read the Actions history; the result is in section 3k. It narrows the "NOT VERIFIED" limit in the first row, it does not remove it.
 
+Update 2026-11-11 (owner instruction, "yes please", to prepare the change): the one workflow change authorised so far. In `.github/workflows/tests.yml` `timeout-minutes` goes from 15 to 25 and nothing else in the file changes. Evidence (read from the Actions API, run 43029155542 on the P1-06c branch): the Python 3.11 job was cancelled at 15 min 17 s inside "Run tests" while 3.12 passed in 10 min 52 s, and the last twelve Tests runs took 7 to 14 minutes per job, so the limit sat on the edge. No test failed. This lifts the hold on workflow changes for this one change only; the other holds of section 7 (merge-commit runs on `main`, any other workflow edit) are unchanged.
+
 ### 3c. G5-03: Phase 0 approved with exceptions (owner decision, 2026-11-09)
 
 The owner approved Phase 0 as closed with the exceptions below, in chat on 2026-11-09, after the merge of PR #39 (`8e0f268`). The decision is on `main` at `8e0f268`; the commit that records it changes documentation only. This entry records the owner's statement; the repo cannot show the decision itself (NOT VERIFIED from the repo).
