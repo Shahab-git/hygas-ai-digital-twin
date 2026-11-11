@@ -62,7 +62,7 @@ def test_the_script_wires_nothing_in_and_the_branch_stays_missing(study):
     assert snap[("HB-007", "H2SplitFraction")]["status"] == ps.STATUS_MISSING
     assert snap[("HB-014", "MassBalance")]["status"] == ps.STATUS_MISSING
     assert [c for c in fake.calls if c[0] != "select"] == []
-    assert h2 == pytest.approx(78.0 / 24.0, abs=0.01)                                  # the same hydrogen as the operating-point study's default
+    assert h2 == pytest.approx(78.0 / 24.0, abs=0.01)                                  # the regasify hydrogen of docs/tail_gas_heat.md (P1-06f: the script's "regasify" is now explicit)
+    assert study.live_psa_h2_kg_h("heat_only") == pytest.approx(55.7 / 24.0, abs=0.01)  # P1-06f: the real default's hydrogen, the other row of the study
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): reproduces its script's regasify baseline; tests/conftest.py restores the old default for this module
