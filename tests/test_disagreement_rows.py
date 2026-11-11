@@ -77,3 +77,10 @@ def test_cooling_heat_exchanger_scrubber_and_carbon_black_figures(mode_table):
     _check(table, 11, "HB-003 cold-side duty", cold, 5.0, "kW")
     _check(table, 12, "GC-009 HCl removal", hcl, 97.0, "%")
     _check(table, 13, "carbon black, engine (derived) vs 5 % rule", cb, 1.87515, "kg/h")
+
+
+def test_the_formatted_table_lists_every_row(mode_table):
+    # restored (P1-06d follow-up): it was dropped by mistake when the module was rewritten; now run for both modes
+    mode, table = mode_table
+    text = dr.format_table(list(table.values()))
+    assert text.count("\n") == len(table) + 1 and "No tolerance" not in text
