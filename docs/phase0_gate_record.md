@@ -91,6 +91,8 @@ The owner chose an **indirect record** instead of a manual `workflow_dispatch` r
 | Owner's machine, Python 3.14 | 913 passed, 0 failed, 4 skipped on the last docs PR before PR #38 | not a CI run; 3.14 is not a CI version |
 | Merge commits on `main` | no Tests run exists (the workflow runs on `pull_request` and `workflow_dispatch` only) | the gap itself |
 
+Update 2026-11-10: the owner read the Actions history; the result is in section 3k. It narrows the "NOT VERIFIED" limit in the first row, it does not remove it.
+
 ### 3c. G5-03: Phase 0 approved with exceptions (owner decision, 2026-11-09)
 
 The owner approved Phase 0 as closed with the exceptions below, in chat on 2026-11-09, after the merge of PR #39 (`8e0f268`). The decision is on `main` at `8e0f268`; the commit that records it changes documentation only. This entry records the owner's statement; the repo cannot show the decision itself (NOT VERIFIED from the repo).
@@ -152,6 +154,19 @@ Measured effect (against origin/main after P1-05(c)): headline hydrogen 78.0 -> 
 Gate 4 scope: the existing test modules were written and measured on `regasify`, so `tests/conftest.py` restores that default for them (module scope; a module sets `REAL_TAIL_GAS_DEFAULT = True` to opt out). `tests/test_p1_06_tail_gas_default.py` and `tests/test_p1_05d_carbon_black.py` run on the real default. The new test compares against a committed pre-flip fixture (`tests/fixtures/snapshot_origin_main_8282f4a.json.gz`) and proves attribution: with the old default put back the snapshot equals the fixture in every entry. The switch's own entry (its note) is added to `tests/_intentional_changes.py`. This means the older Gate 4 comparisons exercise the `regasify` path under the name "default"; the real default is covered by the new test and by the explicit `heat_only` runs those modules already contained.
 
 Deliberate test edits: `test_feed_basis.py` (static values compared with a `heat_only` snapshot), `test_transient_tab.py` (under `heat_only` there is no recycle delay, so all three scenarios show the overlap caption; the non-vacuity check allows that), `test_design_basis_ledger.py` (the committed ledger files are generated on the real default), `test_p1_05b`/`05c` (the switch entry is skipped), `test_p1_05d` (new numbers).
+
+### 3k. CI history of the Tests workflow (owner reading of the Actions page, 2026-11-10)
+
+Source: the owner opened the repository's Actions page, selected the Tests workflow, searched `is:failure` and sent screenshots; the repo cannot show these runs (NOT VERIFIED from the repo). The numbers below are the owner's readings, recorded as stated.
+
+| Item | Reading |
+|---|---|
+| Failed Tests runs, whole history | 4: run #52 (PR #49, P1-15), run #23 (PR #21, ledger fixes A3/A3b/A3c), runs #3 and #4 (PR #2, Dynamics layer and Transient What-If tab) |
+| PRs #29 and #31-#54 | no failed Tests run other than PR #49's; PR #54 shown green on 3.11 and 3.12 (run #57, 15 m 1 s) |
+| PR #49, run #52 | failed after 52 s with the annotation "Internal server error" and no test job started (a GitHub infrastructure error, not a test result); re-run on 2026-11-10: success on 3.11 (7 m 49 s) and 3.12 (8 m 45 s), total 8 m 52 s |
+| PRs #21 and #2 | outside the range; their failed runs are listed only for completeness, their later results were not read |
+
+Limits: the `is:failure` filter shows no cancelled runs and says nothing about a PR that never ran the workflow; a missing failure is not a recorded success for each PR. The "Continuous Simulation Cycle" workflow was not read. No Tests run exists on a merge commit of `main` (section 3b); that gap and the hold on CI changes are unchanged. PR #55 (P1-06) was not read.
 
 ## 4. Gate 5 criteria: status as of this record
 
