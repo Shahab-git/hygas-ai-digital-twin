@@ -174,6 +174,13 @@ The owner asked for all work that does not wait for DOK-ING; this is the first i
 
 Measurement before the change (container, Python 3.13, fixture switched off, nothing else changed): 43 failures in 12 modules, 941 passed, 4 skipped; one of the 43 is the known container-only file-listing-order failure. The 12 modules declare the marker, each with its reason on the same line: `test_gasifying_agent` (12 failures), `test_p1_05c_feed_basis` (8), `test_balance_audit` (5), `test_plant_heat_integration` (4, one the known one), `test_disagreement_rows` (3), `test_tail_gas_mode`, `test_p1_05b_water_molar_mass`, `test_p1_05a_h2_lhv`, `test_feed_basis` (2 each), `test_operating_point_study`, `test_lohc_split_scenarios`, `test_closure_scenarios` (1 each). So the suite exercises the real default everywhere else, and these 12 modules remain on `regasify` by declaration: converting them means re-measuring their pins or fixtures on `heat_only` and is not done here. The `REAL_TAIL_GAS_DEFAULT` marker of P1-06 is removed (it is the default behaviour now). One assertion changed: `test_tail_gas_mode` no longer pins `TAIL_GAS_MODE_DEFAULT == "regasify"` (in that module it is the patched value; the real default is pinned by `test_p1_06_tail_gas_default.py`).
 
+### 3m. Task P1-06c: `test_balance_audit` and `test_plant_heat_integration` on the real default (owner instruction, 2026-11-11)
+
+Second item of the owner's "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (tests and this record; no model code, no persisted number). The two modules no longer declare `LEGACY_REGASIFY_DEFAULT`; 10 modules still do (section 3l minus these two). Where a test is about the recycle it now says `regasify` explicitly through the engine override; the others run on `heat_only`.
+
+- `test_balance_audit.py`: a new fixture `snaps_regasify` (override `tail_gas_mode = regasify`) serves the recycle tests (`a_wrong_recycle_is_not_silently_absorbed`, `active_recycle_without_the_previous_cycle_cannot_be_evaluated`) and the pre-P1-06 carbon-identity and storage-clamp tests, whose assertions are unchanged. Two tests are new on the real default: the carbon identity closes with no recycle term (`unconverted_from_recycle_kg_h == 0`, carbon black 4.5 % of the dry feed, 0.1875 kg/h below the old 5 % rule), and the storage clamp. **Finding, not a fix:** on the real default the default five-cycle state empties the H2 tank (outflow 3.42 kg against 0.54 kg stored plus 2.33 kg inflow), so the lower clamp creates 0.5601 kg of H2 and the audit's verdict is "does not close"; the 20-cycle state is unaffected. Before P1-05(c) the old default also sat on the clamp (0.133 kg), so this is a property of the 5-cycle start-up state, not of the tail-gas change alone.
+- `test_plant_heat_integration.py`: the `runs` fixture gains an explicit `regasify` run next to `default` (real default) and `heat_only`. The fixture comparisons now map `regasify` to the pre-P1-06 `default|20` entries (the check that the regasify path is unchanged is therefore real, not the default path under another name), the mode-labelled assertions use the explicit mode, and the level-mismatch test is measured on `regasify` because under `heat_only` the counted flue gas lifts the matched heat to 47.6 kW (its "< 20 kW" claim is about `regasify`).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -209,7 +216,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

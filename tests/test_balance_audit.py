@@ -44,6 +44,19 @@ def snaps(fake):
     return out
 
 
+@pytest.fixture(scope="module")
+def snaps_regasify(fake):
+    """P1-06c: the same snapshots with the tail-gas recycle explicitly ON (the mode before P1-06). `snaps` is the real default, "heat_only"
+    (no recycle atoms); the tests that exercise the recycle in the audit say so by using this fixture."""
+    from test_tail_gas_mode import _mode
+    cycle_clock.set_elapsed_hours(None)
+    out = {}
+    with patched_supabase(fake):
+        for n in (1, 4, 5, N_CONV - 1, N_CONV):
+            out[n] = t1.build_live_snapshot(n_cycles=n, overrides=_mode("regasify"))[0]
+    return out
+
+
 # ---------------------------------------------------------------- D1(a): GA-001 atom balance at the verify_atom_balance tolerance
 @pytest.mark.parametrize("n", [5, N_CONV])
 def test_ga001_h_o_n_balances_close_at_verify_atom_balance_tolerance(snaps, n):
@@ -116,7 +129,8 @@ def test_removing_a_product_component_gives_a_nonzero_residual(snaps):
     assert bad["mass"]["verdict"] == ba.VERDICT_NO
 
 
-def test_a_wrong_recycle_is_not_silently_absorbed(snaps):
+def test_a_wrong_recycle_is_not_silently_absorbed(snaps_regasify):
+    snaps = snaps_regasify                                                       # P1-06c: needs an active recycle, so tail_gas_mode is "regasify" explicitly
     """Counting the recycle twice (or not at all) must break the exactly-closing H/O balances."""
     d = ba.ga001_terms(snaps[N_CONV], snaps[N_CONV - 1])
     twice = []
@@ -154,7 +168,8 @@ def test_a_missing_term_changes_no_sum_and_a_blocking_one_stops_the_verdict():
     assert c["C"]["verdict"] == ba.VERDICT_NA and c["H"]["verdict"] == ba.VERDICT_NA and c["O"]["verdict"] != ba.VERDICT_NA
 
 
-def test_active_recycle_without_the_previous_cycle_cannot_be_evaluated(snaps):
+def test_active_recycle_without_the_previous_cycle_cannot_be_evaluated(snaps_regasify):
+    snaps = snaps_regasify                                                       # P1-06c: "regasify" explicitly (heat_only has no recycle, so nothing needs the previous cycle)
     bal = ba.ga001_balance(snaps[N_CONV], None)
     assert snaps[N_CONV][("GA-001", "Outputs")]["value"]["recycle_active"] is True
     for el in ("C", "H", "O"):
@@ -164,7 +179,20 @@ def test_active_recycle_without_the_previous_cycle_cannot_be_evaluated(snaps):
 
 # ---------------------------------------------------------------- every reported residual has an explanation read from the code
 @pytest.mark.parametrize("n", [5, N_CONV])
-def test_the_carbon_residual_is_exactly_the_conversion_versus_carbon_black_identity(snaps, n):
+def test_the_carbon_residual_is_exactly_the_conversion_versus_carbon_black_identity_on_the_real_default(snaps, n):
+    """P1-06c: on the real default (heat_only) nothing is recycled, so the identity has no recycle term and the derived carbon black is exactly 4.5 % of the dry feed
+    (1.6876 kg/h), 0.1875 kg/h below the old 5 % rule."""
+    x = ba.explain_carbon_residual(snaps[n], snaps[n - 1])
+    assert abs(x["difference_kg_h"]) < 1e-9 and abs(x["measured_kg_h"]) < 1e-9
+    assert x["unconverted_from_recycle_kg_h"] == 0.0
+    assert x["datasheet_minus_derived_kg_h"] == pytest.approx(0.187515, abs=1e-6) and x["datasheet_minus_derived_kg_h"] > 0.0
+    cycle_one = ba.explain_carbon_residual(snaps[1], None)
+    assert abs(cycle_one["difference_kg_h"]) < 1e-9 and abs(cycle_one["measured_kg_h"]) < 1e-9
+
+
+@pytest.mark.parametrize("n", [5, N_CONV])
+def test_the_carbon_residual_is_exactly_the_conversion_versus_carbon_black_identity(snaps_regasify, n):
+    snaps = snaps_regasify                                                       # P1-06c: the recycle case, "regasify" explicitly
     x = ba.explain_carbon_residual(snaps[n], snaps[n - 1])
     assert abs(x["difference_kg_h"]) < 1e-9
     assert x["unconverted_from_recycle_kg_h"] > 0.0                               # the recycled CO/CH4 carbon is also cut by 10 %
@@ -193,7 +221,19 @@ def test_the_whole_plant_residuals_are_fully_explained(snaps, n):
     assert x["electrolyser_excess_water_mol_h"] > 0.0                             # 1.0 L/Nm3 drawn vs 0.80 L/Nm3 stoichiometric
 
 
-def test_the_storage_clamp_is_measured_from_the_inventory_change(snaps):
+def test_the_storage_clamp_on_the_real_default_is_measured_and_not_hidden(snaps):
+    """P1-06c: on the real default (heat_only) the default five-cycle state empties the tank: outflow 3.42 kg exceeds the inventory plus inflow, the lower clamp holds the level at 0
+    and creates 0.5601 kg of H2 (the audit reports it, verdict 'does not close'). A finding about the 5-cycle default state, not a fix."""
+    s = ba.storage_inventory_check(snaps[5], snaps[4])
+    assert s["h2_created_by_clamp_kg"] == pytest.approx(s["level_kg"] - s["expected_level_without_clamp_kg"])
+    assert s["level_kg"] == 0.0 and s["h2_created_by_clamp_kg"] == pytest.approx(0.5600993668567438, rel=1e-6)
+    assert s["verdict"] == ba.VERDICT_NO
+    quiet = ba.storage_inventory_check(snaps[N_CONV], snaps[N_CONV - 1])
+    assert quiet["h2_created_by_clamp_kg"] == pytest.approx(quiet["level_kg"] - quiet["expected_level_without_clamp_kg"])
+
+
+def test_the_storage_clamp_is_measured_from_the_inventory_change(snaps_regasify):
+    snaps = snaps_regasify                                                       # P1-06c: the pre-P1-06 case, "regasify" explicitly
     s = ba.storage_inventory_check(snaps[5], snaps[4])
     assert s["h2_created_by_clamp_kg"] == pytest.approx(s["level_kg"] - s["expected_level_without_clamp_kg"])
     # P1-05(c) (deliberate edit): the default five-cycle state used to sit on the lower clamp (0.133 kg of H2 created); with the dry-solids cycle-1 feed the tank holds 0.205 kg and nothing is created
@@ -336,4 +376,3 @@ def test_the_audit_modules_change_no_engine_state(snaps):
     assert {k: v["residual_kg_h"] for k, v in a["plant"]["rows"].items()} == {k: v["residual_kg_h"] for k, v in b["plant"]["rows"].items()}
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): recycle, carbon-residual and clamp tests are written for an active tail-gas recycle; tests/conftest.py restores the old default for this module
