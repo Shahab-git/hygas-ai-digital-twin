@@ -183,6 +183,10 @@ Second item of the owner's "all work that does not wait for DOK-ING"; **read as 
 - `test_balance_audit.py`: a new fixture `snaps_regasify` (override `tail_gas_mode = regasify`) serves the recycle tests (`a_wrong_recycle_is_not_silently_absorbed`, `active_recycle_without_the_previous_cycle_cannot_be_evaluated`) and the pre-P1-06 carbon-identity and storage-clamp tests, whose assertions are unchanged. Two tests are new on the real default: the carbon identity closes with no recycle term (`unconverted_from_recycle_kg_h == 0`, carbon black 4.5 % of the dry feed, 0.1875 kg/h below the old 5 % rule), and the storage clamp. **Finding, not a fix:** on the real default the default five-cycle state empties the H2 tank (outflow 3.42 kg against 0.54 kg stored plus 2.33 kg inflow), so the lower clamp creates 0.5601 kg of H2 and the audit's verdict is "does not close"; the 20-cycle state is unaffected. Before P1-05(c) the old default also sat on the clamp (0.133 kg), so this is a property of the 5-cycle start-up state, not of the tail-gas change alone.
 - `test_plant_heat_integration.py`: the `runs` fixture gains an explicit `regasify` run next to `default` (real default) and `heat_only`. The fixture comparisons now map `regasify` to the pre-P1-06 `default|20` entries (the check that the regasify path is unchanged is therefore real, not the default path under another name), the mode-labelled assertions use the explicit mode, and the level-mismatch test is measured on `regasify` because under `heat_only` the counted flue gas lifts the matched heat to 47.6 kW (its "< 20 kW" claim is about `regasify`).
 
+### 3n. Task P1-06d: `test_disagreement_rows` on the real default (owner instruction, 2026-11-11)
+
+Third item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (a test, this record and a dated note in `docs/cross_module_disagreements.md`; no model code, no persisted number). The module no longer declares `LEGACY_REGASIFY_DEFAULT` (9 modules still do). Its three figure tests run for both modes: the real default (`heat_only`, new numbers) and an explicit `regasify` run that keeps the 2026-11-06 numbers unchanged. Measured on the real default, 30 cycles: syngas H2 24.79 vol% (27.45 on `regasify`), N2 39.24 (39.64), flow 78.79 Nm3/h (102.75), PSA feed H2 36.1 (38.1), hydrogen 55.7 kg/day (78.0), PSA recovery 77.0 % (78.8), EU-008 demand 39.98 kW (51.99), HB-003 hot / cold 5.73 / 8.45 kW (7.38 / 10.72), carbon black 1.688 kg/h (2.013). The G5-07 dispositions (defer all pending DOK-ING) are unchanged: every difference with the registry remains. The G5-07 file itself keeps its `regasify` figures as dated records and carries an update note with the `heat_only` ones.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -218,7 +222,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

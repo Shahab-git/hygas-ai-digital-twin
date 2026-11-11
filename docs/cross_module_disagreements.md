@@ -2,6 +2,8 @@
 
 Date: 2026-11-06. Figures measured on `origin/main` at `d8af8f3` (after P0-FB2 step 2). **This is a list of differences the repo measures; it changes no value.** Dispositions are in section 4.
 
+> **Update 2026-11-11 (P1-06 / P1-06d): the engine default is now `heat_only`.** The figures in this file were measured on `regasify` (the default until P1-06) and stay as dated records; nothing below was re-measured. The same rows on the real default, 30 cycles, pinned in `tests/test_disagreement_rows.py` next to the `regasify` ones: syngas H2 / CO / CO2 / CH4 / N2 24.79 / 22.06 / 12.11 / 1.80 / 39.24 vol% (row 1); flow 78.79 Nm3/h dry (3); PSA feed H2 36.1 vol% (4); hydrogen 55.7 kg/day (7); PSA recovery 77.0 % (8); EU-008 demand 39.98 kW (10); HB-003 hot / cold side 5.73 / 8.45 kW (11); GC-009 96.67 % (12, unchanged); carbon black derived 1.688 kg/h (13). Every disagreement with the registry remains (the nitrogen is still about four times the registry's 10 %); the dispositions of section 4 are unchanged, and row 9 (the tail-gas default) was decided by the owner in P1-06.
+
 ## How to read this
 
 - A "disagreement" is a place where two parts of the repo (model vs registry, model vs DOK-ING statement, module vs module) give different numbers for the same thing, and the repo already measures it.
