@@ -61,20 +61,22 @@ def test_summarise_uses_only_in_range_cases(study):
 
 
 def test_default_point_reproduces_the_engine_default_and_overrides_do_not_leak(study):
-    """Pins the starting point quoted in docs/tail_gas_heat.md (78.0 kg/day) and shows the study leaves the engine's defaults alone."""
+    """P1-06e (deliberate edit): the engine default is now tail_gas_mode "heat_only" (P1-06), so the study's default case is the heat_only one (55.7 kg/day) and the regasify case of
+    docs/tail_gas_heat.md (78.0 kg/day) is run explicitly. The study leaves the engine's defaults alone: a plain default run after the study cases is still the heat_only one."""
     r = study.documented_ranges()
-    default = {"mode": "regasify", "er": r["er"][1], "steam": r["steam"][1], "conv": r["conv"][1], "psa": None}
+    default = {"mode": "heat_only", "er": r["er"][1], "steam": r["steam"][1], "conv": r["conv"][1], "psa": None}
     fake = FakeSupabase()
     with patched_supabase(fake):
         via_study = study.run_case(default)
+        regasify = study.run_case(dict(default, mode="regasify"))
         shifted = study.run_case(dict(default, mode="heat_only", psa=0.75))
         plain = t1.build_live_snapshot(n_cycles=study.N_CONV)[0]
     assert fake.calls == []
     h2_plain = 24.0 * float(plain[("HB-012", "Compressor")]["value"]["h2_kg_h"])
     assert via_study["h2_kg_day"] == pytest.approx(h2_plain, rel=1e-12)
-    assert h2_plain == pytest.approx(78.0, abs=0.05)
+    assert h2_plain == pytest.approx(55.7, abs=0.05)
+    assert regasify["h2_kg_day"] == pytest.approx(78.0, abs=0.05) and regasify["h2_kg_day"] != pytest.approx(h2_plain, rel=1e-3)
     assert shifted["h2_kg_day"] == pytest.approx(54.3, abs=0.05) and shifted["levers_moved"] == 2
     assert shifted["psa_recovery_pct"] == pytest.approx(75.0, abs=1e-9)
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): reproduces the engine default of the study (regasify); tests/conftest.py restores the old default for this module

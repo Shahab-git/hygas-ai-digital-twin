@@ -187,6 +187,13 @@ Second item of the owner's "all work that does not wait for DOK-ING"; **read as 
 
 Third item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (a test, this record and a dated note in `docs/cross_module_disagreements.md`; no model code, no persisted number). The module no longer declares `LEGACY_REGASIFY_DEFAULT` (9 modules still do). Its three figure tests run for both modes: the real default (`heat_only`, new numbers) and an explicit `regasify` run that keeps the 2026-11-06 numbers unchanged. Measured on the real default, 30 cycles: syngas H2 24.79 vol% (27.45 on `regasify`), N2 39.24 (39.64), flow 78.79 Nm3/h (102.75), PSA feed H2 36.1 (38.1), hydrogen 55.7 kg/day (78.0), PSA recovery 77.0 % (78.8), EU-008 demand 39.98 kW (51.99), HB-003 hot / cold 5.73 / 8.45 kW (7.38 / 10.72), carbon black 1.688 kg/h (2.013). The G5-07 dispositions (defer all pending DOK-ING) are unchanged: every difference with the registry remains. The G5-07 file itself keeps its `regasify` figures as dated records and carries an update note with the `heat_only` ones.
 
+### 3o. Task P1-06e: `test_closure_scenarios` and `test_operating_point_study` on the real default (owner instruction, 2026-11-11)
+
+Fourth item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (two tests and this record; no model code, no persisted number, the committed baseline `docs/balance_audit_baseline.json` is untouched). The two modules no longer declare `LEGACY_REGASIFY_DEFAULT` (7 modules still do). No test function was removed or renamed; one parametrisation case was added.
+
+- `test_closure_scenarios.py`: the module's "S0 current" case is now the real default (`| heat_only`), compared with the committed baseline entry of that name (the baseline already holds all 30 cases in both modes, so the drift test now checks the real default against it); the `regasify` S0 case is built explicitly and checked against its own baseline entry as before. The "every persisted entry equals the pre-change fixture" test runs three cases: explicit `regasify` against the fixture's `default|20` entries (the check that the regasify path is unchanged is real), explicit `heat_only`, and the real default against `heat_only|20`.
+- `test_operating_point_study.py`: the starting point of `test_default_point_reproduces_the_engine_default_and_overrides_do_not_leak` is now `heat_only` (55.7 kg/day, the engine default); the 78.0 kg/day `regasify` case of `docs/tail_gas_heat.md` is run explicitly and still pinned; the "overrides do not leak" check is unchanged in kind (a plain default run after the study cases is still the default one).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -222,7 +229,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
