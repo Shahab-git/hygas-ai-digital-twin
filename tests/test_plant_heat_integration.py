@@ -82,7 +82,8 @@ def fake():
 def runs(fake):
     out = {}
     with patched_supabase(fake):
-        out["default"] = t1.build_live_snapshot(N)[0]
+        out["default"] = t1.build_live_snapshot(N)[0]                      # P1-06c: the REAL default, heat_only since P1-06
+        out["regasify"] = t1.build_live_snapshot(N, overrides={("GA-001-INPUT", "tail_gas_mode"): _const("regasify")})[0]   # the mode before P1-06, explicit
         out["heat_only"] = t1.build_live_snapshot(N, overrides={("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")})[0]
     return out
 
@@ -178,7 +179,7 @@ def test_the_energy_sums_close_in_every_case(runs, mode):
 
 
 def test_the_tail_gas_is_counted_once_and_only_in_heat_only(runs):
-    for mode, counted in (("default", False), ("heat_only", True)):
+    for mode, counted in (("regasify", False), ("heat_only", True), ("default", True)):         # P1-06c: "default" is the real default, heat_only
         v = runs[mode][("PLANT", "HeatIntegration")]["value"]
         chem = next(s for s in v["sources"] if s["name"].startswith("PSA tail-gas"))
         fl = next(s for s in v["sources"] if s["name"].startswith("flue gas"))
@@ -204,11 +205,11 @@ def test_missing_terms_are_listed_and_a_missing_source_is_none_not_zero(runs):
 
 # ------------------------------------------------------------------ (d) both modes, recomputed identically
 
-@pytest.mark.parametrize("mode", ["default", "heat_only"])
+@pytest.mark.parametrize("mode", ["regasify", "heat_only"])
 def test_the_key_is_published_in_both_modes_and_recomputes_identically(runs, mode):
     snap = runs[mode]
     e = snap[("PLANT", "HeatIntegration")]
-    assert e["status"] == ps.STATUS_CALCULATED and e["value"]["tail_gas_mode"] == ("regasify" if mode == "default" else "heat_only")
+    assert e["status"] == ps.STATUS_CALCULATED and e["value"]["tail_gas_mode"] == mode
     again = phi._native(phi.compute(getter(snap)))
     stored = json.loads(json.dumps(e["value"], sort_keys=True, default=str))
     fresh = json.loads(json.dumps(again, sort_keys=True, default=str))
@@ -262,7 +263,7 @@ def test_nothing_reads_the_key_and_no_model_depends_on_it():
 
 # ------------------------------------------------------------------ (f) nothing else moved, (g) the key count rises by exactly one
 
-@pytest.mark.parametrize("label,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
+@pytest.mark.parametrize("label,fixture_key", [("regasify", "default|20"), ("heat_only", "heat_only|20")])     # P1-06c: the fixture's "default" runs are the pre-P1-06 regasify default
 def test_every_entry_of_origin_main_is_unchanged_in_both_modes(runs, main_snap, label, fixture_key):
     new = _ser(runs[label])
     # LEDGER D2 / WORDING W1 (deliberate edit): notes were reworded after this fixture was made. forward() applies the old -> new pairs of tests/_d2_wording.py to the FIXTURE, so the live
@@ -274,7 +275,7 @@ def test_every_entry_of_origin_main_is_unchanged_in_both_modes(runs, main_snap, 
     assert {k: v for k, v in bad.items() if v is not True} == {}, "a gas-side, energy-key, carbon or hydrogen entry moved"
 
 
-@pytest.mark.parametrize("label,fixture_key", [("default", "default|20"), ("heat_only", "heat_only|20")])
+@pytest.mark.parametrize("label,fixture_key", [("regasify", "default|20"), ("heat_only", "heat_only|20"), ("default", "heat_only|20")])
 def test_the_persisted_key_count_rises_by_exactly_one_and_none_is_lost(runs, main_snap, label, fixture_key):
     new = {f"{k[0]}|{k[1]}" for k in runs[label]}
     old = set(main_snap[fixture_key])
@@ -295,6 +296,8 @@ def test_the_runtimes_shrink_guard_accepts_the_new_set(main_snap, runs):
 # ------------------------------------------------------------------ (h) a source below the need's level is a mismatch, not counted
 
 def test_heat_below_the_needs_level_is_reported_as_a_mismatch_and_not_counted(runs):
+    # P1-06c: measured on "regasify" (the flue gas is not counted there). Under heat_only the counted flue gas lifts the matched heat to 47.6 kW, so the "< 20 kW" claim is about regasify.
+    runs = {"default": runs["regasify"]}
     """A gasifier at 120 degC with 20 times the gas flow: 56 kW of gas heat is released between 65 and 120 degC. It can serve only the needs at 100 degC and below (the low end of
     the liquid-heating bands, part of the air preheat and the reheat, the dryer), about 14 kW; it cannot serve evaporation at 159 degC, superheat or the 350 degC reheat.
     The rest EXISTS (it is recovered) but is neither matched nor counted: it is the level mismatch, and it is named."""
@@ -358,4 +361,3 @@ def test_this_tasks_commits_touch_the_engine_only_at_the_registration_line():
                                       "from . import plant_heat_integration", "plant_heat_integration.register(engine)"], (added, removed)
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): heat-integration tests assume a recycle exists in the default mode; tests/conftest.py restores the old default for this module
