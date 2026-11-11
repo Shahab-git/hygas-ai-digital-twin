@@ -38,7 +38,8 @@ FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_701de71.
 BASELINE = os.path.join(ROOT, "docs", "balance_audit_baseline.json")
 N = 30
 CASE_S2 = "S2 oxygen-blown + steam 0.4 (same O2 as S0) | regasify"
-CASE_S0 = "S0 current: air ER 0.25 + steam 0.4 | regasify"
+CASE_S0 = "S0 current: air ER 0.25 + steam 0.4 | heat_only"                 # P1-06e: the REAL default (heat_only since P1-06)
+CASE_S0_REGASIFY = "S0 current: air ER 0.25 + steam 0.4 | regasify"          # the mode before P1-06, built explicitly
 
 
 def _script():
@@ -65,12 +66,14 @@ def specs(rba):
 
 @pytest.fixture(scope="module")
 def live(rba, specs, fake):
-    """The default snapshot (= case S0 | regasify, audited with the scenario machinery too) and the executed case S2 | regasify (30 cycles). Not the 30 cases: those are the committed
-    baseline, compared in the drift test."""
+    """The default snapshot (= case S0 | heat_only since P1-06, audited with the scenario machinery too), the same case with the tail-gas recycle explicitly ON (S0 | regasify) and
+    the executed case S2 | regasify (30 cycles). Not the 30 cases: those are the committed baseline, compared in the drift test."""
     chosen = [s for s in specs if s["name"] == CASE_S2]
     with patched_supabase(fake):
         snap, prev = t1.build_live_snapshot(N)[0], t1.build_live_snapshot(N - 1)[0]
-    return {"snap": snap, "prev": prev, "audit": ba.audit_snapshot(snap, prev, t1.compute_tab1_kpis(snap)), "res": rba.run_scenarios(chosen, states=(N,)),
+        ov = {("GA-001-INPUT", "tail_gas_mode"): _const("regasify")}
+        snap_r, prev_r = t1.build_live_snapshot(N, overrides=ov)[0], t1.build_live_snapshot(N - 1, overrides=ov)[0]
+    return {"s0_regasify": bs.audit_case(snap_r, prev_r, None, "air", None, None), "snap": snap, "prev": prev, "audit": ba.audit_snapshot(snap, prev, t1.compute_tab1_kpis(snap)), "res": rba.run_scenarios(chosen, states=(N,)),
             "s0": bs.audit_case(snap, prev, None, "air", None, None)}
 
 
@@ -129,7 +132,7 @@ def test_the_committed_baseline_has_all_thirty_cases_in_both_states_and_none_is_
 # ------------------------------------------------------------------ (4) baseline
 
 def test_the_scenario_baseline_matches_a_fresh_run(live, baseline):
-    for name, case in ((CASE_S2, live["res"][CASE_S2][N]), (CASE_S0, live["s0"])):
+    for name, case in ((CASE_S2, live["res"][CASE_S2][N]), (CASE_S0, live["s0"]), (CASE_S0_REGASIFY, live["s0_regasify"])):
         fresh = bs.baseline_entry(case)
         assert bs.drift(baseline["scenario_cases"]["cases"][name]["30"], json.loads(json.dumps(fresh))) == [], name
 
@@ -314,12 +317,12 @@ def _ser(snapshot):
     return {f"{k[0]}|{k[1]}": json.loads(json.dumps(v, sort_keys=True, default=str)) for k, v in snapshot.items()}
 
 
-@pytest.mark.parametrize("mode,key", [("default", "default|20"), ("heat_only", "heat_only|20")])
+@pytest.mark.parametrize("mode,key", [("regasify", "default|20"), ("heat_only", "heat_only|20"), ("default", "heat_only|20")])      # P1-06e: the fixture's "default" runs are the pre-P1-06 regasify default
 def test_every_persisted_entry_equals_origin_main_in_both_tail_gas_modes_and_the_key_count_is_unchanged(fake, mode, key):
     with gzip.open(FIXTURE, "rb") as fh:
         old = json.loads(fh.read().decode("utf-8"))[key]
     with patched_supabase(fake):
-        snap = t1.build_live_snapshot(20, overrides=None if mode == "default" else {("GA-001-INPUT", "tail_gas_mode"): _const("heat_only")})[0]
+        snap = t1.build_live_snapshot(20, overrides=None if mode == "default" else {("GA-001-INPUT", "tail_gas_mode"): _const(mode)})[0]
     new = _undo(_ser(snap))
     assert set(new) - {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency", "HB-003|DutyEstimate"} == set(old) and len(new) == 124          # A1 (deliberate edit): +1 = the switch input (GA-001-INPUT, gasifying_agent); A1.3 adds (GA-001, AgentConsistency): 123 in all; every OLD entry is still compared below
     bad = {k: _same(old[k], new[k]) for k in old if k != "GA-001-INPUT|tail_gas_mode" and k not in INTENTIONAL}
@@ -330,4 +333,3 @@ def test_no_database_or_network_call_was_made(fake):
     assert [c for c in fake.calls if c[0] != "select"] == []
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): the committed scenario baseline was generated on regasify; tests/conftest.py restores the old default for this module
