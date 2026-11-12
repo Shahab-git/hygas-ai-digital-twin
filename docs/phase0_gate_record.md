@@ -217,6 +217,10 @@ Seventh and last conversion item of "all work that does not wait for DOK-ING"; *
 - The two "a live agent equals its study scenario" tests (species moles and downstream chain; gasifier duty, heat demands and efficiencies) compared the live agents on the default mode with the study's `regasify` scenarios. They now run for both modes: live agents on the real default against the study's `heat_only` scenarios, and live agents with `regasify` set explicitly against the study's `regasify` scenarios (the original comparison, kept). All 24 cases agree, so the live agent switch equals the offline study in both tail-gas modes.
 - Also in this series (section 3q's PR, second commit): `test_plant_heat_integration.py::test_nothing_reads_the_key_and_no_model_depends_on_it` compared an `os.walk` listing in walk order. Earlier records in this file and the PR descriptions called its failure "container-only"; it failed in CI on PR #63 on both Python versions (same three files, another order) and was a file-system-order dependency in the test. It now compares the listing sorted.
 
+### 3s. G5-05 sweep of `app.py` (owner instruction, 2026-11-11; done 2026-11-12)
+
+Last item of "all work that does not wait for DOK-ING"; **read as authorising this sweep only** (comments and two docstrings of `app.py`, and three docs; no logic, no displayed string, no persisted number). Every "confirmed" mention in `app.py` was read: 126 inside strings and 46 in comments. Result: no user-visible string calls a registry value Confirmed (that was done in `docs/provenance_phase2.md` section 10; `CLAUDE.md` still said otherwise and is corrected). 30 comment and docstring lines that called registry values "Confirmed" now say "registry-stated". Proof of text-only: the syntax tree of `app.py` with every string neutralised is identical before and after, and exactly two string constants (docstrings of `_svg_gauge` and `_fe_inline_bar_svg`) changed. Left on purpose: the persisted FE-003 key `confirmed_wet_feed_kg_h` (a rename changes the snapshot and needs its own decision), the engine modules' string-literal mentions (pinned in `tests/test_design_basis_ledger.py`) and the docs sweep.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -252,7 +256,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
