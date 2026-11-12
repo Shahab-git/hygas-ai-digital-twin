@@ -182,3 +182,60 @@ def stream_enthalpies(snapshot, previous_snapshot, lhv_mj_kg):
     return {"lhv_mj_kg": lhv_mj_kg, "t_gas_c": t_gas, "in": ins, "out": outs, "missing_terms": ["tar (GA-001 tar Missing)", "heat loss through the refractory and shell (no loss model)", "feed and recycle sensible heat (temperatures not stated)"],
             "totals": {"in": {k: tot(ins, k) for k in ("formation_kw", "sensible_kw", "total_kw")}, "out": {k: tot(outs, k) for k in ("formation_kw", "sensible_kw", "total_kw")}},
             "status": "Calculated, read-only, not part of the engine; NOT validation against DOK-ING data"}
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# A4.3: the residual of the enthalpy balance at the imposed temperature, reconciled with the existing implied heat duty (READ-ONLY)
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# residual Q = H_out - H_in (kW) from the A4.2 stream table: the heat the gasifier would have to ADD (+) or REMOVE (-) to leave at its imposed temperature. GA-001 itself computes no heat duty, so this is
+# a diagnostic of the balance built from Assumed and Estimated inputs: NOT a plant prediction, NOT validation against DOK-ING data. Tar, shell/refractory loss and feed/recycle sensible heat are Missing and are
+# NOT in it (they are listed, never zero).
+# RECONCILIATION with balance_audit.gasifier_energy (the number published as (GA-001, EnergyBalance).implied_gasifier_heat_duty_kw): the two routes use the SAME formation data, so the FORMATION parts agree exactly
+# (the A4.2 test proves it). They differ only in how the SENSIBLE parts are built, and that difference splits exactly into four terms, one per stream whose sensible heat the routes compute differently:
+#     Q_nasa - Q_audit = d_gas + d_graphite - d_oxidant - d_steam
+#   d_gas      = product-gas sensible heat, NASA-9 minus the audit's constant mean cp (300-1200 K, applied from 25 degC)
+#   d_graphite = carbon not in the gas, NASA-9 graphite minus the audit's Assumed solids cp (1.0 kJ/kg.K)
+#   d_oxidant  = air (or oxidant) sensible heat at the GA-004 preheat temperature, NASA-9 minus the audit's mean cp
+#   d_steam    = gasifier steam sensible heat at the GA-004 steam temperature, NASA-9 minus the audit's mean cp
+# The ash, the moisture, the feed and the recycle are computed the same way in both (ash: the same Assumed cp; the others are 0 sensible). The identity is exact to round-off, so nothing is left unexplained.
+def enthalpy_residual(snapshot, previous_snapshot, lhv_mj_kg):
+    """{'residual_kw', 'formation_kw', 'sensible_kw', 'audit_implied_duty_kw', 'difference_kw', 'difference_terms': {...}, 'difference_unexplained_kw', 'residual_pct_of_feed_chemical_energy', 'reading',
+    'streams': stream_enthalpies(...), 'missing_terms', 'status'} for one published snapshot and one LHV case. READ-ONLY."""
+    from . import balance_audit as ba
+    from . import ga001_gasifier_model as ga001
+    st = stream_enthalpies(snapshot, previous_snapshot, lhv_mj_kg)
+    audit = ba.gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg)
+    ga = ba.ga001_terms(snapshot, previous_snapshot)
+    by = {t["name"]: t for t in ga["terms"]}
+    gas = by["product gas (wet)"]["species"]
+    t_gas = st["t_gas_c"]
+    f = ga["inputs"]["dry_feed_rate_kg_h"]
+    c_solid = ga["feed_atoms"]["C"] + ga["recycle_atoms"]["C"] - (gas["CO"] + gas["CO2"] + gas["CH4"])
+    kg_c = c_solid * ba.ATOMIC_MASS["C"] / 1000.0
+    cp_s = ba.SOLIDS_CP_KJ_KGK[0]
+    rows_in = {r["name"]: r for r in st["in"]}
+    rows_out = {r["name"]: r for r in st["out"]}
+    d_gas = rows_out["product gas (wet) at the operating temperature"]["sensible_kw"] - ba._sens_kw(gas, t_gas)
+    d_graphite = rows_out["carbon not in the gas (graphite)"]["sensible_kw"] - kg_c * cp_s * (t_gas - ba.T_REF_C) * _KW_PER_KJ_H
+    ox_name = [n for n in rows_in if n.startswith(("air O2", "oxidant O2"))][0]
+    d_ox = rows_in[ox_name]["sensible_kw"] - ba._sens_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, ba.GA004_AIR_PREHEAT_C)
+    d_steam = rows_in["gasifier steam (350 degC vapour)"]["sensible_kw"] - ba._sens_kw({"H2O": by["gasifier steam"]["species"]["H2O"]}, ba.GA004_STEAM_C)
+    q = st["totals"]["out"]["total_kw"] - st["totals"]["in"]["total_kw"]
+    q_audit = audit["implied_heat_duty_kw"]
+    diff = q - q_audit
+    explained = d_gas + d_graphite - d_ox - d_steam
+    feed_chem = f * lhv_mj_kg / 3.6
+    return {"lhv_mj_kg": lhv_mj_kg, "t_gas_c": t_gas, "residual_kw": q,
+            "formation_kw": st["totals"]["out"]["formation_kw"] - st["totals"]["in"]["formation_kw"], "sensible_kw": st["totals"]["out"]["sensible_kw"] - st["totals"]["in"]["sensible_kw"],
+            "audit_implied_duty_kw": q_audit, "difference_kw": diff,
+            "difference_terms": {"d_gas_kw": d_gas, "d_graphite_kw": d_graphite, "d_oxidant_kw": d_ox, "d_steam_kw": d_steam}, "difference_unexplained_kw": diff - explained,
+            "residual_pct_of_feed_chemical_energy": 100.0 * q / feed_chem,
+            "reading": "the gasifier would need to ADD heat" if q > 0 else "the gasifier would have to REMOVE heat",
+            "streams": st, "missing_terms": st["missing_terms"],
+            "status": "Calculated, read-only, not part of the engine; NOT validation against DOK-ING data"}
+
+
+def enthalpy_residual_cases(snapshot, previous_snapshot):
+    """enthalpy_residual at every LHV case of balance_audit.lhv_cases() (DOK-ING's 15 and 20 MJ/kg, the 17.5 midpoint and the model composition's correlation estimate)."""
+    from . import balance_audit as ba
+    return {name: enthalpy_residual(snapshot, previous_snapshot, lhv) for name, lhv in ba.lhv_cases().items()}
