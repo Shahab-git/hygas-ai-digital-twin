@@ -89,7 +89,7 @@ def study():
 
 @pytest.fixture(scope="module")
 def live(fake):
-    """{agent: snapshot} of the LIVE engine with the agent switch, N cycles, tail_gas_mode default."""
+    """{agent: snapshot} of the LIVE engine with the agent switch, N cycles, tail_gas_mode default (the real default, heat_only since P1-06; this module no longer restores regasify)."""
     cycle_clock.set_elapsed_hours(None)
     with patched_supabase(fake):
         return {a: t1.build_live_snapshot(N, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in ga001.GASIFYING_AGENT_NAMES}
@@ -100,7 +100,24 @@ def runs(study, fake):
     cycle_clock.set_elapsed_hours(None)
     sc = {s["id"]: s for s in study.SCENARIOS}
     with patched_supabase(fake):
-        return {agent: study.run_scenario(sc[sid], "regasify", with_closure=False) for agent, sid in AGENT_TO_STUDY.items()}
+        # P1-06h: the study scenarios in BOTH tail-gas modes; the live agents on the real default (heat_only since P1-06) are compared with the heat_only ones,
+        # and the live agents with regasify set explicitly (live_regasify) with the regasify ones (the original comparison)
+        return {mode: {agent: study.run_scenario(sc[sid], mode, with_closure=False) for agent, sid in AGENT_TO_STUDY.items()} for mode in ("heat_only", "regasify")}
+
+
+REGASIFY = {("GA-001-INPUT", "tail_gas_mode"): _const("regasify")}
+
+
+def _agents(n, extra):
+    cycle_clock.set_elapsed_hours(None)
+    return {a: t1.build_live_snapshot(n, overrides={**extra, **({} if a == "air" else {KEY: _const(a)})} or None)[0] for a in ga001.GASIFYING_AGENT_NAMES}
+
+
+@pytest.fixture(scope="module")
+def by_mode(fake, live):
+    """{mode: ({agent: snapshot at N}, {agent: snapshot at N - 1})}: "heat_only" is the module's real-default `live`; "regasify" is set explicitly."""
+    with patched_supabase(fake):
+        return {"heat_only": (live, _agents(N - 1, {})), "regasify": (_agents(N, REGASIFY), _agents(N - 1, REGASIFY))}
 
 
 # ---------------------------------------------------------------- the table: Assumed, Missing, no S3
@@ -195,9 +212,10 @@ def test_the_solver_with_the_explicit_air_ratio_equals_the_default_path_bit_for_
 
 # ---------------------------------------------------------------- 2: each live agent equals its study scenario
 
+@pytest.mark.parametrize("mode", ["heat_only", "regasify"])
 @pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
-def test_a_live_agent_equals_the_study_scenario_in_species_moles_and_the_downstream_chain(agent, live, runs):
-    r, snap = runs[agent], live[agent]
+def test_a_live_agent_equals_the_study_scenario_in_species_moles_and_the_downstream_chain(agent, mode, by_mode, runs):
+    r, snap = runs[mode][agent], by_mode[mode][0][agent]
     assert "error" not in r, r
     g = snap[("GA-001", "Outputs")]["value"]
     moles = {s: g["dry_flow_nm3_h"] * g[f"{s}_mol_pct_dry"] / 100.0 for s in ("H2", "CO", "CO2", "CH4", "N2")}
@@ -304,16 +322,17 @@ def test_the_default_audit_is_unlabelled_and_a_non_default_audit_names_its_agent
 
 # ---------------------------------------------------------------- test 2 (energy part): the live numbers equal the study's
 
+@pytest.mark.parametrize("mode", ["heat_only", "regasify"])
 @pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
-def test_a_live_agent_equals_the_study_scenario_in_the_gasifier_duty_the_heat_demands_and_the_efficiencies(agent, live, live_prev, runs):
-    snap, prev = live[agent], live_prev[agent]
+def test_a_live_agent_equals_the_study_scenario_in_the_gasifier_duty_the_heat_demands_and_the_efficiencies(agent, mode, by_mode, runs):
+    snap, prev = by_mode[mode][0][agent], by_mode[mode][1][agent]
     d = ba.ga001_terms(snap, prev)
     n_gs = d["terms"][4]["species"]["H2O"]
     hb005 = snap[("HB-005", "Steam")]["value"]["steam_kg_h"]
     evap = snap[("FE-005", "MoistureBalance")]["value"]["water_evaporated_kg_h"]
     demands = ba.heat_demands(n_gs, hb005, d["air_o2_mol_h"], d["air_n2_mol_h"], evap, d["agent"])
     for lhv in LHV_CASES:
-        s = runs[agent]["energy"][lhv]
+        s = runs[mode][agent]["energy"][lhv]
         g = ba.gasifier_energy(snap, prev, lhv)
         live_vals = {"duty": g["implied_heat_duty_kw"], "demand": sum(x["kw"] for x in demands), "steam_kw": demands[0]["kw"] + demands[1]["kw"], "air_kw": demands[2]["kw"], "dry_kw": demands[3]["kw"],
                      "cge_incl_recycle": g["cold_gas_efficiency_incl_recycle"], "cge_net": g["cold_gas_efficiency_net_of_recycle"], "feed_kw": g["in"][0]["kw"], "gas_chem_kw": g["out"][0]["kw"]}
@@ -532,4 +551,3 @@ def test_no_engine_gate_maturity_or_ai_module_names_the_entry():
     assert names == ["python/ga001_gasifier_model.py"], names                  # the model that publishes it; the readiness gate, maturity, AI and engine modules never mention it
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): agent scenarios are compared with the regasify default of the study; tests/conftest.py restores the old default for this module

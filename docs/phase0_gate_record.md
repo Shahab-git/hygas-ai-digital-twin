@@ -210,6 +210,13 @@ Sixth item of "all work that does not wait for DOK-ING"; **read as authorising t
 - `test_p1_05b_water_molar_mass.py` and `test_p1_05c_feed_basis.py`: their runs labelled "default" are compared with pre-change fixtures whose "default" entries are the `regasify` default of that time. The label now selects `regasify` explicitly through the engine override (one line each); pins, moved-entry counts and tolerances are unchanged. Their `heat_only` runs already covered the mode that is now the real default.
 - `test_feed_basis.py`: the module's snapshots are the real default. The derived-carbon-black recomputation runs for both modes (`heat_only`: no recycle term; `regasify`: the original case). The three-carbon-black known-limitation test is kept on explicit `regasify` (5 % rule on the live feed < derived < 5 % rule on 41.67) and a new test pins the real default, where the ordering differs: derived (exactly 4.5 % of the dry feed, 1.688 kg/h) < 1.875 < 2.0835.
 
+### 3r. Task P1-06h: `test_gasifying_agent` on the real default; the legacy-default fixture is removed (owner instruction, 2026-11-11)
+
+Seventh and last conversion item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (one test module, `tests/conftest.py` and this record; no model code, no script, no fixture, no persisted number). `test_gasifying_agent` no longer declares `LEGACY_REGASIFY_DEFAULT`, no module declares it, and the autouse fixture of `tests/conftest.py` that restored the old default is deleted: **the blind spot of section 3j is closed; the whole suite runs on the real default (`heat_only`)**, and tests about the recycle select `regasify` explicitly. No test function is removed or renamed (35 before and after); the module goes from 109 to 121 test cases.
+
+- The two "a live agent equals its study scenario" tests (species moles and downstream chain; gasifier duty, heat demands and efficiencies) compared the live agents on the default mode with the study's `regasify` scenarios. They now run for both modes: live agents on the real default against the study's `heat_only` scenarios, and live agents with `regasify` set explicitly against the study's `regasify` scenarios (the original comparison, kept). All 24 cases agree, so the live agent switch equals the offline study in both tail-gas modes.
+- Also in this series (section 3q's PR, second commit): `test_plant_heat_integration.py::test_nothing_reads_the_key_and_no_model_depends_on_it` compared an `os.walk` listing in walk order. Earlier records in this file and the PR descriptions called its failure "container-only"; it failed in CI on PR #63 on both Python versions (same three files, another order) and was a file-system-order dependency in the test. It now compares the listing sorted.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -245,7 +252,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
