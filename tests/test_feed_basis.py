@@ -49,8 +49,20 @@ def snaps():
 
 
 @pytest.fixture(scope="module")
+def snaps_regasify():
+    """P1-06g: the same runs with the tail-gas recycle explicitly ON (the default before P1-06); `snaps` is the real default, "heat_only"."""
+    from test_tail_gas_mode import _mode
+    cycle_clock.set_elapsed_hours(None)
+    out = {}
+    with patched_supabase(FakeSupabase()):
+        for n in (N - 1, N):
+            out[n] = t1.build_live_snapshot(n_cycles=n, overrides=_mode("regasify"))[0]
+    return out
+
+
+@pytest.fixture(scope="module")
 def real_snap():
-    """P1-06 (deliberate edit): the STATIC carbon black (circularity, fills) is pinned on the real default, tail_gas_mode "heat_only"; the module's `snaps` run on the restored old default."""
+    """P1-06 (deliberate edit): the STATIC carbon black (circularity, fills) is pinned on tail_gas_mode "heat_only", set explicitly (since P1-06g the module's `snaps` are also the real default)."""
     from test_tail_gas_mode import _mode
     cycle_clock.set_elapsed_hours(None)
     with patched_supabase(FakeSupabase()):
@@ -103,16 +115,19 @@ def test_ga001_carbon_atoms_come_from_the_dry_ash_free_feed_not_the_dry_feed_wit
     assert c_kg_h != pytest.approx(feed * comp["C"], rel=0.05)
 
 
-def test_the_derived_carbon_black_is_the_unconverted_carbon_recomputed_independently(snaps):
-    """(1 - conversion) x (feed carbon + recycled CO/CH4 carbon) x split, from the composition and the previous cycle's HB-009 tail gas."""
-    snap, prev = snaps[N], snaps[N - 1]
+@pytest.mark.parametrize("mode", ["heat_only", "regasify"])
+def test_the_derived_carbon_black_is_the_unconverted_carbon_recomputed_independently(snaps, snaps_regasify, mode):
+    """(1 - conversion) x (feed carbon + recycled CO/CH4 carbon) x split, from the composition and the previous cycle's HB-009 tail gas. P1-06g: run for the real default
+    (heat_only: nothing is recycled, so the recycle term is zero) and, explicitly, for regasify (the original case)."""
+    src = snaps if mode == "heat_only" else snaps_regasify
+    snap, prev = src[N], src[N - 1]
     feed = float(_val(snap, ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     comp = _val(snap, ("GA-001-INPUT", "feedstock_composition"))
     conv = float(_val(snap, ("GA-001-INPUT", "carbon_conversion_efficiency")))
     feed_c = feed * (1.0 - ga001.ASH_FRACTION) * comp["C"]
-    assert _val(snap, ("GA-001", "Outputs"))["recycle_active"] is True
+    assert _val(snap, ("GA-001", "Outputs"))["recycle_active"] is (mode == "regasify")
     tail = _val(prev, ("HB-009", "TailGas"))["species_nm3_h"]
-    rec_c = (float(tail["CO"]) + float(tail["CH4"])) / ga001.NM3_PER_MOL * ga001.M_C / 1000.0
+    rec_c = (float(tail["CO"]) + float(tail["CH4"])) / ga001.NM3_PER_MOL * ga001.M_C / 1000.0 if mode == "regasify" else 0.0
     expected = (1.0 - conv) * (feed_c + rec_c) * ga001.CARBON_BLACK_SPLIT_DEFAULT
     got = _val(snap, ("GA-001", "CarbonAccounting"))["carbon_black_kg_h"]
     assert got == pytest.approx(expected, rel=1e-9)
@@ -210,7 +225,20 @@ def test_the_static_default_ash_and_carbon_black_rule_are_on_the_live_dry_feed(s
     assert static == pytest.approx(live, rel=1e-12)
 
 
-def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps):
+def test_known_limitation_three_different_carbon_black_numbers_coexist_on_the_real_default(snaps):
+    """P1-06g: on the real default (heat_only) nothing is recycled, so the derived value is exactly 4.5 % of the dry feed and sits BELOW both 5 % rules (the ordering differs from regasify)."""
+    live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
+    rule_static = gmb.CARBON_BLACK_FRACTION * AS_RECEIVED
+    rule_live = gmb.CARBON_BLACK_FRACTION * live_feed
+    derived = _val(snaps[N], ("GA-001", "CarbonAccounting"))["carbon_black_kg_h"]
+    assert rule_static == pytest.approx(2.0835, abs=1e-9) and rule_live == pytest.approx(1.87515, abs=1e-9)
+    assert derived == pytest.approx(0.045 * live_feed, rel=1e-9) and derived < rule_live < rule_static, FIX
+    cross = _val(snaps[N], ("GA-001", "CarbonAccounting"))["datasheet_cross_check"]
+    assert cross["datasheet_rule_kg_h"] == pytest.approx(rule_live, rel=1e-12)
+
+
+def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps_regasify):
+    snaps = snaps_regasify                                                      # P1-06g: the original case, regasify explicitly
     """KNOWN LIMITATION: 5 % rule on 41.67 (2.0835), 5 % rule on the live dry feed (1.87515) and the carbon-balance value are not one quantity.
     Only the ordering and the definitions are characterized, not a preferred value."""
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
@@ -223,4 +251,3 @@ def test_known_limitation_three_different_carbon_black_numbers_coexist(snaps):
     assert cross["datasheet_rule_kg_h"] == pytest.approx(rule_live, rel=1e-12)             # the engine's own cross-check uses the live feed, not 41.67
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): the three-carbon-black known-limitation tests are written on regasify; tests/conftest.py restores the old default for this module

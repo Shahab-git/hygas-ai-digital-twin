@@ -203,6 +203,13 @@ Fifth item of "all work that does not wait for DOK-ING"; **read as authorising t
 - `test_p1_05a_h2_lhv.py`: its snapshot is built with `regasify` explicitly, because it is compared with the 701de71 fixture's `default|20` entries; the pins are unchanged.
 - `test_lohc_split_scenarios.py`: the 78.0 kg/day `regasify` hydrogen is pinned as before and the 55.7 kg/day `heat_only` one is added.
 
+### 3q. Task P1-06g: `test_p1_05b_water_molar_mass`, `test_p1_05c_feed_basis` and `test_feed_basis` on the real default (owner instruction, 2026-11-11)
+
+Sixth item of "all work that does not wait for DOK-ING"; **read as authorising this conversion only** (three tests and this record; no model code, no script, no persisted number, no fixture). The three modules no longer declare `LEGACY_REGASIFY_DEFAULT`; **one module still does: `test_gasifying_agent`**. No test function is removed or renamed; one is added and one is parametrised (36 to 38 test cases).
+
+- `test_p1_05b_water_molar_mass.py` and `test_p1_05c_feed_basis.py`: their runs labelled "default" are compared with pre-change fixtures whose "default" entries are the `regasify` default of that time. The label now selects `regasify` explicitly through the engine override (one line each); pins, moved-entry counts and tolerances are unchanged. Their `heat_only` runs already covered the mode that is now the real default.
+- `test_feed_basis.py`: the module's snapshots are the real default. The derived-carbon-black recomputation runs for both modes (`heat_only`: no recycle term; `regasify`: the original case). The three-carbon-black known-limitation test is kept on explicit `regasify` (5 % rule on the live feed < derived < 5 % rule on 41.67) and a new test pins the real default, where the ordering differs: derived (exactly 4.5 % of the dry feed, 1.688 kg/h) < 1.875 < 2.0835.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -238,7 +245,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
