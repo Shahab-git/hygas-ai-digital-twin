@@ -79,7 +79,7 @@ def _differs(a, b):
 def _run(name):
     mode, n = name.split("|")
     with patched_supabase(FakeSupabase()):
-        return _ser(t1.build_live_snapshot(n_cycles=int(n), overrides=None if mode == "default" else _mode(mode))[0])
+        return _ser(t1.build_live_snapshot(n_cycles=int(n), overrides=_mode("regasify" if mode == "default" else mode))[0])      # P1-06g: the fixture's "default" runs are the regasify default of that time, so "default" here is regasify, explicitly
 
 
 @pytest.fixture(scope="module")
@@ -154,4 +154,3 @@ def test_cycle_one_now_feeds_the_dry_solids_and_the_dry_flow_drops_ten_percent(n
     assert new / old == pytest.approx(37.503 / 41.67, rel=2e-2) and new < old
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): compares against the pre-flip fixture whose 'default' runs are regasify; tests/conftest.py restores the old default for this module

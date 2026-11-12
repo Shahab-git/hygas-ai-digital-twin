@@ -128,7 +128,7 @@ def _ser(snap):
 
 def _run(mode):
     with patched_supabase(FakeSupabase()):
-        return _ser(t1.build_live_snapshot(n_cycles=20, overrides=None if mode == "default" else _mode(mode))[0])
+        return _ser(t1.build_live_snapshot(n_cycles=20, overrides=_mode("regasify" if mode == "default" else mode))[0])      # P1-06g: the fixture's "default" runs are the regasify default of that time, so "default" here is regasify, explicitly
 
 
 @pytest.fixture(scope="module")
@@ -235,4 +235,3 @@ def test_hb005_steam_moves_by_about_the_molar_mass_ratio(runs):
     assert 1.00005 < b / a < 1.00007
 
 
-LEGACY_REGASIFY_DEFAULT = True      # P1-06b: not yet exercised on the real default (heat_only): compares against the pre-change fixture whose 'default' runs are regasify; tests/conftest.py restores the old default for this module
