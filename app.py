@@ -2218,7 +2218,7 @@ def _render_fe_data_type_legend():
 
 def _svg_gauge(value_frac, value_text, label, sublabel="", target_frac=None, color="#1D4ED8"):
     """A real semicircular gauge -- ONLY ever called with a value_frac that is
-    a genuine live model output divided by a genuine, already-Confirmed
+    a genuine live model output divided by a genuine, registry-stated
     bound from this project's own data (never an invented range). `value_frac`
     and `target_frac` are both in [0, 1]; values outside that (a real,
     possible over-range condition) are visually clamped to the gauge's own
@@ -3252,8 +3252,8 @@ def _fe_kpi_freshness_caption(entry):
 
 def _fe_inline_bar_svg(frac, color, target_frac=None, width=176, height=10):
     """A compact horizontal fill-bar for a real value against a real,
-    already-Confirmed bound -- `frac` and `target_frac` are ONLY ever a
-    real live value divided by a real Confirmed figure (never an invented
+    registry-stated bound -- `frac` and `target_frac` are ONLY ever a
+    real live value divided by a real registry-stated figure (never an invented
     scale), same discipline as _svg_gauge above."""
     frac_c = max(0.0, min(1.0, frac))
     fill_w = frac_c * width
@@ -3279,14 +3279,14 @@ def _render_fe_live_kpis(snap):
         fe005_entry["value"], fe006_entry["value"],
     )
 
-    # FE-004's OWN Confirmed nameplate figures (fe_feed_handling.FE004_MOTOR_KW
+    # FE-004's OWN registry-stated nameplate figures (fe_feed_handling.FE004_MOTOR_KW
     # / FE004_THROUGHPUT_T_H), read directly, not re-typed as a bare "150" --
     # the real comparison this task asks for, not two unrelated numbers.
     nameplate_kwh_per_t = fe.FE004_MOTOR_KW / fe.FE004_THROUGHPUT_T_H
     live_kwh_per_t = fe004["specific_energy_kwh_per_t"]
     matches_nameplate = abs(live_kwh_per_t - nameplate_kwh_per_t) < 1e-9
 
-    # Same real Confirmed inlet/target moisture fractions Section 1's own
+    # Same real registry-stated inlet/target moisture fractions Section 1's own
     # gauge uses (fe.FE005_INLET_MOISTURE_FRACTION / FE005_OUTLET_MOISTURE_
     # FRACTION) -- no new numbers. FE-006's own moisture_fraction reads
     # straight through from FE-005's outlet_moisture_fraction (confirmed in
@@ -3379,11 +3379,11 @@ def _render_fe_live_kpis(snap):
 
 
 # =============================================================================
-# Gauges -- ONLY where a genuine, already-Confirmed bound exists (task's own
+# Gauges -- ONLY where a genuine, registry-stated bound exists (task's own
 # explicit constraint: never invent a range). Hopper level has a real
-# Confirmed live capacity (fe.FE001_LIVE_CAPACITY_T); dryer outlet moisture
-# has a real Confirmed target (fe.FE005_OUTLET_MOISTURE_FRACTION, "<1%") and
-# a real Confirmed inlet moisture (fe.FE005_INLET_MOISTURE_FRACTION) to scale
+# registry-stated live capacity (fe.FE001_LIVE_CAPACITY_T); dryer outlet moisture
+# has a real registry-stated target (fe.FE005_OUTLET_MOISTURE_FRACTION, "<1%") and
+# a real registry-stated inlet moisture (fe.FE005_INLET_MOISTURE_FRACTION) to scale
 # against -- no other FE value has a comparable real bound, so no other
 # gauge is built.
 # =============================================================================
@@ -3802,7 +3802,7 @@ def _render_fe_mass_energy_balance(snap):
     mass_in_kg_h = fe001["delivery_rate_kg_h"]
     fe002_out_kg_h = fe002["outlet_kg_h"]
     fe003_confirmed_kg_h = fe003["confirmed_wet_feed_kg_h"]
-    # FE-003's own confirmed [29,50] kg/h range can clip the raw delivery --
+    # FE-003's own registry [29,50] kg/h range can clip the raw delivery --
     # any gap this introduces is a REAL, separately-tracked term (FE-003's
     # own docstring: "this simplified chain does not model where the
     # resulting surplus/deficit mass goes"), not folded silently into
@@ -4275,7 +4275,7 @@ def _plant_overview_active_findings(snap):
     hb006 = snap.get(("HB-006", "PSA"))
     if hb006 is not None and hb006.get("status") != ps.STATUS_MISSING:
         v = hb006["value"]
-        hb006_target = 0.55  # HB-006's own Confirmed target, SAME constant Tab 7 uses
+        hb006_target = 0.55  # HB-006's own registry-stated target, SAME constant Tab 7 uses
         if v["y_H2"] < hb006_target:
             findings.append({
                 "severity": "shortfall", "tab": "Hydrogen & BoP (Tab 7)", "id": "HB-006",
@@ -5115,7 +5115,7 @@ def _ga_schematic_legend_svg():
 # =============================================================================
 # Gasification Section 2 -- Live KPIs. Reuses _fe_kpi_check_delta (Section
 # 2's own delta-tracking function, generic already, called directly, not
-# copied), _fe_inline_bar_svg for the 2 items with a real Confirmed target
+# copied), _fe_inline_bar_svg for the 2 items with a real registry-stated target
 # (GA-008/GA-009's own registry design capacities). No comparison bar for
 # GA-001 itself -- explicit task instruction, and honest anyway: GA-001's
 # own status is Calculated -> Literature/Engineering Basis -> NO in-project
@@ -5149,8 +5149,8 @@ def _render_ga_live_kpis(snap):
             delta_fmt=lambda d: f"{d:+.2f} kg/h",
         ))
     if flows is not None:
-        ga008_cap = 3.0  # GA-008's own real Confirmed registry design capacity (kg/h) -- data/equipment_registry.json
-        ga009_cap = 5.0  # GA-009's own real Confirmed registry design capacity (kg/h) -- data/equipment_registry.json
+        ga008_cap = 3.0  # GA-008's own real registry-stated design capacity (kg/h) -- data/equipment_registry.json
+        ga009_cap = 5.0  # GA-009's own real registry-stated design capacity (kg/h) -- data/equipment_registry.json
         kpis.append(dict(
             label="Carbon black recovery (derived)", icon="⚫", raw=flows["carbon_black_kg_h"],
             text=f"{flows['carbon_black_kg_h']:.3f} kg/h",
@@ -6698,7 +6698,7 @@ def _render_gc_live_results(snap):
 #   (b) GC-015's own condensate summation, by contrast, IS a genuine,
 #       INDEPENDENT closing check -- 5 real streams, each computed by a
 #       DIFFERENT formula from different inputs (GC-004's own wet/dry mole
-#       split; GC-005's own Confirmed constant; GC-007/008/009's own
+#       split; GC-005's own registry-stated constant; GC-007/008/009's own
 #       separate L/G ratio x gas flow x GC-005's blowdown ratio) -- summed
 #       to a real total. Independently re-verified for this audit (outside
 #       the UI, a direct Python check against a real engine run): the
@@ -7069,8 +7069,8 @@ with tab5:
 # module's own single shared _virtual_sensor() mechanism); SA-011/SA-012
 # have NO live upstream MODEL to read at all (module docstring: no
 # function anywhere computes a live temperature/pressure at this specific
-# late-train point) -- they read a real Confirmed static design constant
-# instead, status=Assumed, the SAME "Confirmed design constant as live
+# late-train point) -- they read a real registry-stated static design constant
+# instead, status=Assumed, the SAME "registry-stated design constant as live
 # placeholder" treatment gc_gas_cleaning_chain.py's own GC-001/GC-003
 # temperature functions already use. Both are real, live-registered
 # entries (never "Static/no live model" the way GA-005..010 or GC-002/011
@@ -7202,7 +7202,7 @@ def _sa_schematic_svg(snap):
 
     # SA-011/SA-012 -- no live tap, shown below the backbone near GC-013's
     # own position, dotted (not dashed) to visually distinguish "reads a
-    # Confirmed static constant" from "taps a live upstream value".
+    # registry-stated static constant" from "taps a live upstream value".
     no_tap_x0 = tap_x[("GC-013", "Gas")] - (len(no_tap_items) * (box_w + 14)) / 2 + (box_w + 14) / 2 - box_w / 2
     for i, (eq_id, name, cat, key) in enumerate(no_tap_items):
         bx = no_tap_x0 + i * (box_w + 14)
@@ -7383,7 +7383,7 @@ def _render_sa_live_kpis(snap):
 # _fe_status_row_icon_svg, _ga_status_pill_html directly. All 12 items are
 # genuinely live-registered (register_sa_sensors(), confirmed by direct
 # grep) -- "Running" covers BOTH Calculated (SA-001..010) and Assumed
-# (SA-011/012, reading a real Confirmed static constant every cycle) --
+# (SA-011/012, reading a real registry-stated static constant every cycle) --
 # there is no genuine "Static/no live model" state here the way GA/GC's
 # true sub-items had, since all 12 real SA items DO run every cycle.
 # =============================================================================
@@ -8032,7 +8032,7 @@ def _hb_schematic_svg(snap):
                           f'font-size="7.5" font-style="italic" fill="#B91C1C">real root cause (leaf)</text>')
 
     # HB-002/HB-008 sub-item annotations -- real registry sub-items of the
-    # SAME physical unit, no live key of their own (Confirmed static
+    # SAME physical unit, no live key of their own (registry-stated static
     # constants used directly), the SAME treatment as GA/GC's own sub-items.
     parts.append(f'<text x="{60+_HB_BOX_W/2:.1f}" y="234" text-anchor="middle" font-size="7.5" '
                   f'fill="#4338CA">HB-002 (CO Conv.) — Static</text>')
@@ -8078,9 +8078,9 @@ def _hb_schematic_legend_svg():
 # =============================================================================
 # HB Section 2 -- Live KPIs. Reuses _fe_tag_html, _fe_kpi_check_delta,
 # _fe_inline_bar_svg directly. Comparison bars ONLY where a real, SEPARATE
-# Confirmed target exists (checked directly, not assumed): HB-011's own SEC
-# at load=1.0 vs its own Confirmed 55 kWh/Nm3 rating; HB-012's own computed
-# compressor power vs its own Confirmed 10 kW motor rating.
+# registry-stated target exists (checked directly, not assumed): HB-011's own SEC
+# at load=1.0 vs its own registry-stated 55 kWh/Nm3 rating; HB-012's own computed
+# compressor power vs its own registry-stated 10 kW motor rating.
 # =============================================================================
 def _render_hb_live_kpis(snap):
     hb001 = snap.get(("HB-001", "HTS"))
@@ -8101,7 +8101,7 @@ def _render_hb_live_kpis(snap):
                           entry=hb004, compare=None, bar=None, delta_fmt=lambda d: f"{d*100:+.2f} pp"))
     if hb012 is not None and hb012.get("status") != ps.STATUS_MISSING:
         v = hb012["value"]
-        target = 10.0  # HB-012's own separately-stated Confirmed motor rating
+        target = 10.0  # HB-012's own separately registry-stated motor rating
         kpis.append(dict(label="Compressor power (HB-012)", icon="🔧", raw=v["power_kW"],
                           text=f"{v['power_kW']:.2f} kW", skey="tab7_kpi_delta__compressor_kw", entry=hb012,
                           compare=f"vs HB-012's own {_caption_status('HB-012', 'Drive motor power')} motor rating {target:.0f} kW",
@@ -8332,7 +8332,7 @@ def _render_hb_live_results(snap):
             # y_H2 value/computation is untouched -- see master_open_
             # questions.md item 5's own 2026-09-08 UPDATE for the full root-
             # cause writeup this banner cross-references).
-            hb006_target = 0.55  # HB-006's own Confirmed "Feed gas H2 content" target
+            hb006_target = 0.55  # HB-006's own registry-stated "Feed gas H2 content" target
             hb006_shortfall = v["y_H2"] < hb006_target
             if hb006_shortfall:
                 st.markdown(
@@ -8566,9 +8566,9 @@ def _render_hb_live_results(snap):
 # hidden: (a) the WGS full-composition atom balance (C and O conservation,
 # independently re-verified for this audit, not just trusted); (b) HB-003's
 # real two-sided (hot/cold) energy-duty cross-check, PLUS a third,
-# independent reference point (HB-003's own Confirmed "Design heat duty=5kW");
-# (c) HB-011's own SEC-at-load=1.0 exact reproduction of its Confirmed rating;
-# (d) HB-012's own compressor power vs its Confirmed 10kW motor rating; (e)
+# independent reference point (HB-003's own registry-stated "Design heat duty=5kW");
+# (c) HB-011's own SEC-at-load=1.0 exact reproduction of its registry-stated rating;
+# (d) HB-012's own compressor power vs its registry-stated 10kW motor rating; (e)
 # HB-013's own real, live inventory mass balance (inflow-outflow, genuinely
 # accumulated cycle to cycle, not a static split). The LOHC branch (HB-014..
 # 017) has NO live mass balance to check at all -- structurally blocked.
@@ -8910,7 +8910,7 @@ with tab7:
 #
 # THE HEADLINE FINDING, audited and surfaced prominently (not buried):
 # EU-008's own live cooling demand is genuinely, substantially over its
-# Confirmed 20kW rating -- this is the SAME Missing Parameter Resolution
+# registry-stated 20kW rating -- this is the SAME Missing Parameter Resolution
 # Protocol finding already documented in docs/missing_parameter_
 # protocol.md and CLAUDE.md's own "Completed milestones" section, read
 # LIVE here via eu008_recommended_capacity_estimate()'s own real Section-8
@@ -8935,7 +8935,7 @@ with tab7:
 #
 # SHORTFALL CHECK, performed explicitly per this task's own request: all
 # 13 EU items' own real confidence_note text was checked directly for an
-# unflagged live-value-vs-Confirmed-target divergence, the same class of
+# unflagged live-value-vs-registry-stated-target divergence, the same class of
 # gap HB-006 had before its own fix. RESULT: EU-008 IS that exact class of
 # finding (already given the full, prominent Section-8 treatment above --
 # this is the intended headline, not something previously hidden). No
