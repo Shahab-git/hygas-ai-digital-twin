@@ -59,7 +59,7 @@ Gate 4 notes accepted by the owner: two persisted keys were added by A1 (`GA-001
 | CI on `main` merges; the container `os.walk` ordering failure | on hold, no change |
 | Stale baseline records | corrected (PR #29) |
 | Issue 8 | recorded as a limit |
-| G5-14 disposition | A1 authorised retroactively; A4.1 held |
+| G5-14 disposition | A1 authorised retroactively; A4.1 held (hold lifted 2026-11-12, section 3t) |
 | G5-06 feed basis | correct now, narrow scope (done: PRs #30, #31); the full correction (cycle-1 fallback, constant name) is not authorised |
 | G5-07 | list in `docs/cross_module_disagreements.md`; dispositions accepted 6 Nov: defer all 19 rows pending DOK-ING (row 9 decision still open, rows 14 and 18 accepted) |
 | G5-08 | dispositions accepted 6 Nov: see `docs/phase0_open_items.md` |
@@ -221,6 +221,16 @@ Seventh and last conversion item of "all work that does not wait for DOK-ING"; *
 
 Last item of "all work that does not wait for DOK-ING"; **read as authorising this sweep only** (comments and two docstrings of `app.py`, and three docs; no logic, no displayed string, no persisted number). Every "confirmed" mention in `app.py` was read: 126 inside strings and 46 in comments. Result: no user-visible string calls a registry value Confirmed (that was done in `docs/provenance_phase2.md` section 10; `CLAUDE.md` still said otherwise and is corrected). 30 comment and docstring lines that called registry values "Confirmed" now say "registry-stated". Proof of text-only: the syntax tree of `app.py` with every string neutralised is identical before and after, and exactly two string constants (docstrings of `_svg_gauge` and `_fe_inline_bar_svg`) changed. Left on purpose: the persisted FE-003 key `confirmed_wet_feed_kg_h` (a rename changes the snapshot and needs its own decision), the engine modules' string-literal mentions (pinned in `tests/test_design_basis_ledger.py`) and the docs sweep.
 
+### 3t. Task A4.1: NASA-9 thermodynamic data and its loader (hold lifted by the owner, 2026-11-12)
+
+On 2026-11-12 the owner lifted the hold on A4.1 and approved a proposed definition of A4.2 to A4.4 (sections 3u onward when done). **Read as authorising A4.1 only** (this task; no model code, no persisted key, no fixture). A4.1 is the first step of task A4, a READ-ONLY gasifier enthalpy diagnostic (the docstring of `python/gasifier_enthalpy.py`); it was committed locally on 2026-11-05 as `71b127b` on `a4-enthalpy-diagnostic` (base `1d2ae64`, before P1-06) and is brought onto current `main` unchanged: three new files, no existing file touched.
+
+- `data/thermo_nasa9.json`: NASA 9-coefficient polynomials of H2, CO, CO2, H2O(g), CH4, N2, O2 and C(graphite) (NASA/TP-2002-211556, Appendix D), 200-6000 K, with per species the page, the record reference, the retrieval date (2026-11-05) and the JANAF table that cross-checks it.
+- `python/gasifier_enthalpy.py`: loader and validation, `cp_j_mol_k`, `polynomial_enthalpy_j_mol`, `sensible_enthalpy_j_mol` (exact integration, no mean cp). It raises outside 200-6000 K and never extrapolates. Nothing imports it; nothing in the engine, the runtime or the app reads it.
+- `tests/test_gasifier_enthalpy.py`: 65 cases against NIST-JANAF H-H(Tr) literals at 500, 1000 and 1200 K. Seven species agree within 0.012 kJ/mol. **Methane disagrees** (its NASA record, Gurvich 1991, has a larger Cp than the JANAF 1998 table above 500 K): 0.03 / 0.51 / 0.97 kJ/mol at 500 / 1000 / 1200 K. Reported, not forced (tolerance 1.0 for CH4, the difference pinned). Formation enthalpy of the polynomial agrees with `balance_audit.HF_KJ_MOL` within 0.02 kJ/mol except methane (0.273: -74.600 against -74.873).
+- Not validation against DOK-ING data (none exists); no value of the model changes. The data are literature values: evidence label `Assumed (literature-informed)` for any use downstream.
+- Gate 4: the three files are new; no persisted number, key or fixture changes; no test is edited or removed. Suite count: 65 more cases than `main`.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -256,7 +266,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s; P0-T1; CI or workflow changes; A4.2 to A4.4 (A4.1 is held); applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s and A4.1 of section 3t; P0-T1; CI or workflow changes; A4.2 to A4.4; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
