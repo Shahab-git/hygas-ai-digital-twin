@@ -237,7 +237,7 @@ On 2026-11-12 the owner lifted the hold on A4.1 and approved a proposed definiti
 
 - **A4.1** (merged, section 3t): the thermodynamic data and its loader.
 - **A4.2** (this section): the enthalpy of every GA-001 inlet and outlet stream at its own temperature, formation and sensible parts separately, from snapshot values. The feed formation is derived from an LHV case (DOK-ING's 15-20 MJ/kg dry range, `Assumed`).
-- **A4.3** (NOT authorised yet): the residual of the enthalpy balance at the imposed temperature (kW), reconciled against `(GA-001, EnergyBalance)` and `balance_audit.gasifier_energy` (implied duty +23 to -29 kW).
+- **A4.3** (done, section 3v): the residual of the enthalpy balance at the imposed temperature (kW), reconciled against `(GA-001, EnergyBalance)` and `balance_audit.gasifier_energy` (implied duty +23 to -29 kW).
 - **A4.4** (NOT authorised yet): a sensitivity of that residual over 850-950 degC, documented, with a gate record.
 
 **Read as authorising A4.2 only.** Added: `stream_enthalpies(snapshot, previous_snapshot, lhv_mj_kg)` and `feed_formation_kw(...)` in `python/gasifier_enthalpy.py`, and `tests/test_gasifier_enthalpy_streams.py` (18 cases). Nothing imports them (a test scans `python/`, `scripts/` and `app.py`); no persisted key, fixture or engine number changes; no existing test is edited.
@@ -247,6 +247,37 @@ On 2026-11-12 the owner lifted the hold on A4.1 and approved a proposed definiti
 - **Check that does not depend on the new code's own arithmetic:** (formation out - formation in) equals (chemical energy out - chemical energy in) of `balance_audit.gasifier_energy`, corrected for the moisture term, to 1e-9 kW at all four LHV cases. The tests also check: a pure-methane feed has methane's own formation enthalpy; the gas and graphite sensible parts against NASA-9 evaluated by hand; refusal outside 200-6000 K; refusal of an active recycle without the previous snapshot; the function leaves its inputs unchanged. Six hand-made breakages were run against the tests (feed sign, moisture phase, steam temperature, ash temperature offset, feed hydrogen factor, graphite temperature unit); the graphite temperature unit survived the first draft of the tests and a test was added, after which all six fail.
 - **Ledger regenerated (side effect, by the project's own script):** four rows of `docs/design_basis_ledger.csv` / `.md` (GA-001 ash fraction, GA-004 air preheat, GA-004 steam temperature, PLANT solids cp) list `gasifier_enthalpy.stream_enthalpies` among the functions that read the constant. Only those read-by lists changed; no value, status or source changed.
 - **A first look that A4.3 will examine (not asserted by any test):** at the 15 MJ/kg case the sum out - in is +28.4 kW (formation -7.1, sensible +35.4) against +26.7 kW for the existing implied duty; the 1.7 kW gap is what the NASA-9 sensible enthalpy and the existing mean-cp / vapour-zero conventions make different. It is stated here as an observation, not a finding.
+
+### 3v. Task A4.3: the residual of the enthalpy balance, reconciled with the implied heat duty (owner approval of the A4 series, 2026-11-12)
+
+**Read as authorising A4.3 only.** The owner approved the A4 series as defined in section 3u and asked for it to be built in order ("approve, build in order"); A4.2 merged on 2026-11-12 (PR #67). Added: `enthalpy_residual(snapshot, previous_snapshot, lhv_mj_kg)` and `enthalpy_residual_cases(...)` in `python/gasifier_enthalpy.py`, and `tests/test_gasifier_enthalpy_residual.py` (24 cases). READ-ONLY: nothing imports them, no persisted key, fixture or engine number changes, no existing test is edited. Not validation against DOK-ING data; not a plant prediction. Tar, shell/refractory loss and feed/recycle sensible heat are Missing and are NOT in the residual.
+
+**What the residual is:** Q = H(out) - H(in) from the A4.2 stream table at GA-001's imposed 950 degC (`Assumed`): the heat the gasifier would have to ADD (+) or REMOVE (-) to leave at that temperature. GA-001 computes no heat duty itself.
+
+**Reconciliation (exact).** The two routes use the same formation data, so the formation parts agree exactly (A4.2 test). They differ only in the sensible parts, and the difference to `balance_audit.gasifier_energy` (the number published as `(GA-001, EnergyBalance).implied_gasifier_heat_duty_kw`) splits into four terms, with nothing left unexplained (|unexplained| < 1e-9 kW; measured about 5e-14):
+
+    Q_nasa - Q_audit = d_gas + d_graphite - d_oxidant - d_steam
+
+| Term (kW) | `heat_only` (default) | `regasify` |
+|---|---|---|
+| d_gas (NASA-9 minus constant mean cp, product gas at 950 degC) | +1.164 | +1.414 |
+| d_graphite (NASA-9 graphite minus the Assumed solids cp 1.0 kJ/kg.K) | +0.221 | +0.263 |
+| d_oxidant (air at the GA-004 preheat temperature) | -0.100 | -0.132 |
+| d_steam (steam at the GA-004 temperature) | -0.195 | -0.195 |
+| Difference to the audit duty | +1.679 | +2.004 |
+
+The difference does not depend on the LHV case (sensible heat does not). The residual itself, from this run (cycle 20, previous cycle 19):
+
+| LHV case | `heat_only`: Q (kW) | audit duty (kW) | `regasify`: Q (kW) | audit duty (kW) |
+|---|---|---|---|---|
+| DOK-ING low, 15 MJ/kg | +28.368 | +26.689 | +24.788 | +22.784 |
+| DOK-ING midpoint, 17.5 (Assumed) | +2.324 | +0.645 | -1.255 | -3.260 |
+| DOK-ING high, 20 MJ/kg | -23.720 | -25.399 | -27.299 | -29.304 |
+| model composition (Estimated, 15.75) | +20.517 | +18.838 | +16.938 | +14.933 |
+
+Readings (stated as what they are): (1) the residual moves one-for-one with the LHV case (a test pins -m/3.6 kW per MJ/kg) and changes sign inside DOK-ING's 15-20 MJ/kg range, so the sign of the heat the gasifier needs is NOT determined by the data we have; the LHV is the largest unknown. (2) The sensible part is +35.4 kW (`heat_only`) and +45.1 kW (`regasify`) and does not depend on the LHV; the formation part carries all the LHV dependence. (3) Replacing the constant mean cp by NASA-9 changes the implied duty by +1.7 kW (`heat_only`) and +2.0 kW (`regasify`), 6-8 % of the 15 MJ/kg residual and much smaller than the LHV effect: the mean-cp simplification of the existing audit is not what limits it. (4) The methane disagreement with JANAF found in A4.1 (0.97 kJ/mol at 1200 K) is worth about 0.017 kW on the default snapshot (63 mol/h of CH4 x 0.97 kJ/mol; the 950 degC = 1223 K value was not computed separately), small against the terms above, and is not separated in the residual. (5) Nothing was tuned; no value of the model changes.
+
+Tests (24): the exact four-term split for `heat_only`, `regasify`, the `oxygen` agent and the `steam_only_0.4` agent at all four LHV cases; each term against a hand calculation; the one-for-one LHV dependence and the LHV-independence of the sensible part; agreement of the audit duty with the engine's published `(GA-001, EnergyBalance)` entry (1e-9 kW on `heat_only`, 1e-6 on the converged `regasify`); refusal of an active recycle without the previous snapshot; inputs left unchanged. Ledger: three rows (GA-004 air preheat, GA-004 steam temperature, PLANT solids cp) gain `gasifier_enthalpy.enthalpy_residual` in their read-by lists, regenerated by `scripts/export_design_basis_ledger.py`; no value, status or source changed. Six hand-made breakages (sign of one term, sign of the residual, the gas temperature, the graphite cp factor, the percentage denominator, the reading) were run against the tests and all are caught.
 
 ## 4. Gate 5 criteria: status as of this record
 
@@ -283,7 +314,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s and A4.1 of section 3t and A4.2 of section 3u; P0-T1; CI or workflow changes; A4.3 and A4.4; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s and A4.1 of section 3t and A4.2 of section 3u and A4.3 of section 3v; P0-T1; CI or workflow changes; A4.4; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 
