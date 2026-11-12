@@ -258,7 +258,8 @@ def test_nothing_reads_the_key_and_no_model_depends_on_it():
             if re.search(r"plant_heat_integration|HeatIntegration", text):
                 hits.append(rel)
     # LEDGER (deliberate edit): python/ledger_coverage.py names the module in its scan list and python/ledger_rows.py reads its ASSUMED constants for the design-basis ledger; neither reads the KEY
-    assert hits == ["python/ga001_gasifier_model.py", "python/ledger_coverage.py", "python/ledger_rows.py"], hits               # the registration line + the two ledger modules that name the module
+    # os.walk order depends on the file system (this failed in CI on 2026-11-12 with the same three files in another order), so the hits are compared sorted
+    assert sorted(hits) == ["python/ga001_gasifier_model.py", "python/ledger_coverage.py", "python/ledger_rows.py"], hits               # the registration line + the two ledger modules that name the module
 
 
 # ------------------------------------------------------------------ (f) nothing else moved, (g) the key count rises by exactly one
