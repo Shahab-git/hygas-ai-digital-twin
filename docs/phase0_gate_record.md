@@ -231,6 +231,23 @@ On 2026-11-12 the owner lifted the hold on A4.1 and approved a proposed definiti
 - Not validation against DOK-ING data (none exists); no value of the model changes. The data are literature values: evidence label `Assumed (literature-informed)` for any use downstream.
 - Gate 4: the three files are new; no persisted number, key or fixture changes; no test is edited or removed. Suite count: 65 more cases than `main`.
 
+### 3u. Task A4.2: stream enthalpies of GA-001, and the definition of A4.2 to A4.4 (owner approval, 2026-11-12)
+
+**Definition of the A4 series as approved by the owner on 2026-11-12** (before this, A4.2 to A4.4 were not defined anywhere in the repo; the three parts below are the proposal the owner approved; all READ-ONLY, none changes a number or a persisted key, none is validation against DOK-ING data):
+
+- **A4.1** (merged, section 3t): the thermodynamic data and its loader.
+- **A4.2** (this section): the enthalpy of every GA-001 inlet and outlet stream at its own temperature, formation and sensible parts separately, from snapshot values. The feed formation is derived from an LHV case (DOK-ING's 15-20 MJ/kg dry range, `Assumed`).
+- **A4.3** (NOT authorised yet): the residual of the enthalpy balance at the imposed temperature (kW), reconciled against `(GA-001, EnergyBalance)` and `balance_audit.gasifier_energy` (implied duty +23 to -29 kW).
+- **A4.4** (NOT authorised yet): a sensitivity of that residual over 850-950 degC, documented, with a gate record.
+
+**Read as authorising A4.2 only.** Added: `stream_enthalpies(snapshot, previous_snapshot, lhv_mj_kg)` and `feed_formation_kw(...)` in `python/gasifier_enthalpy.py`, and `tests/test_gasifier_enthalpy_streams.py` (18 cases). Nothing imports them (a test scans `python/`, `scripts/` and `app.py`); no persisted key, fixture or engine number changes; no existing test is edited.
+
+- **Convention (one):** H = formation + sensible, kW, elements at 298.15 K. Gas species: n x (DHf + dHs(T)) with DHf from `balance_audit.HF_KJ_MOL` and dHs from the NASA-9 data of A4.1; the residual moisture is liquid water at 25 degC. Dry feed: formation = the products' formation (CO2, H2O(g)) plus m x LHV (complete combustion releases the LHV), sensible 0 because the feed temperature after the dryer is Missing. Graphite and ash at the operating temperature (950 degC, `Assumed`); ash keeps the `Assumed` solids cp of `balance_audit` (1.0 kJ/kg.K). Oxidant 200 degC and steam 350 degC are GA-004 registry values (`Unverified (registry)`); the recycle is taken at 25 degC (`Assumed`).
+- **Simplification, stated:** NASA-9 sensible enthalpy replaces the repo's constant mean cp for GAS streams only.
+- **Check that does not depend on the new code's own arithmetic:** (formation out - formation in) equals (chemical energy out - chemical energy in) of `balance_audit.gasifier_energy`, corrected for the moisture term, to 1e-9 kW at all four LHV cases. The tests also check: a pure-methane feed has methane's own formation enthalpy; the gas and graphite sensible parts against NASA-9 evaluated by hand; refusal outside 200-6000 K; refusal of an active recycle without the previous snapshot; the function leaves its inputs unchanged. Six hand-made breakages were run against the tests (feed sign, moisture phase, steam temperature, ash temperature offset, feed hydrogen factor, graphite temperature unit); the graphite temperature unit survived the first draft of the tests and a test was added, after which all six fail.
+- **Ledger regenerated (side effect, by the project's own script):** four rows of `docs/design_basis_ledger.csv` / `.md` (GA-001 ash fraction, GA-004 air preheat, GA-004 steam temperature, PLANT solids cp) list `gasifier_enthalpy.stream_enthalpies` among the functions that read the constant. Only those read-by lists changed; no value, status or source changed.
+- **A first look that A4.3 will examine (not asserted by any test):** at the 15 MJ/kg case the sum out - in is +28.4 kW (formation -7.1, sensible +35.4) against +26.7 kW for the existing implied duty; the 1.7 kW gap is what the NASA-9 sensible enthalpy and the existing mean-cp / vapour-zero conventions make different. It is stated here as an observation, not a finding.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
@@ -266,7 +283,7 @@ G5-07 dispositions (rows 1-4 share one cause, the gasifying agent); the feed wet
 
 ## 7. Not authorised
 
-Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s and A4.1 of section 3t; P0-T1; CI or workflow changes; A4.2 to A4.4; applying any answer-sheet value to the model.
+Phase 1 except the four tasks of section 3d, the five of section 3e, P1-04 of section 3f, P1-05(a)/(b) of section 3g and P1-05(d) of section 3h P1-05(c) of section 3i and P1-06 of section 3j and P1-06b of section 3l and P1-06c of section 3m and P1-06d of section 3n and P1-06e of section 3o and P1-06f of section 3p and P1-06g of section 3q and P1-06h of section 3r and the G5-05 `app.py` sweep of section 3s and A4.1 of section 3t and A4.2 of section 3u; P0-T1; CI or workflow changes; A4.3 and A4.4; applying any answer-sheet value to the model.
 
 ## 8. Where the measured limits are
 

@@ -99,3 +99,86 @@ def sensible_enthalpy_j_mol(species, T_K, thermo=None):
     """dHs(T) = H(T) - H(298.15 K), J/mol, by exact integration of the polynomial (no mean cp). Zero at 298.15 K by construction. Raises ValueError outside 200-6000 K, LookupError for an unknown species."""
     thermo = thermo or load_thermo()
     return polynomial_enthalpy_j_mol(species, T_K, thermo) - polynomial_enthalpy_j_mol(species, T_REF_K, thermo)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# A4.2: the enthalpy of every GA-001 stream, formation and sensible parts separately (READ-ONLY; nothing here is imported by the engine)
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Convention (the ONE of this module): H = formation + sensible, in kW (= kJ/h / 3600), relative to the elements at 298.15 K.
+#   gas species : n_i x (DHf_i + dHs_i(T))          DHf from balance_audit.HF_KJ_MOL, dHs by NASA-9 (A4.1). H2O(g) uses DHf(H2O_g); the residual moisture is liquid water at 25 degC (DHf(H2O_l)).
+#   graphite    : n x dHs_C(T)                      (DHf = 0)
+#   dry feed    : DHf_feed = [n_C x DHf(CO2) + n_H/2 x DHf(H2O_g)] + m_dry x LHV   (complete combustion to CO2(g) + H2O(g) RELEASES the LHV of the dry feed incl. ash, so the reactants sit higher than the products by
+#                 exactly that; O, N and ash carry no formation term in that reaction). Its sensible part is 0: the feed temperature after the dryer is not stated (Missing), as in balance_audit.gasifier_energy.
+#   ash         : formation 0 (inert), sensible m x cp x (T - 25 degC) with the SAME Assumed solids cp as balance_audit (1.0 kJ/kg.K; no solids cp exists in the repo).
+# Stream temperatures are the ones balance_audit uses: air/oxidant 200 degC and steam 350 degC (GA-004 registry values, Unverified (registry)), tail-gas recycle and moisture 25 degC, product gas and
+# solids at GA-001's operating temperature (registry 950 degC, Assumed). Status of each row follows its inputs (Assumed / Estimated / Calculated); this is NOT a plant prediction and NOT validation.
+# SIMPLIFICATION: NASA-9 sensible enthalpy replaces the repo's constant mean cp for GAS streams only; the solids keep the Assumed mean cp. The residual of the balance is task A4.3, not computed here.
+_KW_PER_KJ_H = 1.0 / 3600.0
+
+
+def _species_kw(species_mol_h, t_c, hf_key=None):
+    """(formation_kw, sensible_kw) of a {species: mol/h} gas stream at t_c degC. `hf_key` renames a species for the formation table (H2O -> 'H2O_g' by default; 'H2O_l' for liquid water)."""
+    from . import balance_audit as ba
+    t_k = t_c + 273.15
+    hf = sens = 0.0
+    for sp, n in species_mol_h.items():
+        key = hf_key.get(sp, sp) if hf_key else ("H2O_g" if sp == "H2O" else sp)
+        hf += n * ba.HF_KJ_MOL[key]
+        sens += n * sensible_enthalpy_j_mol(sp, t_k) / 1000.0
+    return hf * _KW_PER_KJ_H, sens * _KW_PER_KJ_H
+
+
+def feed_formation_kw(c_mol_h, h_mol_h, dry_feed_kg_h, lhv_mj_kg):
+    """Formation enthalpy flow (kW) of the dry feed, DERIVED from its LHV: products' formation PLUS the heat released on complete combustion (see the convention above)."""
+    from . import balance_audit as ba
+    products_kj_h = c_mol_h * ba.HF_KJ_MOL["CO2"] + 0.5 * h_mol_h * ba.HF_KJ_MOL["H2O_g"]
+    return products_kj_h * _KW_PER_KJ_H + dry_feed_kg_h * lhv_mj_kg / 3.6
+
+
+def stream_enthalpies(snapshot, previous_snapshot, lhv_mj_kg):
+    """Every GA-001 inlet and outlet stream of one published snapshot as {name, formation_kw, sensible_kw, total_kw, t_c, status, source}, plus the totals. Reads the SAME terms and flows as
+    balance_audit.gasifier_energy (ga001_terms, so the recycle is an external feed). READ-ONLY: it returns numbers and changes nothing. Raises balance_audit.AuditInputMissing when the recycle
+    needs the previous snapshot and it was not supplied (same rule as gasifier_energy)."""
+    from . import balance_audit as ba
+    from . import ga001_gasifier_model as ga001
+    from . import plant_status as ps
+    ga = ba.ga001_terms(snapshot, previous_snapshot)
+    if ga["recycle"] is None:
+        raise ba.AuditInputMissing(("HB-009", "TailGas (previous cycle)"))
+    inp = ga["inputs"]
+    f = inp["dry_feed_rate_kg_h"]
+    t_gas = float(inp["operating_temperature_C"])
+    by = {t["name"]: t for t in ga["terms"]}
+    gas = by["product gas (wet)"]["species"]
+    c_in = ga["feed_atoms"]["C"] + ga["recycle_atoms"]["C"]
+    c_solid = c_in - (gas["CO"] + gas["CO2"] + gas["CH4"])                           # mol/h graphite not in the gas (the model's implied unconverted carbon)
+    kg_ash = ga001.ASH_FRACTION * f
+    cp_s = ba.SOLIDS_CP_KJ_KGK[0]
+
+    def row(name, hf, sens, t_c, status, source):
+        return {"name": name, "formation_kw": hf, "sensible_kw": sens, "total_kw": hf + sens, "t_c": t_c, "status": status, "source": source}
+
+    o2_name, n2_name = ga["oxidant_names"]
+    ox_hf, ox_s = _species_kw({"O2": ga["air_o2_mol_h"], "N2": ga["air_n2_mol_h"]}, ba.GA004_AIR_PREHEAT_C)
+    st_hf, st_s = _species_kw(by["gasifier steam"]["species"], ba.GA004_STEAM_C)
+    mo_hf, mo_s = _species_kw(by["residual moisture in dry feed"]["species"], ba.T_REF_C, {"H2O": "H2O_l"})
+    rc_hf, rc_s = _species_kw(ga["recycle"], ba.T_REF_C)
+    ins = [
+        row("dry feed (formation derived from LHV)", feed_formation_kw(ga["feed_atoms"]["C"], ga["feed_atoms"]["H"], f, lhv_mj_kg), 0.0, None, ps.STATUS_ASSUMED,
+            "composition Assumed, LHV a case in DOK-ING's 15-20 MJ/kg range; feed temperature Missing (sensible taken as 0)"),
+        row("residual moisture (liquid water, 25 degC)", mo_hf, mo_s, ba.T_REF_C, ps.STATUS_CALCULATED, "FE-005 residual_water_kg_h"),
+        row(f"{o2_name} + {n2_name}", ox_hf, ox_s, ba.GA004_AIR_PREHEAT_C, ps.STATUS_ESTIMATED, "GA-004 preheat temperature (registry, Unverified); for a non-air agent the same temperature is applied and FLAGGED in balance_audit"),
+        row("gasifier steam (350 degC vapour)", st_hf, st_s, ba.GA004_STEAM_C, ps.STATUS_ESTIMATED, "GA-004 steam temperature (registry, Unverified)"),
+        row("tail-gas recycle (H2, CO, CH4 at 25 degC)", rc_hf, rc_s, ba.T_REF_C, ps.STATUS_CALCULATED, "previous cycle HB-009 tail gas; recycle temperature Assumed 25 degC"),
+    ]
+    g_hf, g_s = _species_kw(gas, t_gas)
+    c_s = c_solid * sensible_enthalpy_j_mol("C", t_gas + 273.15) / 1000.0 * _KW_PER_KJ_H
+    outs = [
+        row("product gas (wet) at the operating temperature", g_hf, g_s, t_gas, ps.STATUS_CALCULATED, "GA-001 Outputs x NASA-9 sensible enthalpy; T = GA-001-INPUT operating_temperature_C (Assumed 950)"),
+        row("carbon not in the gas (graphite)", 0.0, c_s, t_gas, ps.STATUS_CALCULATED, "total C - C in gas; at the operating temperature (NASA-9 graphite)"),
+        row("ash", 0.0, kg_ash * cp_s * (t_gas - ba.T_REF_C) * _KW_PER_KJ_H, t_gas, ps.STATUS_ASSUMED, f"cp {cp_s} kJ/kg.K Assumed (balance_audit.SOLIDS_CP_KJ_KGK); no solids cp in the repo"),
+    ]
+    tot = lambda rows, k: sum(r[k] for r in rows)
+    return {"lhv_mj_kg": lhv_mj_kg, "t_gas_c": t_gas, "in": ins, "out": outs, "missing_terms": ["tar (GA-001 tar Missing)", "heat loss through the refractory and shell (no loss model)", "feed and recycle sensible heat (temperatures not stated)"],
+            "totals": {"in": {k: tot(ins, k) for k in ("formation_kw", "sensible_kw", "total_kw")}, "out": {k: tot(outs, k) for k in ("formation_kw", "sensible_kw", "total_kw")}},
+            "status": "Calculated, read-only, not part of the engine; NOT validation against DOK-ING data"}
