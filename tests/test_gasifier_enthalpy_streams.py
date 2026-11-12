@@ -171,7 +171,7 @@ def test_every_row_carries_a_status_and_a_source_and_the_missing_terms_are_liste
     assert "NOT validation" in r["status"]
 
 
-def test_nothing_in_the_engine_the_runtime_or_the_app_imports_the_module():
+def test_nothing_in_the_engine_the_runtime_or_the_app_imports_the_module_only_the_a44_script_does():
     hits = []
     for base in ("python", "scripts"):
         for dp, _dn, fn in os.walk(os.path.join(ROOT, base)):
@@ -183,4 +183,5 @@ def test_nothing_in_the_engine_the_runtime_or_the_app_imports_the_module():
     with open(os.path.join(ROOT, "app.py"), encoding="utf-8") as fh:
         if "gasifier_enthalpy" in fh.read():
             hits.append("app.py")
-    assert sorted(hits) == []
+    # A4.4: exactly one script reads the module (the offline sensitivity table); the engine, the runtime, the app and every other script still do not
+    assert sorted(hits) == [os.path.join("scripts", "run_enthalpy_temperature_sensitivity.py")]

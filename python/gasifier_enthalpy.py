@@ -239,3 +239,32 @@ def enthalpy_residual_cases(snapshot, previous_snapshot):
     """enthalpy_residual at every LHV case of balance_audit.lhv_cases() (DOK-ING's 15 and 20 MJ/kg, the 17.5 midpoint and the model composition's correlation estimate)."""
     from . import balance_audit as ba
     return {name: enthalpy_residual(snapshot, previous_snapshot, lhv) for name, lhv in ba.lhv_cases().items()}
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# A4.4: the sensitivity of the residual to the imposed gas temperature (READ-ONLY)
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# Input: {T_gas_c: (snapshot, previous_snapshot)}, one pair per temperature, each built by the UNCHANGED engine with ("GA-001-INPUT", "operating_temperature_C") set to that temperature (the caller does this; see
+# scripts/run_enthalpy_temperature_sensitivity.py). So the composition changes exactly as the engine lets it (the temperature enters GA-001 only through the water-gas-shift equilibrium constant: no energy balance,
+# carbon conversion fixed), and the residual follows from the A4.3 function on each pair. NOTHING is solved or switched: this is a table of what the existing balance gives at each imposed temperature, NOT a
+# prediction of the temperature the plant would settle at, and NOT validation against DOK-ING data. The 950 degC point is a registry value tied to earlier project models, not stated by DOK-ING (Assumed).
+def temperature_sensitivity(by_temperature, lhv_mj_kg):
+    """Rows sorted by temperature: {t_c, residual_kw, formation_kw, sensible_kw, audit_implied_duty_kw, difference_unexplained_kw, h2_mol_pct_dry, dry_flow_nm3_h} plus, per consecutive pair,
+    the change in the residual per 100 K ('slope_kw_per_100k', None for the first row). Raises ValueError when a snapshot's imposed temperature is not the key it was given under or fewer than two
+    temperatures are supplied."""
+    if len(by_temperature) < 2:
+        raise ValueError("a sensitivity needs at least two temperatures")
+    rows = []
+    for t_c in sorted(by_temperature):
+        snap, prev = by_temperature[t_c]
+        imposed = float(snap[("GA-001-INPUT", "operating_temperature_C")]["value"])
+        if abs(imposed - float(t_c)) > 1e-9:
+            raise ValueError(f"the snapshot given for {t_c} degC was built at {imposed} degC")
+        r = enthalpy_residual(snap, prev, lhv_mj_kg)
+        out = snap[("GA-001", "Outputs")]["value"]
+        rows.append({"t_c": float(t_c), "residual_kw": r["residual_kw"], "formation_kw": r["formation_kw"], "sensible_kw": r["sensible_kw"],
+                     "audit_implied_duty_kw": r["audit_implied_duty_kw"], "difference_unexplained_kw": r["difference_unexplained_kw"],
+                     "h2_mol_pct_dry": float(out["H2_mol_pct_dry"]), "dry_flow_nm3_h": float(out["dry_flow_nm3_h"]), "slope_kw_per_100k": None})
+    for a, b in zip(rows, rows[1:]):
+        b["slope_kw_per_100k"] = 100.0 * (b["residual_kw"] - a["residual_kw"]) / (b["t_c"] - a["t_c"])
+    return rows
