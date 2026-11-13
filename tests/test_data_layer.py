@@ -417,7 +417,8 @@ def test_no_engine_runtime_or_app_file_imports_the_new_modules():
         for name in files:
             rel = os.path.relpath(os.path.join(base, name), ROOT).replace(os.sep, "/")
             # LEDGER (task A3, deliberate edit): the design-basis ledger EXTENDS parameter_table, so its export script and its test import it on purpose; neither is an engine, runtime or app file
-            if not name.endswith(".py") or rel in NEW_FILES or rel in ("scripts/export_design_basis_ledger.py", "tests/test_design_basis_ledger.py"):
+            # CAL-1 (task of 2026-11-13, deliberate edit): the calibration core reads the parameter table's values and ranges on purpose; it and its test are not engine, runtime or app files
+            if not name.endswith(".py") or rel in NEW_FILES or rel in ("scripts/export_design_basis_ledger.py", "tests/test_design_basis_ledger.py", "python/calibration.py", "tests/test_calibration.py"):
                 continue
             with open(os.path.join(base, name), encoding="utf-8") as f:
                 src = f.read()
