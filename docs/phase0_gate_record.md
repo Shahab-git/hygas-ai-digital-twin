@@ -326,6 +326,12 @@ Results (docs): ER ramp 0.25 to 0.28: observable error 3.13 sigma (static twin) 
 
 Six hand-made breakages were run against the new tests: no covariance growth, the sign of the gain, the noise matrix ignoring the sigmas, the Joseph update replaced by a bare covariance, no clipping, and zero drift. Four were caught at once; the sigma and clipping ones escaped, which led to two added tests (`..._noise_sigmas_set_how_much_the_filter_trusts_the_data`, `..._far_outside_the_prior_cannot_push_the_estimate_past_the_bounds`). All six are now caught (checked by re-running those two mutants), none judged equivalent.
 
+### 3z. Task DYN-1: would wiring the dynamics layer into the hourly runtime change anything? (owner choice, 2026-11-13)
+
+On 2026-11-13, after CAL-2 was merged (PR #71), the owner asked for the next improvement and agreed to skip validation (no source papers available yet) and look at wiring dynamics into the runtime. I measured first instead of wiring: **read as authorising this one task only, a measurement and its record, no runtime change.** Added: `scripts/run_hourly_dynamics_impact.py`, `tests/test_hourly_dynamics_impact.py` (4 cases), `docs/dynamics_hourly_impact.md`. No existing test edited; no runtime, engine, app or dynamics code changed. `docs/design_basis_ledger.csv` and `.md` were regenerated with `scripts/export_design_basis_ledger.py` because the new script reads the dynamics time constants (only the read-by lists of the four tau rows changed).
+
+Result: at the runtime's own 1 h step the four Assumed lags change a published value by at most 1.28 % (H2 production and GA-001 dry flow, in the first cycle after a feed step; 0.06 % the next), and by 0.00 % after an ER step and after a temperature step. Recommendation: do not wire the lags into the hourly runtime; a sub-hour cadence would be a different decision and needs DOK-ING step responses first. The EU-008 cooling-water damping (50 % per hour by design) is on in both runs and is not part of the comparison. Not mutation-tested beyond the tests' own sanity checks (a "not trivially zero" test guards a comparison that returns zero for every column).
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
