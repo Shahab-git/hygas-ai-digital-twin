@@ -318,6 +318,14 @@ Results (details and limits in the document): at the nominal point the six gas-t
 
 Eight hand-made breakages were run against the tests: the noise weighting of the Jacobian, the verdict threshold, the dropped row of the instrument table, a wrong parameter tag, the weighting in the optimiser's residual, the noise scale of the synthetic data, the finite-difference step and the initial value of a field that is overwritten. Six non-equivalent ones are caught (the optimiser's weighting survived the first draft of the tests and a test was added: the optimiser's cost must equal the independently computed weighted sum of squares); the last two are equivalent mutants (a smooth algebraic model is insensitive to the step; the field is overwritten).
 
+### 3y. Task CAL-2: calibration core, step 2: state estimation (owner choice, 2026-11-13)
+
+On 2026-11-13, after CAL-1 was merged (PR #70, CI green on 3.11 and 3.12), the owner asked for the next improvement and chose "CAL-2: state estimation" from three options offered. **Read as authorising this one task.** Added: `python/state_estimation.py`, `tests/test_state_estimation.py` (11 cases) and `docs/state_estimation_step2.md`. An extended Kalman filter over the four CAL-1 parameters on SYNTHETIC drift (the measurements are the engine's own output plus seeded noise); it calibrates nothing and nothing imports it. **One existing test was edited (deliberate, stated):** `tests/test_calibration.py::test_nothing_in_the_engine_the_runtime_the_app_or_a_script_imports_the_module` now excludes `state_estimation.py`, the one deliberate importer of `calibration`; every other file is still scanned. The two parameter-table guard tests needed no change (the new module imports `calibration`, not `parameter_table`); the design-basis ledger regenerated with no diff.
+
+Results (docs): ER ramp 0.25 to 0.28: observable error 3.13 sigma (static twin) to 0.57 sigma (filter); conversion step 0.90 to 0.86: 1.54 to 0.51 sigma, conversion error 0.040 to 0.022 (still converging, the test claims "at least a quarter better"); no-drift control 0.30 sigma. Mean NIS 4.0 to 7.1 against the expected 6. One test threshold was set after seeing the result (the step test first demanded half the static error and measured 0.56; it now demands 0.75 and says why).
+
+Six hand-made breakages were run against the new tests: no covariance growth, the sign of the gain, the noise matrix ignoring the sigmas, the Joseph update replaced by a bare covariance, no clipping, and zero drift. Four were caught at once; the sigma and clipping ones escaped, which led to two added tests (`..._noise_sigmas_set_how_much_the_filter_trusts_the_data`, `..._far_outside_the_prior_cannot_push_the_estimate_past_the_bounds`). All six are now caught (checked by re-running those two mutants), none judged equivalent.
+
 ## 4. Gate 5 criteria: status as of this record
 
 | ID | Criterion | Status |
