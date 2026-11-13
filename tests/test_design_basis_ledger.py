@@ -447,7 +447,8 @@ def test_a_ledger_module_imported_or_named_by_the_engine_the_runtime_or_the_app_
 def test_the_widened_data_layer_guard_still_keeps_parameter_table_out_of_the_engine_the_runtime_and_the_app():
     users = {rel for rel, src in _repo_sources().items() if any(n.split(".")[-1] == "parameter_table" for n in _imported_names(src))}
     # the data-layer task's own files (measurement_replay, run_residual_report) plus the one file the ledger added to the allow-list
-    assert users == {"python/measurement_replay.py", "scripts/run_residual_report.py", "scripts/export_design_basis_ledger.py"}, users
+    # CAL-1 (2026-11-13, deliberate edit): python/calibration.py reads the table's values and ranges; it is imported by nothing (tests/test_calibration.py checks that)
+    assert users == {"python/measurement_replay.py", "scripts/run_residual_report.py", "scripts/export_design_basis_ledger.py", "python/calibration.py"}, users
     assert "scripts/export_design_basis_ledger.py" not in {u for u in _repo_sources() if u != "scripts/export_design_basis_ledger.py" and "export_design_basis_ledger" in _repo_sources()[u]}, "nothing imports the export script"
 
 
