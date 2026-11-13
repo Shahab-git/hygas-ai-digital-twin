@@ -141,7 +141,7 @@ def test_nothing_in_the_engine_the_runtime_the_app_or_a_script_imports_the_modul
     for base in ("python", "scripts"):
         for dp, _dn, fn in os.walk(os.path.join(ROOT, base)):
             for f in fn:
-                if f.endswith(".py") and f != "calibration.py":
+                if f.endswith(".py") and f not in ("calibration.py", "state_estimation.py"):  # CAL-2: the one deliberate importer
                     with open(os.path.join(dp, f), encoding="utf-8") as fh:
                         text = fh.read()
                     if "import calibration" in text or "from python import calibration" in text or "from . import calibration" in text or "python.calibration" in text:
