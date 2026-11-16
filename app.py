@@ -891,7 +891,23 @@ with tab1:
     )
 
     registry = equipment_registry.load_registry()
-    quotes = vendor_log.load_quotes()
+    # Stability fix (STAB-1): the quote log lives in Supabase. Without a reachable database
+    # (no secrets, no network) this read used to raise and stop the script, so every tab
+    # after this section was never drawn. Now the section degrades: the registry stays
+    # visible, the log is empty, and logging a quote is disabled with a visible reason.
+    vendor_db_ok = True
+    try:
+        quotes = vendor_log.load_quotes()
+    except Exception as exc:
+        vendor_db_ok = False
+        quotes = []
+        st.warning(
+            "**Quote log unavailable: the database is not reachable from this session.** "
+            "The registry below is still shown, but no logged quotes can be read and "
+            "logging a new quote is disabled until the connection is back. "
+            f"(Technical detail: {type(exc).__name__}: {str(exc)[:160]})",
+            icon="⚠️",
+        )
     counts = vendor_log.status_counts(registry, quotes)
 
     st.caption(
@@ -925,15 +941,19 @@ with tab1:
             price = st.number_input("Price (EUR)", min_value=0.0, step=100.0)
             quote_date = st.date_input("Quote date")
         notes = st.text_area("Notes", placeholder="e.g. lead time, contact, quote reference #")
-        submitted = st.form_submit_button("Log quote")
+        submitted = st.form_submit_button("Log quote", disabled=not vendor_db_ok)
 
     if submitted:
         if not vendor_name.strip():
             st.error("Vendor name is required.")
         else:
-            vendor_log.log_quote(selected_id, vendor_name, price, quote_date, notes)
-            st.success(f"Logged {vendor_name} for {selected_id} at €{price:,.0f}.")
-            st.rerun()
+            try:
+                vendor_log.log_quote(selected_id, vendor_name, price, quote_date, notes)
+            except Exception as exc:
+                st.error(f"The quote was NOT logged (database error: {type(exc).__name__}). Try again when the connection is back.")
+            else:
+                st.success(f"Logged {vendor_name} for {selected_id} at €{price:,.0f}.")
+                st.rerun()
 
     st.subheader("Registry status")
     selected_category = st.selectbox(
