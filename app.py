@@ -456,25 +456,28 @@ _render_plant_operations_header()
 
 
 def _render_simulated_banner():
-    """STAB-2: a standing, always-visible statement of what the numbers are. The header's own
+    """STAB-2 (+2b): a standing, always-visible statement of what the numbers are. The header's own
     small "Data source: Simulated" line is easy to miss; this banner sits above every tab.
-    The count is computed from the same snapshot the tabs read (not a typed constant), so the
-    banner cannot go stale: it says how many entries are Measured and how many are not."""
+    The count is computed from the same snapshot the tabs read (a cached call, not a typed
+    constant), so it cannot go stale, and the lead sentence follows the count: with 0 Measured
+    values it says no plant measurements exist yet; with any Measured value it does not."""
     try:
         snap = _tab1_integration_snapshot()
         total = len(snap)
         measured = sum(1 for e in snap.values() if e.get("status") == "Measured")
-        count_text = (f"{measured} of {total} published values are Measured; the rest are model results"
-                      if measured else f"0 of {total} published values are Measured")
+        count_text = f"{measured} of {total} published values are Measured"
+        lead = ("Model results, no measurements from the plant yet" if measured == 0
+                else "Model results plus some Measured values")
     except Exception:
         count_text = "the number of Measured values could not be counted"
+        lead = "Model results"
     st.markdown(
         '<div class="sim-banner" style="background:#0F172A;border:1px solid #1E293B;border-radius:8px;'
         'padding:8px 16px;margin-bottom:10px;font-family:sans-serif;font-size:0.82rem;color:#E2E8F0;">'
         '<span style="background:#FDE68A;color:#78350F;font-weight:800;font-size:0.7rem;letter-spacing:0.05em;'
         'padding:2px 10px;border-radius:10px;margin-right:10px;">SIMULATED</span>'
-        f'Model results, no measurements from the plant yet ({count_text}). '
-        'Every number carries its evidence label.</div>',
+        f'{lead} ({count_text}). Each published live value carries an evidence status '
+        '(Measured, Calculated, Estimated, Assumed or Missing).</div>',
         unsafe_allow_html=True,
     )
 
