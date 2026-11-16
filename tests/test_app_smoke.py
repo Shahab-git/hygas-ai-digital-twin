@@ -72,18 +72,18 @@ def test_app_runs_offline_with_eleven_tabs_and_tab2_counters_summing_to_91():
         return found[0].value
 
     parts = {}
-    for key, label in (("live", "🟢 Running – live values"), ("assumed", "🟡 Running – assumed inputs only"),
+    for key, label in (("live", "🟢 Computed this cycle (model)"), ("assumed", "🟡 Assumed inputs only"),
                        ("static", "🔵 Static (no live key)"), ("missing", "⚪ Missing")):
         m = re.fullmatch(r"(\d+) / 91", metric_value(label))
         assert m, (label, metric_value(label))
         parts[key] = int(m.group(1))
     captions = " ".join(str(c.value) for c in at.caption)
-    summary = re.search(r"Item categories: (\d+) \+ (\d+) \+ (\d+) \+ (\d+) \+ (\d+) FAULT items = \*\*(\d+)\*\*", captions)
+    summary = re.search(r"Item categories: (\d+) \+ (\d+) \+ (\d+) \+ (\d+) \+ (\d+) design-finding items = \*\*(\d+)\*\*", captions)
     assert summary, "Tab 2 category-sum caption not found"
     live, assumed, static, missing, fault_items, total = (int(x) for x in summary.groups())
     assert (live, assumed, static, missing) == (parts["live"], parts["assumed"], parts["static"], parts["missing"])
     assert live + assumed + static + missing + fault_items == 91 == total
-    assert metric_value("🔴 FAULT events") == "1"
+    assert metric_value("🔴 Design findings") == "1"
 
 
 def test_one_cycle_number_everywhere_is_the_persisted_counter():

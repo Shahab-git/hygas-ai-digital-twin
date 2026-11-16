@@ -52,6 +52,20 @@ from . import simulation_engine as se
 
 DEFAULT_CYCLES = 5
 
+# STAB-3 (display only): the red "FAULT" is the verdict of the SIMULATED AI-004 PLC interlock, a design
+# finding of the model rather than an alarm from a running plant. The state value in the data stays
+# "FAULT"; only the text shown on screen is relabelled (same label as app.py's FAULT_LABEL).
+_FAULT_DISPLAY = "DESIGN FINDING"
+
+
+def _display_status(value):
+    return _FAULT_DISPLAY if value == "FAULT" else value
+
+
+def _display_status_text(text):
+    """Relabel the state value in an alarm line ("EU-009: FAULT"); other wording is untouched."""
+    return text[: -len("FAULT")] + _FAULT_DISPLAY if isinstance(text, str) and text.endswith(": FAULT") else text
+
 
 def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None):
     """Registers EVERY phase built so far (FE -> GA-001 -> GC -> HB(+
@@ -428,7 +442,7 @@ def render_tab1_section(snapshot):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Overall plant status", kpis["overall_plant_status"]["value"])
+        st.metric("Overall plant status", _display_status(kpis["overall_plant_status"]["value"]))
         st.metric("Total feedstock input", _fmt(kpis["total_feedstock_input"]))
         st.metric("Total syngas production", _fmt(kpis["total_syngas_production"]))
     with col2:
@@ -449,7 +463,7 @@ def render_tab1_section(snapshot):
     st.write(f"**LOHC H2 storage level (HB-015)**: {_fmt(kpis['lohc_h2_storage_level'])}")
 
     st.subheader("Active alarms")
-    for line in kpis["active_alarms"]["value"]:
+    for line in [_display_status_text(a) for a in kpis["active_alarms"]["value"]]:
         st.write(f"- {line}")
 
     st.subheader("Critical constraints / bottlenecks")

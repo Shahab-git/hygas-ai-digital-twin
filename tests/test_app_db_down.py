@@ -33,7 +33,7 @@ def test_quote_table_unreachable_does_not_stop_the_other_tabs():
     labels = [t.label for t in at.tabs]
     assert len(labels) == 11 and labels[-1] == "Transient What-If", labels
     # the later tabs really rendered (Tab 2 counters exist), not just declared
-    assert [m for m in at.metric if m.label == "🔴 FAULT events"], "Tab 2 did not render after the vendor section"
+    assert [m for m in at.metric if m.label == "🔴 Design findings"], "Tab 2 did not render after the vendor section"
     warnings = " ".join(str(w.value) for w in at.warning)
     assert "Quote log unavailable" in warnings
     assert [c for c in fake.calls if c[0] != "select"] == [], "the app wrote to the (fake) database"
