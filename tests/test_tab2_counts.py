@@ -67,11 +67,11 @@ def test_one_fault_event_marks_two_items(app, snapshot):
 def test_compact_schematic_marks_eu_fault_from_the_same_states(app, snapshot):
     items = app["_plant_overview_item_states"](snapshot)
     assert len(items) == 91
-    assert app["_plant_overview_group_badge"](items, "EU")[2] == "FAULT"
+    assert app["_plant_overview_group_badge"](items, "EU")[2] == "FINDING"
     assert app["_plant_overview_group_badge"](items, "FE")[2] == "Running"
     assert app["_plant_overview_group_badge"](items, "HB")[2].endswith("missing")
     svg = app["_plant_overview_compact_svg"](snapshot)
-    assert ">FAULT<" in svg
+    assert ">FINDING<" in svg
 
 
 def test_missing_caption_lists_equipment_with_any_missing_entry(app, snapshot):

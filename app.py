@@ -216,6 +216,19 @@ _PLANT_STATUS_STYLE = {
     "MISSING":  {"bg": "#F3F4F6", "fg": "#6B7280", "dot": "#9CA3AF"},
 }
 
+# STAB-3: what the red "FAULT" state means. It is the verdict of the SIMULATED AI-004 PLC interlock
+# in the model (EU-009 trips when EU-008's modelled cooling duty exceeds its 20 kW rating), i.e. a
+# design finding of the model, not an alarm from a running plant. The engine's state value stays
+# the string "FAULT" (code, dict keys, comparisons and the tab 1 module are unchanged); only what
+# is SHOWN changes: FAULT_LABEL in pills and sentences, FAULT_LABEL_SHORT in the small SVG badges.
+FAULT_LABEL = "DESIGN FINDING"
+FAULT_LABEL_SHORT = "FINDING"
+
+
+def _status_label(value):
+    """Display text for a plant status value: only the interlock FAULT state is relabelled."""
+    return FAULT_LABEL if value == "FAULT" else value
+
 # --- Simulation Runtime status (Task B, now wired to real data) -----------
 # Explicit, honest logic (task's own requirement), not a vibe:
 #   OFFLINE          -- the dashboard cannot reach plant_state_current at
@@ -362,15 +375,15 @@ def _render_plant_operations_header():
         status_value = kpis["overall_plant_status"]["value"]
         alarms = kpis["active_alarms"]["value"]
         style = _PLANT_STATUS_STYLE.get(status_value, _PLANT_STATUS_STYLE["MISSING"])
-        first_alarm = alarms[0] if alarms else None
+        first_alarm = (alarms[0][: -len("FAULT")] + FAULT_LABEL if alarms[0].endswith(": FAULT") else alarms[0]) if alarms else None
         status_html = (
             f'<div class="poh-block"><div class="poh-label">PLANT STATUS</div>'
             f'<div class="poh-value"><span class="poh-status-pill" '
             f'style="background:{style["bg"]};color:{style["fg"]};">'
-            f'<span class="poh-status-dot" style="background:{style["dot"]};"></span>{status_value}</span></div>'
+            f'<span class="poh-status-dot" style="background:{style["dot"]};"></span>{_status_label(status_value)}</span></div>'
             + (f'<div class="poh-sub" title="{first_alarm}">{first_alarm[:52]}'
                f'{"…" if len(first_alarm) > 52 else ""}</div>' if first_alarm else
-               '<div class="poh-sub">No active alarms this cycle</div>')
+               '<div class="poh-sub">No active findings this cycle</div>')
             + '</div>'
         )
     except Exception as exc:
@@ -4282,7 +4295,7 @@ def _plant_overview_group_badge(items, group):
     the same item states as the counts: FAULT beats missing beats running."""
     gi = [i for i in items if i["group"] == group]
     if any(i["state"] == "fault" for i in gi):
-        return ("#FEE2E2", "#B91C1C", "FAULT")
+        return ("#FEE2E2", "#B91C1C", FAULT_LABEL_SHORT)
     n_missing = sum(1 for i in gi if i["state"] == "missing")
     if n_missing:
         return ("#FEF3C7", "#B45309", f"{n_missing} missing")
@@ -4348,8 +4361,8 @@ def _plant_overview_active_findings(snap):
         resized_val = if_resized["value"] if if_resized is not None and if_resized.get("status") != ps.STATUS_MISSING else "n/a"
         findings.append({
             "severity": "fault", "tab": "Electrical & Utilities (Tab 8)", "id": "EU-008 / EU-009",
-            "title": "Cooling-tower capacity fault — dual-scenario",
-            "detail": f"fault_status_as_specified ({_caption_status('EU-008', 'Cooling duty')} 20kW basis) = **FAULT**; "
+            "title": "Cooling-tower capacity finding — dual-scenario",
+            "detail": f"fault_status_as_specified ({_caption_status('EU-008', 'Cooling duty')} 20kW basis) = **{FAULT_LABEL}** (state value FAULT, a simulated interlock verdict); "
                       f"fault_status_if_resized (Internal-model-derived {baseline} basis) = "
                       f"**{resized_val}** — both real, separately-provenanced AI-004 entries, the "
                       f"SAME dual-scenario treatment Tab 8's own Section 2 shows.",
@@ -4508,7 +4521,7 @@ def _plant_overview_compact_svg(snap):
     parts.append(f'<rect x="20" y="{main_y+box_h+70:.0f}" width="{total_w-40}" height="30" rx="8" '
                   f'fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.5" stroke-dasharray="3,3"/>')
     ai_fault_sources = sorted({src[1].replace("-State", "") for i in states if i["group"] == "AI" for src in i["fault_sources"]})
-    ai_fault_text = f" — ⚠ AI-004 reports FAULT ({', '.join(ai_fault_sources)})" if ai_fault_sources else ""
+    ai_fault_text = f" — ⚠ AI-004 interlock: {FAULT_LABEL.lower()} ({', '.join(ai_fault_sources)})" if ai_fault_sources else ""
     parts.append(f'<text x="{total_w/2:.0f}" y="{main_y+box_h+89:.0f}" text-anchor="middle" font-size="9" '
                   f'fill="{"#B91C1C" if ai_fault_sources else "#6B7280"}">AI-001–015: architecture/control layer (PLC, SCADA, connectivity, '
                   f'intelligence) — background tier, Tab 9\'s own real treatment, not a flow-chain box{ai_fault_text}</text>')
@@ -4562,24 +4575,24 @@ def _render_plant_overview_tab():
         counts, total = _plant_overview_status_counts(snap)
         fault_info = _plant_overview_fault_events(snap)
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("🟢 Running – live values", f"{counts['running_live']} / {total}",
+        c1.metric("🟢 Computed this cycle (model)", f"{counts['running_live']} / {total}",
                   help="Item's primary value is Calculated, Estimated or Measured this cycle: a model result or a measurement.")
-        c2.metric("🟡 Running – assumed inputs only", f"{counts['running_assumed']} / {total}",
+        c2.metric("🟡 Assumed inputs only", f"{counts['running_assumed']} / {total}",
                   help="Item's primary value is tagged Assumed: a stated default or constant, not a model result or a measurement.")
         c3.metric("🔵 Static (no live key)", f"{counts['static']} / {total}",
                   help="Registry item with no live value of its own anywhere in the model (design data / annotation only).")
         c4.metric("⚪ Missing", f"{counts['missing']} / {total}",
                   help="Item whose primary key is Missing this cycle (see the note below for equipment with a Missing secondary entry).")
-        c5.metric("🔴 FAULT events", f"{fault_info['n_events']}",
-                  help="Unique fault EVENTS. One state entry reporting FAULT is one event even if it marks several items.")
+        c5.metric("🔴 Design findings", f"{fault_info['n_events']}",
+                  help="Unique interlock-trip EVENTS of the simulated AI-004 PLC (a design finding of the model, not an alarm from a running plant). One state entry reporting FAULT is one event even if it marks several items.")
         _sum = sum(counts.values())
         st.caption(
             f"Item categories: {counts['running_live']} + {counts['running_assumed']} + {counts['static']} + "
-            f"{counts['missing']} + {counts['fault']} FAULT items = **{_sum}**"
+            f"{counts['missing']} + {counts['fault']} design-finding items = **{_sum}**"
             + ("" if _sum == total else f" ⚠️ does not equal the {total} items tracked")
-            + (f" · FAULT: **{fault_info['n_events']} unique event(s)**, affects {len(fault_info['affected_items'])} items: "
+            + (f" · Design findings: **{fault_info['n_events']} unique event(s)**, affects {len(fault_info['affected_items'])} items: "
                f"{', '.join(fault_info['affected_items'])} (each counted once in the {total})." if fault_info["n_events"] else
-               " · No FAULT event this cycle.")
+               " · No design finding this cycle.")
         )
         _missing_ids = _plant_overview_missing_equipment_ids(snap)
         st.caption(
@@ -4589,7 +4602,7 @@ def _render_plant_overview_tab():
         st.caption(
             "Computed by re-checking each tab's own already-built item lists "
             "(`_FE_SCHEMATIC_ITEMS`, `_GA_SCHEMATIC_ITEMS`, ... `_AI_SCHEMATIC_ITEMS`) against this "
-            "SAME live snapshot, using the SAME is_missing/FAULT/Static conditions each tab's own "
+            "SAME live snapshot, using the SAME is_missing/finding/Static conditions each tab's own "
             "Section 3 already established — an aggregation, not a new calculation."
         )
     except Exception as _po_counts_exc:
@@ -5281,7 +5294,7 @@ def _ga_status_pill_html(state):
         # state than "missing" -- EU-009's own GridBalance entry is NOT
         # Missing, it is a real interlock verdict (EU-008 utilization
         # >150%) computed BY a live entry, so it needs its own label.
-        "fault": ("#FEE2E2", "#B91C1C", "FAULT"),
+        "fault": ("#FEE2E2", "#B91C1C", FAULT_LABEL),
     }[state]
     bg, fg, label = style
     return f'<span class="fe-tag" style="background:{bg};color:{fg};">{label}</span>'
@@ -9122,7 +9135,7 @@ def _eu_schematic_svg(snap):
         if eq_id == "EU-009":
             ai_state = snap.get(("AI-004", "EU-009-State"))
             if ai_state is not None and ai_state.get("status") != ps.STATUS_MISSING and ai_state["value"] == "FAULT":
-                badge_fill, badge_fg, badge_text = "#FEE2E2", "#B91C1C", "FAULT"
+                badge_fill, badge_fg, badge_text = "#FEE2E2", "#B91C1C", FAULT_LABEL_SHORT
         shape = _EU_ITEM_SHAPE[eq_id]
         parts.append(_fe_equipment_shape_svg(shape, x, y, _EU_BOX_W, _EU_BOX_H, f'url(#grad-eu-{cat})', colors["stroke"]))
         parts.append(f'<text x="{x+_EU_BOX_W/2:.1f}" y="{y+16:.1f}" text-anchor="middle" font-size="10.5" '
@@ -9169,7 +9182,7 @@ def _eu_schematic_legend_svg():
         "HB-003/HB-012 same-cycle, adequacy/derating flows back OUT to them lagged (one cycle behind) "
         "— a documented architectural feature (module docstring), not a simple linear flow and not an "
         "oversight.",
-        "EU-009's own badge turns red (\"FAULT\") when AI-004's own real PLC interlock trips — EU-008's "
+        "EU-009's own badge turns red (\"FINDING\") when AI-004's simulated PLC interlock trips — EU-008's "
         "cooling utilization exceeding 150% of its registry rating — reusing the SAME alarm treatment "
         "the Plant Operations Header already shows for this exact condition.",
         "EU-001 (small italic label): a real registry sub-item of EU-002's own physical unit, no live "
@@ -9343,9 +9356,9 @@ def _render_eu_status_table(snap):
         summary_bg, summary_fg = "#FEF3C7", "#B45309"
     st.markdown(f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
                 f'{live_count}/{total} live'
-                + (f' · {fault_count} FAULT' if fault_count else '') + '</div>', unsafe_allow_html=True)
+                + (f' · {fault_count} design finding(s)' if fault_count else '') + '</div>', unsafe_allow_html=True)
     st.caption(
-        "EU-009's own status turns red \"FAULT\" (not just gray \"No data\") when AI-004's own real "
+        "EU-009's own status turns red \"DESIGN FINDING\" (not just gray \"No data\") when AI-004's simulated "
         "PLC interlock trips — the SAME alarm treatment already shown in the Plant Operations Header "
         "at the top of every tab, reused here, not reinvented."
     )
@@ -9558,8 +9571,8 @@ def _render_eu_live_results(snap):
         if as_spec is not None and as_spec.get("status") != ps.STATUS_MISSING and as_spec["value"] == "FAULT":
             st.markdown(
                 '<div style="background:#FEE2E2;border:2px solid #B91C1C;border-radius:8px;padding:8px 14px;'
-                'margin:8px 0;"><span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ FAULT — '
-                'AI-004\'s own real PLC interlock: EU-008 cooling utilization exceeds 150% of its '
+                'margin:8px 0;"><span style="color:#B91C1C;font-weight:800;font-size:0.85rem;">⚠️ DESIGN FINDING — '
+                'AI-004\'s simulated PLC interlock (a model verdict, not a plant alarm): EU-008 cooling utilization exceeds 150% of its '
                 f'{_caption_status("EU-008", "Cooling duty")} rating</span></div>', unsafe_allow_html=True)
         if eu009 is not None:
             v = eu009["value"]
@@ -9838,7 +9851,7 @@ def _render_eu_tab():
     st.divider()
     st.subheader("Section 3 — Process Flow & Equipment Status")
     st.caption(
-        "The same live/FAULT status shown visually in Section 1's schematic, as a table — for "
+        "The same live/finding status shown visually in Section 1's schematic, as a table — for "
         "accessibility/screen-reader parity, not a second diagram."
     )
     try:
@@ -10101,7 +10114,7 @@ def _ai_schematic_svg(snap):
                     fault_any = True
                     break
             if fault_any:
-                badge_fill, badge_fg, badge_text = "#FEE2E2", "#B91C1C", "FAULT"
+                badge_fill, badge_fg, badge_text = "#FEE2E2", "#B91C1C", FAULT_LABEL_SHORT
         shape = _AI_ITEM_SHAPE[eq_id]
         parts.append(_fe_equipment_shape_svg(shape, x, y, _AI_BOX_W, _AI_BOX_H, f'url(#grad-ai-{cat})', colors["stroke"]))
         parts.append(f'<text x="{x+_AI_BOX_W/2:.1f}" y="{y+15:.1f}" text-anchor="middle" font-size="10" '
@@ -10214,7 +10227,7 @@ def _render_ai_live_kpis(snap):
                     fault_items.append(tier1)
         st.metric("🎛️ PLC Tier-1 state (AI-004)", f"{running_count}/5 RUNNING")
         if fault_items:
-            st.caption(f"⚠️ FAULT: {', '.join(fault_items)} — see Section 3/4 for the real interlock reason.")
+            st.caption(f"⚠️ Design finding: {', '.join(fault_items)} — see Section 3/4 for the interlock reason (simulated PLC).")
 
     with cols[2].container(border=True):
         ai007 = snap.get(("AI-007", "ScadaSnapshot"))
@@ -10292,12 +10305,12 @@ def _render_ai_status_table(snap):
         summary_bg, summary_fg = "#DCFCE7", "#15803D"
     st.markdown(f'<div class="fe-status-summary" style="background:{summary_bg};color:{summary_fg};">'
                 f'{live_count}/{total} live'
-                + (f' · {fault_count} FAULT' if fault_count else '') + '</div>', unsafe_allow_html=True)
+                + (f' · {fault_count} design finding(s)' if fault_count else '') + '</div>', unsafe_allow_html=True)
     st.caption(
         "AI-012/013/014 shown as \"Static\" — the SAME label Tab 4 (Gasification) already established "
         "for architectural/relabeled items with no live-computable process quantity of their own, "
-        "reused here, not reinvented. AI-004's own status turns red \"FAULT\" whenever ANY of its "
-        "real Tier-1 items reports FAULT — the SAME alarm treatment the Plant Operations Header and "
+        "reused here, not reinvented. AI-004's own status turns red \"FINDING\" whenever ANY of its "
+        "simulated Tier-1 items reports FAULT — the SAME alarm treatment the Plant Operations Header and "
         "the Electrical & Utilities tab already use for this exact condition."
     )
 
@@ -10767,7 +10780,7 @@ def _render_ai_tab():
     st.divider()
     st.subheader("Section 3 — Process Flow & Equipment Status")
     st.caption(
-        "The same live/FAULT/Static status shown visually in Section 1's schematic, as a table — "
+        "The same live/finding/Static status shown visually in Section 1's schematic, as a table — "
         "for accessibility/screen-reader parity, not a second diagram."
     )
     try:
