@@ -454,6 +454,33 @@ def _render_plant_operations_header():
 
 _render_plant_operations_header()
 
+
+def _render_simulated_banner():
+    """STAB-2: a standing, always-visible statement of what the numbers are. The header's own
+    small "Data source: Simulated" line is easy to miss; this banner sits above every tab.
+    The count is computed from the same snapshot the tabs read (not a typed constant), so the
+    banner cannot go stale: it says how many entries are Measured and how many are not."""
+    try:
+        snap = _tab1_integration_snapshot()
+        total = len(snap)
+        measured = sum(1 for e in snap.values() if e.get("status") == "Measured")
+        count_text = (f"{measured} of {total} published values are Measured; the rest are model results"
+                      if measured else f"0 of {total} published values are Measured")
+    except Exception:
+        count_text = "the number of Measured values could not be counted"
+    st.markdown(
+        '<div class="sim-banner" style="background:#0F172A;border:1px solid #1E293B;border-radius:8px;'
+        'padding:8px 16px;margin-bottom:10px;font-family:sans-serif;font-size:0.82rem;color:#E2E8F0;">'
+        '<span style="background:#FDE68A;color:#78350F;font-weight:800;font-size:0.7rem;letter-spacing:0.05em;'
+        'padding:2px 10px;border-radius:10px;margin-right:10px;">SIMULATED</span>'
+        f'Model results, no measurements from the plant yet ({count_text}). '
+        'Every number carries its evidence label.</div>',
+        unsafe_allow_html=True,
+    )
+
+
+_render_simulated_banner()
+
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
     ["Digital Twin", "Plant Overview", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
      "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Transient What-If"]
