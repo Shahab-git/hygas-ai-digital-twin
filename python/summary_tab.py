@@ -17,8 +17,8 @@ OPEN_ITEMS = (
     "Gasifying agent (air at ER 0.25 versus steam-blown chemical looping) and the feed LHV (15-20 MJ/kg)",
     "Wet or dry basis of the 1 tonne/day feed rate",
     "Rate constants for the LOHC reactors (HB-014, HB-016)",
-    "Plant measurements: none exist yet, so every value is a model result",
 )
+NO_MEASUREMENTS_ITEM = "Plant measurements: none exist yet, so every value is a model result"
 
 
 def _num(entry):
@@ -49,5 +49,5 @@ def summary_data(snapshot):
         "syngas_h2_mol_pct": None if comp is None else comp.get("H2_mol_pct_dry"),
         "psa_recovery": _num(kpis["h2_recovery"]),
         "cooling": cooling,
-        "open_items": OPEN_ITEMS,
+        "open_items": OPEN_ITEMS + ((NO_MEASUREMENTS_ITEM,) if counts["Measured"] == 0 else ()),
     }

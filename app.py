@@ -506,7 +506,7 @@ with tab0:
     # P2-1: partner front page. Every number is read from the same snapshot the other tabs use
     # (python/summary_tab.py); nothing here is a typed result.
     st.title("HYGAS-AI — Summary")
-    st.caption("MSW-to-hydrogen plant, 1 tonne/day, DOK-ING (NACHIP pilot). Simulated: model results, not plant measurements.")
+    st.caption("MSW-to-hydrogen plant, 1 tonne/day, DOK-ING (NACHIP pilot). Model results (see the banner above for how many values are Measured).")
     try:
         _sm = summary_tab.summary_data(_tab1_integration_snapshot())
     except Exception as _exc:
@@ -524,7 +524,8 @@ with tab0:
         _e = st.columns(5)
         for _col, _name in zip(_e, summary_tab.STATUSES):
             _col.metric(_name, _sm["counts"].get(_name, 0))
-        st.caption(f"{_sm['total']} published values. Measured means a plant measurement; none exists yet.")
+        st.caption(f"{_sm['total']} published values. Measured means a plant measurement"
+                   + ("; none exists yet." if _sm["counts"].get("Measured", 0) == 0 else "."))
         st.subheader("Design finding of the model")
         if _sm["cooling"]:
             _cl = _sm["cooling"]

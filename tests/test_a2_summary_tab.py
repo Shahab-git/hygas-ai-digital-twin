@@ -43,3 +43,13 @@ def test_the_app_shows_the_summary_first_and_its_numbers():
     assert inside["DOK-ING stated (plastic feed)"] == "~50 kg/day"
     assert inside["Measured"] == str(sum(1 for r in smoke._store_rows() if r["entry"].get("status") == "Measured"))
     assert inside["Hydrogen (model)"].endswith("kg/day") and "n/a" not in inside["Hydrogen (model)"]
+
+
+def test_fixed_sentences_follow_the_measured_count():
+    """P2-1b: the 'no measurements' statement is derived from the count, so it cannot go stale."""
+    snap = dict(_snap())
+    assert any("Plant measurements: none exist yet" in i for i in summary_tab.summary_data(snap)["open_items"])
+    snap[("EU-009", "GridBalance")] = dict(snap[("EU-009", "GridBalance")], status="Measured")
+    d = summary_tab.summary_data(snap)
+    assert d["counts"]["Measured"] == 1
+    assert not any("none exist yet" in i for i in d["open_items"])
