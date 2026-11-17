@@ -67,7 +67,7 @@ def _display_status_text(text):
     return text[: -len("FAULT")] + _FAULT_DISPLAY if isinstance(text, str) and text.endswith(": FAULT") else text
 
 
-def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None):
+def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None, on_cycle=None):
     """Registers EVERY phase built so far (FE -> GA-001 -> GC -> HB(+
     remaining) -> EU -> SA -> AI) and runs n_cycles, returning a real
     SharedPlantState snapshot. `overrides` (optional): a dict of
@@ -75,7 +75,9 @@ def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None):
     for perturbation testing (task requirement 4), using the SAME pattern
     every prior phase's own self-test already uses (e.g. forcing GA-001's
     equivalence_ratio or FE-001's delivery rate) -- applied AFTER
-    registration, BEFORE the first run_cycle()."""
+    registration, BEFORE the first run_cycle().
+    `on_cycle` (optional, P2-2): a callback `on_cycle(cycle_index, snapshot)` called after each cycle;
+    it only reads, the default None changes nothing."""
     state = sps.SharedPlantState()
     handle = state.new_writer_handle()
     engine = se.SimulationEngine(state)
@@ -92,6 +94,8 @@ def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None):
             engine._models[key]["fn"] = fn
     for i in range(n_cycles):
         engine.run_cycle(now=f"2026-09-10T{(i // 60) % 24:02d}:{i % 60:02d}:00Z")
+        if on_cycle is not None:
+            on_cycle(i + 1, state.get_snapshot())
     return state.get_snapshot(), state, engine
 
 

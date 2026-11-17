@@ -23,7 +23,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, summary_tab, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -534,6 +534,35 @@ with tab0:
                         f"**{_status_label(_sm['overall_status'])}**. Please confirm the installed cooling capacity.")
         else:
             st.caption("Cooling demand or rating unavailable this cycle.")
+        st.subheader("Model trace (simulated)")
+        st.caption("The engine run cycle by cycle from a cold start, with an optional feed-rate step. The x axis is the model "
+                   "cycle, not seconds: the engine is quasi-steady (about one cycle of lag, no time-domain dynamics), and "
+                   "the storage level rises and falls because the model dispenses hydrogen each cycle.")
+        _tc1, _tc2, _tc3 = st.columns(3)
+        _step_on = _tc1.checkbox("Apply a feed-rate step", value=True, key="_trace_step_on")
+        _step_at = _tc2.number_input("Step at cycle", min_value=2, max_value=29, value=8, key="_trace_step_at")
+        _step_to = _tc3.number_input("New as-received feed (kg/h)", min_value=10.0, max_value=60.0, value=50.0, step=1.0, key="_trace_step_to")
+        if st.button("Run 30-cycle trace", key="_trace_run"):
+            with st.spinner("Running the model..."):
+                st.session_state["_summary_trace"] = live_trace.run_trace(
+                    30, feed_step=(int(_step_at), float(_step_to)) if _step_on else None)
+        _trace = st.session_state.get("_summary_trace")
+        if _trace:
+            _tdf = pd.DataFrame(_trace).set_index("cycle")
+            _rating = _sm["cooling"]["rating_kw"] if _sm["cooling"] else None
+            _g1, _g2 = st.columns(2)
+            _g1.caption("As-received feed (kg/h)")
+            _g1.line_chart(_tdf[["feed_kg_h"]])
+            _g2.caption("Hydrogen production (kg/h)")
+            _g2.line_chart(_tdf[["h2_kg_h"]])
+            _g3, _g4 = st.columns(2)
+            _g3.caption("Cooling demand EU-008 (kW)" + ("" if _rating is None else f", against the {_rating:.0f} kW rating"))
+            _cdf = _tdf[["cooling_kw"]].copy()
+            if _rating is not None:
+                _cdf["rating_kw"] = _rating
+            _g3.line_chart(_cdf)
+            _g4.caption("Hydrogen storage level (kg)")
+            _g4.line_chart(_tdf[["storage_kg"]])
         st.subheader("Open with DOK-ING")
         for _item in _sm["open_items"]:
             st.markdown(f"- {_item}")
