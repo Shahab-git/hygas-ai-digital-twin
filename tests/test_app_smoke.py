@@ -63,8 +63,8 @@ def test_app_runs_offline_with_eleven_tabs_and_tab2_counters_summing_to_91():
     assert [c for c in fake.calls if c[0] != "select"] == [], "the app wrote to the (fake) database"
 
     labels = [t.label for t in at.tabs]
-    assert len(labels) == 11, labels      # was 10: Tab 11 "Transient What-If" is new; Tabs 1-10 are unchanged and keep their positions
-    assert labels[1] == "Plant Overview" and labels[-2] == "Design Basis" and labels[-1] == "Transient What-If"
+    assert len(labels) == 12, labels      # P2-1: "Summary" is the new first tab; the other 11 keep their order
+    assert labels[0] == "Summary" and labels[2] == "Plant Overview" and labels[-2] == "Design Basis" and labels[-1] == "Transient What-If"
 
     def metric_value(label):
         found = [m for m in at.metric if m.label == label]

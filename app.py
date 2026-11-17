@@ -23,7 +23,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -497,10 +497,46 @@ def _render_simulated_banner():
 
 _render_simulated_banner()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
-    ["Digital Twin", "Plant Overview", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
+    ["Summary", "Digital Twin", "Plant Overview", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
      "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Transient What-If"]
 )
+
+with tab0:
+    # P2-1: partner front page. Every number is read from the same snapshot the other tabs use
+    # (python/summary_tab.py); nothing here is a typed result.
+    st.title("HYGAS-AI — Summary")
+    st.caption("MSW-to-hydrogen plant, 1 tonne/day, DOK-ING (NACHIP pilot). Simulated: model results, not plant measurements.")
+    try:
+        _sm = summary_tab.summary_data(_tab1_integration_snapshot())
+    except Exception as _exc:
+        _sm = None
+        st.warning(f"Summary unavailable: {type(_exc).__name__}")
+    if _sm:
+        _c1, _c2, _c3, _c4 = st.columns(4)
+        _c1.metric("Hydrogen (model)", "n/a" if _sm["h2_kg_day"] is None else f"{_sm['h2_kg_day']:.1f} kg/day")
+        _c2.metric("DOK-ING stated (plastic feed)", f"~{_sm['h2_reference_kg_day']:.0f} kg/day")
+        _c3.metric("PSA recovery (model)", "n/a" if _sm["psa_recovery"] is None else f"{100 * float(_sm['psa_recovery']):.1f} %")
+        _c4.metric("Clean syngas (model)", "n/a" if _sm["syngas_nm3_h"] is None else f"{float(_sm['syngas_nm3_h']):.0f} Nm3/h")
+        st.caption("The DOK-ING figure is for standard high-calorific plastic (RFI answer 6), not this model's MSW feed. "
+                   "The model figure follows the Assumed tail-gas mode shown in Digital Twin.")
+        st.subheader("Evidence behind the published values")
+        _e = st.columns(5)
+        for _col, _name in zip(_e, summary_tab.STATUSES):
+            _col.metric(_name, _sm["counts"].get(_name, 0))
+        st.caption(f"{_sm['total']} published values. Measured means a plant measurement; none exists yet.")
+        st.subheader("Design finding of the model")
+        if _sm["cooling"]:
+            _cl = _sm["cooling"]
+            st.markdown(f"Modelled cooling demand is **{_cl['demand_kw']:.0f} kW** against a **{_cl['rating_kw']:.0f} kW** "
+                        "cooling-tower rating (EU-008, rating Unverified). Overall simulated plant state: "
+                        f"**{_status_label(_sm['overall_status'])}**. Please confirm the installed cooling capacity.")
+        else:
+            st.caption("Cooling demand or rating unavailable this cycle.")
+        st.subheader("Open with DOK-ING")
+        for _item in _sm["open_items"]:
+            st.markdown(f"- {_item}")
+
 
 with tab1:
 
