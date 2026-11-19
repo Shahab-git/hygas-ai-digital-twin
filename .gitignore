@@ -7,3 +7,6 @@ venv/
 
 # Transient demo output (scripts/run_transient_demo.py) -- generated, not source
 outputs/
+
+# 3D bundle build dependencies (dev only; assets/plant3d.bundle.js is committed)
+web3d/node_modules/

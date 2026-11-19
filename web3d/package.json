@@ -1,0 +1,7 @@
+{
+  "name": "hygas-plant3d",
+  "private": true,
+  "description": "Dev-time build of assets/plant3d.bundle.js (Three.js scene for the 3D Plant tab). Not needed to run the app.",
+  "scripts": { "build": "esbuild src/main.js --bundle --minify --format=iife --outfile=../assets/plant3d.bundle.js" },
+  "devDependencies": { "esbuild": "0.25.0", "three": "0.187.0" }
+}

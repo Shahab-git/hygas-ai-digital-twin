@@ -23,7 +23,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, design_basis_board, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, design_basis_board, plant_3d, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -497,8 +497,8 @@ def _render_simulated_banner():
 
 _render_simulated_banner()
 
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
-    ["Summary", "Digital Twin", "Plant Overview", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
+tab0, tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
+    ["Summary", "Digital Twin", "Plant Overview", "3D Plant", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
      "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Transient What-If"]
 )
 
@@ -11183,6 +11183,21 @@ with tab9:
 
 with tab2:
     _render_plant_overview_tab()
+
+# (the 3D tab is rendered here, after every tab's schematic-item constants exist: it reads the same per-item states as Plant Overview)
+# P3-1: schematic 3D view of the 91 items (python/plant_3d.py, assets/plant3d.bundle.js). Reads the SAME per-item states as Plant Overview.
+with tab12:
+    st.header("3D Plant — all 91 items (schematic)")
+    st.caption("Schematic, not to scale: DOK-ING has given no CAD or layout, so positions follow the process order only. "
+               "Five items use a size from the registry (green base ring); every other size is a per-group estimate (amber ring). "
+               "Shapes are generic. The top sphere is the item's state in the model, the same state Plant Overview counts. "
+               "Simulated model results, no plant data. Drag to rotate, scroll to zoom, hover for details.")
+    try:
+        _items3d = plant_3d.scene_items(_plant_overview_item_states(_tab1_integration_snapshot()))
+        import streamlit.components.v1 as _components
+        _components.html(plant_3d.build_html(_items3d, height=640), height=650)
+    except Exception as _exc3d:
+        st.warning(f"3D view unavailable: {type(_exc3d).__name__}")
 
 
 # Tab 11 -- a throw-away what-if simulation (python/ui_transient_tab.py). It never reads or writes the plant state published by the
