@@ -96,9 +96,83 @@ const DETAIL = {
 };
 const TOP = { 'FE-003': 0.8 };       // beacon height when the drawn shape is not the registry height
 
+// P3-3: items whose registry row states a COUNT or a VOLUME but no dimension. The count drawn is the registry's (it.count); the footprint is
+// an estimate (amber ring). Typical equipment of that kind, not vendor drawings.
+const COUNTED = {
+  'HB-006'(it, g) {            // PSA: N vertical adsorbers on a skid with a manifold
+    const n = it.count, col = paintM(GROUP_COLOR.HB), pitch = it.w / n, r = Math.min(pitch * 0.36, 0.22);
+    for (let i = 0; i < n; i++) { const x = -it.w / 2 + pitch * (i + 0.5);
+      const v = cylM(r, it.h * 0.8, col); v.position.set(x, it.h * 0.45, 0); g.add(v);
+      const dm = domeM(r, col, false); dm.position.set(x, it.h * 0.85, 0); g.add(dm);
+      g.add(pipeM([x, 0.12, 0], [x, 0.12, it.d * 0.45], 0.03, steel)); }
+    g.add(pipeM([-it.w / 2 + pitch * 0.5, 0.12, it.d * 0.45], [it.w / 2 - pitch * 0.5, 0.12, it.d * 0.45], 0.04, steel));
+    const sk = new T.Mesh(new T.BoxGeometry(it.w, 0.06, it.d), darkM); sk.position.y = 0.03; g.add(sk);
+  },
+  'HB-013'(it, g) {            // cascade bank: N horizontal Type IV composite cylinders on a rack, with a common header
+    const n = it.count, col = paintM(0x2a3340);
+    for (let i = 0; i < n; i++) { const z = (i - (n - 1) / 2) * (it.d / n);
+      const c = cylM(0.16, it.w * 0.9, col, 24); c.rotation.z = Math.PI / 2; c.position.set(0, 0.35, z); g.add(c);
+      for (const sx of [-1, 1]) { const dm = domeM(0.16, col, false); dm.rotation.z = -sx * Math.PI / 2; dm.position.set(sx * it.w * 0.45, 0.35, z); g.add(dm); } }
+    for (const sx of [-0.3, 0.3]) { const rk = new T.Mesh(new T.BoxGeometry(0.06, 0.2, it.d), darkM); rk.position.set(sx * it.w, 0.1, 0); g.add(rk); }
+    g.add(pipeM([it.w * 0.5, 0.35, -it.d / 2], [it.w * 0.5, 0.35, it.d / 2], 0.03, steel));
+  },
+  'HB-010'(it, g) {            // N membrane modules: horizontal tubes in a frame
+    const n = it.count, col = paintM(GROUP_COLOR.HB);
+    for (let i = 0; i < n; i++) { const z = (i - (n - 1) / 2) * 0.3; const m = cylM(0.1, it.w * 0.9, col, 20); m.rotation.z = Math.PI / 2; m.position.set(0, 0.25, z); g.add(m); }
+    const fr = new T.Mesh(new T.BoxGeometry(it.w, 0.04, it.d), darkM); fr.position.y = 0.04; g.add(fr);
+  },
+  'HB-012'(it, g) {            // diaphragm compressor: N cylinder heads in a row on a crankcase, interstage cooler pipes
+    const n = it.count, col = paintM(GROUP_COLOR.HB);
+    const cr = new T.Mesh(new T.BoxGeometry(it.w, it.h * 0.4, it.d), col); cr.position.y = it.h * 0.2; g.add(cr);
+    for (let i = 0; i < n; i++) { const x = -it.w / 2 + it.w / n * (i + 0.5); const hd = cylM(0.12, it.h * 0.4, steel, 16); hd.position.set(x, it.h * 0.6, 0); g.add(hd);
+      if (i < n - 1) g.add(pipeM([x, it.h * 0.85, 0], [x + it.w / n, it.h * 0.85, 0], 0.025, steel)); }
+    const mo = cylM(0.18, 0.5, paintM(0x3d6fb5), 20); mo.rotation.z = Math.PI / 2; mo.position.set(-it.w / 2 - 0.1, it.h * 0.25, 0); g.add(mo);
+  },
+  'GC-010'(it, g) {            // bag filter: casing, N bags visible as tubes in a cut-away top, hopper
+    const n = it.count, col = paintM(GROUP_COLOR.GC);
+    const body = new T.Mesh(new T.BoxGeometry(it.w, it.h * 0.55, it.d), col); body.position.y = it.h * 0.55; g.add(body);
+    const hop = new T.Mesh(new T.CylinderGeometry(Math.min(it.w, it.d) * 0.5, 0.08, it.h * 0.25, 4), col); hop.position.y = it.h * 0.15; hop.rotation.y = Math.PI / 4; g.add(hop);
+    for (let i = 0; i < n; i++) { const x = (i % 2 - 0.5) * it.w * 0.45, z = (Math.floor(i / 2) - 0.5) * it.d * 0.45; const b = cylM(0.07, it.h * 0.3, paintM(0xe8e2cf), 12); b.position.set(x, it.h * 0.9, z); g.add(b); }
+  },
+  'GC-003'(it, g) {            // cyclone: cylinder, cone, inlet duct, vortex finder
+    const r = it.w / 2, h = it.h, col = paintM(GROUP_COLOR.GC);
+    const cy = cylM(r, h * 0.45, col); cy.position.y = h * 0.72; g.add(cy);
+    const cone = new T.Mesh(new T.CylinderGeometry(r, r * 0.15, h * 0.5, 32), col); cone.position.y = h * 0.25; g.add(cone);
+    g.add(pipeM([r + 0.4, h * 0.82, 0], [r * 0.6, h * 0.82, 0], 0.07, steel));
+    const vf = cylM(0.06, 0.3, steel, 12); vf.position.y = h * 1.0; g.add(vf);
+  },
+  'FE-004'(it, g) {            // dual-shaft shredder: hopper above a cutting chamber with N rotors, drive
+    const n = it.count, col = paintM(GROUP_COLOR.FE);
+    const ch = new T.Mesh(new T.BoxGeometry(it.w, it.h * 0.4, it.d), col); ch.position.y = it.h * 0.25; g.add(ch);
+    const hp = new T.Mesh(new T.CylinderGeometry(it.w * 0.5, it.w * 0.3, it.h * 0.35, 4), col); hp.position.y = it.h * 0.63; hp.rotation.y = Math.PI / 4; g.add(hp);
+    for (let i = 0; i < n; i++) { const z = (i - (n - 1) / 2) * it.d * 0.35; const ro = cylM(0.1, it.w * 0.95, steel, 16); ro.rotation.z = Math.PI / 2; ro.position.set(0, it.h * 0.46, z); g.add(ro); }
+    const dr = new T.Mesh(new T.BoxGeometry(0.4, 0.4, 0.4), paintM(0x3d6fb5)); dr.position.set(it.w / 2 + 0.25, it.h * 0.25, 0); g.add(dr);
+  },
+  'GC-012'(it, g) {            // carbon bed: vessel with dished ends and inlet/outlet pipes
+    const r = it.w / 2, h = it.h, col = paintM(GROUP_COLOR.GC);
+    ins(g, cylM(r, h * 0.9, col)).position.y = h * 0.5;
+    const dm = domeM(r, col, false); dm.position.y = h * 0.95; g.add(dm);
+    g.add(pipeM([r, h * 0.85, 0], [r + 0.25, h * 0.85, 0], 0.03, steel)); g.add(pipeM([r, h * 0.15, 0], [r + 0.25, h * 0.15, 0], 0.03, steel));
+  },
+  'HB-014'(it, g) {            // hydrogenation reactor: vertical vessel with jacket band and agitator motor
+    const r = it.w / 2, h = it.h, col = paintM(GROUP_COLOR.HB);
+    ins(g, cylM(r, h * 0.9, col)).position.y = h * 0.5;
+    const dm = domeM(r, col, false); dm.position.y = h * 0.95; g.add(dm);
+    const jk = cylM(r * 1.06, h * 0.4, paintM(0x167a80)); jk.position.y = h * 0.4; g.add(jk);
+    const mo = cylM(0.1, 0.25, paintM(0x3d6fb5), 16); mo.position.y = h * 1.12; g.add(mo);
+  },
+  'HB-015'(it, g) {            // lean and rich carrier tanks: two vertical tanks side by side
+    const n = it.count, r = it.d / 2, col = paintM(0x1d8b92);
+    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * (it.d + 0.3); const t = cylM(r, it.h * 0.92, col); t.position.set(x, it.h * 0.5, 0); g.add(t);
+      const dm = domeM(r, col, false); dm.position.set(x, it.h * 0.96, 0); g.add(dm); }
+    g.add(pipeM([-(it.d + 0.3) / 2, 0.2, r], [(it.d + 0.3) / 2, 0.2, r], 0.04, steel));
+  },
+};
+
 function build(it) {
   const g = new T.Group();
   if (DETAIL[it.id]) DETAIL[it.id](it, g);
+  else if (COUNTED[it.id]) COUNTED[it.id](it, g);
   else {
     const body = it.shape === 'cyl' ? new T.CylinderGeometry(it.w / 2, it.w / 2, it.h, 32) : new T.BoxGeometry(it.w, it.h, it.d);
     const m = new T.Mesh(body, new T.MeshStandardMaterial({ color: GROUP_COLOR[it.group], metalness: 0.35, roughness: 0.5 }));
