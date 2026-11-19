@@ -16,6 +16,16 @@ for p in (ROOT, os.path.join(ROOT, "tests")):
 os.environ["HYGAS_ALLOW_DB_WRITES"] = "0"
 
 
+@pytest.fixture(autouse=True)
+def _db_write_flag_is_off_for_every_test():
+    """Reset the guard flag to "0" before each test. Some tests run scripts that pop the flag (scripts/run_*.py do
+    `os.environ.pop("HYGAS_ALLOW_DB_WRITES", None)`) and nothing put it back, so the tests that assert it is "0" passed in the serial order only
+    because test_store_read_guard.py happened to run before them; with pytest-xdist (CI-1) they failed on a worker that had not. Tests that need
+    the flag ON or unset still set it themselves (monkeypatch), which is undone at the end of that test."""
+    os.environ["HYGAS_ALLOW_DB_WRITES"] = "0"
+    yield
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _no_real_step_summary():
     """On GitHub Actions $GITHUB_STEP_SUMMARY is the real job summary; the driver appends to it when set. Unset it for the whole session

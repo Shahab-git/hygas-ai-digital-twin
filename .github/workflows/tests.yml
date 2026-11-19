@@ -48,7 +48,7 @@ jobs:
         run: python --version
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest
+        run: pip install -r requirements.txt pytest pytest-xdist
 
       - name: Log resolved versions of the requirements.txt packages (the real freeze)
         run: pip freeze | grep -i -E "^(streamlit|numpy|supabase|pandas|altair|scipy|pytest)=="
@@ -59,5 +59,7 @@ jobs:
       - name: Run tests
         # Includes the zero-database-call assertions (tests/test_no_implicit_db_writes.py)
         # and the Streamlit smoke test (tests/test_app_smoke.py). The 43 module
-        # self-tests are deliberately NOT run here.
-        run: python -m pytest -q tests
+        # self-tests are deliberately NOT run here. scripts/run_tests_ci.py runs the
+        # same tests as `pytest -q tests` in two steps (app tests serially, the rest
+        # with pytest-xdist -n 2) because the serial suite reached 24 min of the 25.
+        run: python scripts/run_tests_ci.py
