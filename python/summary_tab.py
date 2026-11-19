@@ -42,6 +42,7 @@ def summary_data(snapshot):
     return {
         "total": len(snapshot), "counts": counts,
         "overall_status": _num(kpis["overall_plant_status"]),
+        "feed_kg_h": _num(kpis["total_feedstock_input"]),
         "h2_kg_h": None if h2_kg_h is None else float(h2_kg_h),
         "h2_kg_day": None if h2_kg_h is None else float(h2_kg_h) * 24.0,
         "h2_reference_kg_day": DOKING_H2_KG_DAY_PLASTIC,

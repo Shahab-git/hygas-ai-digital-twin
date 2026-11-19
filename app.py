@@ -4622,16 +4622,17 @@ def _plant_overview_compact_svg(snap):
 
 def _render_plant_overview_tab():
     st.header("Plant Overview — the Connected 91-Equipment View")
-    st.caption(
-        "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
-        "fresh in-process engine run otherwise — the SAME `plant_state_current` read pattern every "
-        "other tab already uses. **\"Dynamic\" means exactly this and nothing more:** this view "
-        "updates when a real new cycle publishes via the continuous runtime — no decorative "
-        "animation, no particle-flow effects not tied to a real cycle update. **Architectural rule, "
-        "the same one every other tab already follows:** this tab visualizes the shared plant state, "
-        "it does not run its own simulation or recompute anything — every schematic and every status "
-        "check below reuses Tabs 3–9's own already-built functions/constants directly."
-    )
+    with st.expander("About this view"):
+        st.caption(
+            "🔄 Reads the real continuous runtime's persisted output when available, falls back to a "
+            "fresh in-process engine run otherwise — the SAME `plant_state_current` read pattern every "
+            "other tab already uses. **\"Dynamic\" means exactly this and nothing more:** this view "
+            "updates when a real new cycle publishes via the continuous runtime — no decorative "
+            "animation, no particle-flow effects not tied to a real cycle update. **Architectural rule, "
+            "the same one every other tab already follows:** this tab visualizes the shared plant state, "
+            "it does not run its own simulation or recompute anything — every schematic and every status "
+            "check below reuses Tabs 3–9's own already-built functions/constants directly."
+        )
     st.markdown(_FE_TAB_CSS, unsafe_allow_html=True)
 
     src_info = _plant_state_source_info()
@@ -4708,14 +4709,29 @@ def _render_plant_overview_tab():
 
     st.divider()
     st.subheader("Interactive Plant Schematic — Compact Overview")
-    st.caption(
-        "MSW IN → FE chain → GA-001 (+ ash/carbon-black branches) → GC chain (+ condensate branch) "
-        "→ HB chain (+ LOHC/electrolyser branches) → EU chain (+ cooling-tower loop). SA (sensor "
-        "taps) and AI (background architecture) shown honestly, not forced into this same linear "
-        "flow — matching Tab 6's and Tab 9's own established treatment. Real 91-item scale managed "
-        "honestly: this compact view is the only new diagram here — expand any section below for its "
-        "own full, already-built detailed schematic, reused directly, not duplicated."
-    )
+    try:
+        _st = summary_tab.summary_data(snap)
+        _sc = st.columns(5)
+        _sc[0].metric("Feed handling (FE)", "n/a" if _st["feed_kg_h"] is None else f"{float(_st['feed_kg_h']):.2f} kg/h",
+                      help="As-received feed rate (project basis, not DOK-ING-confirmed as wet or dry).")
+        _sc[1].metric("Gasification (GA)", "n/a" if _st["syngas_nm3_h"] is None else f"{float(_st['syngas_nm3_h']):.1f} Nm3/h",
+                      help="Syngas flow published by the model.")
+        _sc[2].metric("Dry H2 in syngas", "n/a" if _st["syngas_h2_mol_pct"] is None else f"{float(_st['syngas_h2_mol_pct']):.1f} %",
+                      help="Model value; the registry's expected composition differs (see Design Basis).")
+        _sc[3].metric("Hydrogen (HB)", "n/a" if _st["h2_kg_h"] is None else f"{_st['h2_kg_h']:.2f} kg/h")
+        _sc[4].metric("Cooling EU-008", "n/a" if not _st["cooling"] else f"{_st['cooling']['demand_kw']:.0f} / {_st['cooling']['rating_kw']:.0f} kW",
+                      help="Modelled demand against the 20 kW rating (rating Unverified).")
+    except Exception as _po_strip_exc:
+        st.warning(f"Stage figures unavailable: {type(_po_strip_exc).__name__}")
+    with st.expander("About this schematic"):
+        st.caption(
+            "MSW IN → FE chain → GA-001 (+ ash/carbon-black branches) → GC chain (+ condensate branch) "
+            "→ HB chain (+ LOHC/electrolyser branches) → EU chain (+ cooling-tower loop). SA (sensor "
+            "taps) and AI (background architecture) shown honestly, not forced into this same linear "
+            "flow — matching Tab 6's and Tab 9's own established treatment. Real 91-item scale managed "
+            "honestly: this compact view is the only new diagram here — expand any section below for its "
+            "own full, already-built detailed schematic, reused directly, not duplicated."
+        )
     try:
         st.markdown(_plant_overview_compact_svg(snap), unsafe_allow_html=True)
     except Exception as _po_compact_exc:
