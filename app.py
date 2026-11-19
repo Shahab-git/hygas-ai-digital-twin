@@ -11194,8 +11194,12 @@ with tab12:
                "Simulated model results, no plant data. Drag to rotate, scroll to zoom, hover for details.")
     try:
         _items3d = plant_3d.scene_items(_plant_overview_item_states(_tab1_integration_snapshot()))
-        import streamlit.components.v1 as _components
-        _components.html(plant_3d.build_html(_items3d, height=640), height=650)
+        _html3d = plant_3d.build_html(_items3d, height=640)
+        if hasattr(st, "iframe"):          # st.components.v1.html is deprecated in newer Streamlit; st.iframe embeds the same HTML string
+            st.iframe(_html3d, height=650)
+        else:
+            import streamlit.components.v1 as _components
+            _components.html(_html3d, height=650)
     except Exception as _exc3d:
         st.warning(f"3D view unavailable: {type(_exc3d).__name__}")
 
