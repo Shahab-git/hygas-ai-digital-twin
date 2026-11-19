@@ -23,7 +23,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, design_basis_board, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -2088,6 +2088,31 @@ with tab1:
 
 with tab10:
     st.header("Project Design Basis — DOK-ING RFI Tracker (17 questions)")
+    # P2-3: decision board (what is agreed, what is waiting). Counts come from code; see python/design_basis_board.py.
+    try:
+        _bd = design_basis_board.board_data(_tab1_integration_snapshot())
+    except Exception as _exc:
+        _bd = None
+        st.warning(f"Decision board unavailable: {type(_exc).__name__}")
+    if _bd:
+        st.subheader("What is agreed, what is waiting")
+        _k1, _k2, _k3, _k4 = st.columns(4)
+        _k1.metric("RFI #1 confirmed by DOK-ING", f"{_bd['rfi1_confirmed']} / {_bd['rfi1_total']}")
+        _k2.metric(f"RFI #2 (dated {_bd['rfi2_date']})", _bd["rfi2_state"])
+        _k3.metric("Registry rows with a DOK-ING source", _bd["registry_doking"],
+                   help=f"{_bd['registry_unverified']} of {_bd['registry_total']} rows are Unverified (registry).")
+        _k4.metric("Measured values in the model", _bd["measured"])
+        st.caption(f"{_bd['registry_unverified']} of {_bd['registry_total']} registry rows are Unverified (registry): no stated origin yet. "
+                   "The RFI #2 state is a manual status, to be updated when DOK-ING answers.")
+        st.markdown("**What each open answer unlocks**")
+        st.dataframe(pd.DataFrame(_bd["open_questions"], columns=["Question for DOK-ING", "Why it matters", "Blocks"]),
+                     hide_index=True, use_container_width=True)
+        st.markdown("**Data we would like first, ranked by value**")
+        st.caption("From the calibration study on synthetic data with assumed noise (docs/calibration_core_step1.md): "
+                   "without the clean-gas flow meter, ER, steam ratio and carbon conversion cannot be separated.")
+        for _i, (_what, _rank) in enumerate(_bd["data_priority"], 1):
+            st.markdown(f"{_i}. {_what} — *{_rank}*")
+        st.divider()
     st.success(
         "**DOK-ING answered the real RFI.** All 17 questions are now Confirmed with DOK-ING's "
         "own real, formal answers (via Ankica Kovac) — see `data/dokink_rfi_answers.md`. Here, Confirmed means "
