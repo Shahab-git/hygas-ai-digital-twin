@@ -7,6 +7,7 @@ are targets from prior MATLAB/Simulink work — those model files are not in
 this repository, so this repo does not itself verify that agreement.
 """
 import json
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -23,7 +24,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, design_basis_board, plant_3d, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, live_runner, design_basis_board, plant_3d, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -563,6 +564,61 @@ with tab0:
             _g3.line_chart(_cdf)
             _g4.caption("Hydrogen storage level (kg)")
             _g4.line_chart(_tdf[["storage_kg"]])
+        st.subheader("Live simulation (this session only)")
+        st.caption("SIMULATED. A resident run of the same engine inside this browser session, not the published hourly runtime above and not "
+                   "connected to it or to any plant. One cycle is the model's default step, one simulated hour, run every few seconds, so the "
+                   "simulated clock runs about 1000x faster than the wall clock. The engine has no time-domain dynamics: a feed change reaches "
+                   "the hydrogen and cooling values within about one cycle, while the storage level accumulates per simulated hour.")
+        _live_on = st.session_state.get("_live_running", False)
+        if st.button("Stop live run" if _live_on else "Start live run", key="_live_toggle"):
+            if not _live_on and st.session_state.get("_live_runner") is None:
+                with st.spinner("Starting the engine..."):
+                    st.session_state["_live_runner"] = live_runner.LiveRunner()
+            st.session_state["_live_running"] = not _live_on
+            st.rerun()
+
+        def _live_body():
+            _lr = st.session_state.get("_live_runner")
+            if _lr is None:
+                st.info("Not started. Press Start live run.")
+                return
+            _on = st.session_state.get("_live_running", False)
+            if _on:
+                _lr.advance(time.time())
+            _feed = st.slider("As-received feed (kg/h), an Assumed what-if input", 10.0, 60.0,
+                              float(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H), 0.5, key="_live_feed")
+            _lr.set_feed(None if abs(_feed - fe.FE001_DEFAULT_DELIVERY_RATE_KG_H) < 1e-9 else _feed)
+            if _lr.history:
+                _last = _lr.history[-1]
+                st.markdown(("**LIVE - SIMULATED**" if _on else "**PAUSED - SIMULATED**")
+                            + f" · cycle {_last['cycle']} · simulated clock {_lr.sim_clock_label()}")
+                _m = st.columns(5)
+                _m[0].metric("Hydrogen", "n/a" if _last["h2_kg_h"] is None else f"{_last['h2_kg_h'] * 24:.1f} kg/day")
+                _m[1].metric("Clean syngas", "n/a" if _last["syngas_nm3_h"] is None else f"{_last['syngas_nm3_h']:.0f} Nm3/h")
+                _m[2].metric("H2 storage", "n/a" if _last["storage_kg"] is None else f"{_last['storage_kg']:.1f} kg")
+                _m[3].metric("Cooling demand", "n/a" if _last["cooling_kw"] is None else f"{_last['cooling_kw']:.1f} kW")
+                _m[4].metric("Electrical use", "n/a" if _last["grid_kw"] is None else f"{_last['grid_kw']:.1f} kW")
+                _ldf = pd.DataFrame(list(_lr.history)).set_index("cycle")
+                _l1, _l2, _l3 = st.columns(3)
+                _l1.caption("As-received feed (kg/h)")
+                _l1.line_chart(_ldf[["feed_kg_h"]])
+                _l2.caption("Hydrogen production (kg/h)")
+                _l2.line_chart(_ldf[["h2_kg_h"]])
+                _l3.caption("Electrical consumption (kW)")
+                _l3.line_chart(_ldf[["grid_kw"]])
+                _l4, _l5 = st.columns(2)
+                _l4.caption("Cooling demand EU-008 (kW)" + ("" if not _sm["cooling"] else f", against the {_sm['cooling']['rating_kw']:.0f} kW rating (Unverified)"))
+                _cd = _ldf[["cooling_kw"]].copy()
+                if _sm["cooling"]:
+                    _cd["rating_kw"] = _sm["cooling"]["rating_kw"]
+                _l4.line_chart(_cd)
+                _l5.caption("Hydrogen storage level (kg)")
+                _l5.line_chart(_ldf[["storage_kg"]])
+
+        if st.session_state.get("_live_running", False):
+            st.fragment(_live_body, run_every=live_runner.DEFAULT_SECONDS_PER_CYCLE)()
+        else:
+            st.fragment(_live_body)()
         st.subheader("Open with DOK-ING")
         for _item in _sm["open_items"]:
             st.markdown(f"- {_item}")
