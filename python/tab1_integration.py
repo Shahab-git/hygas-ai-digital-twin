@@ -67,17 +67,9 @@ def _display_status_text(text):
     return text[: -len("FAULT")] + _FAULT_DISPLAY if isinstance(text, str) and text.endswith(": FAULT") else text
 
 
-def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None, on_cycle=None):
-    """Registers EVERY phase built so far (FE -> GA-001 -> GC -> HB(+
-    remaining) -> EU -> SA -> AI) and runs n_cycles, returning a real
-    SharedPlantState snapshot. `overrides` (optional): a dict of
-    {engine_key: fn} to force-override a registered model's own function
-    for perturbation testing (task requirement 4), using the SAME pattern
-    every prior phase's own self-test already uses (e.g. forcing GA-001's
-    equivalence_ratio or FE-001's delivery rate) -- applied AFTER
-    registration, BEFORE the first run_cycle().
-    `on_cycle` (optional, P2-2): a callback `on_cycle(cycle_index, snapshot)` called after each cycle;
-    it only reads, the default None changes nothing."""
+def build_engine(overrides=None):
+    """The registered engine, not yet run: (SharedPlantState, SimulationEngine) with EVERY phase registered (FE -> GA-001 -> GC -> HB(+remaining)
+    -> EU -> SA -> AI). Extracted unchanged from build_live_snapshot (P4-1) so a resident runner can call run_cycle itself; `overrides` as there."""
     state = sps.SharedPlantState()
     handle = state.new_writer_handle()
     engine = se.SimulationEngine(state)
@@ -92,6 +84,21 @@ def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None, on_cycle=None):
     if overrides:
         for key, fn in overrides.items():
             engine._models[key]["fn"] = fn
+    return state, engine
+
+
+def build_live_snapshot(n_cycles=DEFAULT_CYCLES, overrides=None, on_cycle=None):
+    """Registers EVERY phase built so far (FE -> GA-001 -> GC -> HB(+
+    remaining) -> EU -> SA -> AI) and runs n_cycles, returning a real
+    SharedPlantState snapshot. `overrides` (optional): a dict of
+    {engine_key: fn} to force-override a registered model's own function
+    for perturbation testing (task requirement 4), using the SAME pattern
+    every prior phase's own self-test already uses (e.g. forcing GA-001's
+    equivalence_ratio or FE-001's delivery rate) -- applied AFTER
+    registration, BEFORE the first run_cycle().
+    `on_cycle` (optional, P2-2): a callback `on_cycle(cycle_index, snapshot)` called after each cycle;
+    it only reads, the default None changes nothing."""
+    state, engine = build_engine(overrides)
     for i in range(n_cycles):
         engine.run_cycle(now=f"2026-09-10T{(i // 60) % 24:02d}:{i % 60:02d}:00Z")
         if on_cycle is not None:

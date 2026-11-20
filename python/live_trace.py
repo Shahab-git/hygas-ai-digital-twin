@@ -41,6 +41,19 @@ def _feed_step_override(nominal, at_cycle, new_value):
     return fn
 
 
+def row_from_snapshot(cycle, snap):
+    """One trace row (cycle, the SERIES values, cooling_kw, feed_kg_h) read from a published snapshot. Shared with python/live_runner.py (P4-1)."""
+    k = t1.compute_tab1_kpis(snap)
+    row = {"cycle": cycle}
+    for name, _label, kpi in SERIES:
+        row[name] = _val(k[kpi])
+    sup = snap.get(("EU-008", "CoolingSupply"))
+    row["cooling_kw"] = None if not sup or sup.get("status") == "Missing" else float(sup["value"]["demand_kw"])
+    fe_in = snap.get(("FE-001-INPUT", "msw_delivery_rate_kg_h"))
+    row["feed_kg_h"] = None if not fe_in or fe_in.get("status") == "Missing" else float(fe_in["value"])
+    return row
+
+
 def run_trace(n_cycles=20, feed_step=None):
     """feed_step: optional (at_cycle, kg_h) -- the as-received feed rate changes at that cycle (a what-if)."""
     rows = []
@@ -49,16 +62,5 @@ def run_trace(n_cycles=20, feed_step=None):
         overrides = {("FE-001-INPUT", "msw_delivery_rate_kg_h"):
                      _feed_step_override(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H, feed_step[0], feed_step[1])}
 
-    def record(i, snap):
-        k = t1.compute_tab1_kpis(snap)
-        row = {"cycle": i}
-        for name, _label, kpi in SERIES:
-            row[name] = _val(k[kpi])
-        sup = snap.get(("EU-008", "CoolingSupply"))
-        row["cooling_kw"] = None if not sup or sup.get("status") == "Missing" else float(sup["value"]["demand_kw"])
-        fe_in = snap.get(("FE-001-INPUT", "msw_delivery_rate_kg_h"))
-        row["feed_kg_h"] = None if not fe_in or fe_in.get("status") == "Missing" else float(fe_in["value"])
-        rows.append(row)
-
-    t1.build_live_snapshot(n_cycles, overrides=overrides, on_cycle=record)
+    t1.build_live_snapshot(n_cycles, overrides=overrides, on_cycle=lambda i, snap: rows.append(row_from_snapshot(i, snap)))
     return rows
