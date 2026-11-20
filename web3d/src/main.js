@@ -197,15 +197,61 @@ for (const it of D.items) {
 }
 D.order.forEach((g, i) => label(D.groups[g], rowMin[g] - 2.6, 0.9, i * 4.8, 0.8, '#' + GROUP_COLOR[g].toString(16).padStart(6, '0')));
 
+// P3-4: camera poses (Fit view, Focus on a group), click-to-select card, and schematic flow arrows between the group rows.
+const rows = {};
+for (const it of D.items) { const r = rows[it.group] || (rows[it.group] = { z: it.z, x0: 1e9, x1: -1e9 }); r.x0 = Math.min(r.x0, it.x - it.w / 2); r.x1 = Math.max(r.x1, it.x + it.w / 2); }
+const vf = Math.tan(cam.fov * Math.PI / 360);
+function fitPose() { const a = W() / H(), k = Math.max(1, 1.8 / a); return { pos: [0, 21 * k, 43 * k], tgt: [0, 0, 14.5] }; }
+function groupPose(g) { const r = rows[g], a = W() / H(), cx = (r.x0 + r.x1) / 2, d = Math.max(9, ((r.x1 - r.x0) / 2 + 1.5) / (vf * a));
+  return { pos: [cx, d * 0.45 + 1, r.z + d * 0.9], tgt: [cx, 0.8, r.z] }; }
+let anim = null;
+function flyTo(p) { anim = { t0: performance.now(), p0: cam.position.toArray(), t0v: controls.target.toArray(), p1: p.pos, t1v: p.tgt }; }
+function stepAnim(now) { if (!anim) return; const k = Math.min(1, (now - anim.t0) / 700), e = k * k * (3 - 2 * k);
+  cam.position.set(...anim.p0.map((v, i) => v + (anim.p1[i] - v) * e)); controls.target.set(...anim.t0v.map((v, i) => v + (anim.t1v[i] - v) * e));
+  if (k >= 1) anim = null; }
+// flow arrows between the group rows: ORDER OF THE GROUPS ONLY (FE -> GA -> GC -> HB -> EU, the process order of the plant), not a stream path
+for (let i = 0; i < D.order.length - 1; i++) { const a = D.order[i], b = D.order[i + 1];
+  if (!['FE', 'GA', 'GC', 'HB'].includes(a) || !rows[a] || !rows[b]) continue;
+  const x = Math.min(rows[a].x0, rows[b].x0) - 1.2, z0 = rows[a].z + 0.9, z1 = rows[b].z - 0.9;
+  const sh = pipeM([x, 0.05, z0], [x, 0.05, z1 - 0.5], 0.05, paintM(0x94a3b8)); scene.add(sh);
+  const hd = new T.Mesh(new T.ConeGeometry(0.18, 0.5, 12), paintM(0x94a3b8)); hd.rotation.x = Math.PI / 2; hd.position.set(x, 0.05, z1 - 0.25); scene.add(hd); }
+let selected = null;
+const selRing = new T.Mesh(new T.RingGeometry(0.1, 0.16, 48), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide }));
+selRing.rotation.x = -Math.PI / 2; selRing.visible = false; scene.add(selRing);
+const card = document.createElement('div');
+card.style.cssText = 'position:absolute;right:10px;top:10px;background:rgba(15,23,34,.92);color:#e5edf7;font:12px Arial;padding:10px 12px;border-radius:8px;width:270px;line-height:1.5;display:none;border:1px solid #334155';
+wrap.appendChild(card);
+function select(id) {
+  selected = D.items.find(i => i.id === id) || null;
+  if (!selected) { card.style.display = 'none'; selRing.visible = false; return; }
+  const u = selected, r = (u.shape === 'cyl' ? u.w / 2 : Math.max(u.w, u.d) / 2) + 0.4;
+  selRing.geometry.dispose(); selRing.geometry = new T.RingGeometry(r, r + 0.1, 48); selRing.position.set(u.x, 0.04, u.z); selRing.visible = true;
+  const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  card.innerHTML = `<div style="font-size:14px"><b>${esc(u.id)}</b> ${esc(u.name)}</div><div style="color:#94a3b8">${esc(D.groups[u.group])}</div>` +
+    `<div style="margin-top:6px">${dot(STATE_COLOR[u.state])}${esc(u.state_label)}</div>` +
+    `<div style="margin-top:6px"><b>Size:</b> ${u.basis === 'registry' ? 'from the registry' : 'estimated'}<br><span style="color:#94a3b8">${esc(u.basis_note)}</span></div>` +
+    (u.count ? `<div style="margin-top:6px"><b>Drawn count:</b> ${u.count} (registry)</div>` : '') +
+    `<div style="margin-top:8px;color:#94a3b8">Simulated model state, no plant data. Schematic, not to scale.</div>`;
+  card.style.display = 'block';
+}
+const bar = document.createElement('div');
+bar.style.cssText = 'position:absolute;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:70%';
+const btn = (text, fn) => { const b = document.createElement('button'); b.textContent = text; fn && (b.onclick = fn);
+  b.style.cssText = 'background:#1e293b;color:#e5edf7;border:1px solid #475569;border-radius:6px;padding:4px 9px;font:12px Arial;cursor:pointer'; bar.appendChild(b); return b; };
+btn('Fit view', () => { select(null); flyTo(fitPose()); });
+for (const g of D.order) btn(D.groups[g], () => flyTo(groupPose(g)));
+wrap.appendChild(bar);
+
 // legend (HTML overlay)
 const lg = document.createElement('div');
 lg.style.cssText = 'position:absolute;left:10px;top:10px;background:rgba(15,23,34,.88);color:#e5edf7;font:12px Arial;padding:8px 10px;border-radius:8px;max-width:280px;line-height:1.5';
 const dot = c => `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#${c.toString(16).padStart(6, '0')};margin-right:6px"></span>`;
-lg.innerHTML = '<b>Schematic, not to scale</b><div style="margin-top:4px">Top sphere = state</div>' +
+lg.innerHTML = '<b style="cursor:pointer" title="click to fold">Schematic, not to scale &#9662;</b><div class="lgbody"><div style="margin-top:4px">Top sphere = state</div>' +
   Object.keys(STATE_TEXT).map(k => '<div style="white-space:nowrap">' + dot(STATE_COLOR[k]) + STATE_TEXT[k] + '</div>').join('') +
   '<div style="margin-top:4px">Base ring</div><div style="white-space:nowrap">' + dot(0x22c55e) + 'size from registry</div><div style="white-space:nowrap">' + dot(0xf59e0b) + 'size estimated</div>' +
-  '<div style="margin-top:4px">Simulated model state, no plant data.</div>';
+  '<div style="margin-top:4px">Simulated model state, no plant data.</div></div>';
 wrap.appendChild(lg);
+lg.firstChild.onclick = () => { const b = lg.querySelector('.lgbody'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; };
 const tip = document.createElement('div');
 tip.style.cssText = 'position:absolute;pointer-events:none;display:none;background:rgba(15,23,34,.95);color:#fff;font:12px Arial;padding:6px 9px;border-radius:6px;max-width:280px;border:1px solid #334155';
 wrap.appendChild(tip);
@@ -222,7 +268,18 @@ renderer.domElement.addEventListener('pointermove', e => {
     tip.style.left = (e.clientX - r.left + 14) + 'px'; tip.style.top = (e.clientY - r.top + 14) + 'px'; tip.style.display = 'block';
   } else tip.style.display = 'none';
 });
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; anim = null; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) { down = null; return; }   // a drag (orbit), not a click
+  down = null;
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, cam);
+  const hit = ray.intersectObjects(pickable)[0];
+  select(hit ? hit.object.userData.id : null);
+});
 window.addEventListener('resize', () => { renderer.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); });
-(function loop() { controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
-window.__PLANT3D_VIEW__ = { cam, controls };   // lets a test or a screenshot script move the camera
+(function loop(now) { stepAnim(now || performance.now()); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
+window.__PLANT3D_VIEW__ = { cam, controls, select, flyTo, fitPose, groupPose };   // lets a test or a screenshot script move the camera
 window.__PLANT3D_READY__ = true;
