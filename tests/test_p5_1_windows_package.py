@@ -53,3 +53,14 @@ def test_the_manifest_matches_the_files_and_the_bat_sets_the_safe_environment():
     assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b""), "the .bat must have CRLF line endings only"
     assert 'set "HYGAS_ALLOW_DB_WRITES=0"' in bat and 'set "HYGAS_LOCAL_DEMO=1"' in bat
     assert "--no-index --find-links wheels" in bat and "secrets" not in bat.lower()
+
+
+def test_the_bat_finds_python_without_where_and_checks_the_version():
+    """Found on a real laptop (2026-11-20): the machine PATH lacked the Windows folder, so `where` failed and the
+    old launcher reported "Python not found" although Python 3.14 was installed. The launcher must not use `where`,
+    must restore the Windows folders for its own process, and must accept only a Python >= 3.11 that really runs.
+    Not executed here (no Windows in this environment): this checks the text only."""
+    bat = open(os.path.join(smoke.ROOT, "packaging", "windows", "run_demo.bat")).read()
+    assert "where " not in bat
+    assert 'set "PATH=%SystemRoot%\\System32;%SystemRoot%;%PATH%"' in bat
+    assert "sys.version_info >= (3, 11)" in bat and "py -3" in bat and "%LocalAppData%" in bat

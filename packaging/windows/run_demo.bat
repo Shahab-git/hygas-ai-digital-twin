@@ -4,9 +4,18 @@ rem First start: creates a private Python environment in .venv and installs the 
 setlocal
 cd /d "%~dp0"
 
+rem Some machines have a damaged PATH (no Windows folder in it), so nothing here relies on a clean PATH.
+set "PATH=%SystemRoot%\System32;%SystemRoot%;%PATH%"
+
 set "PY="
-where py >nul 2>nul && set "PY=py -3"
-if not defined PY where python >nul 2>nul && set "PY=python"
+set "CAND=py -3"
+call :try
+if not defined PY set "CAND=python"
+if not defined PY call :try
+if not defined PY for /d %%D in ("%LocalAppData%\Programs\Python\Python3*" "%ProgramFiles%\Python3*") do if not defined PY if exist "%%~D\python.exe" (
+  set CAND="%%~D\python.exe"
+  call :try
+)
 if not defined PY goto :nopython
 
 if exist ".venv\Scripts\python.exe" goto :run
@@ -28,8 +37,14 @@ echo Starting the demo. A browser tab opens at http://localhost:8501 - close thi
 ".venv\Scripts\python.exe" -m streamlit run app.py --server.headless false --browser.gatherUsageStats false
 goto :end
 
+:try
+rem Accept a candidate only if it really runs Python 3.11 or newer (the Microsoft Store stub does not).
+%CAND% -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>nul
+if not errorlevel 1 set "PY=%CAND%"
+exit /b 0
+
 :nopython
-echo Python 3 was not found. Install Python 3.11 or newer from python.org (tick "Add python.exe to PATH"), then start this file again.
+echo Python 3.11 or newer was not found. Install it from python.org (tick "Add python.exe to PATH"), then start this file again.
 goto :end
 
 :fail
