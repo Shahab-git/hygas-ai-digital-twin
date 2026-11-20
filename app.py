@@ -7,6 +7,7 @@ are targets from prior MATLAB/Simulink work — those model files are not in
 this repository, so this repo does not itself verify that agreement.
 """
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -327,7 +328,11 @@ _SIM_STATUS_STYLE = {
     "STALE":            {"bg": "#FEF3C7", "fg": "#B45309", "dot": "#D97706"},
     "NOT YET STARTED":  {"bg": "#F3F4F6", "fg": "#6B7280", "dot": "#9CA3AF"},
     "OFFLINE":          {"bg": "#FEE2E2", "fg": "#B91C1C", "dot": "#DC2626"},
+    "LOCAL DEMO":       {"bg": "#E0F2FE", "fg": "#0369A1", "dot": "#0284C7"},
 }
+# P5-1: the portable Windows copy sets HYGAS_LOCAL_DEMO=1 (run_demo.bat). It has no database and no keys, so the published runtime does not
+# exist for it; the header then says LOCAL DEMO instead of OFFLINE. Nothing else changes: without the variable the header is as before.
+_LOCAL_DEMO = os.environ.get("HYGAS_LOCAL_DEMO") == "1"
 
 
 def _render_plant_operations_header():
@@ -400,7 +405,11 @@ def _render_plant_operations_header():
     src_info = _plant_state_source_info()
     now_utc = datetime.now(timezone.utc)
     next_tick_utc = _next_expected_tick_utc(now_utc)
-    if not src_info["reachable"]:
+    if not src_info["reachable"] and _LOCAL_DEMO:
+        sim_status = "LOCAL DEMO"
+        cycle_str = "—"
+        update_str = "no database in this copy; the model runs here (Summary: Live simulation)"
+    elif not src_info["reachable"]:
         sim_status = "OFFLINE"
         cycle_str = "—"
         update_str = f"Cannot reach plant_state_current: {src_info['error']}"
@@ -425,8 +434,8 @@ def _render_plant_operations_header():
         f'<div class="poh-value"><span class="poh-status-pill" '
         f'style="background:{rstyle["bg"]};color:{rstyle["fg"]};">'
         f'<span class="poh-status-dot" style="background:{rstyle["dot"]};"></span>{sim_status}</span></div>'
-        f'<div class="poh-sub">Cycle {cycle_str} · updated {update_str} · next ~'
-        f'{next_tick_utc.strftime("%H:%M")} UTC (best-effort)</div>'
+        f'<div class="poh-sub">Cycle {cycle_str} · updated {update_str}'
+        + ("" if _LOCAL_DEMO else f' · next ~{next_tick_utc.strftime("%H:%M")} UTC (best-effort)') + '</div>'
         f'<div class="poh-sub">Data source: <b>Simulated</b> (no physical sensor exists yet) · '
         f'{"✅ connected" if src_info["reachable"] else "❌ unreachable"}</div>'
         f'{_keepalive_html}</div>'

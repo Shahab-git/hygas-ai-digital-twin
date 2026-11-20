@@ -10,3 +10,6 @@ outputs/
 
 # 3D bundle build dependencies (dev only; assets/plant3d.bundle.js is committed)
 web3d/node_modules/
+
+# Portable demo package output (scripts/make_windows_package.py)
+dist/
