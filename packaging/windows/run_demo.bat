@@ -7,6 +7,8 @@ cd /d "%~dp0"
 rem Some machines have a damaged PATH (no Windows folder in it), so nothing here relies on a clean PATH.
 set "PATH=%SystemRoot%\System32;%SystemRoot%;%PATH%"
 
+if not exist "requirements.txt" goto :notextracted
+
 set "PY="
 set "CAND=py -3"
 call :try
@@ -42,6 +44,10 @@ rem Accept a candidate only if it really runs Python 3.11 or newer (the Microsof
 %CAND% -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>nul
 if not errorlevel 1 set "PY=%CAND%"
 exit /b 0
+
+:notextracted
+echo requirements.txt is not next to this file. Close this window, right-click the zip, choose "Extract All", and start run_demo.bat from the extracted folder (not from inside the zip).
+goto :end
 
 :nopython
 echo Python 3.11 or newer was not found. Install it from python.org (tick "Add python.exe to PATH"), then start this file again.
