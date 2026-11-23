@@ -106,11 +106,27 @@ def scene_items(item_states, names=None):
     return out
 
 
-def build_html(items, bundle_path=None, height=640):
+MODEL_GLB = os.path.join(ROOT, "assets", "plant_model.glb")
+
+
+def model_glb_base64(glb_path=None):
+    """BL-2: the Blender model (assets/plant_model.glb, from blender/generate_plant.py) as base64 for the page, or None when the file is absent.
+    The page then offers a 'Blender model' view next to the schematic; without the file the tab is the schematic only."""
+    import base64
+    path = glb_path or MODEL_GLB
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as fh:
+        return base64.b64encode(fh.read()).decode("ascii")
+
+
+def build_html(items, bundle_path=None, height=640, glb_path=None, default_view="blender"):
     path = bundle_path or os.path.join(ROOT, "assets", "plant3d.bundle.js")
     with open(path, encoding="utf-8") as fh:
         bundle = fh.read()
-    data = json.dumps({"items": items, "groups": GROUP_NAMES, "order": GROUP_ORDER}).replace("</", "<\\/")
+    glb = model_glb_base64(glb_path)
+    data = json.dumps({"items": items, "groups": GROUP_NAMES, "order": GROUP_ORDER, "glb": glb,
+                       "default_view": default_view if glb else "schematic"}).replace("</", "<\\/")
     return ("<!doctype html><html><head><meta charset='utf-8'><style>html,body{margin:0;height:100%;background:#0f1722}"
             "#wrap{position:relative;width:100%;height:@H@px}canvas{display:block}</style></head><body>"
             "<div id='wrap'></div><script>window.__PLANT3D__=@D@;</script><script>@B@</script></body></html>"

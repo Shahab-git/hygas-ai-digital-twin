@@ -26,5 +26,10 @@ def test_the_committed_bundle_contains_those_shapes_and_the_camera_hook():
 
 
 def test_the_bundle_makes_no_network_or_eval_calls():
-    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "eval(", "new Function"):
+    for bad in ("XMLHttpRequest", "WebSocket", "sendBeacon", "eval(", "new Function"):
         assert bad not in BUNDLE, bad
+    # BL-2: the glTF loader library has 3 `fetch(` strings (FileLoader, ImageBitmapLoader). Our own code never calls it: the model
+    # is embedded and parsed from memory. (Same rule as tests/test_a9_plant_3d_interaction.py.)
+    assert BUNDLE.count("fetch(") <= 3
+    for own in (("web3d", "src", "main.js"), ("python", "plant_3d.py")):
+        assert "fetch(" not in open(os.path.join(smoke.ROOT, *own), encoding="utf-8").read(), own

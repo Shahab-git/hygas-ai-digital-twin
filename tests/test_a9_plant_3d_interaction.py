@@ -34,5 +34,10 @@ def test_the_arrows_are_only_the_group_order_not_a_stream_path():
 
 def test_a_drag_is_not_a_click_and_the_bundle_stays_offline():
     assert "Math.hypot(e.clientX - down[0]" in SRC and "pointerup" in BUNDLE
-    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "eval(", "new Function"):
+    for bad in ("XMLHttpRequest", "WebSocket", "sendBeacon", "eval(", "new Function"):
         assert bad not in BUNDLE, bad
+    # BL-2: the glTF loader library contains three `fetch(` strings (FileLoader, ImageBitmapLoader) for its own URL loading. Our code never uses it: the model is
+    # embedded in the page and parsed from memory (.parse), never loaded (.load). Zero network requests were also checked in a
+    # headless Chromium run (docs/blender_plant_assumptions.md is about the model; the runtime check is in the BL-2 handoff).
+    assert BUNDLE.count("fetch(") <= 3
+    assert ".parse(" in SRC and ".load(" not in SRC and "fetch(" not in SRC
