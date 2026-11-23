@@ -11256,7 +11256,8 @@ with tab12:
     st.caption("Schematic, not to scale: DOK-ING has given no CAD or layout, so positions follow the process order only. "
                "Five items use a size from the registry (green base ring); every other size is a per-group estimate (amber ring). "
                "Shapes are generic. The top sphere is the item's state in the model, the same state Plant Overview counts. "
-               "Simulated model results, no plant data. Drag to rotate, scroll to zoom, hover for details, click an item for its card, use the buttons to fit the view or focus on a group.")
+               "Simulated model results, no plant data. Drag to rotate, scroll to zoom, hover for details, click an item for its card, use the buttons to fit the view or focus on a group. "
+               "The 'Blender model' button (default) shows a richer equipment model made with Blender: representative shapes with assumed sizes, no piping, not vendor CAD, not the real layout. 'Schematic' returns to the simple boxes.")
     try:
         _items3d = plant_3d.scene_items(_plant_overview_item_states(_tab1_integration_snapshot()))
         _html3d = plant_3d.build_html(_items3d, height=640)
