@@ -17,7 +17,7 @@ def _json_chunk():
 
 
 def test_glb_exists_and_is_small_enough_to_embed():
-    assert GLB.exists() and GLB.stat().st_size < 4_000_000
+    assert GLB.exists() and GLB.stat().st_size < 6_000_000
 
 
 def test_glb_has_the_91_registry_ids_as_node_extras():
@@ -34,3 +34,19 @@ def test_build_html_embeds_the_model_and_defaults_to_it():
     assert '"default_view": "blender"' in html and '"glb"' in html
     none = plant_3d.build_html(items, glb_path=ROOT / "does_not_exist.glb")
     assert '"default_view": "schematic"' in none
+
+
+def test_glb_has_the_43_documented_link_nodes_with_routes_and_the_honest_basis():
+    links = [n["extras"] for n in _json_chunk()["nodes"] if "link_from" in n.get("extras", {})]
+    from blender import plant_links as K
+    assert sorted((e["link_from"], e["link_to"]) for e in links) == sorted(K.load_links())
+    for e in links:
+        assert "not a verified pipe" in e["link_basis"] and e["link_routing"] == "schematic, assumed"
+        assert len(json.loads(e["link_points"])) >= 2
+
+
+def test_the_tab_has_a_process_flow_mode_that_never_calls_a_link_a_verified_pipe():
+    src = (ROOT / "web3d" / "src" / "main.js").read_text(encoding="utf-8")
+    bundle = (ROOT / "assets" / "plant3d.bundle.js").read_text(encoding="utf-8")
+    for needle in ("Process flow", "link_points", "not verified pipes"):
+        assert needle in src and needle in bundle, needle
