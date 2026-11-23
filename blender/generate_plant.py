@@ -5,8 +5,8 @@
 
 WHAT THIS IS: a SCHEMATIC ENGINEERING MODEL with documented assumptions, not vendor CAD. Every registry item becomes ONE independent
 assembly (an Empty named by the registry ID) with metadata; sizes are registry-stated where the registry states one, else ASSUMED
-representative sizes (see blender/plant_layout.py and docs/blender_plant_assumptions.md). Connections/piping are NOT drawn in stage 1
-(the registry has no connection data); that is stage 3 and will mark anything unverified as conceptual.
+representative sizes (see blender/plant_layout.py and docs/blender_plant_assumptions.md). The only links drawn (stage 3) are the
+model dependencies in data/plant_links.json (derived from the live engine); routing and pipe diameter are assumed, nothing else is connected.
 Deterministic: no randomness; two runs give the same layout (checked in tests/test_blender_layout.py).
 """
 import json
@@ -16,6 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import plant_layout as L  # noqa: E402
+import plant_links as K  # noqa: E402
 
 import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
@@ -49,7 +50,10 @@ def make_materials():
             "asphalt": _mat("asphalt", (0.10, 0.10, 0.11), 0.0, 0.95),
             "grass": _mat("ground", (0.16, 0.20, 0.14), 0.0, 1.0),
             "building": _mat("building_cladding", (0.70, 0.72, 0.74), 0.2, 0.6),
-            "screen": _mat("screen", (0.05, 0.10, 0.15), 0.0, 0.2)}
+            "screen": _mat("screen", (0.05, 0.10, 0.15), 0.0, 0.2),
+            "pipe": _mat("pipe_link", (0.55, 0.58, 0.62), 0.9, 0.3),
+            "grating": _mat("grating", (0.35, 0.36, 0.38), 0.8, 0.5),
+            "safety_yellow": _mat("safety_yellow", (0.90, 0.72, 0.10), 0.2, 0.5)}
     for z, c in zone_paint.items():
         mats["paint_" + z] = _mat("paint_" + z, c, 0.4, 0.4)
     return mats
@@ -411,6 +415,155 @@ RECIPES = {
 }
 
 
+def add_details(holder, M, it):
+    """BL-3 extra detail on top of the recipe (ASSUMED, illustrative): manways, lifting lugs and cladding bands on vessels, level gauge and
+    manway on horizontal tanks, idler rollers on conveyors. Detail never changes the footprint or the registry size."""
+    r, w, d, h, c = it["recipe"], it["w"], it["d"], it["h"], "paint_" + it["zone"]
+    if it["tag_of"] or it["id"] in L.NON_PHYSICAL:
+        return
+    if r in ("reactor", "wgs_reactor", "vessel_v", "adsorber", "tower", "psa"):
+        rr = min(w, d) / 2.0 if r != "psa" else 0.15
+        mw = max(0.05, min(0.13, rr * 0.55))
+        cyl(holder, M["carbon"], mw * 1.25, 0.05, (0, -rr - 0.03, h * 0.35), axis="y", verts=16, name="manway_flange")
+        cyl(holder, M["stainless"], mw, 0.03, (0, -rr - 0.07, h * 0.35), axis="y", verts=16, name="manway_cover")
+        for sx in (-1, 1):
+            box(holder, M["carbon"], (0.05, 0.04, 0.1), (sx * rr * 0.6, 0, h + 0.02), name="lifting_lug")
+        if r in ("reactor", "wgs_reactor"):
+            for z in (0.25, 0.45, 0.65, 0.8):
+                cyl(holder, M["stainless"], rr * 1.06, 0.03, (0, 0, h * z), verts=24, name="cladding_band")
+    elif r in ("tank_h", "vessel_h", "membrane"):
+        box(holder, M["stainless"], (0.05, 0.05, 0.3), (w * 0.2, d / 2 + 0.04, h * 0.45), name="level_gauge")
+        cyl(holder, M["carbon"], 0.1, 0.06, (-w * 0.2, 0, h * 0.95), verts=16, name="manway_flange")
+        cyl(holder, M["stainless"], 0.08, 0.04, (-w * 0.2, 0, h * 0.95 + 0.04), verts=16, name="manway_cover")
+    elif r in ("conveyor", "screw"):
+        for k in range(1, int(w / 0.3)):
+            cyl(holder, M["rubber"], 0.03, d * 0.95, (-w / 2 + k * 0.3, 0, h * 0.7), axis="y", verts=8, name="idler_roller")
+
+
+
+# ----------------------------------------------------------------------------------------------------------- BL-3: access structure
+# Platforms, ladders, cages, stairs and handrails. ASSUMED geometry (no DOK-ING drawing): heights follow the item height, widths are generic.
+def handrails(p, M, cx, cy, z, sx, sy, h=1.0, name="handrail"):
+    """Rectangular handrail (posts every ~1 m, top and mid rail) around a platform centred at (cx, cy) with size sx x sy at level z."""
+    nx, ny = max(1, int(sx / 1.0)), max(1, int(sy / 1.0))
+    for i in range(nx + 1):
+        for sgn in (-1, 1):
+            box(p, M["safety_yellow"], (0.04, 0.04, h), (cx - sx / 2 + sx * i / nx, cy + sgn * sy / 2, z + h / 2), name=name + "_post")
+    for j in range(1, ny):
+        for sgn in (-1, 1):
+            box(p, M["safety_yellow"], (0.04, 0.04, h), (cx + sgn * sx / 2, cy - sy / 2 + sy * j / ny, z + h / 2), name=name + "_post")
+    for sgn in (-1, 1):
+        for zz in (h, h * 0.5):
+            box(p, M["safety_yellow"], (sx, 0.03, 0.03), (cx, cy + sgn * sy / 2, z + zz), name=name + "_rail")
+            box(p, M["safety_yellow"], (0.03, sy, 0.03), (cx + sgn * sx / 2, cy, z + zz), name=name + "_rail")
+
+
+def platform(p, M, cx, cy, z, sx, sy, name="platform"):
+    box(p, M["grating"], (sx, sy, 0.05), (cx, cy, z), name=name + "_grating")
+    for sgn in (-1, 1):
+        box(p, M["carbon"], (sx, 0.06, 0.1), (cx, cy + sgn * sy / 2, z - 0.07), name=name + "_beam")
+    handrails(p, M, cx, cy, z, sx, sy)
+
+
+def ladder(p, M, x, y, z_top, face="y", cage=True):
+    """Vertical ladder with rungs every 0.3 m; a safety cage (hoops every 0.9 m) when taller than 2.4 m. face: wall the ladder stands on."""
+    for sgn in (-1, 1):
+        if face == "y":
+            box(p, M["carbon"], (0.04, 0.04, z_top), (x + sgn * 0.2, y, z_top / 2), name="ladder_rail")
+        else:
+            box(p, M["carbon"], (0.04, 0.04, z_top), (x, y + sgn * 0.2, z_top / 2), name="ladder_rail")
+    for k in range(1, int(z_top / 0.3)):
+        if face == "y":
+            box(p, M["carbon"], (0.4, 0.02, 0.02), (x, y, k * 0.3), name="rung")
+        else:
+            box(p, M["carbon"], (0.02, 0.4, 0.02), (x, y, k * 0.3), name="rung")
+    if cage and z_top > 2.4:
+        for zz in [2.2 + 0.9 * i for i in range(int((z_top - 2.2) / 0.9) + 1)]:
+            cyl(p, M["safety_yellow"], 0.28, 0.02, (x, y + (0.28 if face == "y" else 0), zz), verts=14, name="cage_hoop")
+
+
+def stair(p, M, x0, y_edge, z_top, length, width=0.9):
+    """Straight stair rising toward the platform edge at (x0, y_edge): the top tread is at the edge, the foot is `length` metres away in -y."""
+    n = max(3, int(z_top / 0.2))
+    run = length / n
+    for i in range(n):
+        y = y_edge - (n - 1 - i) * run - run / 2
+        box(p, M["grating"], (width, run * 0.95, 0.04), (x0, y, z_top * (i + 1) / n), name="tread")
+    for sgn in (-1, 1):
+        for k in range(7):
+            t = k / 6
+            box(p, M["safety_yellow"], (0.04, 0.04, 1.0), (x0 + sgn * width / 2, y_edge - length * (1 - t), z_top * t + 0.5), name="stair_post")
+        box(p, M["safety_yellow"], (0.04, math.hypot(length, z_top), 0.03), (x0 + sgn * width / 2, y_edge - length / 2, z_top / 2 + 1.0), name="stair_rail").rotation_euler.__setitem__(0, math.atan2(z_top, length))
+
+
+def add_access(holder, M, it):
+    """Item-specific access structure (ASSUMED): which items get a ladder or a stair+platform is a rule on id/recipe and height."""
+    i, h, w, d, r = it["id"], it["h"], it["w"], it["d"], it["recipe"]
+    if it["tag_of"] or i in L.NON_PHYSICAL:
+        return
+    if i in ("FE-001", "GA-001", "EU-008", "GC-004"):                       # stair + platform at the top
+        if i == "GA-001":
+            z, sx = h * 0.62 + PLINTH, w * 1.5            # the reactor recipe already draws this platform
+        else:
+            z, sx = h * (0.6 if i == "FE-001" else 0.98) + PLINTH, max(w, d) + 0.9
+            platform(holder, M, 0, 0, z - PLINTH, sx, sx, name="top_platform")
+        stair(holder, M, 0, -sx / 2, z - PLINTH, 3.4)
+    elif r in ("vessel_v", "wgs_reactor", "adsorber", "tower", "silo", "psa", "flare") and h >= 1.4:
+        ladder(holder, M, w / 2 + 0.25, 0, h, cage=True)
+
+
+# ----------------------------------------------------------------------------------------------------------- BL-3: documented links
+def _tube(parent, mat, a, b, r, name="pipe"):
+    a, b = Vector(a), Vector(b)
+    v = b - a
+    if v.length < 1e-6:
+        return None
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=v.length, vertices=12, location=(a + b) / 2)
+    o = bpy.context.object
+    o.rotation_mode = "QUATERNION"
+    o.rotation_quaternion = v.to_track_quat("Z", "Y")
+    o.name = name
+    return _finish(o, mat, parent)
+
+
+def build_links(M, lay):
+    """One Empty per documented link (named LINK_<from>_<to>) holding the pipe segments, elbows, end flanges and supports.
+    Metadata says what it is: a model dependency, schematic routing, assumed diameter. Nothing here is a P&ID."""
+    col = bpy.data.collections.new("08_Documented_Links")
+    bpy.context.scene.collection.children.link(col)
+    out = {}
+    for r in K.route_all(lay):
+        root = bpy.data.objects.new("LINK_%s_%s" % (r["from"], r["to"]), None)
+        col.objects.link(root)
+        for k, v in (("link_from", r["from"]), ("link_to", r["to"]), ("link_kind", r["kind"]),
+                     ("link_basis", "model dependency (engine depends_on), not a verified pipe"),
+                     ("link_routing", "schematic, assumed"), ("link_points", json.dumps([[round(v, 3) for v in q] for q in r["points"]])), ("link_diameter", "assumed %.0f mm outer" % (K.PIPE_R * 2000))):
+            root[k] = v
+        before = set(bpy.data.objects)
+        pts = r["points"]
+        for q, w in zip(pts, pts[1:]):
+            _tube(root, M["pipe"], q, w, K.PIPE_R, name="pipe_run")
+        for q in pts[1:-1]:
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=K.PIPE_R * 1.08, location=q, segments=12, ring_count=8)
+            _finish(bpy.context.object, M["pipe"], root).name = "elbow"
+        for q, w in ((pts[0], pts[1]), (pts[-1], pts[-2])):
+            d = (Vector(w) - Vector(q)).normalized()
+            bpy.ops.mesh.primitive_cylinder_add(radius=K.PIPE_R * 1.7, depth=0.04, vertices=12, location=Vector(q) + d * 0.06)
+            o = bpy.context.object
+            o.rotation_mode = "QUATERNION"
+            o.rotation_quaternion = d.to_track_quat("Z", "Y")
+            _finish(o, M["carbon"], root).name = "flange"
+        for (sx, sy, sz) in r["supports"]:
+            box(root, M["carbon"], (0.14, 0.14, sz), (sx, sy, sz / 2), name="pipe_support_post")
+            box(root, M["carbon"], (0.6, 0.1, 0.1), (sx, sy, sz - 0.1), name="pipe_support_beam")
+        for o in set(bpy.data.objects) - before:
+            for c in list(o.users_collection):
+                c.objects.unlink(o)
+            col.objects.link(o)
+        out[(r["from"], r["to"])] = root
+    return out
+
+
 # ----------------------------------------------------------------------------------------------------------- site
 def build_site(M):
     col = bpy.data.collections.new("00_Site")
@@ -491,14 +644,17 @@ def build_scene():
             r_rack(holder, M, it["w"], it["d"], it["h"], paint, cloud=(it["id"] == "AI-010"))
         else:
             RECIPES[it["recipe"]](holder, M, it["w"], it["d"], it["h"], paint)
+            add_details(holder, M, it)
+            add_access(holder, M, it)
         for o in set(bpy.data.objects) - before:                # every part belongs to the item's zone collection
             for c in list(o.users_collection):
                 c.objects.unlink(o)
             colls[it["zone"]].objects.link(o)
-    return lay, roots
+    links = build_links(M, lay)
+    return lay, roots, links
 
 
-def validate_scene(lay, roots):
+def validate_scene(lay, roots, links=None):
     ids = [i["id"] for i in lay]
     assert len(roots) == 91 and set(roots) == set(ids), "an assembly is missing"
     reg = {r["id"]: r for r in L.load_registry()}
@@ -515,7 +671,13 @@ def validate_scene(lay, roots):
     assert not problems, problems
     zones_present = {ob["process_zone"] for ob in roots.values()}
     assert len(zones_present) == 7, zones_present
-    return {"assemblies": len(roots), "unique_ids": len(set(roots)), "zones": len(zones_present),
+    links = links or {}
+    expected = set(K.load_links())
+    assert set(links) == expected, "link set differs from data/plant_links.json"
+    for (a, b), ob in links.items():
+        assert ob["link_from"] == a and ob["link_to"] == b and a in roots and b in roots, (a, b)
+        assert sum(1 for c in ob.children_recursive if c.type == "MESH") >= 3, (a, b)
+    return {"links": len(links), "assemblies": len(roots), "unique_ids": len(set(roots)), "zones": len(zones_present),
             "mesh_objects": sum(1 for o in bpy.data.objects if o.type == "MESH"),
             "triangles": sum(len(o.data.polygons) for o in bpy.data.objects if o.type == "MESH")}
 
@@ -559,7 +721,7 @@ def render(cam, path, samples=40, res=(1600, 900)):
 
 
 def main(argv):
-    args = {"out": "build/blender", "blend": False, "views": "isometric", "samples": 40}
+    args = {"out": "build/blender", "blend": False, "views": "isometric", "samples": 40, "res": (1600, 900)}
     it = iter(argv)
     for a in it:
         if a == "--out":
@@ -570,9 +732,11 @@ def main(argv):
             args["views"] = next(it)
         elif a == "--samples":
             args["samples"] = int(next(it))
+        elif a == "--res":
+            args["res"] = tuple(int(v) for v in next(it).split("x"))
     os.makedirs(args["out"], exist_ok=True)
-    lay, roots = build_scene()
-    report = validate_scene(lay, roots)
+    lay, roots, links = build_scene()
+    report = validate_scene(lay, roots, links)
     cams = add_cameras_and_lights()
     glb = os.path.join(args["out"], "plant.glb")
     for o in cams.values():
@@ -586,7 +750,7 @@ def main(argv):
     if args["blend"]:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(args["out"], "HYGAS_AI_Industrial_Plant.blend"))
     for v in (args["views"].split(",") if args["views"] else []):
-        render(cams[v], os.path.join(args["out"], "render_%s.png" % v), samples=args["samples"])
+        render(cams[v], os.path.join(args["out"], "render_%s.png" % v), samples=args["samples"], res=args["res"])
     with open(os.path.join(args["out"], "validation_report.json"), "w") as fh:
         json.dump(report, fh, indent=1, sort_keys=True)
     print("VALIDATION", json.dumps(report, sort_keys=True))

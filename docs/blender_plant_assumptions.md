@@ -6,7 +6,7 @@ Regenerate with `python blender/plant_layout.py --write-docs`. This model is a S
 
 - Taken from `data/equipment_registry.json`: every ID, name and category (91 items, none invented).
 - Sizes stated by the registry (`registry`): 5 items. Footprint estimated around a registry-stated count or volume (`estimate`): 10. Representative size assumed (`assumed`): 76.
-- NOT in the registry and therefore NOT drawn: connections between items (no upstream/downstream data). Stage 3 will draw only the documented process chain and mark the rest conceptual.
+- NOT in the registry: connections between items (no upstream/downstream data). The only links drawn are the model dependencies listed in `data/plant_links.json` (derived from the live engine, see `blender/plant_links.py`); they are not verified pipes. Every other pair of items is NOT connected in the model.
 - Item order inside a zone follows the registry ID order. That is an ASSUMPTION about the process order, not a verified P&ID.
 - Lane spacing (8.0 m), item gap (1.4 m), plinth height, site size (64 x 46 m) and all `assumed` sizes are representative values chosen for the picture.
 
@@ -133,4 +133,5 @@ Regenerate with `python blender/plant_layout.py --write-docs`. This model is a S
 ## Missing vendor dimensions and unverified connections
 
 - Vendor dimensions are missing for the 76 `assumed` items and the footprints of the 10 `estimate` items.
-- All connections between items are unverified (none in the registry).
+- All connections between items are unverified (none in the registry). The 43 drawn links are model dependencies with schematic routing and an assumed pipe diameter, not a P&ID.
+- Access structure (platforms, ladders, stairs, pipe supports) is ASSUMED geometry; no DOK-ING drawing exists.

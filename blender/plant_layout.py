@@ -212,6 +212,11 @@ if __name__ == "__main__" and "--write-docs" not in sys.argv:
     print(validate())
 
 
+def _n_links():
+    with open(os.path.join(ROOT, "data", "plant_links.json"), encoding="utf-8") as fh:
+        return len(json.load(fh)["links"])
+
+
 def assumptions_markdown():
     """docs/blender_plant_assumptions.md is generated from the layout tables, so it cannot drift (a test compares them)."""
     lay = build_layout()
@@ -221,7 +226,7 @@ def assumptions_markdown():
            "- Taken from `data/equipment_registry.json`: every ID, name and category (91 items, none invented).",
            "- Sizes stated by the registry (`registry`): %d items. Footprint estimated around a registry-stated count or volume (`estimate`): %d. Representative size assumed (`assumed`): %d." % (
                sum(1 for i in lay if i["size_basis"] == "registry"), sum(1 for i in lay if i["size_basis"] == "estimate"), sum(1 for i in lay if i["size_basis"] == "assumed")),
-           "- NOT in the registry and therefore NOT drawn: connections between items (no upstream/downstream data). Stage 3 will draw only the documented process chain and mark the rest conceptual.",
+           "- NOT in the registry: connections between items (no upstream/downstream data). The only links drawn are the model dependencies listed in `data/plant_links.json` (derived from the live engine, see `blender/plant_links.py`); they are not verified pipes. Every other pair of items is NOT connected in the model.",
            "- Item order inside a zone follows the registry ID order. That is an ASSUMPTION about the process order, not a verified P&ID.",
            "- Lane spacing (%.1f m), item gap (%.1f m), plinth height, site size (%.0f x %.0f m) and all `assumed` sizes are representative values chosen for the picture." % (LANE_PITCH, GAP, SITE_W, SITE_D),
            "", "## Registry rows drawn as an instrument tag on another unit (assumption: they describe the same equipment from another measured angle)", ""]
@@ -233,7 +238,8 @@ def assumptions_markdown():
     out += ["", "## Missing vendor dimensions and unverified connections", "",
             "- Vendor dimensions are missing for the %d `assumed` items and the footprints of the %d `estimate` items." % (
                 sum(1 for i in lay if i["size_basis"] == "assumed"), sum(1 for i in lay if i["size_basis"] == "estimate")),
-            "- All connections between items are unverified (none in the registry).", ""]
+            "- All connections between items are unverified (none in the registry). The %d drawn links are model dependencies with schematic routing and an assumed pipe diameter, not a P&ID." % _n_links(),
+            "- Access structure (platforms, ladders, stairs, pipe supports) is ASSUMED geometry; no DOK-ING drawing exists.", ""]
     return "\n".join(out)
 
 

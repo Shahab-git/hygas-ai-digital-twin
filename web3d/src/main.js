@@ -227,7 +227,7 @@ card.style.cssText = 'position:absolute;right:10px;top:10px;background:rgba(15,2
 wrap.appendChild(card);
 function select(id) {
   selected = D.items.find(i => i.id === id) || null;
-  if (!selected) { card.style.display = 'none'; selRing.visible = false; return; }
+  if (!selected) { card.style.display = 'none'; selRing.visible = false; applyFlow(); return; }
   const u = selected, bi = mode === 'blender' && blend ? blend.items[u.id] : null;
   const r = (bi ? bi.r : (u.shape === 'cyl' ? u.w / 2 : Math.max(u.w, u.d) / 2)) + 0.4;
   selRing.geometry.dispose(); selRing.geometry = new T.RingGeometry(r, r + 0.1, 48);
@@ -239,9 +239,11 @@ function select(id) {
     `<div style="margin-top:6px">${dot(STATE_COLOR[u.state])}${esc(u.state_label)}</div>` +
     `<div style="margin-top:6px"><b>Size:</b> ${esc(sizeText)}<br><span style="color:#94a3b8">${esc(u.basis_note)}</span></div>` +
     `<div style="margin-top:6px"><b>Geometry:</b> ${esc(geoText)}</div>` +
+    (bi && flow ? `<div style="margin-top:6px"><b>Model links:</b> from ${esc((flow.inn[u.id] || []).map(L => L.from).join(', ') || 'none')}; to ${esc((flow.out[u.id] || []).map(L => L.to).join(', ') || 'none')}<br><span style="color:#94a3b8">${esc('Documented model dependencies, not verified pipes.')}</span></div>` : '') +
     (u.count ? `<div style="margin-top:6px"><b>Drawn count:</b> ${u.count} (registry)</div>` : '') +
     `<div style="margin-top:8px;color:#94a3b8">${esc(mode === 'blender' ? 'Simulated model state, no plant data. Engineering schematic model with assumed sizes, not vendor CAD.' : 'Simulated model state, no plant data. Schematic, not to scale.')}</div>`;
   card.style.display = 'block';
+  applyFlow();
 }
 const bar = document.createElement('div');
 bar.style.cssText = 'position:absolute;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:70%';
@@ -255,6 +257,9 @@ const modeBtns = {};
 modeBtns.schematic = btn('Schematic', () => setMode('schematic'));
 modeBtns.blender = btn('Blender model', () => setMode('blender'));
 modeBtns.blender.disabled = true; modeBtns.blender.textContent = D.glb ? 'Blender model (loading)' : 'Blender model (not available)';
+let flowOn = false;
+const flowBtn = btn('Process flow: off', () => { flowOn = !flowOn; flowBtn.textContent = 'Process flow: ' + (flowOn ? 'on' : 'off'); applyFlow(); });
+flowBtn.disabled = true; flowBtn.title = 'Blender view: highlights the documented model links; click an item to see what feeds it (blue) and what it feeds (orange)';
 wrap.appendChild(bar);
 
 // legend (HTML overlay)
@@ -264,6 +269,7 @@ const dot = c => `<span style="display:inline-block;width:10px;height:10px;borde
 lg.innerHTML = '<b id="lgtitle" style="cursor:pointer" title="click to fold">Schematic, not to scale &#9662;</b><div class="lgbody"><div style="margin-top:4px">Top sphere = state</div>' +
   Object.keys(STATE_TEXT).map(k => '<div style="white-space:nowrap">' + dot(STATE_COLOR[k]) + STATE_TEXT[k] + '</div>').join('') +
   '<div style="margin-top:4px">Base ring</div><div style="white-space:nowrap">' + dot(0x22c55e) + 'size from registry</div><div style="white-space:nowrap">' + dot(0xf59e0b) + 'size estimated</div>' +
+  '<div style="margin-top:4px">Blender view: pipes = links the model documents (its dependency graph), routing schematic, not verified pipes.</div>' +
   '<div style="margin-top:4px">Simulated model state, no plant data.</div></div>';
 wrap.appendChild(lg);
 lg.firstChild.onclick = () => { const b = lg.querySelector('.lgbody'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; };
@@ -297,7 +303,7 @@ renderer.domElement.addEventListener('pointerup', e => {
 });
 window.addEventListener('resize', () => { renderer.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); });
 // ---- BL-2: Blender model (optional), toggled against the schematic. Everything schematic stays exactly as it was.
-let mode = 'schematic', blend = null;
+let mode = 'schematic', blend = null, flow = null;
 const SCHEM = scene.children.filter(o => !o.isLight && o !== selRing);
 const blendGroup = new T.Group(); blendGroup.visible = false; scene.add(blendGroup);
 const envTex = (() => { try { return new T.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; } catch (e) { return null; } })();
@@ -307,9 +313,37 @@ function setMode(m) {
   SCHEM.forEach(o => { o.visible = m === 'schematic'; }); blendGroup.visible = m === 'blender';
   scene.environment = m === 'blender' ? envTex : null;
   activePick = m === 'blender' ? blend.pick : pickable;
+  flowBtn.disabled = !(m === 'blender' && flow);
   document.getElementById('lgtitle').innerHTML = (m === 'blender' ? 'Engineering schematic model, not vendor CAD' : 'Schematic, not to scale') + ' &#9662;';
   for (const k of Object.keys(modeBtns)) modeBtns[k].style.borderColor = k === m ? '#38bdf8' : '#475569';
   flyTo(fitPose());
+}
+function traceFlow(id) {
+  const up = new Set(), dn = new Set();
+  const qu = [id]; while (qu.length) { const x = qu.pop(); for (const L of (flow.inn[x] || [])) if (!up.has(L)) { up.add(L); qu.push(L.from); } }
+  const qd = [id]; while (qd.length) { const x = qd.pop(); for (const L of (flow.out[x] || [])) if (!dn.has(L)) { dn.add(L); qd.push(L.to); } }
+  return { up, dn };
+}
+function applyFlow() {
+  if (!flow) return;
+  const tr = flowOn && selected && mode === 'blender' ? traceFlow(selected.id) : null;
+  for (const L of flow.links) {
+    let col = 0x000000, em = 0, op = 1, dots = false, dc = 0xffffff;
+    if (flowOn && mode === 'blender') {
+      if (!tr) { col = 0x38bdf8; em = 0.7; dots = true; dc = 0x7dd3fc; }
+      else if (tr.up.has(L)) { col = 0x38bdf8; em = 1.0; dots = true; dc = 0x7dd3fc; }
+      else if (tr.dn.has(L)) { col = 0xf59e0b; em = 1.0; dots = true; dc = 0xfcd34d; }
+      else op = 0.1;
+    }
+    for (const m of L.meshes) { m.material.emissive.setHex(col); m.material.emissiveIntensity = em; m.material.transparent = op < 1; m.material.opacity = op; m.material.depthWrite = op >= 1; }
+    L.on = dots; for (const d of L.dots) { d.material.color.setHex(dc); d.visible = dots; }
+  }
+}
+function stepFlow(now) {
+  if (!flow || !flowOn) return;
+  for (const L of flow.links) { if (!L.on || L.len <= 0) continue;
+    L.dots.forEach((d, k) => { let s = (((now / 1000) * 1.5 / L.len) + k / L.dots.length) % 1 * L.len;
+      for (let i = 1; i < L.pts.length; i++) { const seg = L.pts[i].distanceTo(L.pts[i - 1]); if (s <= seg || i === L.pts.length - 1) { d.position.lerpVectors(L.pts[i - 1], L.pts[i], Math.min(1, s / Math.max(seg, 1e-6))); break; } s -= seg; } }); }
 }
 function loadBlend() {
   if (!D.glb) return;
@@ -323,12 +357,12 @@ function loadBlend() {
     for (const it of D.items) {
       const node = byId[it.id];
       if (!node) { B.missing.push(it.id); continue; }
-      const box = new T.Box3().setFromObject(node), c = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3());
+      const box = new T.Box3().setFromObject(node), sz = box.getSize(new T.Vector3()), c = node.getWorldPosition(new T.Vector3());   // c = the item's own origin, so stairs and ladders do not shift the state sphere
       const ex = node.userData, isTag = String(ex.placement || '').startsWith('tag on');
       const basis = ex.size_basis === 'registry' ? 'registry' : 'assumed';
       const rec = Object.assign({}, it, { basis, basis_note: String(ex.size_note || '') });
       node.traverse(m => { if (m.isMesh) { m.userData = rec; B.pick.push(m); } });
-      const r = Math.max(sz.x, sz.z) / 2;
+      const r = Math.min(Math.max(sz.x, sz.z) / 2, 1.8);
       B.items[it.id] = { node, box, cx: c.x, cz: c.z, r, basis, geometry: String(ex.geometry_status || '') };
       all.union(box);
       const bc = new T.Mesh(new T.SphereGeometry(isTag ? 0.1 : Math.max(0.12, Math.min(0.28, r * 0.5)), 16, 12), new T.MeshBasicMaterial({ color: STATE_COLOR[it.state] }));
@@ -337,6 +371,15 @@ function loadBlend() {
         rg.rotation.x = -Math.PI / 2; rg.position.set(c.x, 0.1, c.z); blendGroup.add(rg); }
     }
     blendGroup.add(gltf.scene);
+    // documented links: one node per link with its route in the extras (Blender z-up -> three y-up: (x, y, z) -> (x, z, -y))
+    flow = { links: [], inn: {}, out: {} };
+    gltf.scene.traverse(o => { const ud = o.userData; if (!ud || !ud.link_from) return;
+      let pts = []; try { pts = JSON.parse(ud.link_points).map(p => new T.Vector3(p[0], p[2], -p[1])); } catch (e) { return; }
+      const L = { from: ud.link_from, to: ud.link_to, kind: ud.link_kind, pts, meshes: [], len: 0, dots: [], on: false };
+      for (let i = 1; i < pts.length; i++) L.len += pts[i].distanceTo(pts[i - 1]);
+      o.traverse(m => { if (m.isMesh) { m.material = m.material.clone(); L.meshes.push(m); } });
+      for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.1, 10, 8), new T.MeshBasicMaterial({ color: 0xffffff })); d.visible = false; blendGroup.add(d); L.dots.push(d); }
+      flow.links.push(L); (flow.out[L.from] = flow.out[L.from] || []).push(L); (flow.inn[L.to] = flow.inn[L.to] || []).push(L); });
     const a = () => W() / H();
     B.fit = () => { const c = all.getCenter(new T.Vector3()), s = all.getSize(new T.Vector3()), d = (s.x / 2 + 4) / (vf * Math.min(a(), 1.8));
       return { pos: [c.x, c.y + d * 0.6, c.z + d * 0.8], tgt: [c.x, 0, c.z] }; };
@@ -345,10 +388,11 @@ function loadBlend() {
       return { pos: [c.x, d * 0.5 + 1, c.z + d * 0.9], tgt: [c.x, 0.8, c.z] }; };
     blend = B;
     modeBtns.blender.disabled = false; modeBtns.blender.textContent = 'Blender model';
+    flowBtn.disabled = !(mode === 'blender' && flow.links.length);
     if (D.default_view === 'blender') setMode('blender');
   }, err => { console.error(err); modeBtns.blender.textContent = 'Blender model (failed to load)'; });
 }
 loadBlend();
-(function loop(now) { stepAnim(now || performance.now()); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
-window.__PLANT3D_VIEW__ = { cam, controls, select, flyTo, fitPose, groupPose, setMode, mode: () => mode, blendInfo: () => blend && { count: Object.keys(blend.items).length, missing: blend.missing } };   // lets a test or a screenshot script move the camera
+(function loop(now) { stepAnim(now || performance.now()); stepFlow(now || performance.now()); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
+window.__PLANT3D_VIEW__ = { cam, controls, select, flyTo, fitPose, groupPose, setMode, setFlow: v => { flowOn = !!v; flowBtn.textContent = 'Process flow: ' + (flowOn ? 'on' : 'off'); applyFlow(); }, links: () => flow && flow.links.length, mode: () => mode, blendInfo: () => blend && { count: Object.keys(blend.items).length, missing: blend.missing } };   // lets a test or a screenshot script move the camera
 window.__PLANT3D_READY__ = true;
