@@ -64,3 +64,36 @@ def test_the_bat_finds_python_without_where_and_checks_the_version():
     assert "where " not in bat
     assert 'set "PATH=%SystemRoot%\\System32;%SystemRoot%;%PATH%"' in bat
     assert "sys.version_info >= (3, 11)" in bat and "py -3" in bat and "%LocalAppData%" in bat
+
+
+def _bat_text():
+    return open(os.path.join(smoke.ROOT, "packaging", "windows", "run_demo.bat")).read()
+
+
+def test_every_goto_and_call_in_the_bat_has_exactly_one_label():
+    """A text-level control-flow check. The first P5-3 draft inserted a block at the wrong place and left a goto
+    without a label and a label twice; a text-only 'contains' test did not see it. Not a substitute for running the
+    file on Windows (not done here)."""
+    import re
+    bat = _bat_text()
+    labels = re.findall(r"^:(\w+)\s*$", bat, flags=re.M)
+    assert len(labels) == len(set(labels)), "a label is defined twice: " + str(labels)
+    for target in re.findall(r"\b(?:goto|call)\s+:(\w+)", bat, flags=re.I):
+        if target.lower() != "eof":
+            assert target in labels, "goto/call without a label: " + target
+
+
+def test_the_bat_and_readme_tell_a_zip_user_to_extract_first():
+    """Found on a real laptop (2026-11-20): a double-click inside the zip window copies only the .bat to a temp
+    folder, so requirements.txt is missing and pip fails with an obscure message."""
+    bat = _bat_text()
+    lines = [l.strip() for l in bat.splitlines()]
+    i_check = lines.index('if not exist "requirements.txt" goto :notextracted')
+    i_py = lines.index('set "PY="')
+    assert i_check < i_py, "the extract check must run before any Python search"
+    # the hint block sits after :notextracted and ends with goto :end, not in the main path
+    i_label = lines.index(":notextracted")
+    assert i_label > lines.index(":run") and "Extract All" in lines[i_label + 1] and lines[i_label + 2] == "goto :end"
+    readme = open(os.path.join(smoke.ROOT, "packaging", "windows", "README_DEMO.txt")).read()
+    assert "Extract All" in readme.split("WHAT THIS IS")[0]
+

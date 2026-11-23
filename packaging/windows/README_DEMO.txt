@@ -1,6 +1,6 @@
 HYGAS-AI Digital Twin - portable demo (University of Zagreb, NACHIP / DOK-ING MSW-H2 pilot)
 
-START:   double-click run_demo.bat. The first start installs the packages (a few minutes; offline when the "wheels" folder is present).
+START:   FIRST right-click the zip and choose "Extract All" (do not run it from inside the zip), then open the extracted folder and double-click run_demo.bat. The first start installs the packages (a few minutes; offline when the "wheels" folder is present).
 STOP:    close the black window.
 
 WHAT THIS IS
