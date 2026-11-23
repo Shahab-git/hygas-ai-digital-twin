@@ -62,3 +62,25 @@ def test_pipe_supports_do_not_stand_inside_any_equipment_footprint():
 def test_the_generator_marks_links_as_model_dependencies_with_assumed_routing():
     src = open(os.path.join(ROOT, "blender", "generate_plant.py"), encoding="utf-8").read()
     assert "model dependency (engine depends_on), not a verified pipe" in src and '"schematic, assumed"' in src
+
+
+def test_overhead_runs_sit_on_the_rack_tiers_except_where_an_end_item_is_taller():
+    lay = L.build_layout()
+    by = {i["id"]: i for i in lay}
+    top = K.RACK_Z + K.LEVEL * (K.TIERS - 1)
+    for r in K.route_all(lay):
+        if r["kind"] != "overhead":
+            continue
+        zr = max(p[2] for p in r["points"])
+        ends = max(K._box(by[K._host(r[e], L.TAG_OF)])[4] for e in ("from", "to")) + 0.5
+        assert K.RACK_Z - 1e-9 <= zr <= max(top, ends) + 1e-9, (r["from"], r["to"], zr)
+
+
+def test_a_detour_never_leaves_the_pad_corridor_more_than_the_largest_offset():
+    lay = L.build_layout()
+    by = {i["id"]: i for i in lay}
+    for r in K.route_all(lay):
+        ys = [p[1] for p in r["points"]]
+        lo = min(by[K._host(r["from"], L.TAG_OF)]["y"], by[K._host(r["to"], L.TAG_OF)]["y"])
+        hi = max(by[K._host(r["from"], L.TAG_OF)]["y"], by[K._host(r["to"], L.TAG_OF)]["y"])
+        assert lo - max(map(abs, K.DETOUR)) - 0.3 <= min(ys) and max(ys) <= hi + max(map(abs, K.DETOUR)) + 0.3

@@ -345,6 +345,14 @@ function stepFlow(now) {
     L.dots.forEach((d, k) => { let s = (((now / 1000) * 1.5 / L.len) + k / L.dots.length) % 1 * L.len;
       for (let i = 1; i < L.pts.length; i++) { const seg = L.pts[i].distanceTo(L.pts[i - 1]); if (s <= seg || i === L.pts.length - 1) { d.position.lerpVectors(L.pts[i - 1], L.pts[i], Math.min(1, s / Math.max(seg, 1e-6))); break; } s -= seg; } }); }
 }
+// BL-5: registry-ID signs, drawn only when the camera is close (so the overview stays readable)
+function idSprite(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = 'rgba(15,23,34,.88)'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#ffffff'; g.font = 'bold 34px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 34);
+  const sp = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(c), depthTest: false, transparent: true })); sp.scale.set(1.1, 0.28, 1); sp.renderOrder = 10; sp.visible = false; return sp;
+}
+const idLabels = [];
+function stepLabels() { if (mode !== 'blender') return; for (const sp of idLabels) sp.visible = cam.position.distanceTo(sp.position) < 17; }
 function loadBlend() {
   if (!D.glb) return;
   const bin = atob(D.glb), buf = new Uint8Array(bin.length);
@@ -367,6 +375,7 @@ function loadBlend() {
       all.union(box);
       const bc = new T.Mesh(new T.SphereGeometry(isTag ? 0.1 : Math.max(0.12, Math.min(0.28, r * 0.5)), 16, 12), new T.MeshBasicMaterial({ color: STATE_COLOR[it.state] }));
       bc.position.set(c.x, box.max.y + 0.35, c.z); blendGroup.add(bc);
+      if (!isTag) { const sp = idSprite(it.id); sp.position.set(c.x, box.max.y + 0.8, c.z); blendGroup.add(sp); idLabels.push(sp); }
       if (!isTag) { const rg = new T.Mesh(new T.RingGeometry(r + 0.3, r + 0.37, 40), new T.MeshBasicMaterial({ color: basis === 'registry' ? 0x22c55e : 0xf59e0b, side: T.DoubleSide }));
         rg.rotation.x = -Math.PI / 2; rg.position.set(c.x, 0.1, c.z); blendGroup.add(rg); }
     }
@@ -393,6 +402,6 @@ function loadBlend() {
   }, err => { console.error(err); modeBtns.blender.textContent = 'Blender model (failed to load)'; });
 }
 loadBlend();
-(function loop(now) { stepAnim(now || performance.now()); stepFlow(now || performance.now()); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
+(function loop(now) { stepAnim(now || performance.now()); stepFlow(now || performance.now()); stepLabels(); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
 window.__PLANT3D_VIEW__ = { cam, controls, select, flyTo, fitPose, groupPose, setMode, setFlow: v => { flowOn = !!v; flowBtn.textContent = 'Process flow: ' + (flowOn ? 'on' : 'off'); applyFlow(); }, links: () => flow && flow.links.length, mode: () => mode, blendInfo: () => blend && { count: Object.keys(blend.items).length, missing: blend.missing } };   // lets a test or a screenshot script move the camera
 window.__PLANT3D_READY__ = true;

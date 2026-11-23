@@ -21,6 +21,9 @@ Outputs in the `--out` folder: `plant.glb`, `HYGAS_AI_Industrial_Plant.blend`, `
 - All 91 registry rows, one assembly each, named by the registry ID, with metadata (equipment_id, name, category, geometry_status, data_provenance, source_registry, process_zone, size_basis, size_note, placement). 12 rows are drawn as an instrument tag on a host unit and 6 software/cloud rows as a rack placeholder (see `docs/blender_plant_assumptions.md`).
 - Sizes: only the 5 registry-stated sizes are registry values; 10 are estimated around a registry count or volume; 76 are assumed representative sizes.
 - Detail (assumed, illustrative): manways, lifting lugs, cladding bands on vessels, level gauges, idler rollers.
+- Link colour: a link inside one zone takes a muted version of that zone's colour, links between zones are neutral steel (decoration only).
+- Registry-ID signs (renders: signs above each physical item, not in the GLB; tab: signs that appear when the camera is close).
+- Decorative site detail: dashed road markings. No fence, trees or buildings beyond the two in the model were added.
 - Access structure (assumed, no DOK-ING drawing): ladders with cages on tall vertical units, stair + platform at FE-001, GA-001, GC-004, EU-008, handrails, pipe support posts.
 
 ## Links (piping): only what the model itself documents
@@ -28,7 +31,7 @@ Outputs in the `--out` folder: `plant.glb`, `HYGAS_AI_Industrial_Plant.blend`, `
 The registry has NO connection data. The only links drawn are the 43 dependencies between physical items in the live engine's own same-cycle dependency graph
 (`depends_on` in `python/tab1_integration.build_engine()`), stored in `data/plant_links.json` and compared with the engine by `tests/test_blender_links.py`.
 A link A -> B means the model of B reads a value computed by the model of A. It does NOT say which medium flows, and it is NOT a verified pipe or conveyor route.
-Routing (straight low run between lane neighbours, otherwise an overhead orthogonal run above the items it passes) and the pipe diameter (120 mm outer) are assumptions.
+Routing (straight low run between lane neighbours, otherwise an overhead orthogonal run on one of 5 pipe-rack tiers at 4.8 to 6.2 m, higher only where an end item is taller, with a sideways detour around a tall item such as the flare) and the pipe diameter (120 mm outer) are assumptions.
 Pairs of items that are not listed are NOT connected in the model: nothing was inferred from the picture or from process-engineering habit. Instruments, analysers, meters, software items and lagged couplings are not links.
 
 | From | To |

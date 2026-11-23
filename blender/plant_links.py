@@ -77,8 +77,10 @@ if __name__ == "__main__":
 # item it passes. It is NOT a piping isometric. Diameters are ASSUMED (PIPE_R).
 PLINTH = 0.12            # same as generate_plant.PLINTH
 PIPE_R = 0.06            # assumed pipe outer radius (m), schematic
-CLEAR = 1.0              # clearance of an overhead run above the tallest item it passes (m), assumed
-LEVEL = 0.35             # vertical spacing between overhead runs (m), assumed
+RACK_Z = 4.8             # height of the lowest overhead pipe-rack tier (m), assumed
+LEVEL = 0.35             # vertical spacing between rack tiers (m), assumed
+TIERS = 5                # number of rack tiers, assumed (crossing runs sit on different tiers)
+DETOUR = (1.2, -1.2, 1.8, -1.8, 2.4, -2.4)   # sideways offsets (m) tried when a tall item stands in the corridor
 LOW_Y_STEP = 0.14        # lateral spacing of low runs that share a lane (m), assumed
 
 
@@ -132,13 +134,20 @@ def route_all(layout, links=None):
         ay = A["y"] + (ia // 3) * 0.08
         bx = B["x"] + (min(ib, 2) - 1) * 0.07 * min(B["w"] / 0.4, 3)
         by = B["y"] + (ib // 3) * 0.08
-        lo_x, hi_x = min(ax, bx) - 0.5, max(ax, bx) + 0.5
-        lo_y, hi_y = min(ay, by) - 0.5, max(ay, by) + 0.5
-        top = max([o[4] for o in others if o[0] < hi_x and o[2] > lo_x and o[1] < hi_y and o[3] > lo_y] + [ba[4], bb[4]])
-        lvl = used.get(("level", int(top)), 0)
-        used[("level", int(top))] = lvl + 1
-        zr = top + CLEAR + LEVEL * (lvl % 6)
-        pts = [(ax, ay, ba[4]), (ax, ay, zr), (bx, ay, zr), (bx, by, zr), (bx, by, bb[4])]
+        tier = used.get(("tier",), 0)
+        used[("tier",)] = tier + 1
+        zr = max(RACK_Z + LEVEL * (tier % TIERS), ba[4] + 0.5, bb[4] + 0.5)
+        x_lo, x_hi = min(ax, bx), max(ax, bx)
+
+        def tall_in(y):
+            return [o for o in others if o[0] < x_hi + 0.3 and o[2] > x_lo - 0.3 and o[1] < y + 0.45 and o[3] > y - 0.45 and o[4] + 0.35 > zr]
+        yo = 0.0
+        if tall_in(ay):
+            yo = next((c for c in DETOUR if not tall_in(ay + c)), 0.0)
+        if yo:
+            pts = [(ax, ay, ba[4]), (ax, ay, zr), (ax, ay + yo, zr), (bx, ay + yo, zr), (bx, by, zr), (bx, by, bb[4])]
+        else:
+            pts = [(ax, ay, ba[4]), (ax, ay, zr), (bx, ay, zr), (bx, by, zr), (bx, by, bb[4])]
         pts = [p for i, p in enumerate(pts) if i == 0 or p != pts[i - 1]]
         sup = []
         for p, q in zip(pts, pts[1:]):
