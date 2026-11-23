@@ -47,7 +47,7 @@ def make_materials():
             "rubber": _mat("rubber", (0.05, 0.05, 0.05), 0.0, 0.85),
             "glass": _mat("glass", (0.6, 0.8, 0.9), 0.0, 0.05, 0.35),
             "copper": _mat("copper", (0.72, 0.42, 0.25), 1.0, 0.3),
-            "asphalt": _mat("asphalt", (0.10, 0.10, 0.11), 0.0, 0.95),
+            "asphalt": _mat("asphalt", (0.10, 0.10, 0.11), 0.0, 0.7),
             "grass": _mat("ground", (0.16, 0.20, 0.14), 0.0, 1.0),
             "building": _mat("building_cladding", (0.70, 0.72, 0.74), 0.2, 0.6),
             "screen": _mat("screen", (0.05, 0.10, 0.15), 0.0, 0.2),
@@ -56,6 +56,14 @@ def make_materials():
             "safety_yellow": _mat("safety_yellow", (0.90, 0.72, 0.10), 0.2, 0.5)}
     for z, c in zone_paint.items():
         mats["paint_" + z] = _mat("paint_" + z, c, 0.4, 0.4)
+        # BL-5: a link inside one zone takes a muted version of that zone's colour; links between zones stay neutral steel
+        mats["pipe_" + z] = _mat("pipe_" + z, tuple(0.55 * v + 0.45 * 0.55 for v in c), 0.9, 0.3)
+    mats["marking"] = _mat("road_marking", (0.85, 0.85, 0.80), 0.0, 0.7)
+    mats["label"] = _mat("id_label", (1.0, 0.98, 0.85), 0.0, 0.5)
+    b = mats["label"].node_tree.nodes["Principled BSDF"]          # self-lit so the sign stays readable in shade
+    b.inputs["Emission Color"].default_value = (1.0, 0.98, 0.85, 1.0)
+    b.inputs["Emission Strength"].default_value = 2.0
+    mats["label_plate"] = _mat("id_label_plate", (0.05, 0.07, 0.10), 0.0, 0.6)
     return mats
 
 
@@ -532,7 +540,10 @@ def build_links(M, lay):
     col = bpy.data.collections.new("08_Documented_Links")
     bpy.context.scene.collection.children.link(col)
     out = {}
+    zone_of = {i["id"]: i["zone"] for i in lay}
     for r in K.route_all(lay):
+        za, zb = zone_of[r["from"]], zone_of[r["to"]]
+        pipe_mat = M["pipe_" + za] if za == zb else M["pipe"]
         root = bpy.data.objects.new("LINK_%s_%s" % (r["from"], r["to"]), None)
         col.objects.link(root)
         for k, v in (("link_from", r["from"]), ("link_to", r["to"]), ("link_kind", r["kind"]),
@@ -542,10 +553,10 @@ def build_links(M, lay):
         before = set(bpy.data.objects)
         pts = r["points"]
         for q, w in zip(pts, pts[1:]):
-            _tube(root, M["pipe"], q, w, K.PIPE_R, name="pipe_run")
+            _tube(root, pipe_mat, q, w, K.PIPE_R, name="pipe_run")
         for q in pts[1:-1]:
             bpy.ops.mesh.primitive_uv_sphere_add(radius=K.PIPE_R * 1.08, location=q, segments=12, ring_count=8)
-            _finish(bpy.context.object, M["pipe"], root).name = "elbow"
+            _finish(bpy.context.object, pipe_mat, root).name = "elbow"
         for q, w in ((pts[0], pts[1]), (pts[-1], pts[-2])):
             d = (Vector(w) - Vector(q)).normalized()
             bpy.ops.mesh.primitive_cylinder_add(radius=K.PIPE_R * 1.7, depth=0.04, vertices=12, location=Vector(q) + d * 0.06)
@@ -585,6 +596,9 @@ def build_site(M):
     part(o)
     for (cx, cy, w, d) in ((sw / 2, -3.0, sw + 8, 5.0), (sw / 2, sd + 3.0, sw + 8, 5.0), (-3.0, sd / 2, 5.0, sd - 2), (sw + 3.0, sd / 2, 5.0, sd - 2)):
         part(box(None, M["asphalt"], (w, d, 0.02), (cx, cy, 0.01), name="road"))
+    for k in range(int(sw / 5.0)):                    # dashed centre line on the two long roads (decorative)
+        for cy in (-3.0, sd + 3.0):
+            part(box(None, M["marking"], (2.0, 0.12, 0.01), (2.5 + 5.0 * k, cy, 0.025), name="road_marking"))
     pads = L.zone_pads()
     for z, (x0, y0, x1, y1) in pads.items():
         part(box(None, M["concrete"], (x1 - x0, y1 - y0, 0.06), ((x0 + x1) / 2, (y0 + y1) / 2, 0.03), name="pad_" + z))
@@ -651,7 +665,38 @@ def build_scene():
                 c.objects.unlink(o)
             colls[it["zone"]].objects.link(o)
     links = build_links(M, lay)
-    return lay, roots, links
+    return lay, roots, links, M
+
+
+def build_labels(M, lay):
+    """Render-only ID signs above each physical item (not exported to the GLB: the tab draws its own). Decorative, text = registry ID."""
+    col = bpy.data.collections.new("09_Labels")
+    bpy.context.scene.collection.children.link(col)
+    for it in lay:
+        if it["tag_of"] or it["id"] in L.NON_PHYSICAL:
+            continue
+        z = PLINTH + it["h"] + 0.75
+        bpy.ops.object.text_add(location=(it["x"], it["y"] - 0.24, z), rotation=(math.radians(68), 0, 0))
+        t = bpy.context.object
+        t.name = "label_" + it["id"]
+        t.data.body = it["id"]
+        t.data.size = 0.34
+        t.data.align_x = "CENTER"
+        t.data.extrude = 0.01
+        t.data.materials.append(M["label"])
+        th = math.radians(68)
+        up, nrm = Vector((0, math.cos(th), math.sin(th))), Vector((0, -math.sin(th), math.cos(th)))
+        pc = Vector((it["x"], it["y"] - 0.24, z)) + up * 0.17 - nrm * 0.04      # plate centred behind the glyphs, thin side along the normal
+        bpy.ops.mesh.primitive_cube_add(size=1, location=pc, rotation=(th, 0, 0))
+        b = bpy.context.object
+        b.scale = (1.0, 0.46, 0.03)
+        b.name = "label_plate_" + it["id"]
+        b.data.materials.append(M["label_plate"])
+        for o in (t, b):
+            for c in list(o.users_collection):
+                c.objects.unlink(o)
+            col.objects.link(o)
+    return col
 
 
 def validate_scene(lay, roots, links=None):
@@ -690,12 +735,33 @@ def add_cameras_and_lights():
     bg = w.node_tree.nodes["Background"]
     bg.inputs[0].default_value = (0.55, 0.65, 0.78, 1.0)
     bg.inputs[1].default_value = 0.9
+    try:   # BL-5: what the camera sees (a pale sky gradient) is separate from the light the scene receives (neutral, so the ground stays green)
+        nt = w.node_tree
+        lp = nt.nodes.new("ShaderNodeLightPath")
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        out = nt.nodes["World Output"]
+        light = nt.nodes.new("ShaderNodeBackground")
+        light.inputs[0].default_value = (0.85, 0.88, 0.92, 1.0)
+        light.inputs[1].default_value = 0.55
+        sky = nt.nodes.new("ShaderNodeTexSky")
+        sky.sun_disc = False
+        sky.sun_elevation = math.radians(35)
+        cam_bg = nt.nodes.new("ShaderNodeBackground")
+        cam_bg.inputs[1].default_value = 1.3
+        nt.links.new(sky.outputs["Color"], cam_bg.inputs[0])
+        nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs[0])
+        nt.links.new(light.outputs[0], mix.inputs[1])
+        nt.links.new(cam_bg.outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    except Exception as exc:                              # a Blender without these nodes keeps the flat colour
+        print("sky setup not used:", exc)
     bpy.ops.object.light_add(type="SUN", location=(20, -20, 40))
     sun = bpy.context.object
     sun.data.energy = 3.5
+    sun.data.angle = math.radians(2.5)                    # soft shadow edge
     sun.rotation_euler = (math.radians(50), math.radians(10), math.radians(35))
     views = {"isometric": ((-14, -22, 30), (32, 22, 1.5)), "aerial": ((32, 23, 80), (32, 23, 0)),
-             "feed_and_gasification": ((-2, -6, 9), (16, 9, 1.5)), "gas_cleaning": ((12, 8, 8), (28, 19, 1.2)),
+             "feed_and_gasification": ((-2, -6, 9), (16, 9, 1.5)), "gas_cleaning": ((20, 5, 14), (28, 19, 1.0)),
              "hydrogen": ((0, 17, 9), (26, 29, 1.2)), "utilities": ((-3, 30, 6), (16, 37, 1.2)), "control_and_analysers": ((40, 14, 7), (53, 23, 1.5))}
     cams = {}
     for name, (loc, tgt) in views.items():
@@ -712,6 +778,8 @@ def render(cam, path, samples=40, res=(1600, 900)):
     sc = bpy.context.scene
     sc.camera = cam
     sc.render.engine = "CYCLES"
+    sc.view_settings.view_transform = "Standard"     # AgX washed the zone colours out
+    sc.view_settings.exposure = -0.4
     sc.cycles.samples = samples
     sc.cycles.use_denoising = True
     sc.cycles.device = "CPU"
@@ -735,7 +803,7 @@ def main(argv):
         elif a == "--res":
             args["res"] = tuple(int(v) for v in next(it).split("x"))
     os.makedirs(args["out"], exist_ok=True)
-    lay, roots, links = build_scene()
+    lay, roots, links, M = build_scene()
     report = validate_scene(lay, roots, links)
     cams = add_cameras_and_lights()
     glb = os.path.join(args["out"], "plant.glb")
@@ -743,6 +811,7 @@ def main(argv):
         o.select_set(False)
     bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", export_extras=True, export_apply=True, export_cameras=False, export_lights=False)
     report["glb_bytes"] = os.path.getsize(glb)
+    build_labels(M, lay)                                  # after the GLB export on purpose: signs are for the renders only
     mapping = [{"equipment_id": i["id"], "name": i["name"], "blender_object": i["id"], "zone": i["zone"], "recipe": i["recipe"],
                 "size_basis": i["size_basis"], "geometry_status": i["geometry_status"]} for i in lay]
     with open(os.path.join(args["out"], "equipment_mapping.json"), "w") as fh:

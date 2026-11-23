@@ -50,3 +50,10 @@ def test_the_tab_has_a_process_flow_mode_that_never_calls_a_link_a_verified_pipe
     bundle = (ROOT / "assets" / "plant3d.bundle.js").read_text(encoding="utf-8")
     for needle in ("Process flow", "link_points", "not verified pipes"):
         assert needle in src and needle in bundle, needle
+
+
+def test_render_only_id_signs_are_not_in_the_glb_and_the_tab_draws_its_own():
+    names = [n.get("name", "") for n in _json_chunk()["nodes"]]
+    assert not any(n.startswith("label_") for n in names)
+    src = (ROOT / "web3d" / "src" / "main.js").read_text(encoding="utf-8")
+    assert "idSprite" in src and "stepLabels" in src
