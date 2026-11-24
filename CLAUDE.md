@@ -78,17 +78,20 @@ feed chlorine/HCl (150 ppm) — treat these as assumptions, not established
 facts, in any new work.
 
 **New item to flag with DOK-ING (found during Phase 2's live EU-008
-implementation, `python/eu_utilities_chp.py`):** EU-008's Confirmed 20 kW
-cooling-tower rating appears significantly undersized against this
-model's own computed ~58 kW peak demand (GC-004 quench + HB-003 cold-side
-+ HB-012 compressor, summed and swept across ER=0.25 through 0.55) —
-recommend confirming actual installed/specified cooling capacity, or
-providing real operating data to check this model's assumptions. A
+implementation, `python/eu_utilities_chp.py`; figures corrected 2026-11-24 to the
+live model):** the registry's 20 kW EU-008 cooling-tower rating (status
+Unverified (registry); its own remark scopes the 20 kW to EU-004's 12 kWth
+jacket cooling) is well below this model's own computed peak demand of about
+40 kW (GC-004 quench + HB-003 cold-side + HB-012 compressor, summed and swept
+across ER=0.25 through 0.55; 35-40 kW over that sweep). Earlier text here and
+in that module's docstrings said ~58 kW; that was the figure before later model
+changes, and the live engine now gives about 40 kW. Phrase it as a question,
+not as a fault: what cooling capacity is installed for the whole plant? A
 separate, additive `Estimated` resizing recommendation (peak demand x a
-15% margin) is published alongside the untouched Confirmed 20 kW figure
+15% margin, about 46 kW) is published alongside the untouched registry 20 kW figure
 at `("EU-008", "RecommendedCapacityEstimate")` in the Shared Plant State
-— see that module's own docstring and self-test for the full derivation.
-This does NOT modify `data/equipment_registry.json`'s own EU-008 row.
+— see that module's own docstring and self-test for the derivation (its
+docstrings still quote ~58 kW; not changed here). This does NOT modify `data/equipment_registry.json`'s own EU-008 row.
 
 DOK-ING has provided formal responses to all 17 questions in the initial
 design-basis RFI (data/dokink_rfi_answers.md, applied in

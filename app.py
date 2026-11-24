@@ -669,6 +669,24 @@ with tab1:
     # Section 1 — WGS reaction kinetics (live, interactive)
     # ---------------------------------------------------------------------
     st.header("Water-Gas Shift Reaction Kinetics")
+    st.info(
+        "**Standalone design calculators, not the live plant.** The sliders below call `kinetics.py`, `psa.py` and the CHP "
+        "dispatch directly. At their default positions they reproduce the earlier design targets (HTS 75.0 %, LTS 40.0 %, "
+        "overall WGS 85.0 %, PSA 75.0 %). The values the live engine publishes each cycle are on the Summary and "
+        "Hydrogen & BoP tabs and differ from these targets. Simulated; no plant data.",
+        icon="ℹ️",
+    )
+    try:
+        _snap_dt = _tab1_integration_snapshot()
+        _e_hts, _e_lts, _e_psa = (_snap_dt.get(("HB-001", "HTS")), _snap_dt.get(("HB-004", "LTS")),
+                                  _snap_dt.get(("HB-006", "PSA")))
+        if _e_hts and _e_lts and _e_psa:
+            st.caption(
+                f"Live engine this cycle (model, Assumed inputs): HTS {_e_hts['value']['X_hts']*100:.1f} %, "
+                f"overall WGS {_e_lts['value']['overall_conversion']*100:.1f} %, PSA recovery {_e_psa['value']['recovery']*100:.1f} %."
+            )
+    except Exception:
+        pass  # the caption is informational only; the calculators below work without it
     col1, col2 = st.columns(2)
 
     with col1:
@@ -4270,7 +4288,7 @@ def _render_fe_simulation_status(snap):
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
     c3.caption(
-        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` §1). "
         "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
         "behavior, not a bug here."
     )
@@ -5906,7 +5924,7 @@ def _render_ga_simulation_status(snap):
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
     c3.caption(
-        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` §1). "
         "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
         "behavior, not a bug here."
     )
@@ -7089,7 +7107,7 @@ def _render_gc_simulation_status(snap):
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
     c3.caption(
-        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` §1). "
         "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
         "behavior, not a bug here."
     )
@@ -7852,8 +7870,8 @@ def _render_sa_mass_energy_balance(snap):
     st.error(
         "**Real finding, surfaced honestly:** gas COMPOSITION and FLOW diverge substantially from "
         "the registry's own separately-stated \"Expected\" design-basis figures — most notably N2 "
-        "(39.6% live vs 10% expected, +296%) and CO2/CH4 (−55%/−79%), with SA-010's flow +105% "
-        "above the registry's own 50 Nm³/h design point. **Root cause, found by direct inspection "
+        "(roughly 39% live vs 10% expected) and CO2/CH4 (far below expected), with SA-010's flow "
+        "above the registry's own 50 Nm³/h design point; the exact deviations are in the table above. **Root cause, found by direct inspection "
         "of `ga001_gasifier_model.py` (not assumed):** that module's own comments state explicitly "
         "GA-001's live product gas carries substantial N2 \"roughly matching the fresh air feed's "
         "own N2 content\" — the live physics model uses an air-containing gasifying agent, producing "
@@ -7923,7 +7941,7 @@ def _render_sa_simulation_status(snap):
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
     c3.caption(
-        "From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` §1). "
+        "From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` §1). "
         "GitHub's own scheduler can jitter by a few minutes; occasional skips are documented GitHub "
         "behavior, not a bug here."
     )
@@ -8618,8 +8636,8 @@ def _render_hb_live_results(snap):
             c1.metric("Tail gas flow", f"{v['tail_flow_nm3_h']:.2f} Nm³/h")
             c2.metric("Tail H₂ fraction", f"{v['tail_h2_fraction']*100:.2f}%")
             c3.metric("PSA product (H₂) flow", f"{v['product_flow_nm3_h']:.2f} Nm³/h")
-            st.caption("→ feeds GA-001 as a real recycle input (Phase 1d, lagged) — stated explicitly in "
-                       "this item's own confidence_note.")
+            st.caption("→ In the default `heat_only` tail-gas mode this gas is burned for heat and no atoms re-enter GA-001; "
+                       "in the optional `regasify` mode it is a lagged recycle input to GA-001 (Phase 1d).")
             _hb_live_expander("HB-009 TailGas", hb009)
 
     # -- HB-010 (dual-status pair + additional Estimated key) ------------------
@@ -8931,7 +8949,7 @@ def _render_hb_simulation_status(snap):
         c2.metric("Computed at (this page load)", entry["timestamp"])
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
-    c3.caption("From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` "
+    c3.caption("From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` "
                "§1). GitHub's own scheduler can jitter by a few minutes; occasional skips are documented "
                "GitHub behavior, not a bug here.")
 
@@ -9926,7 +9944,7 @@ def _render_eu_simulation_status(snap):
         c2.metric("Computed at (this page load)", entry["timestamp"])
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
-    c3.caption("From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` "
+    c3.caption("From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` "
                "§1). GitHub's own scheduler can jitter by a few minutes; occasional skips are documented "
                "GitHub behavior, not a bug here.")
 
@@ -10849,7 +10867,7 @@ def _render_ai_simulation_status(snap):
         c2.metric("Computed at (this page load)", entry["timestamp"])
         c2.caption("This run's own timestamp — NOT a persisted continuity marker (see fallback note above).")
     c3.metric("Next expected update", f"~{next_tick_utc.strftime('%H:%M')} UTC")
-    c3.caption("From the real cron schedule (`0 * * * *`, hourly — `docs/continuous_runtime_design.md` "
+    c3.caption("From the configured cron schedule (`17 * * * *`, hourly; GitHub often delivers fewer runs, so gaps of several hours occur — `docs/continuous_runtime_design.md` "
                "§1). GitHub's own scheduler can jitter by a few minutes; occasional skips are documented "
                "GitHub behavior, not a bug here.")
 
@@ -11257,7 +11275,7 @@ with tab12:
                "Five items use a size from the registry (green base ring); every other size is a per-group estimate (amber ring). "
                "Shapes are generic. The top sphere is the item's state in the model, the same state Plant Overview counts. "
                "Simulated model results, no plant data. Drag to rotate, scroll to zoom, hover for details, click an item for its card, use the buttons to fit the view or focus on a group. "
-               "The 'Blender model' button (default) shows a richer equipment model made with Blender: representative shapes with assumed sizes, no piping, not vendor CAD, not the real layout. 'Schematic' returns to the simple boxes. In the Blender view, 'Process flow' highlights the links the model itself documents between items (its own dependency graph) and, for a selected item, what feeds it (blue) and what it feeds (orange). These are model dependencies with schematic routing, not verified pipes or a P&ID; platforms, ladders and stairs are assumed geometry.")
+               "The 'Blender model' button (default) shows a richer equipment model made with Blender: representative shapes with assumed sizes, not vendor CAD, not the real layout. 'Schematic' returns to the simple boxes. In the Blender view, 'Process flow' highlights the links the model itself documents between items (its own dependency graph) and, for a selected item, what feeds it (blue) and what it feeds (orange). These are model dependencies with schematic routing, not verified pipes or a P&ID; platforms, ladders and stairs are assumed geometry.")
     try:
         _items3d = plant_3d.scene_items(_plant_overview_item_states(_tab1_integration_snapshot()))
         _html3d = plant_3d.build_html(_items3d, height=640)
