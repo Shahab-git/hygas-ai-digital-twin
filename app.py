@@ -8638,7 +8638,15 @@ def _render_hb_live_results(snap):
             c3.metric("PSA product (H₂) flow", f"{v['product_flow_nm3_h']:.2f} Nm³/h")
             st.caption("→ In the default `heat_only` tail-gas mode this gas is burned for heat and no atoms re-enter GA-001; "
                        "in the optional `regasify` mode it is a lagged recycle input to GA-001 (Phase 1d).")
-            _hb_live_expander("HB-009 TailGas", hb009)
+            # Display-only correction: the stored note (python/hb_wgs_psa_storage_chain.py, pinned by regression
+            # fixtures) still says the tail gas is "NOW WIRED to GA-001 as a real recycle input"; that holds only in
+            # tail_gas_mode 'regasify', not in the default 'heat_only'. The stored entry is not changed.
+            _note9 = hb009["confidence_note"]
+            _i9 = _note9.find("NOW WIRED to GA-001 as a real recycle input")
+            if _i9 >= 0:
+                _note9 = (_note9[:_i9] + "Wired to GA-001 as a lagged recycle input only in tail_gas_mode 'regasify' (Phase 1d); "
+                          "in the default 'heat_only' mode no atoms re-enter GA-001.")
+            _hb_live_expander("HB-009 TailGas", {**hb009, "confidence_note": _note9})
 
     # -- HB-010 (dual-status pair + additional Estimated key) ------------------
     with st.container(border=True):
