@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 const D = window.__PLANT3D__;
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wrap = document.getElementById('wrap');
 const W = () => wrap.clientWidth, H = () => wrap.clientHeight;
 const GROUP_COLOR = { FE: 0xd9a03a, GA: 0x3d6fb5, GC: 0x2f8f6b, HB: 0x1f9fa6, EU: 0xd9603a, SA: 0x8e5cc7, AI: 0x5b6b85 };
@@ -234,13 +235,13 @@ function select(id) {
   selRing.position.set(bi ? bi.cx : u.x, bi ? 0.14 : 0.04, bi ? bi.cz : u.z); selRing.visible = true;
   const sizeText = bi ? (bi.basis === 'registry' ? 'from the registry' : 'assumed or estimated') : (u.basis === 'registry' ? 'from the registry' : 'estimated');
   const geoText = bi ? bi.geometry : 'generic shape (schematic)';
-  const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   card.innerHTML = `<div style="font-size:14px"><b>${esc(u.id)}</b> ${esc(u.name)}</div><div style="color:#94a3b8">${esc(D.groups[u.group])}</div>` +
     `<div style="margin-top:6px">${dot(STATE_COLOR[u.state])}${esc(u.state_label)}</div>` +
     `<div style="margin-top:6px"><b>Size:</b> ${esc(sizeText)}<br><span style="color:#94a3b8">${esc(u.basis_note)}</span></div>` +
     `<div style="margin-top:6px"><b>Geometry:</b> ${esc(geoText)}</div>` +
     (bi && flow ? `<div style="margin-top:6px"><b>Model links:</b> from ${esc((flow.inn[u.id] || []).map(L => L.from).join(', ') || 'none')}; to ${esc((flow.out[u.id] || []).map(L => L.to).join(', ') || 'none')}<br><span style="color:#94a3b8">${esc('Documented model dependencies, not verified pipes.')}</span></div>` : '') +
     (u.count ? `<div style="margin-top:6px"><b>Drawn count:</b> ${u.count} (registry)</div>` : '') +
+    findingBlock(u.id) +
     `<div style="margin-top:8px;color:#94a3b8">${esc(mode === 'blender' ? 'Simulated model state, no plant data. Engineering schematic model with assumed sizes, not vendor CAD.' : 'Simulated model state, no plant data. Schematic, not to scale.')}</div>`;
   card.style.display = 'block';
   applyFlow();
@@ -270,7 +271,7 @@ lg.innerHTML = '<b id="lgtitle" style="cursor:pointer" title="click to fold">Sch
   Object.keys(STATE_TEXT).map(k => '<div style="white-space:nowrap">' + dot(STATE_COLOR[k]) + STATE_TEXT[k] + '</div>').join('') +
   '<div style="margin-top:4px">Base ring</div><div style="white-space:nowrap">' + dot(0x22c55e) + 'size from registry</div><div style="white-space:nowrap">' + dot(0xf59e0b) + 'size estimated</div>' +
   '<div style="margin-top:4px">Blender view: pipes = links the model documents (its dependency graph), routing schematic, not verified pipes.</div>' +
-  '<div style="margin-top:4px">Simulated model state, no plant data.</div></div>';
+  '<div style="margin-top:4px">Red halo (Design findings): a model versus registry difference, asked as a question for DOK-ING.</div><div style="margin-top:4px">Simulated model state, no plant data.</div></div>';
 wrap.appendChild(lg);
 lg.firstChild.onclick = () => { const b = lg.querySelector('.lgbody'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; };
 const tip = document.createElement('div');
@@ -317,6 +318,7 @@ function setMode(m) {
   document.getElementById('lgtitle').innerHTML = (m === 'blender' ? 'Engineering schematic model, not vendor CAD' : 'Schematic, not to scale') + ' &#9662;';
   for (const k of Object.keys(modeBtns)) modeBtns[k].style.borderColor = k === m ? '#38bdf8' : '#475569';
   flyTo(fitPose());
+  if (typeof rebuildHalos === 'function') rebuildHalos();
 }
 function traceFlow(id) {
   const up = new Set(), dn = new Set();
@@ -401,7 +403,84 @@ function loadBlend() {
     if (D.default_view === 'blender') setMode('blender');
   }, err => { console.error(err); modeBtns.blender.textContent = 'Blender model (failed to load)'; });
 }
+
+// ---- Tour and design findings. Data: window.__PLANT3D__.story (python/plant_3d_story.py), every number read from the plant-state snapshot.
+// A finding is a place where the model and a registry/RFI figure disagree, phrased as a question for DOK-ING; it is not a claim about the plant.
+const ST = D.story || null;
+const haloGroup = new T.Group(); scene.add(haloGroup);
+let findingsOn = false, tourIdx = -1, tourAuto = null, activeFinding = null;
+const panel = document.createElement('div');
+panel.style.cssText = 'position:absolute;left:10px;bottom:10px;width:330px;max-height:60%;overflow:auto;background:rgba(15,23,34,.94);color:#e5edf7;font:12px Arial;padding:10px 12px;border-radius:8px;line-height:1.5;display:none;border:1px solid #334155';
+wrap.appendChild(panel);
+const pbtn = label => `<button data-a="${label}" style="background:#1e293b;color:#e5edf7;border:1px solid #475569;border-radius:6px;padding:3px 8px;font:12px Arial;cursor:pointer;margin-right:4px">${label}</button>`;
+function posOf(id) {
+  if (mode === 'blender' && blend && blend.items[id]) { const b = blend.items[id]; return { x: b.cx, z: b.cz, top: b.box.max.y, r: Math.max(b.r, 0.5) }; }
+  const u = D.items.find(i => i.id === id); if (!u) return null;
+  return { x: u.x, z: u.z, top: u.h, r: (u.shape === 'cyl' ? u.w / 2 : Math.max(u.w, u.d) / 2) };
+}
+function findingFor(id) { return ST ? ST.findings.filter(f => f.items.includes(id)) : []; }
+function findingBlock(id) {
+  if (!findingsOn) return '';
+  const fs = findingFor(id); if (!fs.length) return '';
+  return fs.map(f => `<div style="margin-top:8px;border-top:1px solid #7f1d1d;padding-top:6px"><b style="color:#fca5a5">Design finding: ${esc(f.title)}</b><br>${f.lines.map(esc).join('<br>')}<br><b>Question for DOK-ING:</b> ${esc(f.ask)}</div>`).join('');
+}
+function rebuildHalos() {
+  while (haloGroup.children.length) { const o = haloGroup.children.pop(); o.geometry && o.geometry.dispose(); }
+  if (!findingsOn || !ST) return;
+  const seen = new Set();
+  for (const f of ST.findings) for (const id of f.items) {
+    if (seen.has(id)) continue; seen.add(id);
+    const p = posOf(id); if (!p) continue;
+    const rr = Math.min(p.r + 0.7, 2.6);
+    const ring = new T.Mesh(new T.RingGeometry(rr, rr + 0.16, 48), new T.MeshBasicMaterial({ color: 0xef4444, side: T.DoubleSide, transparent: true, opacity: 0.9 }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, 0.16, p.z); ring.userData.pulse = true; haloGroup.add(ring);
+    const beam = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 3, 8), new T.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.55 }));
+    beam.position.set(p.x, p.top + 2.0, p.z); haloGroup.add(beam);
+  }
+}
+function stepHalos(now) { const k = 1 + 0.12 * Math.sin(now / 350); for (const o of haloGroup.children) if (o.userData.pulse) o.scale.set(k, k, 1); }
+function flyToItem(id) {
+  const p = posOf(id); if (!p) return;
+  const d = Math.max(7, 4 * p.r + 5);
+  flyTo({ pos: [p.x + d * 0.35, p.top + d * 0.55, p.z + d * 0.9], tgt: [p.x, Math.max(p.top * 0.5, 0.6), p.z] });
+  const u = D.items.find(i => i.id === id); if (u) select(id);
+}
+function renderPanel() {
+  if (tourIdx >= 0 && ST) {
+    const s = ST.tour[tourIdx];
+    panel.innerHTML = `<div style="color:#94a3b8">Tour ${tourIdx + 1} of ${ST.tour.length} · ${esc(s.status)}</div><div style="font-size:14px;margin:2px 0 6px"><b>${esc(s.title)}</b></div>` +
+      s.lines.map(l => `<div style="margin-bottom:4px">${esc(l)}</div>`).join('') +
+      `<div style="margin-top:8px">${pbtn('Prev')}${pbtn('Next')}${pbtn(tourAuto ? 'Pause' : 'Auto')}${pbtn('Exit tour')}</div>` +
+      `<div style="margin-top:6px;color:#94a3b8">Model results from Assumed inputs; simulated, no plant data.</div>`;
+  } else if (findingsOn && ST) {
+    panel.innerHTML = `<div style="font-size:14px"><b>Design findings</b></div><div style="color:#94a3b8;margin-bottom:6px">Where the model and a registry or RFI figure disagree. Each is a question for DOK-ING, not a fault of the plant.</div>` +
+      ST.findings.map((f, i) => `<div style="margin-bottom:8px;padding:6px;border:1px solid ${activeFinding === i ? '#ef4444' : '#334155'};border-radius:6px;cursor:pointer" data-f="${i}"><b style="color:#fca5a5">${i + 1} · ${esc(f.title)}</b> <span style="color:#94a3b8">(${esc(f.status)})</span><br>${f.lines.map(esc).join('<br>')}<br><b>Ask:</b> ${esc(f.ask)}<br><span style="color:#94a3b8">${esc(f.items.join(', '))}: click to fly there</span></div>`).join('');
+  } else { panel.style.display = 'none'; lg.querySelector('.lgbody').style.display = 'block'; return; }
+  panel.style.display = 'block'; lg.querySelector('.lgbody').style.display = 'none';   // the panel and the legend share the left edge: fold the legend while the panel is open
+}
+panel.addEventListener('click', e => {
+  const t = e.target; const fb = t.closest && t.closest('[data-f]');
+  if (t.dataset && t.dataset.a) {
+    const a = t.dataset.a;
+    if (a === 'Next') gotoStage(Math.min(tourIdx + 1, ST.tour.length - 1));
+    else if (a === 'Prev') gotoStage(Math.max(tourIdx - 1, 0));
+    else if (a === 'Auto' || a === 'Pause') { if (tourAuto) { clearInterval(tourAuto); tourAuto = null; } else tourAuto = setInterval(() => { if (tourIdx >= ST.tour.length - 1) { clearInterval(tourAuto); tourAuto = null; renderPanel(); } else gotoStage(tourIdx + 1); }, 9000); renderPanel(); }
+    else if (a === 'Exit tour') stopTour();
+  } else if (fb) { activeFinding = +fb.dataset.f; const f = ST.findings[activeFinding]; renderPanel(); flyToItem(f.items[0]); }
+});
+function gotoStage(i) {
+  tourIdx = i; const s = ST.tour[i]; select(null);
+  if (s.focus && s.focus.length && posOf(s.focus[0])) flyToItem(s.focus[0]); else flyTo(s.group ? groupPose(s.group) : fitPose());
+  renderPanel();
+}
+function stopTour() { tourIdx = -1; if (tourAuto) { clearInterval(tourAuto); tourAuto = null; } renderPanel(); flyTo(fitPose()); }
+if (ST) {
+  const tourBtn = btn('Tour', () => { if (tourIdx >= 0) stopTour(); else { findingsOn = false; fbtn.textContent = 'Design findings: off'; rebuildHalos(); gotoStage(0); } });
+  const fbtn = btn('Design findings: off', () => { findingsOn = !findingsOn; fbtn.textContent = 'Design findings: ' + (findingsOn ? 'on' : 'off'); if (findingsOn && tourIdx >= 0) stopTour(); activeFinding = null; rebuildHalos(); renderPanel(); });
+  tourBtn.title = 'Steps through the plant group by group with the model numbers for each stage';
+  fbtn.title = 'Marks the items behind four model-versus-registry differences, each phrased as a question for DOK-ING';
+}
 loadBlend();
-(function loop(now) { stepAnim(now || performance.now()); stepFlow(now || performance.now()); stepLabels(); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
-window.__PLANT3D_VIEW__ = { cam, controls, select, flyTo, fitPose, groupPose, setMode, setFlow: v => { flowOn = !!v; flowBtn.textContent = 'Process flow: ' + (flowOn ? 'on' : 'off'); applyFlow(); }, links: () => flow && flow.links.length, mode: () => mode, blendInfo: () => blend && { count: Object.keys(blend.items).length, missing: blend.missing } };   // lets a test or a screenshot script move the camera
+(function loop(now) { stepAnim(now || performance.now()); stepHalos(now || performance.now()); stepFlow(now || performance.now()); stepLabels(); controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
+window.__PLANT3D_VIEW__ = { story: () => ST, setFindings: v => { findingsOn = !!v; rebuildHalos(); renderPanel(); }, tourTo: i => gotoStage(i), halos: () => haloGroup.children.length, cam, controls, select, flyTo, fitPose, groupPose, setMode, setFlow: v => { flowOn = !!v; flowBtn.textContent = 'Process flow: ' + (flowOn ? 'on' : 'off'); applyFlow(); }, links: () => flow && flow.links.length, mode: () => mode, blendInfo: () => blend && { count: Object.keys(blend.items).length, missing: blend.missing } };   // lets a test or a screenshot script move the camera
 window.__PLANT3D_READY__ = true;

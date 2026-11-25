@@ -25,7 +25,7 @@ from python import (
     multi_module_orchestration, novelty_audit, safety_flags, pinn_kinetics, sim_to_real,
     federated_learning, performance_guarantee, time_series_sim, tda_analysis, equipment_datasheet,
     equipment_data_requests, design_basis, equipment_rfi_fills, equipment_request_routing,
-    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, live_runner, design_basis_board, plant_3d, plant_status as ps,
+    equipment_engineering_estimates, tab1_integration, summary_tab, live_trace, live_runner, design_basis_board, plant_3d, plant_3d_story, plant_status as ps,
     fe_feed_handling as fe, shared_plant_state as sps, simulation_engine as se,
     hb_wgs_psa_storage_chain as hbchain_module,
     ai_automation_layer as ai_module, maturity,
@@ -11286,7 +11286,11 @@ with tab12:
                "The 'Blender model' button (default) shows a richer equipment model made with Blender: representative shapes with assumed sizes, not vendor CAD, not the real layout. 'Schematic' returns to the simple boxes. In the Blender view, 'Process flow' highlights the links the model itself documents between items (its own dependency graph) and, for a selected item, what feeds it (blue) and what it feeds (orange). These are model dependencies with schematic routing, not verified pipes or a P&ID; platforms, ladders and stairs are assumed geometry.")
     try:
         _items3d = plant_3d.scene_items(_plant_overview_item_states(_tab1_integration_snapshot()))
-        _html3d = plant_3d.build_html(_items3d, height=640)
+        try:
+            _story3d = plant_3d_story.story_data(_tab1_integration_snapshot())
+        except Exception:
+            _story3d = None                # the tour and the findings are optional; the 3D view works without them
+        _html3d = plant_3d.build_html(_items3d, height=640, story=_story3d)
         if hasattr(st, "iframe"):          # st.components.v1.html is deprecated in newer Streamlit; st.iframe embeds the same HTML string
             st.iframe(_html3d, height=650)
         else:
