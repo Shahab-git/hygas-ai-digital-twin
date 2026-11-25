@@ -24,6 +24,7 @@ import streamlit as st
 
 from . import fe_feed_handling as fe
 from . import plant_status as ps
+from . import sim_sections
 from . import tab1_integration as t1
 
 N_CYCLES = 12
@@ -125,16 +126,18 @@ def item_table(base, scen, item_id):
     return rows[:_MAX_ROWS]
 
 
-def render():
-    st.subheader("Device picker (live engine)")
+def render(section=None, key="all"):
+    """section: None for all 91 items, or a name in sim_sections.SECTIONS to list only that section's items. key: widget-key prefix."""
+    st.subheader("Device picker (live engine)" if section is None else f"Device picker: {section}")
     st.caption("SIMULATED what-if on the unchanged quasi-steady engine; every input below is Assumed and nothing is validated against "
                f"plant data. Each run is {N_CYCLES} cycles from a cold start (the engine converges in about five cycles after a step). "
                "Nothing is written to the plant state or any database.")
     items = registry_items()
     ids = tuple(i for i, _n, _c in items)
+    shown = ids if section is None else tuple(i for i in ids if i[:2] in sim_sections.SECTIONS[section][0])
     labels = {i: f"{i} · {n}" for i, n, _c in items}
     cat = {i: c for i, _n, c in items}
-    pick = st.selectbox("Equipment item (all registry items)", ids, format_func=lambda i: labels[i], key="_sim_dev_pick")
+    pick = st.selectbox("Equipment item" + (" (all registry items)" if section is None else f" ({len(shown)} items of this section)"), shown, format_func=lambda i: labels[i], key=f"_sim_dev_pick_{key}")
     try:
         base = baseline(ids)
     except Exception as exc:
@@ -153,20 +156,20 @@ def render():
     st.markdown("**Scenario inputs (Assumed what-ifs)**")
     cols = st.columns(len(SCENARIO_INPUTS) + 1)
     values = {}
-    for col, (key, (label, lo, hi, default, step)) in zip(cols, SCENARIO_INPUTS.items()):
-        values[key] = col.slider(label, lo, hi, float(default), step, key=f"_sim_dev_{key[1]}")
-    tail = cols[-1].radio("Tail-gas mode", ["heat_only", "regasify"], key="_sim_dev_tail")
+    for col, (ik, (label, lo, hi, default, step)) in zip(cols, SCENARIO_INPUTS.items()):
+        values[ik] = col.slider(label, lo, hi, float(default), step, key=f"_sim_dev_{key}_{ik[1]}")
+    tail = cols[-1].radio("Tail-gas mode", ["heat_only", "regasify"], key=f"_sim_dev_tail_{key}")
     st.caption("No gasifier-temperature input: over 850-950 degC the model's hydrogen changes by 0.08 %, so a slider would suggest an "
                "effect the model does not have.")
-    if st.button("Run scenario", key="_sim_dev_run"):
+    if st.button("Run scenario", key=f"_sim_dev_run_{key}"):
         with st.spinner("Running the engine..."):
             try:
-                st.session_state["_sim_dev_scen"] = {
+                st.session_state[f"_sim_dev_scen_{key}"] = {
                     "inputs": (tuple(sorted(values.items())), tail),
                     "snap": run_snapshot(build_overrides(values, tail), set(ids))}
             except Exception as exc:
                 st.warning(f"Scenario run failed: {type(exc).__name__}")
-    saved = st.session_state.get("_sim_dev_scen")
+    saved = st.session_state.get(f"_sim_dev_scen_{key}")
     scen = saved["snap"] if saved else None
     if saved:
         st.caption("Scenario shown is the last run; press Run scenario again after changing the inputs.")
@@ -177,3 +180,40 @@ def render():
     st.dataframe(df, use_container_width=True, hide_index=True)
     if scen is None:
         st.caption("Baseline only. Press Run scenario to compare.")
+
+
+def render_section(section, runner=None):
+    """Live results of ONE plant section: the section's curated series (python/sim_sections.py) from the resident live run, or the
+    baseline values when the live run is not started. runner: the LiveRunner of the session or None."""
+    series = sim_sections.SECTIONS[section][1]
+    unit = sim_sections.units(section)
+    hist = list(runner.section_history) if runner is not None else []
+    if hist:
+        last = hist[-1]
+        st.markdown(f"**{section} · live results (SIMULATED)** · cycle {last['cycle']}")
+        cols = st.columns(len(series))
+        for col, (label, *_r) in zip(cols, series):
+            v = last[section][label]
+            col.metric(label, "n/a" if v is None else f"{v:.4g}")
+        df = pd.DataFrame([{"cycle": h["cycle"], **h[section]} for h in hist]).set_index("cycle")
+        for i in range(0, len(series), 3):
+            cc = st.columns(3)
+            for c, (label, *_r) in zip(cc, series[i:i + 3]):
+                c.caption(f"{label}")
+                if df[label].notna().any():
+                    c.line_chart(df[[label]])
+    else:
+        st.info("The live run is not started. Start it in the Plant-wide tab of Simulation; this section then shows only its own series. "
+                "Below, the baseline values (12 cycles from a cold start) of this section.")
+        try:
+            items = registry_items()
+            ids = tuple(i for i, _n, _c in items)
+            base = baseline(ids)
+            snap = {k: v for k, v in base.items()}
+            vals = sim_sections.extract(snap, section)
+            cols = st.columns(len(series))
+            for col, (label, *_r) in zip(cols, series):
+                v = vals[label]
+                col.metric(label, "n/a" if v is None else f"{v:.4g}")
+        except Exception as exc:
+            st.warning(f"Baseline unavailable: {type(exc).__name__}")

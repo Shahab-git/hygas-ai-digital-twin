@@ -38,7 +38,7 @@ def test_the_app_shows_the_summary_first_and_its_numbers():
             mock.patch("urllib.request.urlopen", side_effect=smoke._offline_urlopen):
         at = AppTest.from_file(smoke.APP, default_timeout=90).run()
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
-    assert at.tabs[0].label == "Summary" and len(at.tabs) == 13
+    assert at.tabs[0].label == "Summary" and at.tabs[12].label == "Simulation" and len(at.tabs) == 13 + 8
     inside = {m.label: m.value for m in at.tabs[0].metric}
     assert inside["DOK-ING stated (plastic feed)"] == "~50 kg/day"
     assert inside["Measured"] == str(sum(1 for r in smoke._store_rows() if r["entry"].get("status") == "Measured"))

@@ -16,6 +16,7 @@ import collections
 from . import fe_feed_handling as fe
 from . import live_trace
 from . import plant_status as ps
+from . import sim_sections
 from . import tab1_integration as t1
 
 FEED_KEY = ("FE-001-INPUT", "msw_delivery_rate_kg_h")
@@ -29,6 +30,7 @@ class LiveRunner:
     def __init__(self, seconds_per_cycle=DEFAULT_SECONDS_PER_CYCLE, history=HISTORY):
         self.seconds_per_cycle = float(seconds_per_cycle)
         self.history = collections.deque(maxlen=int(history))
+        self.section_history = collections.deque(maxlen=int(history))      # per-section series for the Simulation tab (python/sim_sections.py)
         self.feed_kg_h = None            # None = the nominal as-received feed (no override)
         self._state, self._engine = t1.build_engine(overrides={FEED_KEY: self._feed_fn})
         self.cycle = 0
@@ -51,8 +53,10 @@ class LiveRunner:
         """Runs exactly one cycle and returns its row (also appended to `history`)."""
         self.cycle += 1
         self._engine.run_cycle(now=f"{SIM_START[0]}-{SIM_START[1]:02d}-{SIM_START[2]:02d}T{(self.cycle - 1) % 24:02d}:00:00Z")
-        row = live_trace.row_from_snapshot(self.cycle, self._state.get_snapshot())
+        snap = self._state.get_snapshot()
+        row = live_trace.row_from_snapshot(self.cycle, snap)
         self.history.append(row)
+        self.section_history.append({"cycle": self.cycle, **sim_sections.extract_all(snap)})
         return row
 
     def advance(self, now_s):

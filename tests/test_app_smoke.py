@@ -62,7 +62,7 @@ def test_app_runs_offline_with_eleven_tabs_and_tab2_counters_summing_to_91():
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
     assert [c for c in fake.calls if c[0] != "select"] == [], "the app wrote to the (fake) database"
 
-    labels = [t.label for t in at.tabs]
+    labels = [t.label for t in at.tabs][:13]      # the 13 top-level tabs; the sub-tabs of Simulation follow them
     assert len(labels) == 13, labels      # P2-1: "Summary" is the new first tab; the other 11 keep their order
     assert labels[0] == "Summary" and labels[2] == "Plant Overview" and labels[-2] == "Design Basis" and labels[-1] == "Simulation"
 
