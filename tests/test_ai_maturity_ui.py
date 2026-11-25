@@ -48,7 +48,7 @@ def test_the_app_renders_without_exception_and_writes_nothing(app):
     at, fake = app
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
     assert [c for c in fake.calls if c[0] != "select"] == []
-    assert len(at.tabs) == 13
+    assert len(at.tabs) == 13 + 8      # 13 top-level tabs + the 8 sub-tabs of Simulation
 
 
 @pytest.mark.parametrize("module", RENDERED)

@@ -517,12 +517,28 @@ tab0, tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab_si
 with tab_sim:
     st.title("HYGAS-AI — Simulation")
     st.caption("All simulations in one place. SIMULATED: every run uses Assumed inputs on the quasi-steady engine or on illustrative "
-               "models; none is validated against plant data, and none writes to the plant state or a database. Order: device picker, "
-               "model trace and live run, process calculators (WGS, PSA, CHP), uncertainty and optimisation, illustrative AI modules, "
-               "then the Transient What-If.")
+               "models; none is validated against plant data, and none writes to the plant state or a database. One sub-tab per plant section "
+               "(its own live results, device picker and calculators), plus Plant-wide for the whole-plant trace, live run, uncertainty, "
+               "optimizer, sim-to-real and the Transient What-If.")
+    from python import sim_sections as _sim_sections
+    _sim_names = ["Plant-wide"] + list(_sim_sections.SECTIONS)
+    sim_plant, sim_fe, sim_ga, sim_gc, sim_sa, sim_hb, sim_eu, sim_ai = st.tabs(_sim_names)
+    _sim_sub = dict(zip(_sim_names, (sim_plant, sim_fe, sim_ga, sim_gc, sim_sa, sim_hb, sim_eu, sim_ai)))
     try:
         from python import ui_simulation_tab
-        ui_simulation_tab.render()
+        with sim_plant:
+            ui_simulation_tab.render()
+        for _sec_name in _sim_sections.SECTIONS:
+            with _sim_sub[_sec_name]:
+                def _sec_body(_n=_sec_name):
+                    ui_simulation_tab.render_section(_n, st.session_state.get("_live_runner"))
+                if st.session_state.get("_live_running", False):
+                    st.fragment(_sec_body, run_every=live_runner.DEFAULT_SECONDS_PER_CYCLE)()
+                else:
+                    st.fragment(_sec_body)()
+                st.divider()
+                ui_simulation_tab.render(_sec_name, key=_sec_name.split()[0].lower().replace("&", "x"))
+                st.divider()
     except Exception as _simdev_exc:
         st.error(f"The device picker could not be displayed ({type(_simdev_exc).__name__}).")
     st.divider()
@@ -559,7 +575,7 @@ with tab0:
                         f"**{_status_label(_sm['overall_status'])}**. Please confirm the installed cooling capacity.")
         else:
             st.caption("Cooling demand or rating unavailable this cycle.")
-        with tab_sim:
+        with sim_plant:
             st.subheader("Model trace (simulated)")
             st.caption("The engine run cycle by cycle from a cold start, with an optional feed-rate step. The x axis is the model "
                        "cycle, not seconds: the engine is quasi-steady (about one cycle of lag, no time-domain dynamics), and "
@@ -686,7 +702,7 @@ with tab1:
             "negotiation, orchestration, PINN, sim-to-real, federated learning, performance guarantee, TDA) are now in the Simulation tab "
             "(last tab). This tab keeps the status, documentation and agent sections.")
 
-    with tab_sim:
+    with sim_hb:
         # ---------------------------------------------------------------------
         # Section 1 — WGS reaction kinetics (live, interactive)
         # ---------------------------------------------------------------------
@@ -735,7 +751,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_hb:
         # ---------------------------------------------------------------------
         # Section 2 — PSA recovery (live, interactive)
         # ---------------------------------------------------------------------
@@ -754,7 +770,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_eu:
         # ---------------------------------------------------------------------
         # Section 3 — CHP dispatch optimisation (on demand, since GA takes a
         # few seconds — not something to re-run on every slider movement)
@@ -798,7 +814,7 @@ with tab1:
 
     st.divider()
 
-    with tab_sim:
+    with sim_plant:
         # ---------------------------------------------------------------------
         # Section 5 — Monte Carlo uncertainty analysis over the six unconfirmed
         # design assumptions (see python/uncertainty.py for the full reasoning)
@@ -875,7 +891,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_plant:
         # ---------------------------------------------------------------------
         # Section 6 — Central optimizer (v1: single-shot setpoint optimizer over
         # the real physics, NOT real-time receding-horizon MPC — see
@@ -960,7 +976,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_ai:
         # ---------------------------------------------------------------------
         # Section 7 — Predictive maintenance (v1: catalyst activity via inverse
         # kinetics; thresholds are our own assumed defaults — see
@@ -1279,7 +1295,7 @@ with tab1:
 
     st.divider()
 
-    with tab_sim:
+    with sim_ai:
         # ---------------------------------------------------------------------
         # Section 11 — Multi-module negotiation (v1: hypothetical plant variants
         # negotiating over a shared grid export constraint — see
@@ -1495,7 +1511,7 @@ with tab1:
 
     st.divider()
 
-    with tab_sim:
+    with sim_ai:
         # ---------------------------------------------------------------------
         # Section 14 — Multi-module orchestration (v1: coordinates cooperating
         # hypothetical WGS-train modules of the SAME plant toward one shared
@@ -1691,7 +1707,7 @@ with tab1:
 
     st.divider()
 
-    with tab_sim:
+    with sim_ga:
         # ---------------------------------------------------------------------
         # Section 17 — Physics-informed neural network (v1: a genuine PINN, not
         # a data-fit surrogate mislabeled as one — see python/pinn_kinetics.py
@@ -1802,7 +1818,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_plant:
         # ---------------------------------------------------------------------
         # Section 18 — Sim-to-real transfer (v1: synthetic domain-gap injection
         # and warm-started fine-tuning on the PINN — see python/sim_to_real.py
@@ -1899,7 +1915,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_ai:
         # ---------------------------------------------------------------------
         # Section 19 — Federated learning (v1: genuine FedAvg across hypothetical
         # plant instances — same illustrative-variant pattern as
@@ -2024,7 +2040,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_hb:
         # ---------------------------------------------------------------------
         # Section 20 — Performance guarantee pricing (v1: PSA recovery threshold
         # guarantee priced from uncertainty.py's real Monte Carlo distribution —
@@ -2111,7 +2127,7 @@ with tab1:
 
         st.divider()
 
-    with tab_sim:
+    with sim_ai:
         # ---------------------------------------------------------------------
         # Section 21 — Topological data analysis (v1: multi-sensor coordinated-
         # anomaly detection on a synthetic time series — see
@@ -11336,7 +11352,7 @@ with tab12:
 
 # Tab 11 -- a throw-away what-if simulation (python/ui_transient_tab.py). It never reads or writes the plant state published by the
 # hourly runtime and touches no database; a failure here must not take the other tabs down.
-with tab_sim:
+with sim_plant:
     st.divider()
     try:
         from python import ui_transient_tab
