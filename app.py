@@ -507,10 +507,25 @@ def _render_simulated_banner():
 
 _render_simulated_banner()
 
-tab0, tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
+tab0, tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab_sim = st.tabs(
     ["Summary", "Digital Twin", "Plant Overview", "3D Plant", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
-     "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Transient What-If"]
+     "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Simulation"]
 )
+
+# Simulation tab header and device picker. Every simulation of the app lives in this last tab (the sections below are moved here
+# with `with tab_sim:`); the other tabs keep read-only status. Created first so it renders first, in script order.
+with tab_sim:
+    st.title("HYGAS-AI — Simulation")
+    st.caption("All simulations in one place. SIMULATED: every run uses Assumed inputs on the quasi-steady engine or on illustrative "
+               "models; none is validated against plant data, and none writes to the plant state or a database. Order: device picker, "
+               "model trace and live run, process calculators (WGS, PSA, CHP), uncertainty and optimisation, illustrative AI modules, "
+               "then the Transient What-If.")
+    try:
+        from python import ui_simulation_tab
+        ui_simulation_tab.render()
+    except Exception as _simdev_exc:
+        st.error(f"The device picker could not be displayed ({type(_simdev_exc).__name__}).")
+    st.divider()
 
 with tab0:
     # P2-1: partner front page. Every number is read from the same snapshot the other tabs use
@@ -544,90 +559,92 @@ with tab0:
                         f"**{_status_label(_sm['overall_status'])}**. Please confirm the installed cooling capacity.")
         else:
             st.caption("Cooling demand or rating unavailable this cycle.")
-        st.subheader("Model trace (simulated)")
-        st.caption("The engine run cycle by cycle from a cold start, with an optional feed-rate step. The x axis is the model "
-                   "cycle, not seconds: the engine is quasi-steady (about one cycle of lag, no time-domain dynamics), and "
-                   "the storage level rises and falls because the model dispenses hydrogen each cycle.")
-        _tc1, _tc2, _tc3 = st.columns(3)
-        _step_on = _tc1.checkbox("Apply a feed-rate step", value=True, key="_trace_step_on")
-        _step_at = _tc2.number_input("Step at cycle", min_value=2, max_value=29, value=8, key="_trace_step_at")
-        _step_to = _tc3.number_input("New as-received feed (kg/h)", min_value=10.0, max_value=60.0, value=50.0, step=1.0, key="_trace_step_to")
-        if st.button("Run 30-cycle trace", key="_trace_run"):
-            with st.spinner("Running the model..."):
-                st.session_state["_summary_trace"] = live_trace.run_trace(
-                    30, feed_step=(int(_step_at), float(_step_to)) if _step_on else None)
-        _trace = st.session_state.get("_summary_trace")
-        if _trace:
-            _tdf = pd.DataFrame(_trace).set_index("cycle")
-            _rating = _sm["cooling"]["rating_kw"] if _sm["cooling"] else None
-            _g1, _g2 = st.columns(2)
-            _g1.caption("As-received feed (kg/h)")
-            _g1.line_chart(_tdf[["feed_kg_h"]])
-            _g2.caption("Hydrogen production (kg/h)")
-            _g2.line_chart(_tdf[["h2_kg_h"]])
-            _g3, _g4 = st.columns(2)
-            _g3.caption("Cooling demand EU-008 (kW)" + ("" if _rating is None else f", against the {_rating:.0f} kW rating"))
-            _cdf = _tdf[["cooling_kw"]].copy()
-            if _rating is not None:
-                _cdf["rating_kw"] = _rating
-            _g3.line_chart(_cdf)
-            _g4.caption("Hydrogen storage level (kg)")
-            _g4.line_chart(_tdf[["storage_kg"]])
-        st.subheader("Live simulation (this session only)")
-        st.caption("SIMULATED. A resident run of the same engine inside this browser session, not the published hourly runtime above and not "
-                   "connected to it or to any plant. One cycle is the model's default step, one simulated hour, run every few seconds, so the "
-                   "simulated clock runs about 1000x faster than the wall clock. The engine has no time-domain dynamics: a feed change reaches "
-                   "the hydrogen and cooling values within about one cycle, while the storage level accumulates per simulated hour.")
-        _live_on = st.session_state.get("_live_running", False)
-        if st.button("Stop live run" if _live_on else "Start live run", key="_live_toggle"):
-            if not _live_on and st.session_state.get("_live_runner") is None:
-                with st.spinner("Starting the engine..."):
-                    st.session_state["_live_runner"] = live_runner.LiveRunner()
-            st.session_state["_live_running"] = not _live_on
-            st.rerun()
+        with tab_sim:
+            st.subheader("Model trace (simulated)")
+            st.caption("The engine run cycle by cycle from a cold start, with an optional feed-rate step. The x axis is the model "
+                       "cycle, not seconds: the engine is quasi-steady (about one cycle of lag, no time-domain dynamics), and "
+                       "the storage level rises and falls because the model dispenses hydrogen each cycle.")
+            _tc1, _tc2, _tc3 = st.columns(3)
+            _step_on = _tc1.checkbox("Apply a feed-rate step", value=True, key="_trace_step_on")
+            _step_at = _tc2.number_input("Step at cycle", min_value=2, max_value=29, value=8, key="_trace_step_at")
+            _step_to = _tc3.number_input("New as-received feed (kg/h)", min_value=10.0, max_value=60.0, value=50.0, step=1.0, key="_trace_step_to")
+            if st.button("Run 30-cycle trace", key="_trace_run"):
+                with st.spinner("Running the model..."):
+                    st.session_state["_summary_trace"] = live_trace.run_trace(
+                        30, feed_step=(int(_step_at), float(_step_to)) if _step_on else None)
+            _trace = st.session_state.get("_summary_trace")
+            if _trace:
+                _tdf = pd.DataFrame(_trace).set_index("cycle")
+                _rating = _sm["cooling"]["rating_kw"] if _sm["cooling"] else None
+                _g1, _g2 = st.columns(2)
+                _g1.caption("As-received feed (kg/h)")
+                _g1.line_chart(_tdf[["feed_kg_h"]])
+                _g2.caption("Hydrogen production (kg/h)")
+                _g2.line_chart(_tdf[["h2_kg_h"]])
+                _g3, _g4 = st.columns(2)
+                _g3.caption("Cooling demand EU-008 (kW)" + ("" if _rating is None else f", against the {_rating:.0f} kW rating"))
+                _cdf = _tdf[["cooling_kw"]].copy()
+                if _rating is not None:
+                    _cdf["rating_kw"] = _rating
+                _g3.line_chart(_cdf)
+                _g4.caption("Hydrogen storage level (kg)")
+                _g4.line_chart(_tdf[["storage_kg"]])
+            st.subheader("Live simulation (this session only)")
+            st.caption("SIMULATED. A resident run of the same engine inside this browser session, not the published hourly runtime above and not "
+                       "connected to it or to any plant. One cycle is the model's default step, one simulated hour, run every few seconds, so the "
+                       "simulated clock runs about 1000x faster than the wall clock. The engine has no time-domain dynamics: a feed change reaches "
+                       "the hydrogen and cooling values within about one cycle, while the storage level accumulates per simulated hour.")
+            _live_on = st.session_state.get("_live_running", False)
+            if st.button("Stop live run" if _live_on else "Start live run", key="_live_toggle"):
+                if not _live_on and st.session_state.get("_live_runner") is None:
+                    with st.spinner("Starting the engine..."):
+                        st.session_state["_live_runner"] = live_runner.LiveRunner()
+                st.session_state["_live_running"] = not _live_on
+                st.rerun()
 
-        def _live_body():
-            _lr = st.session_state.get("_live_runner")
-            if _lr is None:
-                st.info("Not started. Press Start live run.")
-                return
-            _on = st.session_state.get("_live_running", False)
-            if _on:
-                _lr.advance(time.time())
-            _feed = st.slider("As-received feed (kg/h), an Assumed what-if input", 10.0, 60.0,
-                              float(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H), 0.5, key="_live_feed")
-            _lr.set_feed(None if abs(_feed - fe.FE001_DEFAULT_DELIVERY_RATE_KG_H) < 1e-9 else _feed)
-            if _lr.history:
-                _last = _lr.history[-1]
-                st.markdown(("**LIVE - SIMULATED**" if _on else "**PAUSED - SIMULATED**")
-                            + f" · cycle {_last['cycle']} · simulated clock {_lr.sim_clock_label()}")
-                _m = st.columns(5)
-                _m[0].metric("Hydrogen", "n/a" if _last["h2_kg_h"] is None else f"{_last['h2_kg_h'] * 24:.1f} kg/day")
-                _m[1].metric("Clean syngas", "n/a" if _last["syngas_nm3_h"] is None else f"{_last['syngas_nm3_h']:.0f} Nm3/h")
-                _m[2].metric("H2 storage", "n/a" if _last["storage_kg"] is None else f"{_last['storage_kg']:.1f} kg")
-                _m[3].metric("Cooling demand", "n/a" if _last["cooling_kw"] is None else f"{_last['cooling_kw']:.1f} kW")
-                _m[4].metric("Electrical use", "n/a" if _last["grid_kw"] is None else f"{_last['grid_kw']:.1f} kW")
-                _ldf = pd.DataFrame(list(_lr.history)).set_index("cycle")
-                _l1, _l2, _l3 = st.columns(3)
-                _l1.caption("As-received feed (kg/h)")
-                _l1.line_chart(_ldf[["feed_kg_h"]])
-                _l2.caption("Hydrogen production (kg/h)")
-                _l2.line_chart(_ldf[["h2_kg_h"]])
-                _l3.caption("Electrical consumption (kW)")
-                _l3.line_chart(_ldf[["grid_kw"]])
-                _l4, _l5 = st.columns(2)
-                _l4.caption("Cooling demand EU-008 (kW)" + ("" if not _sm["cooling"] else f", against the {_sm['cooling']['rating_kw']:.0f} kW rating (Unverified)"))
-                _cd = _ldf[["cooling_kw"]].copy()
-                if _sm["cooling"]:
-                    _cd["rating_kw"] = _sm["cooling"]["rating_kw"]
-                _l4.line_chart(_cd)
-                _l5.caption("Hydrogen storage level (kg)")
-                _l5.line_chart(_ldf[["storage_kg"]])
+            def _live_body():
+                _lr = st.session_state.get("_live_runner")
+                if _lr is None:
+                    st.info("Not started. Press Start live run.")
+                    return
+                _on = st.session_state.get("_live_running", False)
+                if _on:
+                    _lr.advance(time.time())
+                _feed = st.slider("As-received feed (kg/h), an Assumed what-if input", 10.0, 60.0,
+                                  float(fe.FE001_DEFAULT_DELIVERY_RATE_KG_H), 0.5, key="_live_feed")
+                _lr.set_feed(None if abs(_feed - fe.FE001_DEFAULT_DELIVERY_RATE_KG_H) < 1e-9 else _feed)
+                if _lr.history:
+                    _last = _lr.history[-1]
+                    st.markdown(("**LIVE - SIMULATED**" if _on else "**PAUSED - SIMULATED**")
+                                + f" · cycle {_last['cycle']} · simulated clock {_lr.sim_clock_label()}")
+                    _m = st.columns(5)
+                    _m[0].metric("Hydrogen", "n/a" if _last["h2_kg_h"] is None else f"{_last['h2_kg_h'] * 24:.1f} kg/day")
+                    _m[1].metric("Clean syngas", "n/a" if _last["syngas_nm3_h"] is None else f"{_last['syngas_nm3_h']:.0f} Nm3/h")
+                    _m[2].metric("H2 storage", "n/a" if _last["storage_kg"] is None else f"{_last['storage_kg']:.1f} kg")
+                    _m[3].metric("Cooling demand", "n/a" if _last["cooling_kw"] is None else f"{_last['cooling_kw']:.1f} kW")
+                    _m[4].metric("Electrical use", "n/a" if _last["grid_kw"] is None else f"{_last['grid_kw']:.1f} kW")
+                    _ldf = pd.DataFrame(list(_lr.history)).set_index("cycle")
+                    _l1, _l2, _l3 = st.columns(3)
+                    _l1.caption("As-received feed (kg/h)")
+                    _l1.line_chart(_ldf[["feed_kg_h"]])
+                    _l2.caption("Hydrogen production (kg/h)")
+                    _l2.line_chart(_ldf[["h2_kg_h"]])
+                    _l3.caption("Electrical consumption (kW)")
+                    _l3.line_chart(_ldf[["grid_kw"]])
+                    _l4, _l5 = st.columns(2)
+                    _l4.caption("Cooling demand EU-008 (kW)" + ("" if not _sm["cooling"] else f", against the {_sm['cooling']['rating_kw']:.0f} kW rating (Unverified)"))
+                    _cd = _ldf[["cooling_kw"]].copy()
+                    if _sm["cooling"]:
+                        _cd["rating_kw"] = _sm["cooling"]["rating_kw"]
+                    _l4.line_chart(_cd)
+                    _l5.caption("Hydrogen storage level (kg)")
+                    _l5.line_chart(_ldf[["storage_kg"]])
 
-        if st.session_state.get("_live_running", False):
-            st.fragment(_live_body, run_every=live_runner.DEFAULT_SECONDS_PER_CYCLE)()
-        else:
-            st.fragment(_live_body)()
+            if st.session_state.get("_live_running", False):
+                st.fragment(_live_body, run_every=live_runner.DEFAULT_SECONDS_PER_CYCLE)()
+            else:
+                st.fragment(_live_body)()
+        st.caption("The model trace (30 cycles, optional feed step) and the live run are in the Simulation tab (last tab).")
         st.subheader("Open with DOK-ING")
         for _item in _sm["open_items"]:
             st.markdown(f"- {_item}")
@@ -665,96 +682,103 @@ with tab1:
 
     st.divider()
 
-    # ---------------------------------------------------------------------
-    # Section 1 — WGS reaction kinetics (live, interactive)
-    # ---------------------------------------------------------------------
-    st.header("Water-Gas Shift Reaction Kinetics")
-    st.info(
-        "**Standalone design calculators, not the live plant.** The sliders below call `kinetics.py`, `psa.py` and the CHP "
-        "dispatch directly. At their default positions they reproduce the earlier design targets (HTS 75.0 %, LTS 40.0 %, "
-        "overall WGS 85.0 %, PSA 75.0 %). The values the live engine publishes each cycle are on the Summary and "
-        "Hydrogen & BoP tabs and differ from these targets. Simulated; no plant data.",
-        icon="ℹ️",
-    )
-    try:
-        _snap_dt = _tab1_integration_snapshot()
-        _e_hts, _e_lts, _e_psa = (_snap_dt.get(("HB-001", "HTS")), _snap_dt.get(("HB-004", "LTS")),
-                                  _snap_dt.get(("HB-006", "PSA")))
-        if _e_hts and _e_lts and _e_psa:
-            st.caption(
-                f"Live engine this cycle (model, Assumed inputs): HTS {_e_hts['value']['X_hts']*100:.1f} %, "
-                f"overall WGS {_e_lts['value']['overall_conversion']*100:.1f} %, PSA recovery {_e_psa['value']['recovery']*100:.1f} %."
-            )
-    except Exception:
-        pass  # the caption is informational only; the calculators below work without it
-    col1, col2 = st.columns(2)
+    st.info("All calculators and simulations that used to be here (WGS, PSA, CHP dispatch, Monte Carlo, optimizer, predictive maintenance, "
+            "negotiation, orchestration, PINN, sim-to-real, federated learning, performance guarantee, TDA) are now in the Simulation tab "
+            "(last tab). This tab keeps the status, documentation and agent sections.")
 
-    with col1:
-        st.subheader("HTS stage (Fe-Cr catalyst)")
-        T_hts_C = st.slider("HTS temperature (°C)", 300, 400, 350, key="hts_t")
-        ghsv_hts = st.slider("HTS space velocity (GHSV, 1/h)", 1000, 4000, 2000, key="hts_ghsv")
-        X_hts = kinetics.hts_conversion(T_K=T_hts_C + 273.15, GHSV=ghsv_hts)
-        st.metric("HTS conversion", f"{X_hts*100:.1f}%", help="Design target: 75.0%")
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 1 — WGS reaction kinetics (live, interactive)
+        # ---------------------------------------------------------------------
+        st.header("Water-Gas Shift Reaction Kinetics")
+        st.info(
+            "**Standalone design calculators, not the live plant.** The sliders below call `kinetics.py`, `psa.py` and the CHP "
+            "dispatch directly. At their default positions they reproduce the earlier design targets (HTS 75.0 %, LTS 40.0 %, "
+            "overall WGS 85.0 %, PSA 75.0 %). The values the live engine publishes each cycle are on the Summary and "
+            "Hydrogen & BoP tabs and differ from these targets. Simulated; no plant data.",
+            icon="ℹ️",
+        )
+        try:
+            _snap_dt = _tab1_integration_snapshot()
+            _e_hts, _e_lts, _e_psa = (_snap_dt.get(("HB-001", "HTS")), _snap_dt.get(("HB-004", "LTS")),
+                                      _snap_dt.get(("HB-006", "PSA")))
+            if _e_hts and _e_lts and _e_psa:
+                st.caption(
+                    f"Live engine this cycle (model, Assumed inputs): HTS {_e_hts['value']['X_hts']*100:.1f} %, "
+                    f"overall WGS {_e_lts['value']['overall_conversion']*100:.1f} %, PSA recovery {_e_psa['value']['recovery']*100:.1f} %."
+                )
+        except Exception:
+            pass  # the caption is informational only; the calculators below work without it
+        col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader("LTS stage (Cu/ZnO/Al2O3 catalyst)")
-        T_lts_C = st.slider("LTS temperature (°C)", 180, 260, 220, key="lts_t")
-        ghsv_lts = st.slider("LTS space velocity (GHSV, 1/h)", 1000, 4000, 2000, key="lts_ghsv")
-        y_co_after_hts = 0.28 * (1 - X_hts)
-        X_lts = kinetics.lts_conversion(T_K=T_lts_C + 273.15, GHSV=ghsv_lts, y_CO_in=y_co_after_hts)
-        st.metric("LTS relative conversion", f"{X_lts*100:.1f}%", help="Design target: 40.0%")
+        with col1:
+            st.subheader("HTS stage (Fe-Cr catalyst)")
+            T_hts_C = st.slider("HTS temperature (°C)", 300, 400, 350, key="hts_t")
+            ghsv_hts = st.slider("HTS space velocity (GHSV, 1/h)", 1000, 4000, 2000, key="hts_ghsv")
+            X_hts = kinetics.hts_conversion(T_K=T_hts_C + 273.15, GHSV=ghsv_hts)
+            st.metric("HTS conversion", f"{X_hts*100:.1f}%", help="Design target: 75.0%")
 
-    overall = 1 - (1 - X_hts) * (1 - X_lts)
-    st.metric("Overall WGS conversion", f"{overall*100:.1f}%", help="Design target: 85.0%")
+        with col2:
+            st.subheader("LTS stage (Cu/ZnO/Al2O3 catalyst)")
+            T_lts_C = st.slider("LTS temperature (°C)", 180, 260, 220, key="lts_t")
+            ghsv_lts = st.slider("LTS space velocity (GHSV, 1/h)", 1000, 4000, 2000, key="lts_ghsv")
+            y_co_after_hts = 0.28 * (1 - X_hts)
+            X_lts = kinetics.lts_conversion(T_K=T_lts_C + 273.15, GHSV=ghsv_lts, y_CO_in=y_co_after_hts)
+            st.metric("LTS relative conversion", f"{X_lts*100:.1f}%", help="Design target: 40.0%")
 
-    st.session_state["hts"] = {"X": X_hts, "T_C": T_hts_C, "GHSV": ghsv_hts}
-    st.session_state["lts"] = {"X": X_lts, "T_C": T_lts_C, "GHSV": ghsv_lts, "y_CO_in": y_co_after_hts}
-    st.session_state["overall"] = overall
+        overall = 1 - (1 - X_hts) * (1 - X_lts)
+        st.metric("Overall WGS conversion", f"{overall*100:.1f}%", help="Design target: 85.0%")
 
-    st.divider()
+        st.session_state["hts"] = {"X": X_hts, "T_C": T_hts_C, "GHSV": ghsv_hts}
+        st.session_state["lts"] = {"X": X_lts, "T_C": T_lts_C, "GHSV": ghsv_lts, "y_CO_in": y_co_after_hts}
+        st.session_state["overall"] = overall
 
-    # ---------------------------------------------------------------------
-    # Section 2 — PSA recovery (live, interactive)
-    # ---------------------------------------------------------------------
-    st.header("PSA Hydrogen Recovery")
-    col3, col4 = st.columns(2)
-    with col3:
-        p_high = st.slider("Adsorption pressure (bar, absolute)", 4.0, 14.0, 8.0, key="p_high")
-        p_low = st.slider("Purge pressure (bar, absolute)", 0.5, 3.0, 1.0, key="p_low")
-    with col4:
-        y_co2 = st.slider("Feed CO2 fraction", 0.20, 0.45, 0.35, key="y_co2")
+        st.divider()
 
-    recovery = psa.psa_recovery(y_CO2=y_co2, P_high_bar_a=p_high, P_low_bar_a=p_low)
-    st.metric("PSA recovery", f"{recovery*100:.1f}%", help="Design target: 75.0%")
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 2 — PSA recovery (live, interactive)
+        # ---------------------------------------------------------------------
+        st.header("PSA Hydrogen Recovery")
+        col3, col4 = st.columns(2)
+        with col3:
+            p_high = st.slider("Adsorption pressure (bar, absolute)", 4.0, 14.0, 8.0, key="p_high")
+            p_low = st.slider("Purge pressure (bar, absolute)", 0.5, 3.0, 1.0, key="p_low")
+        with col4:
+            y_co2 = st.slider("Feed CO2 fraction", 0.20, 0.45, 0.35, key="y_co2")
 
-    st.session_state["psa"] = {"recovery": recovery, "p_high": p_high, "p_low": p_low, "y_co2": y_co2}
+        recovery = psa.psa_recovery(y_CO2=y_co2, P_high_bar_a=p_high, P_low_bar_a=p_low)
+        st.metric("PSA recovery", f"{recovery*100:.1f}%", help="Design target: 75.0%")
 
-    st.divider()
+        st.session_state["psa"] = {"recovery": recovery, "p_high": p_high, "p_low": p_low, "y_co2": y_co2}
 
-    # ---------------------------------------------------------------------
-    # Section 3 — CHP dispatch optimisation (on demand, since GA takes a
-    # few seconds — not something to re-run on every slider movement)
-    # ---------------------------------------------------------------------
-    st.header("CHP Dispatch Optimisation")
-    col5, col6 = st.columns(2)
-    with col5:
-        syngas_budget = st.number_input("Syngas fuel budget (kW)", 20, 100, 60)
-    with col6:
-        h2_budget = st.number_input("Hydrogen fuel budget (kW)", 5, 30, 15)
+        st.divider()
 
-    if st.button("Run dispatch optimisation (genetic algorithm)"):
-        with st.spinner("Running genetic algorithm (150 generations)..."):
-            dispatch = dispatch_ga.run_dispatch_ga(syngas_budget, h2_budget)
-        st.session_state["dispatch"] = {"result": dispatch, "syngas_budget": syngas_budget, "h2_budget": h2_budget}
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 3 — CHP dispatch optimisation (on demand, since GA takes a
+        # few seconds — not something to re-run on every slider movement)
+        # ---------------------------------------------------------------------
+        st.header("CHP Dispatch Optimisation")
+        col5, col6 = st.columns(2)
+        with col5:
+            syngas_budget = st.number_input("Syngas fuel budget (kW)", 20, 100, 60)
+        with col6:
+            h2_budget = st.number_input("Hydrogen fuel budget (kW)", 5, 30, 15)
 
-    if "dispatch" in st.session_state:
-        cols = st.columns(4)
-        for i, (name, load) in enumerate(st.session_state["dispatch"]["result"].items()):
-            eta = chp.chp_efficiency(load, name)
-            with cols[i]:
-                st.metric(name, f"{load*100:.1f}% load", f"{eta*100:.1f}% efficiency")
+        if st.button("Run dispatch optimisation (genetic algorithm)"):
+            with st.spinner("Running genetic algorithm (150 generations)..."):
+                dispatch = dispatch_ga.run_dispatch_ga(syngas_budget, h2_budget)
+            st.session_state["dispatch"] = {"result": dispatch, "syngas_budget": syngas_budget, "h2_budget": h2_budget}
 
-    st.divider()
+        if "dispatch" in st.session_state:
+            cols = st.columns(4)
+            for i, (name, load) in enumerate(st.session_state["dispatch"]["result"].items()):
+                eta = chp.chp_efficiency(load, name)
+                with cols[i]:
+                    st.metric(name, f"{load*100:.1f}% load", f"{eta*100:.1f}% efficiency")
+
+        st.divider()
 
     # ---------------------------------------------------------------------
     # Section 4 — Completed milestones reference table
@@ -774,270 +798,273 @@ with tab1:
 
     st.divider()
 
-    # ---------------------------------------------------------------------
-    # Section 5 — Monte Carlo uncertainty analysis over the six unconfirmed
-    # design assumptions (see python/uncertainty.py for the full reasoning)
-    # ---------------------------------------------------------------------
-    st.header("Uncertainty Analysis")
-    st.caption(maturity.caption("uncertainty"))
-    st.warning(
-        "This reflects uncertainty in **unconfirmed design assumptions** — steam-to-feed "
-        "ratio, air equivalence ratio, feed sulfur/chlorine, and the WGS/PSA target "
-        "calibrations themselves — **not measurement noise or numerical/model error.** "
-        "kinetics.py and psa.py's own math is deterministic and reproduces their design-point targets "
-        "(a consistency check against those targets, not a validation against plant data); what's uncertain is whether the *inputs* to that "
-        "math are correct, since DOK-ING hasn't confirmed them yet.",
-        icon="⚠️",
-    )
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 5 — Monte Carlo uncertainty analysis over the six unconfirmed
+        # design assumptions (see python/uncertainty.py for the full reasoning)
+        # ---------------------------------------------------------------------
+        st.header("Uncertainty Analysis")
+        st.caption(maturity.caption("uncertainty"))
+        st.warning(
+            "This reflects uncertainty in **unconfirmed design assumptions** — steam-to-feed "
+            "ratio, air equivalence ratio, feed sulfur/chlorine, and the WGS/PSA target "
+            "calibrations themselves — **not measurement noise or numerical/model error.** "
+            "kinetics.py and psa.py's own math is deterministic and reproduces their design-point targets "
+            "(a consistency check against those targets, not a validation against plant data); what's uncertain is whether the *inputs* to that "
+            "math are correct, since DOK-ING hasn't confirmed them yet.",
+            icon="⚠️",
+        )
 
-    with st.expander("Assumption ranges used (point value ± 15% — our own assumed default, not DOK-ING-sourced)"):
-        st.table({
-            "Assumption": [cfg["label"] for cfg in uncertainty.ASSUMPTIONS.values()],
-            "Point value": [cfg["point"] for cfg in uncertainty.ASSUMPTIONS.values()],
-            "±15% range": [
-                f"{cfg['point']*0.85:.3g} – {cfg['point']*1.15:.3g}" for cfg in uncertainty.ASSUMPTIONS.values()
-            ],
-            "Propagated into kinetics/psa?": [
-                "Yes" if cfg["wired_in"] else "No — no poisoning/corrosion model exists yet"
-                for cfg in uncertainty.ASSUMPTIONS.values()
-            ],
-        })
-
-    n_runs = st.slider("Monte Carlo runs", 200, 2000, 1000, step=100, key="mc_runs")
-    if st.button("Run Monte Carlo uncertainty analysis"):
-        with st.spinner(f"Running {n_runs} samples through kinetics.py and psa.py..."):
-            mc_results = uncertainty.run_monte_carlo(
-                n_runs=n_runs,
-                hts_T_C=T_hts_C, hts_GHSV=ghsv_hts,
-                lts_T_C=T_lts_C, lts_GHSV=ghsv_lts,
-                psa_p_high=p_high, psa_p_low=p_low, psa_y_co2=y_co2,
-            )
-        st.session_state["mc_results"] = mc_results
-
-    if "mc_results" in st.session_state:
-        mc_labels = {
-            "hts": "HTS conversion", "lts": "LTS relative conversion",
-            "overall": "Overall WGS conversion", "psa_recovery": "PSA recovery",
-        }
-        mc_targets = {"hts": 0.75, "lts": 0.40, "overall": 0.85, "psa_recovery": 0.75}
-        mc_rows = []
-        for key, label in mc_labels.items():
-            s = uncertainty.summarize(st.session_state["mc_results"][key])
-            mc_rows.append({
-                "Output": label, "mean": s["mean"] * 100, "p5": s["p5"] * 100,
-                "p95": s["p95"] * 100, "target": mc_targets[key] * 100,
+        with st.expander("Assumption ranges used (point value ± 15% — our own assumed default, not DOK-ING-sourced)"):
+            st.table({
+                "Assumption": [cfg["label"] for cfg in uncertainty.ASSUMPTIONS.values()],
+                "Point value": [cfg["point"] for cfg in uncertainty.ASSUMPTIONS.values()],
+                "±15% range": [
+                    f"{cfg['point']*0.85:.3g} – {cfg['point']*1.15:.3g}" for cfg in uncertainty.ASSUMPTIONS.values()
+                ],
+                "Propagated into kinetics/psa?": [
+                    "Yes" if cfg["wired_in"] else "No — no poisoning/corrosion model exists yet"
+                    for cfg in uncertainty.ASSUMPTIONS.values()
+                ],
             })
-        mc_df = pd.DataFrame(mc_rows)
 
-        st.dataframe(
-            mc_df.rename(columns={
-                "mean": "Mean (%)", "p5": "5th pct (%)", "p95": "95th pct (%)", "target": "Point-value target (%)",
-            }).set_index("Output").round(1),
-            use_container_width=True,
+        n_runs = st.slider("Monte Carlo runs", 200, 2000, 1000, step=100, key="mc_runs")
+        if st.button("Run Monte Carlo uncertainty analysis"):
+            with st.spinner(f"Running {n_runs} samples through kinetics.py and psa.py..."):
+                mc_results = uncertainty.run_monte_carlo(
+                    n_runs=n_runs,
+                    hts_T_C=T_hts_C, hts_GHSV=ghsv_hts,
+                    lts_T_C=T_lts_C, lts_GHSV=ghsv_lts,
+                    psa_p_high=p_high, psa_p_low=p_low, psa_y_co2=y_co2,
+                )
+            st.session_state["mc_results"] = mc_results
+
+        if "mc_results" in st.session_state:
+            mc_labels = {
+                "hts": "HTS conversion", "lts": "LTS relative conversion",
+                "overall": "Overall WGS conversion", "psa_recovery": "PSA recovery",
+            }
+            mc_targets = {"hts": 0.75, "lts": 0.40, "overall": 0.85, "psa_recovery": 0.75}
+            mc_rows = []
+            for key, label in mc_labels.items():
+                s = uncertainty.summarize(st.session_state["mc_results"][key])
+                mc_rows.append({
+                    "Output": label, "mean": s["mean"] * 100, "p5": s["p5"] * 100,
+                    "p95": s["p95"] * 100, "target": mc_targets[key] * 100,
+                })
+            mc_df = pd.DataFrame(mc_rows)
+
+            st.dataframe(
+                mc_df.rename(columns={
+                    "mean": "Mean (%)", "p5": "5th pct (%)", "p95": "95th pct (%)", "target": "Point-value target (%)",
+                }).set_index("Output").round(1),
+                use_container_width=True,
+            )
+
+            base = alt.Chart(mc_df).encode(y=alt.Y("Output:N", sort=None, title=None))
+            ci_bars = base.mark_rule(size=4, color="#4C78A8").encode(
+                x=alt.X("p5:Q", title="%", scale=alt.Scale(zero=False)), x2="p95:Q"
+            )
+            mean_points = base.mark_point(size=100, filled=True, color="black").encode(x="mean:Q")
+            target_ticks = base.mark_tick(color="red", thickness=2, size=25).encode(x="target:Q")
+            st.altair_chart((ci_bars + mean_points + target_ticks).properties(height=220), use_container_width=True)
+            st.caption(
+                "Blue line = 90% confidence interval (5th–95th percentile) · black dot = Monte Carlo mean · "
+                "red tick = current point-value target."
+            )
+
+        st.divider()
+
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 6 — Central optimizer (v1: single-shot setpoint optimizer over
+        # the real physics, NOT real-time receding-horizon MPC — see
+        # python/optimizer.py for the full honest-scoping explanation)
+        # ---------------------------------------------------------------------
+        st.header("Optimizer")
+        st.caption(maturity.caption("optimizer"))
+        st.warning(
+            "**v1 — single-shot setpoint optimizer, not real MPC.** True model "
+            "predictive control does receding-horizon optimization over time — "
+            "repeatedly re-planning as a dynamic system evolves. kinetics.py and "
+            "psa.py are steady-state functions (conversion at one fixed operating "
+            "point, no time axis), not dynamic simulations, so a real MPC loop "
+            "isn't buildable on top of them yet. This searches the real adjustable "
+            "setpoints **once**, using the real physics as its internal model — "
+            "not a separate approximation of it. A real receding-horizon MPC "
+            "controller is a genuine v2, once a dynamic (time-domain) version of "
+            "the physics core exists.",
+            icon="⚠️",
         )
 
-        base = alt.Chart(mc_df).encode(y=alt.Y("Output:N", sort=None, title=None))
-        ci_bars = base.mark_rule(size=4, color="#4C78A8").encode(
-            x=alt.X("p5:Q", title="%", scale=alt.Scale(zero=False)), x2="p95:Q"
+        objective = st.selectbox(
+            "Objective", ["Maximize overall WGS conversion", "Maximize PSA recovery"], key="optimizer_objective"
         )
-        mean_points = base.mark_point(size=100, filled=True, color="black").encode(x="mean:Q")
-        target_ticks = base.mark_tick(color="red", thickness=2, size=25).encode(x="target:Q")
-        st.altair_chart((ci_bars + mean_points + target_ticks).properties(height=220), use_container_width=True)
+
+        if st.button("Run optimizer"):
+            with st.spinner("Searching setpoints against the real kinetics.py / psa.py model..."):
+                if objective == "Maximize overall WGS conversion":
+                    opt_result = optimizer.maximize_overall_wgs_conversion(
+                        x0=[T_hts_C, ghsv_hts, T_lts_C, ghsv_lts]
+                    )
+                else:
+                    opt_result = optimizer.maximize_psa_recovery(y_co2=y_co2)
+            st.session_state["optimizer_result"] = {"objective": objective, "result": opt_result}
+
+        if "optimizer_result" in st.session_state:
+            saved_objective = st.session_state["optimizer_result"]["objective"]
+            opt_result = st.session_state["optimizer_result"]["result"]
+
+            if saved_objective == "Maximize overall WGS conversion":
+                st.write(
+                    f"**Recommended setpoints:** HTS {opt_result['T_hts_C']:.1f}°C / {opt_result['ghsv_hts']:.0f} GHSV "
+                    f"· LTS {opt_result['T_lts_C']:.1f}°C / {opt_result['ghsv_lts']:.0f} GHSV"
+                )
+                ocol1, ocol2, ocol3 = st.columns(3)
+                ocol1.metric("HTS conversion", f"{opt_result['X_hts']*100:.1f}%")
+                ocol2.metric("LTS relative conversion", f"{opt_result['X_lts']*100:.1f}%")
+                ocol3.metric("Overall WGS conversion", f"{opt_result['overall']*100:.1f}%")
+                st.caption(
+                    f"scipy L-BFGS-B, {opt_result['n_evaluations']} evaluations, converged={opt_result['converged']}. "
+                    "Recomputed: calling kinetics.py directly at these setpoints gives this exact result — "
+                    "a self-consistency check of the same code, not a validation against plant data. Note: this optimizer has no penalty for extreme "
+                    "setpoints (catalyst degradation, capital cost, equipment limits aren't modeled), so a boundary "
+                    "solution like this is a legitimate answer to 'maximize conversion, no other constraints' — not "
+                    "necessarily an operationally sound recommendation on its own."
+                )
+                if st.button("Jump sliders to these values", key="jump_wgs"):
+                    st.session_state["_pending_slider_jump"] = {
+                        "hts_t": int(min(max(round(opt_result["T_hts_C"]), 300), 400)),
+                        "hts_ghsv": int(min(max(round(opt_result["ghsv_hts"]), 1000), 4000)),
+                        "lts_t": int(min(max(round(opt_result["T_lts_C"]), 180), 260)),
+                        "lts_ghsv": int(min(max(round(opt_result["ghsv_lts"]), 1000), 4000)),
+                    }
+                    st.rerun()
+            else:
+                st.write(
+                    f"**Recommended setpoints:** Adsorption pressure {opt_result['p_high']:.2f} bar(a) "
+                    f"· Purge pressure {opt_result['p_low']:.2f} bar(a)"
+                )
+                st.metric("PSA recovery", f"{opt_result['recovery']*100:.1f}%")
+                st.caption(
+                    f"Grid search, {opt_result['n_evaluations']} evaluations. Recomputed: calling psa.py directly "
+                    "at these setpoints gives this exact result (a self-consistency check of the same code, not a validation against plant data). Feed CO2 fraction held at the current slider "
+                    "value above."
+                )
+                if st.button("Jump sliders to these values", key="jump_psa"):
+                    st.session_state["_pending_slider_jump"] = {
+                        "p_high": round(min(max(opt_result["p_high"], 4.0), 14.0), 2),
+                        "p_low": round(min(max(opt_result["p_low"], 0.5), 3.0), 2),
+                    }
+                    st.rerun()
+
+        st.divider()
+
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 7 — Predictive maintenance (v1: catalyst activity via inverse
+        # kinetics; thresholds are our own assumed defaults — see
+        # python/predictive_maintenance.py for the full reasoning)
+        # ---------------------------------------------------------------------
+        st.header("Predictive Maintenance")
+        st.caption(maturity.caption("predictive_maintenance"))
+        st.warning(
+            "**v1 — inverse-kinetics activity monitoring; thresholds are our own "
+            "assumed defaults.** Enter a live-sensor conversion reading and this "
+            "back-calculates the catalyst activity factor (effective k0 ÷ healthy "
+            "calibrated k0) that would produce it, using kinetics.py's own forward "
+            "model in reverse — not a separate approximation of it. The 0.95 / "
+            "0.85 status thresholds are reasonable defaults we picked, **not** "
+            "sourced from any real catalyst degradation data — there isn't any in "
+            "this project yet.",
+            icon="⚠️",
+        )
+
+        pm_stage = st.selectbox("Stage", ["HTS", "LTS"], key="pm_stage")
+
+        if pm_stage == "HTS":
+            pm_state = st.session_state.get("hts", {"X": 0.75, "T_C": 350, "GHSV": 2000})
+        else:
+            pm_state = st.session_state.get("lts", {"X": 0.40, "T_C": 220, "GHSV": 2000, "y_CO_in": 0.07})
+
+        pm_expected_pct = pm_state["X"] * 100
         st.caption(
-            "Blue line = 90% confidence interval (5th–95th percentile) · black dot = Monte Carlo mean · "
-            "red tick = current point-value target."
+            f"Current slider-predicted {pm_stage} conversion at T={pm_state['T_C']:.0f}°C, "
+            f"GHSV={pm_state['GHSV']:.0f}: {pm_expected_pct:.1f}%"
         )
 
-    st.divider()
+        pm_observed_pct = st.number_input(
+            f"Observed {pm_stage} conversion, typed in by hand (%) — no live sensor is connected",
+            min_value=0.0, max_value=100.0, value=round(pm_expected_pct, 1), step=0.5, key="pm_observed",
+        )
 
-    # ---------------------------------------------------------------------
-    # Section 6 — Central optimizer (v1: single-shot setpoint optimizer over
-    # the real physics, NOT real-time receding-horizon MPC — see
-    # python/optimizer.py for the full honest-scoping explanation)
-    # ---------------------------------------------------------------------
-    st.header("Optimizer")
-    st.caption(maturity.caption("optimizer"))
-    st.warning(
-        "**v1 — single-shot setpoint optimizer, not real MPC.** True model "
-        "predictive control does receding-horizon optimization over time — "
-        "repeatedly re-planning as a dynamic system evolves. kinetics.py and "
-        "psa.py are steady-state functions (conversion at one fixed operating "
-        "point, no time axis), not dynamic simulations, so a real MPC loop "
-        "isn't buildable on top of them yet. This searches the real adjustable "
-        "setpoints **once**, using the real physics as its internal model — "
-        "not a separate approximation of it. A real receding-horizon MPC "
-        "controller is a genuine v2, once a dynamic (time-domain) version of "
-        "the physics core exists.",
-        icon="⚠️",
-    )
-
-    objective = st.selectbox(
-        "Objective", ["Maximize overall WGS conversion", "Maximize PSA recovery"], key="optimizer_objective"
-    )
-
-    if st.button("Run optimizer"):
-        with st.spinner("Searching setpoints against the real kinetics.py / psa.py model..."):
-            if objective == "Maximize overall WGS conversion":
-                opt_result = optimizer.maximize_overall_wgs_conversion(
-                    x0=[T_hts_C, ghsv_hts, T_lts_C, ghsv_lts]
+        if st.button("Check catalyst activity"):
+            if pm_stage == "HTS":
+                pm_result = predictive_maintenance.back_calculate_activity_hts(
+                    observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
                 )
             else:
-                opt_result = optimizer.maximize_psa_recovery(y_co2=y_co2)
-        st.session_state["optimizer_result"] = {"objective": objective, "result": opt_result}
+                pm_result = predictive_maintenance.back_calculate_activity_lts(
+                    observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
+                    y_CO_in=pm_state["y_CO_in"],
+                )
+            st.session_state["pm_result"] = pm_result
+            st.session_state["pm_context"] = {
+                "stage": pm_stage, "T_C": pm_state["T_C"], "GHSV": pm_state["GHSV"],
+                "y_CO_in": pm_state.get("y_CO_in"),
+            }
+            st.session_state.pop("root_cause_result", None)  # stale from a previous reading
 
-    if "optimizer_result" in st.session_state:
-        saved_objective = st.session_state["optimizer_result"]["objective"]
-        opt_result = st.session_state["optimizer_result"]["result"]
-
-        if saved_objective == "Maximize overall WGS conversion":
-            st.write(
-                f"**Recommended setpoints:** HTS {opt_result['T_hts_C']:.1f}°C / {opt_result['ghsv_hts']:.0f} GHSV "
-                f"· LTS {opt_result['T_lts_C']:.1f}°C / {opt_result['ghsv_lts']:.0f} GHSV"
-            )
-            ocol1, ocol2, ocol3 = st.columns(3)
-            ocol1.metric("HTS conversion", f"{opt_result['X_hts']*100:.1f}%")
-            ocol2.metric("LTS relative conversion", f"{opt_result['X_lts']*100:.1f}%")
-            ocol3.metric("Overall WGS conversion", f"{opt_result['overall']*100:.1f}%")
-            st.caption(
-                f"scipy L-BFGS-B, {opt_result['n_evaluations']} evaluations, converged={opt_result['converged']}. "
-                "Recomputed: calling kinetics.py directly at these setpoints gives this exact result — "
-                "a self-consistency check of the same code, not a validation against plant data. Note: this optimizer has no penalty for extreme "
-                "setpoints (catalyst degradation, capital cost, equipment limits aren't modeled), so a boundary "
-                "solution like this is a legitimate answer to 'maximize conversion, no other constraints' — not "
-                "necessarily an operationally sound recommendation on its own."
-            )
-            if st.button("Jump sliders to these values", key="jump_wgs"):
-                st.session_state["_pending_slider_jump"] = {
-                    "hts_t": int(min(max(round(opt_result["T_hts_C"]), 300), 400)),
-                    "hts_ghsv": int(min(max(round(opt_result["ghsv_hts"]), 1000), 4000)),
-                    "lts_t": int(min(max(round(opt_result["T_lts_C"]), 180), 260)),
-                    "lts_ghsv": int(min(max(round(opt_result["ghsv_lts"]), 1000), 4000)),
-                }
-                st.rerun()
-        else:
-            st.write(
-                f"**Recommended setpoints:** Adsorption pressure {opt_result['p_high']:.2f} bar(a) "
-                f"· Purge pressure {opt_result['p_low']:.2f} bar(a)"
-            )
-            st.metric("PSA recovery", f"{opt_result['recovery']*100:.1f}%")
-            st.caption(
-                f"Grid search, {opt_result['n_evaluations']} evaluations. Recomputed: calling psa.py directly "
-                "at these setpoints gives this exact result (a self-consistency check of the same code, not a validation against plant data). Feed CO2 fraction held at the current slider "
-                "value above."
-            )
-            if st.button("Jump sliders to these values", key="jump_psa"):
-                st.session_state["_pending_slider_jump"] = {
-                    "p_high": round(min(max(opt_result["p_high"], 4.0), 14.0), 2),
-                    "p_low": round(min(max(opt_result["p_low"], 0.5), 3.0), 2),
-                }
-                st.rerun()
-
-    st.divider()
-
-    # ---------------------------------------------------------------------
-    # Section 7 — Predictive maintenance (v1: catalyst activity via inverse
-    # kinetics; thresholds are our own assumed defaults — see
-    # python/predictive_maintenance.py for the full reasoning)
-    # ---------------------------------------------------------------------
-    st.header("Predictive Maintenance")
-    st.caption(maturity.caption("predictive_maintenance"))
-    st.warning(
-        "**v1 — inverse-kinetics activity monitoring; thresholds are our own "
-        "assumed defaults.** Enter a live-sensor conversion reading and this "
-        "back-calculates the catalyst activity factor (effective k0 ÷ healthy "
-        "calibrated k0) that would produce it, using kinetics.py's own forward "
-        "model in reverse — not a separate approximation of it. The 0.95 / "
-        "0.85 status thresholds are reasonable defaults we picked, **not** "
-        "sourced from any real catalyst degradation data — there isn't any in "
-        "this project yet.",
-        icon="⚠️",
-    )
-
-    pm_stage = st.selectbox("Stage", ["HTS", "LTS"], key="pm_stage")
-
-    if pm_stage == "HTS":
-        pm_state = st.session_state.get("hts", {"X": 0.75, "T_C": 350, "GHSV": 2000})
-    else:
-        pm_state = st.session_state.get("lts", {"X": 0.40, "T_C": 220, "GHSV": 2000, "y_CO_in": 0.07})
-
-    pm_expected_pct = pm_state["X"] * 100
-    st.caption(
-        f"Current slider-predicted {pm_stage} conversion at T={pm_state['T_C']:.0f}°C, "
-        f"GHSV={pm_state['GHSV']:.0f}: {pm_expected_pct:.1f}%"
-    )
-
-    pm_observed_pct = st.number_input(
-        f"Observed {pm_stage} conversion, typed in by hand (%) — no live sensor is connected",
-        min_value=0.0, max_value=100.0, value=round(pm_expected_pct, 1), step=0.5, key="pm_observed",
-    )
-
-    if st.button("Check catalyst activity"):
-        if pm_stage == "HTS":
-            pm_result = predictive_maintenance.back_calculate_activity_hts(
-                observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
-            )
-        else:
-            pm_result = predictive_maintenance.back_calculate_activity_lts(
-                observed_X=pm_observed_pct / 100, T_C=pm_state["T_C"], GHSV=pm_state["GHSV"],
-                y_CO_in=pm_state["y_CO_in"],
-            )
-        st.session_state["pm_result"] = pm_result
-        st.session_state["pm_context"] = {
-            "stage": pm_stage, "T_C": pm_state["T_C"], "GHSV": pm_state["GHSV"],
-            "y_CO_in": pm_state.get("y_CO_in"),
-        }
-        st.session_state.pop("root_cause_result", None)  # stale from a previous reading
-
-    if "pm_result" in st.session_state:
-        pm_result = st.session_state["pm_result"]
-        if "error" in pm_result:
-            st.error(pm_result["error"])
-        else:
-            pm_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}[pm_result["status"]]
-            pcol1, pcol2, pcol3 = st.columns(3)
-            pcol1.metric("Activity factor", f"{pm_result['activity_factor']:.3f}")
-            pcol2.metric("Status", f"{pm_status_icon} {pm_result['status'].title()}")
-            pcol3.metric(
-                "Expected → observed",
-                f"{pm_result['expected_X']*100:.1f}% → {pm_result['observed_X']*100:.1f}%",
-            )
-            st.caption(
-                "Activity factor = effective k0 ÷ healthy calibrated k0, back-calculated by root-finding "
-                "kinetics.py's own forward model at the current T/GHSV. Thresholds: >0.95 healthy, "
-                "0.85–0.95 watch, <0.85 flag for maintenance."
-            )
-
-            if pm_result["status"] in ("watch", "flag for maintenance"):
-                st.caption(maturity.caption("root_cause"))
+        if "pm_result" in st.session_state:
+            pm_result = st.session_state["pm_result"]
+            if "error" in pm_result:
+                st.error(pm_result["error"])
+            else:
+                pm_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}[pm_result["status"]]
+                pcol1, pcol2, pcol3 = st.columns(3)
+                pcol1.metric("Activity factor", f"{pm_result['activity_factor']:.3f}")
+                pcol2.metric("Status", f"{pm_status_icon} {pm_result['status'].title()}")
+                pcol3.metric(
+                    "Expected → observed",
+                    f"{pm_result['expected_X']*100:.1f}% → {pm_result['observed_X']*100:.1f}%",
+                )
                 st.caption(
-                    "**Root-cause diagnosis v1 — rule-based reasoning over existing model outputs, not a new "
-                    "inference engine.** Compares this activity factor against the range that unconfirmed "
-                    "design-basis assumptions alone (uncertainty.py's ±15% bands) could produce with a "
-                    "perfectly healthy catalyst, and checks whether the reading is even physically achievable "
-                    "at this T/GHSV (kinetics.py's own bounds)."
+                    "Activity factor = effective k0 ÷ healthy calibrated k0, back-calculated by root-finding "
+                    "kinetics.py's own forward model at the current T/GHSV. Thresholds: >0.95 healthy, "
+                    "0.85–0.95 watch, <0.85 flag for maintenance."
                 )
-                if st.button("Diagnose"):
-                    ctx = st.session_state["pm_context"]
-                    st.session_state["root_cause_result"] = root_cause.diagnose(
-                        ctx["stage"], pm_result["observed_X"], ctx["T_C"], ctx["GHSV"], y_CO_in=ctx["y_CO_in"],
+
+                if pm_result["status"] in ("watch", "flag for maintenance"):
+                    st.caption(maturity.caption("root_cause"))
+                    st.caption(
+                        "**Root-cause diagnosis v1 — rule-based reasoning over existing model outputs, not a new "
+                        "inference engine.** Compares this activity factor against the range that unconfirmed "
+                        "design-basis assumptions alone (uncertainty.py's ±15% bands) could produce with a "
+                        "perfectly healthy catalyst, and checks whether the reading is even physically achievable "
+                        "at this T/GHSV (kinetics.py's own bounds)."
                     )
+                    if st.button("Diagnose"):
+                        ctx = st.session_state["pm_context"]
+                        st.session_state["root_cause_result"] = root_cause.diagnose(
+                            ctx["stage"], pm_result["observed_X"], ctx["T_C"], ctx["GHSV"], y_CO_in=ctx["y_CO_in"],
+                        )
 
-            if "root_cause_result" in st.session_state:
-                rc_result = st.session_state["root_cause_result"]
-                rc_band = rc_result["assumption_band"]
-                st.write(
-                    f"**Assumption-only band:** [{rc_band['lo']:.3f}, {rc_band['hi']:.3f}] — the activity "
-                    f"factor range {' and '.join(rc_band['assumptions_used'])} uncertainty alone could "
-                    f"produce at these conditions with a perfectly healthy catalyst."
-                )
-                rc_rank_icon = {1: "🥇", 2: "🥈", 3: "🥉"}
-                for e in rc_result["explanations"]:
-                    icon = rc_rank_icon.get(e["rank"], "⚠️")
-                    plausible_str = "plausible" if e["plausible"] else "not the primary explanation here"
-                    st.markdown(f"{icon} **{e['label']}** _({plausible_str})_")
-                    st.write(e["reasoning"])
+                if "root_cause_result" in st.session_state:
+                    rc_result = st.session_state["root_cause_result"]
+                    rc_band = rc_result["assumption_band"]
+                    st.write(
+                        f"**Assumption-only band:** [{rc_band['lo']:.3f}, {rc_band['hi']:.3f}] — the activity "
+                        f"factor range {' and '.join(rc_band['assumptions_used'])} uncertainty alone could "
+                        f"produce at these conditions with a perfectly healthy catalyst."
+                    )
+                    rc_rank_icon = {1: "🥇", 2: "🥈", 3: "🥉"}
+                    for e in rc_result["explanations"]:
+                        icon = rc_rank_icon.get(e["rank"], "⚠️")
+                        plausible_str = "plausible" if e["plausible"] else "not the primary explanation here"
+                        st.markdown(f"{icon} **{e['label']}** _({plausible_str})_")
+                        st.write(e["reasoning"])
 
-    st.divider()
+        st.divider()
 
     # ---------------------------------------------------------------------
     # Section 8 — Operator copilot (rule-based v1, no LLM / API key)
@@ -1252,81 +1279,82 @@ with tab1:
 
     st.divider()
 
-    # ---------------------------------------------------------------------
-    # Section 11 — Multi-module negotiation (v1: hypothetical plant variants
-    # negotiating over a shared grid export constraint — see
-    # python/multi_agent_negotiation.py for the full honest-scoping statement)
-    # ---------------------------------------------------------------------
-    st.header("Multi-Module Negotiation")
-    st.caption(maturity.caption("multi_agent_negotiation"))
-    st.warning(
-        "**These are simulated hypothetical plant variants, not live data from real additional "
-        "facilities.** This repo represents exactly one real plant. 'Plant B' and 'Plant C' below are "
-        "illustrative ±20% variants of this plant's own dispatch parameters — a stand-in for what a "
-        "real multi-plant fleet might look like, built on the real `dispatch_ga.py` optimization, not "
-        "invented numbers.",
-        icon="⚠️",
-    )
-    st.caption(
-        "**Mechanism: merit-order allocation, not full iterative negotiation** — chosen because it's "
-        "simpler to verify exactly (one sort, one greedy fill, no convergence loop) and it's how real "
-        "grid operators already allocate scarce export capacity: the most fuel-efficient generation is "
-        "dispatched first. Each hypothetical plant runs its own dispatch_ga optimization to get its "
-        "'ask'; plants are then served in efficiency order until the shared capacity runs out."
-    )
-
-    shared_capacity_kw = st.number_input(
-        "Shared grid export capacity (kW)", min_value=10.0, max_value=200.0, value=70.0, step=5.0,
-        key="negotiation_capacity",
-    )
-
-    if st.button("Run negotiation"):
-        plant_variants = [
-            {"name": "Plant A (this plant, current budgets)",
-             "syngas_budget_kw": float(syngas_budget), "h2_budget_kw": float(h2_budget)},
-            {"name": "Plant B (+20% feed rate, illustrative)",
-             "syngas_budget_kw": float(syngas_budget) * 1.2, "h2_budget_kw": float(h2_budget) * 1.2},
-            {"name": "Plant C (−20% feed rate, illustrative)",
-             "syngas_budget_kw": float(syngas_budget) * 0.8, "h2_budget_kw": float(h2_budget) * 0.8},
-        ]
-        with st.spinner("Each plant running its own dispatch_ga optimization, then negotiating..."):
-            st.session_state["negotiation_result"] = multi_agent_negotiation.negotiate(
-                shared_capacity_kw, variants=plant_variants,
-            )
-
-    if "negotiation_result" in st.session_state:
-        neg = st.session_state["negotiation_result"]
-        ncol1, ncol2, ncol3 = st.columns(3)
-        ncol1.metric("Shared capacity", f"{neg['shared_capacity_kw']:.1f} kW")
-        ncol2.metric("Total asked", f"{neg['total_asked_kw']:.1f} kW")
-        ncol3.metric("Total allocated", f"{neg['total_allocated_kw']:.1f} kW")
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 11 — Multi-module negotiation (v1: hypothetical plant variants
+        # negotiating over a shared grid export constraint — see
+        # python/multi_agent_negotiation.py for the full honest-scoping statement)
+        # ---------------------------------------------------------------------
+        st.header("Multi-Module Negotiation")
+        st.caption(maturity.caption("multi_agent_negotiation"))
+        st.warning(
+            "**These are simulated hypothetical plant variants, not live data from real additional "
+            "facilities.** This repo represents exactly one real plant. 'Plant B' and 'Plant C' below are "
+            "illustrative ±20% variants of this plant's own dispatch parameters — a stand-in for what a "
+            "real multi-plant fleet might look like, built on the real `dispatch_ga.py` optimization, not "
+            "invented numbers.",
+            icon="⚠️",
+        )
         st.caption(
-            f"Sum of allocations ({neg['total_allocated_kw']:.2f} kW) respects the shared constraint "
-            f"({neg['shared_capacity_kw']:.2f} kW) by construction — a greedy fill against a hard cap, "
-            f"not clipped after the fact. Merit order (most efficient first): "
-            + " → ".join(neg["merit_order"])
+            "**Mechanism: merit-order allocation, not full iterative negotiation** — chosen because it's "
+            "simpler to verify exactly (one sort, one greedy fill, no convergence loop) and it's how real "
+            "grid operators already allocate scarce export capacity: the most fuel-efficient generation is "
+            "dispatched first. Each hypothetical plant runs its own dispatch_ga optimization to get its "
+            "'ask'; plants are then served in efficiency order until the shared capacity runs out."
         )
 
-        for p in neg["plants"]:
-            served_icon = "✅" if p["fully_served"] else "⚠️"
-            with st.expander(
-                f"{served_icon} {p['name']} — merit rank #{p['merit_rank']}, "
-                f"{p['allocation_kw']:.1f} / {p['ask_kw']:.1f} kW allocated"
-            ):
-                st.write(
-                    f"**Fuel budgets:** syngas {p['syngas_budget_kw']:.1f} kW, H2 {p['h2_budget_kw']:.1f} kW"
-                )
-                st.write(f"**Dispatch efficiency:** {p['efficiency']*100:.2f}% (electrical kW out ÷ fuel kW in)")
-                st.write(
-                    f"**Ask:** {p['ask_kw']:.2f} kW  →  **Allocated:** {p['allocation_kw']:.2f} kW "
-                    f"({'fully served' if p['fully_served'] else 'partially served — squeezed by higher-efficiency plants ranked above it'})"
-                )
-                st.table({
-                    "Unit": list(p["dispatch"].keys()),
-                    "Load factor": [f"{v*100:.1f}%" for v in p["dispatch"].values()],
-                })
+        shared_capacity_kw = st.number_input(
+            "Shared grid export capacity (kW)", min_value=10.0, max_value=200.0, value=70.0, step=5.0,
+            key="negotiation_capacity",
+        )
 
-    st.divider()
+        if st.button("Run negotiation"):
+            plant_variants = [
+                {"name": "Plant A (this plant, current budgets)",
+                 "syngas_budget_kw": float(syngas_budget), "h2_budget_kw": float(h2_budget)},
+                {"name": "Plant B (+20% feed rate, illustrative)",
+                 "syngas_budget_kw": float(syngas_budget) * 1.2, "h2_budget_kw": float(h2_budget) * 1.2},
+                {"name": "Plant C (−20% feed rate, illustrative)",
+                 "syngas_budget_kw": float(syngas_budget) * 0.8, "h2_budget_kw": float(h2_budget) * 0.8},
+            ]
+            with st.spinner("Each plant running its own dispatch_ga optimization, then negotiating..."):
+                st.session_state["negotiation_result"] = multi_agent_negotiation.negotiate(
+                    shared_capacity_kw, variants=plant_variants,
+                )
+
+        if "negotiation_result" in st.session_state:
+            neg = st.session_state["negotiation_result"]
+            ncol1, ncol2, ncol3 = st.columns(3)
+            ncol1.metric("Shared capacity", f"{neg['shared_capacity_kw']:.1f} kW")
+            ncol2.metric("Total asked", f"{neg['total_asked_kw']:.1f} kW")
+            ncol3.metric("Total allocated", f"{neg['total_allocated_kw']:.1f} kW")
+            st.caption(
+                f"Sum of allocations ({neg['total_allocated_kw']:.2f} kW) respects the shared constraint "
+                f"({neg['shared_capacity_kw']:.2f} kW) by construction — a greedy fill against a hard cap, "
+                f"not clipped after the fact. Merit order (most efficient first): "
+                + " → ".join(neg["merit_order"])
+            )
+
+            for p in neg["plants"]:
+                served_icon = "✅" if p["fully_served"] else "⚠️"
+                with st.expander(
+                    f"{served_icon} {p['name']} — merit rank #{p['merit_rank']}, "
+                    f"{p['allocation_kw']:.1f} / {p['ask_kw']:.1f} kW allocated"
+                ):
+                    st.write(
+                        f"**Fuel budgets:** syngas {p['syngas_budget_kw']:.1f} kW, H2 {p['h2_budget_kw']:.1f} kW"
+                    )
+                    st.write(f"**Dispatch efficiency:** {p['efficiency']*100:.2f}% (electrical kW out ÷ fuel kW in)")
+                    st.write(
+                        f"**Ask:** {p['ask_kw']:.2f} kW  →  **Allocated:** {p['allocation_kw']:.2f} kW "
+                        f"({'fully served' if p['fully_served'] else 'partially served — squeezed by higher-efficiency plants ranked above it'})"
+                    )
+                    st.table({
+                        "Unit": list(p["dispatch"].keys()),
+                        "Load factor": [f"{v*100:.1f}%" for v in p["dispatch"].values()],
+                    })
+
+        st.divider()
 
     # ---------------------------------------------------------------------
     # Section 12 — Confirmation-loop agent (v1: drafts confirmation-request
@@ -1467,82 +1495,83 @@ with tab1:
 
     st.divider()
 
-    # ---------------------------------------------------------------------
-    # Section 14 — Multi-module orchestration (v1: coordinates cooperating
-    # hypothetical WGS-train modules of the SAME plant toward one shared
-    # output target — distinct from Section 11's Multi-Module Negotiation,
-    # which divides one scarce resource among COMPETING hypothetical plants.
-    # See python/multi_module_orchestration.py for the full distinction.)
-    # ---------------------------------------------------------------------
-    st.header("Multi-Module Orchestration")
-    st.caption(maturity.caption("multi_module_orchestration"))
-    st.warning(
-        "**Simulated hypothetical plant modules, not live data from real additional hardware.** This "
-        "repo represents exactly one real WGS train. The 3 modules below are illustrative variants of "
-        "kinetics.py's own physics at different operating temperatures — not real separate equipment. "
-        "**Distinct from Multi-Module Negotiation above:** that section divides one shared *scarce* "
-        "resource among *competing* hypothetical plants; this section coordinates *cooperating* "
-        "modules of the *same* plant to jointly hit one shared output target at minimum cost.",
-        icon="⚠️",
-    )
-
-    mo_target = st.number_input(
-        "Target H2 output (relative GHSV-equivalent units — see caption below)",
-        min_value=100.0, max_value=10000.0, value=2500.0, step=100.0, key="mo_target",
-    )
-    st.caption(
-        "Output is modeled as throughput × overall WGS conversion, in the same GHSV units kinetics.py "
-        "already uses — a relative/illustrative basis, not a real kg/h mass balance (unlike "
-        "circularity.py's feed rate, which IS a real, sourced number for the one actual train this "
-        "repo models)."
-    )
-
-    mo_offline = st.multiselect(
-        "Take module(s) offline (simulated scheduled maintenance)",
-        options=[m["name"] for m in multi_module_orchestration.DEFAULT_MODULES],
-        key="mo_offline",
-    )
-
-    if st.button("Run orchestration"):
-        st.session_state["mo_result"] = multi_module_orchestration.orchestrate(
-            mo_target, offline_module_names=mo_offline,
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 14 — Multi-module orchestration (v1: coordinates cooperating
+        # hypothetical WGS-train modules of the SAME plant toward one shared
+        # output target — distinct from Section 11's Multi-Module Negotiation,
+        # which divides one scarce resource among COMPETING hypothetical plants.
+        # See python/multi_module_orchestration.py for the full distinction.)
+        # ---------------------------------------------------------------------
+        st.header("Multi-Module Orchestration")
+        st.caption(maturity.caption("multi_module_orchestration"))
+        st.warning(
+            "**Simulated hypothetical plant modules, not live data from real additional hardware.** This "
+            "repo represents exactly one real WGS train. The 3 modules below are illustrative variants of "
+            "kinetics.py's own physics at different operating temperatures — not real separate equipment. "
+            "**Distinct from Multi-Module Negotiation above:** that section divides one shared *scarce* "
+            "resource among *competing* hypothetical plants; this section coordinates *cooperating* "
+            "modules of the *same* plant to jointly hit one shared output target at minimum cost.",
+            icon="⚠️",
         )
 
-    if "mo_result" in st.session_state:
-        _mo = st.session_state["mo_result"]
-        if not _mo["feasible"]:
-            st.error(_mo["reason"])
-        else:
-            st.success(
-                f"Target met exactly: {_mo['total_output']:.1f} output at "
-                f"{_mo['total_throughput']:.1f} total throughput (minimized)."
+        mo_target = st.number_input(
+            "Target H2 output (relative GHSV-equivalent units — see caption below)",
+            min_value=100.0, max_value=10000.0, value=2500.0, step=100.0, key="mo_target",
+        )
+        st.caption(
+            "Output is modeled as throughput × overall WGS conversion, in the same GHSV units kinetics.py "
+            "already uses — a relative/illustrative basis, not a real kg/h mass balance (unlike "
+            "circularity.py's feed rate, which IS a real, sourced number for the one actual train this "
+            "repo models)."
+        )
+
+        mo_offline = st.multiselect(
+            "Take module(s) offline (simulated scheduled maintenance)",
+            options=[m["name"] for m in multi_module_orchestration.DEFAULT_MODULES],
+            key="mo_offline",
+        )
+
+        if st.button("Run orchestration"):
+            st.session_state["mo_result"] = multi_module_orchestration.orchestrate(
+                mo_target, offline_module_names=mo_offline,
             )
 
-        _mo_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}
-        for _m in _mo["modules"]:
-            _icon = _mo_status_icon[_m["status"]]
-            if _m["forced_offline"]:
-                _avail_str = "OFFLINE (scheduled maintenance)"
-            elif not _m["available"]:
-                _avail_str = "OFFLINE (flagged for maintenance — activity factor below predictive_maintenance's threshold)"
+        if "mo_result" in st.session_state:
+            _mo = st.session_state["mo_result"]
+            if not _mo["feasible"]:
+                st.error(_mo["reason"])
             else:
-                _avail_str = "available"
-            with st.expander(f"{_icon} {_m['name']} — {_avail_str}"):
-                st.write(
-                    f"HTS temperature: {_m['T_hts_C']:.0f}°C  ·  Activity factor: {_m['activity_factor']:.2f}  ·  "
-                    f"Status: {_m['status']}"
+                st.success(
+                    f"Target met exactly: {_mo['total_output']:.1f} output at "
+                    f"{_mo['total_throughput']:.1f} total throughput (minimized)."
                 )
-                if _m["available"]:
-                    st.write(f"**Load (GHSV):** {_m['ghsv']:.0f} / {_m['ghsv_max']:.0f} max")
-                    st.write(
-                        f"**Output:** {_m['output']:.1f}  "
-                        f"({_m.get('share_of_target', 0)*100:.1f}% of target — the hotter/more efficient "
-                        f"a module is at this load, the larger its share)"
-                    )
-                else:
-                    st.write("Not contributing to the allocation — offline.")
 
-    st.divider()
+            _mo_status_icon = {"healthy": "🟢", "watch": "🟡", "flag for maintenance": "🔴"}
+            for _m in _mo["modules"]:
+                _icon = _mo_status_icon[_m["status"]]
+                if _m["forced_offline"]:
+                    _avail_str = "OFFLINE (scheduled maintenance)"
+                elif not _m["available"]:
+                    _avail_str = "OFFLINE (flagged for maintenance — activity factor below predictive_maintenance's threshold)"
+                else:
+                    _avail_str = "available"
+                with st.expander(f"{_icon} {_m['name']} — {_avail_str}"):
+                    st.write(
+                        f"HTS temperature: {_m['T_hts_C']:.0f}°C  ·  Activity factor: {_m['activity_factor']:.2f}  ·  "
+                        f"Status: {_m['status']}"
+                    )
+                    if _m["available"]:
+                        st.write(f"**Load (GHSV):** {_m['ghsv']:.0f} / {_m['ghsv_max']:.0f} max")
+                        st.write(
+                            f"**Output:** {_m['output']:.1f}  "
+                            f"({_m.get('share_of_target', 0)*100:.1f}% of target — the hotter/more efficient "
+                            f"a module is at this load, the larger its share)"
+                        )
+                    else:
+                        st.write("Not contributing to the allocation — offline.")
+
+        st.divider()
 
     # ---------------------------------------------------------------------
     # Section 15 — Novelty audit coverage (v1: honest documented-depth
@@ -1662,508 +1691,513 @@ with tab1:
 
     st.divider()
 
-    # ---------------------------------------------------------------------
-    # Section 17 — Physics-informed neural network (v1: a genuine PINN, not
-    # a data-fit surrogate mislabeled as one — see python/pinn_kinetics.py
-    # for the full formulation, gradient derivation, and honest limitations.)
-    # ---------------------------------------------------------------------
-    st.header("Physics-Informed Neural Network")
-    st.caption(maturity.caption("pinn_kinetics"))
-    st.markdown(
-        "**⚠️ Scope.** This predicts HTS WGS conversion under the same steady-state assumptions as "
-        "the rest of this app, trained on ONE specific rate law (`kinetics.hts_conversion` — HTS only, "
-        "not LTS). It is not reliable outside the range it was trained on and compared with kinetics.py: "
-        "**300–400°C, 1000–4000 GHSV.** No PyTorch/JAX/autograd dependency was added — checked first "
-        "and confirmed none is already installed, and a full autodiff framework was judged a real "
-        "memory/CPU risk on Streamlit Community Cloud's free tier. Instead this is a tiny hand-rolled "
-        "8-neuron NumPy network with an analytically-derived physics gradient (verified against a "
-        "finite-difference check — see the module's self-test), trained with `scipy.optimize.minimize`."
-    )
-    st.caption(
-        "What makes it a PINN and not a surrogate: the training loss has a physics-residual term — "
-        "how well the network's own dX/dτ satisfies the real HTS rate law from kinetics.py, checked at "
-        "200 randomly sampled points across the domain — plus the real boundary condition X=0 at τ=0. "
-        "Only 8 labeled (T, GHSV)→X points from kinetics.py's actual output anchor the fit; physics "
-        "shapes the rest."
-    )
-
-    if st.button("Train PINN (and a data-only baseline, for comparison)"):
-        with st.spinner("Training the physics-informed model and a same-architecture data-only baseline..."):
-            st.session_state["pinn_result"] = pinn_kinetics.compare_to_baseline()
-
-    if "pinn_result" in st.session_state:
-        _pr = st.session_state["pinn_result"]
-        _pinn, _base = _pr["pinn"], _pr["baseline"]
-
-        st.subheader("The real test: error near vs. far from the 8 labeled points")
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 17 — Physics-informed neural network (v1: a genuine PINN, not
+        # a data-fit surrogate mislabeled as one — see python/pinn_kinetics.py
+        # for the full formulation, gradient derivation, and honest limitations.)
+        # ---------------------------------------------------------------------
+        st.header("Physics-Informed Neural Network")
+        st.caption(maturity.caption("pinn_kinetics"))
+        st.markdown(
+            "**⚠️ Scope.** This predicts HTS WGS conversion under the same steady-state assumptions as "
+            "the rest of this app, trained on ONE specific rate law (`kinetics.hts_conversion` — HTS only, "
+            "not LTS). It is not reliable outside the range it was trained on and compared with kinetics.py: "
+            "**300–400°C, 1000–4000 GHSV.** No PyTorch/JAX/autograd dependency was added — checked first "
+            "and confirmed none is already installed, and a full autodiff framework was judged a real "
+            "memory/CPU risk on Streamlit Community Cloud's free tier. Instead this is a tiny hand-rolled "
+            "8-neuron NumPy network with an analytically-derived physics gradient (verified against a "
+            "finite-difference check — see the module's self-test), trained with `scipy.optimize.minimize`."
+        )
         st.caption(
-            "Test points are split by distance to the nearest labeled training point (median split). "
-            "If the PINN's far-point error stays close to its near-point error while a data-only fit "
-            "(same architecture, same 8 points, physics term switched off) degrades further away, "
-            "that's real evidence the physics loss — not memorization — is doing the work."
-        )
-        pcol1, pcol2 = st.columns(2)
-        with pcol1:
-            st.markdown("**PINN (physics + data + boundary condition)**")
-            st.metric("Mean abs. error (40 test points)", f"{_pinn['mean_error']:.4f}")
-            st.write(f"Near-training error: **{_pinn['near_mean_error']:.4f}**  ·  "
-                     f"Far-from-training error: **{_pinn['far_mean_error']:.4f}**")
-            st.metric("Far / near error ratio", f"{_pinn['far_to_near_ratio']:.2f}×")
-        with pcol2:
-            st.markdown("**Data-only baseline (physics weight = 0)**")
-            st.metric("Mean abs. error (40 test points)", f"{_base['mean_error']:.4f}")
-            st.write(f"Near-training error: **{_base['near_mean_error']:.4f}**  ·  "
-                     f"Far-from-training error: **{_base['far_mean_error']:.4f}**")
-            st.metric("Far / near error ratio", f"{_base['far_to_near_ratio']:.2f}×")
-
-        _err_multiple = _base["mean_error"] / _pinn["mean_error"] if _pinn["mean_error"] > 0 else float("nan")
-        st.write(
-            f"With identical architecture and the identical 8 labeled points, the PINN's mean test "
-            f"error is **{_err_multiple:.0f}× lower** than the data-only baseline's, and its far-point "
-            f"error barely rises above its near-point error ({_pinn['far_to_near_ratio']:.2f}× vs. the "
-            f"baseline's {_base['far_to_near_ratio']:.2f}×). That is the physics-residual term doing "
-            f"genuine work, not the network simply memorizing 8 points."
+            "What makes it a PINN and not a surrogate: the training loss has a physics-residual term — "
+            "how well the network's own dX/dτ satisfies the real HTS rate law from kinetics.py, checked at "
+            "200 randomly sampled points across the domain — plus the real boundary condition X=0 at τ=0. "
+            "Only 8 labeled (T, GHSV)→X points from kinetics.py's actual output anchor the fit; physics "
+            "shapes the rest."
         )
 
-        st.subheader("PINN predictions vs. kinetics.py's real ODE integration")
-        _train_df = pd.DataFrame({
-            "T_C": _pr["T_labeled"], "GHSV": _pr["GHSV_labeled"],
-            "True (kinetics.py)": _pr["X_labeled"],
-            "Predicted (PINN)": pinn_kinetics.predict(_pinn["weights"], _pr["T_labeled"], _pr["GHSV_labeled"]),
-            "Category": "Training point (labeled)",
-        })
-        _test_df = pd.DataFrame({
-            "T_C": _pr["T_test"], "GHSV": _pr["G_test"],
-            "True (kinetics.py)": _pr["X_true"],
-            "Predicted (PINN)": _pinn["predictions"],
-            "Category": np.where(_pr["near_mask"], "Test point (near training)", "Test point (far from training)"),
-        })
-        _plot_df = pd.concat([_train_df, _test_df], ignore_index=True)
+        if st.button("Train PINN (and a data-only baseline, for comparison)"):
+            with st.spinner("Training the physics-informed model and a same-architecture data-only baseline..."):
+                st.session_state["pinn_result"] = pinn_kinetics.compare_to_baseline()
 
-        _diag = alt.Chart(pd.DataFrame({"x": [0, 1], "y": [0, 1]})).mark_line(
-            strokeDash=[4, 4], color="gray"
-        ).encode(x="x:Q", y="y:Q")
-        _scatter = alt.Chart(_plot_df).mark_point(size=90, filled=True).encode(
-            x=alt.X("True (kinetics.py):Q", title="True HTS conversion (kinetics.py)", scale=alt.Scale(domain=[0, 1])),
-            y=alt.Y("Predicted (PINN):Q", title="PINN-predicted HTS conversion", scale=alt.Scale(domain=[0, 1])),
-            color=alt.Color("Category:N", scale=alt.Scale(
-                domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
-                range=["#000000", "#4C78A8", "#E45756"],
-            )),
-            shape=alt.Shape("Category:N", scale=alt.Scale(
-                domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
-                range=["diamond", "circle", "circle"],
-            )),
-            tooltip=["T_C:Q", "GHSV:Q", "True (kinetics.py):Q", "Predicted (PINN):Q", "Category:N"],
-        )
-        st.altair_chart((_diag + _scatter).properties(height=380), use_container_width=True)
-        st.caption(
-            "Points on the dashed diagonal are perfect predictions. Black diamonds are the 8 labeled "
-            "training points; blue/red circles are the 40 held-out test points the PINN never saw "
-            "during training, split by distance to the nearest training point."
-        )
+        if "pinn_result" in st.session_state:
+            _pr = st.session_state["pinn_result"]
+            _pinn, _base = _pr["pinn"], _pr["baseline"]
 
-        with st.expander("Full table: training points and test points"):
-            st.dataframe(
-                _plot_df.assign(error=(_plot_df["Predicted (PINN)"] - _plot_df["True (kinetics.py)"]).abs())
-                .round({"T_C": 1, "GHSV": 0, "True (kinetics.py)": 4, "Predicted (PINN)": 4, "error": 4}),
-                use_container_width=True,
+            st.subheader("The real test: error near vs. far from the 8 labeled points")
+            st.caption(
+                "Test points are split by distance to the nearest labeled training point (median split). "
+                "If the PINN's far-point error stays close to its near-point error while a data-only fit "
+                "(same architecture, same 8 points, physics term switched off) degrades further away, "
+                "that's real evidence the physics loss — not memorization — is doing the work."
             )
+            pcol1, pcol2 = st.columns(2)
+            with pcol1:
+                st.markdown("**PINN (physics + data + boundary condition)**")
+                st.metric("Mean abs. error (40 test points)", f"{_pinn['mean_error']:.4f}")
+                st.write(f"Near-training error: **{_pinn['near_mean_error']:.4f}**  ·  "
+                         f"Far-from-training error: **{_pinn['far_mean_error']:.4f}**")
+                st.metric("Far / near error ratio", f"{_pinn['far_to_near_ratio']:.2f}×")
+            with pcol2:
+                st.markdown("**Data-only baseline (physics weight = 0)**")
+                st.metric("Mean abs. error (40 test points)", f"{_base['mean_error']:.4f}")
+                st.write(f"Near-training error: **{_base['near_mean_error']:.4f}**  ·  "
+                         f"Far-from-training error: **{_base['far_mean_error']:.4f}**")
+                st.metric("Far / near error ratio", f"{_base['far_to_near_ratio']:.2f}×")
 
-    st.divider()
-
-    # ---------------------------------------------------------------------
-    # Section 18 — Sim-to-real transfer (v1: synthetic domain-gap injection
-    # and warm-started fine-tuning on the PINN — see python/sim_to_real.py
-    # for the full honest-scoping statement)
-    # ---------------------------------------------------------------------
-    st.header("Sim-to-Real Transfer")
-    st.caption(maturity.caption("sim_to_real"))
-    st.warning(
-        "**Synthetic 'real world', not a real plant.** This repo has no real plant or real sensors to "
-        "transfer to. 'Real-world' data below means `kinetics.py`'s own true conversion values, "
-        "deliberately corrupted with two illustrative, adjustable imperfections: Gaussian noise on the "
-        "conversion reading (a gas analyser is never exact) and a systematic temperature calibration "
-        "offset (a thermocouple reading consistently off true process temperature). Both magnitudes are "
-        "assumed defaults, not measured instrument specs. This demonstrates the *mechanism* of domain-"
-        "gap evaluation and adaptation on this project's own steady-state physics — it is not a claim of "
-        "real-world validation.",
-        icon="⚠️",
-    )
-    st.caption(
-        "Pre-adaptation error is measured against what a real deployment would actually have to check "
-        "against — the sensor's own noisy reading — not an oracle true value, since a real deployment "
-        "wouldn't have one either. That's why both sliders below move it."
-    )
-
-    s2r_col1, s2r_col2 = st.columns(2)
-    with s2r_col1:
-        s2r_noise_std = st.slider(
-            "Sensor noise (Gaussian std, conversion fraction)", 0.0, 0.10,
-            sim_to_real.DEFAULT_NOISE_STD, step=0.01, key="s2r_noise",
-        )
-    with s2r_col2:
-        s2r_offset = st.slider(
-            "Temperature calibration offset (°C)", 0.0, 10.0,
-            sim_to_real.DEFAULT_CALIB_OFFSET_C, step=0.5, key="s2r_offset",
-        )
-
-    if st.button("Run sim-to-real transfer experiment"):
-        with st.spinner("Training/reusing the simulation PINN, injecting noise, and fine-tuning..."):
-            if "s2r_sim_weights" not in st.session_state:
-                st.session_state["s2r_sim_weights"] = pinn_kinetics.train(seed=7)[0]
-            st.session_state["s2r_result"] = sim_to_real.run_transfer_experiment(
-                flat_sim=st.session_state["s2r_sim_weights"],
-                noise_std=s2r_noise_std, calib_offset_C=s2r_offset,
-            )
-
-    if "s2r_result" in st.session_state:
-        _sr = st.session_state["s2r_result"]
-        _pre, _post = _sr["pre"], _sr["post"]
-
-        st.subheader("Domain gap: before vs. after adaptation")
-        scol1, scol2, scol3 = st.columns(3)
-        scol1.metric("Pre-adaptation error (no adaptation)", f"{_pre['mean_error']:.4f}")
-        scol2.metric(
-            "Post-adaptation error (8 noisy points)", f"{_post['mean_error']:.4f}",
-            delta=f"{_post['mean_error'] - _pre['mean_error']:+.4f}", delta_color="inverse",
-        )
-        scol3.metric("Domain gap closed", f"{_sr['gap_closed_fraction'] * 100:.0f}%")
-
-        if _sr["gap_closed_fraction"] >= 0:
+            _err_multiple = _base["mean_error"] / _pinn["mean_error"] if _pinn["mean_error"] > 0 else float("nan")
             st.write(
-                f"Fine-tuning on just 8 noisy real-world points reduced mean error from "
-                f"{_pre['mean_error']:.4f} to {_post['mean_error']:.4f} — {_sr['gap_closed_fraction'] * 100:.0f}% "
-                f"of the domain gap closed. "
-                + ("The gap was not fully closed — some residual error remains even after adaptation."
-                   if _sr["gap_closed_fraction"] < 0.99 else "")
+                f"With identical architecture and the identical 8 labeled points, the PINN's mean test "
+                f"error is **{_err_multiple:.0f}× lower** than the data-only baseline's, and its far-point "
+                f"error barely rises above its near-point error ({_pinn['far_to_near_ratio']:.2f}× vs. the "
+                f"baseline's {_base['far_to_near_ratio']:.2f}×). That is the physics-residual term doing "
+                f"genuine work, not the network simply memorizing 8 points."
             )
-        else:
+
+            st.subheader("PINN predictions vs. kinetics.py's real ODE integration")
+            _train_df = pd.DataFrame({
+                "T_C": _pr["T_labeled"], "GHSV": _pr["GHSV_labeled"],
+                "True (kinetics.py)": _pr["X_labeled"],
+                "Predicted (PINN)": pinn_kinetics.predict(_pinn["weights"], _pr["T_labeled"], _pr["GHSV_labeled"]),
+                "Category": "Training point (labeled)",
+            })
+            _test_df = pd.DataFrame({
+                "T_C": _pr["T_test"], "GHSV": _pr["G_test"],
+                "True (kinetics.py)": _pr["X_true"],
+                "Predicted (PINN)": _pinn["predictions"],
+                "Category": np.where(_pr["near_mask"], "Test point (near training)", "Test point (far from training)"),
+            })
+            _plot_df = pd.concat([_train_df, _test_df], ignore_index=True)
+
+            _diag = alt.Chart(pd.DataFrame({"x": [0, 1], "y": [0, 1]})).mark_line(
+                strokeDash=[4, 4], color="gray"
+            ).encode(x="x:Q", y="y:Q")
+            _scatter = alt.Chart(_plot_df).mark_point(size=90, filled=True).encode(
+                x=alt.X("True (kinetics.py):Q", title="True HTS conversion (kinetics.py)", scale=alt.Scale(domain=[0, 1])),
+                y=alt.Y("Predicted (PINN):Q", title="PINN-predicted HTS conversion", scale=alt.Scale(domain=[0, 1])),
+                color=alt.Color("Category:N", scale=alt.Scale(
+                    domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
+                    range=["#000000", "#4C78A8", "#E45756"],
+                )),
+                shape=alt.Shape("Category:N", scale=alt.Scale(
+                    domain=["Training point (labeled)", "Test point (near training)", "Test point (far from training)"],
+                    range=["diamond", "circle", "circle"],
+                )),
+                tooltip=["T_C:Q", "GHSV:Q", "True (kinetics.py):Q", "Predicted (PINN):Q", "Category:N"],
+            )
+            st.altair_chart((_diag + _scatter).properties(height=380), use_container_width=True)
+            st.caption(
+                "Points on the dashed diagonal are perfect predictions. Black diamonds are the 8 labeled "
+                "training points; blue/red circles are the 40 held-out test points the PINN never saw "
+                "during training, split by distance to the nearest training point."
+            )
+
+            with st.expander("Full table: training points and test points"):
+                st.dataframe(
+                    _plot_df.assign(error=(_plot_df["Predicted (PINN)"] - _plot_df["True (kinetics.py)"]).abs())
+                    .round({"T_C": 1, "GHSV": 0, "True (kinetics.py)": 4, "Predicted (PINN)": 4, "error": 4}),
+                    use_container_width=True,
+                )
+
+        st.divider()
+
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 18 — Sim-to-real transfer (v1: synthetic domain-gap injection
+        # and warm-started fine-tuning on the PINN — see python/sim_to_real.py
+        # for the full honest-scoping statement)
+        # ---------------------------------------------------------------------
+        st.header("Sim-to-Real Transfer")
+        st.caption(maturity.caption("sim_to_real"))
+        st.warning(
+            "**Synthetic 'real world', not a real plant.** This repo has no real plant or real sensors to "
+            "transfer to. 'Real-world' data below means `kinetics.py`'s own true conversion values, "
+            "deliberately corrupted with two illustrative, adjustable imperfections: Gaussian noise on the "
+            "conversion reading (a gas analyser is never exact) and a systematic temperature calibration "
+            "offset (a thermocouple reading consistently off true process temperature). Both magnitudes are "
+            "assumed defaults, not measured instrument specs. This demonstrates the *mechanism* of domain-"
+            "gap evaluation and adaptation on this project's own steady-state physics — it is not a claim of "
+            "real-world validation.",
+            icon="⚠️",
+        )
+        st.caption(
+            "Pre-adaptation error is measured against what a real deployment would actually have to check "
+            "against — the sensor's own noisy reading — not an oracle true value, since a real deployment "
+            "wouldn't have one either. That's why both sliders below move it."
+        )
+
+        s2r_col1, s2r_col2 = st.columns(2)
+        with s2r_col1:
+            s2r_noise_std = st.slider(
+                "Sensor noise (Gaussian std, conversion fraction)", 0.0, 0.10,
+                sim_to_real.DEFAULT_NOISE_STD, step=0.01, key="s2r_noise",
+            )
+        with s2r_col2:
+            s2r_offset = st.slider(
+                "Temperature calibration offset (°C)", 0.0, 10.0,
+                sim_to_real.DEFAULT_CALIB_OFFSET_C, step=0.5, key="s2r_offset",
+            )
+
+        if st.button("Run sim-to-real transfer experiment"):
+            with st.spinner("Training/reusing the simulation PINN, injecting noise, and fine-tuning..."):
+                if "s2r_sim_weights" not in st.session_state:
+                    st.session_state["s2r_sim_weights"] = pinn_kinetics.train(seed=7)[0]
+                st.session_state["s2r_result"] = sim_to_real.run_transfer_experiment(
+                    flat_sim=st.session_state["s2r_sim_weights"],
+                    noise_std=s2r_noise_std, calib_offset_C=s2r_offset,
+                )
+
+        if "s2r_result" in st.session_state:
+            _sr = st.session_state["s2r_result"]
+            _pre, _post = _sr["pre"], _sr["post"]
+
+            st.subheader("Domain gap: before vs. after adaptation")
+            scol1, scol2, scol3 = st.columns(3)
+            scol1.metric("Pre-adaptation error (no adaptation)", f"{_pre['mean_error']:.4f}")
+            scol2.metric(
+                "Post-adaptation error (8 noisy points)", f"{_post['mean_error']:.4f}",
+                delta=f"{_post['mean_error'] - _pre['mean_error']:+.4f}", delta_color="inverse",
+            )
+            scol3.metric("Domain gap closed", f"{_sr['gap_closed_fraction'] * 100:.0f}%")
+
+            if _sr["gap_closed_fraction"] >= 0:
+                st.write(
+                    f"Fine-tuning on just 8 noisy real-world points reduced mean error from "
+                    f"{_pre['mean_error']:.4f} to {_post['mean_error']:.4f} — {_sr['gap_closed_fraction'] * 100:.0f}% "
+                    f"of the domain gap closed. "
+                    + ("The gap was not fully closed — some residual error remains even after adaptation."
+                       if _sr["gap_closed_fraction"] < 0.99 else "")
+                )
+            else:
+                st.write(
+                    f"**Adaptation did not help here** — post-adaptation error ({_post['mean_error']:.4f}) is "
+                    f"higher than pre-adaptation error ({_pre['mean_error']:.4f}). This is an honest result, "
+                    f"not a bug: with a small (or zero) calibration offset, the imperfection is mostly random "
+                    f"sensor noise with no systematic bias to correct, so fine-tuning on just 8 noisy points "
+                    f"has nothing systematic to learn and can slightly overfit to that noise instead. Try "
+                    f"raising the temperature calibration offset — a genuine systematic domain shift is what "
+                    f"this adaptation step is actually good at correcting."
+                )
+
+            with st.expander("The 8 noisy points used to adapt, and the 40 held-out points used to evaluate"):
+                _adapt_df = pd.DataFrame({
+                    "T_true (°C)": _sr["adapt_set"]["T_true_C"], "T_sensor (°C)": _sr["adapt_set"]["T_sensor_C"],
+                    "GHSV": _sr["adapt_set"]["GHSV"], "X_true": _sr["adapt_set"]["X_true"],
+                    "X_observed (used to fine-tune)": _sr["adapt_set"]["X_observed"],
+                }).round(3)
+                st.write("**Adaptation points (8, noisy — the model never sees `X_true`, only `X_observed`):**")
+                st.dataframe(_adapt_df, use_container_width=True)
+
+                _eval_df = pd.DataFrame({
+                    "T_true (°C)": _sr["real_world_eval"]["T_true_C"], "T_sensor (°C)": _sr["real_world_eval"]["T_sensor_C"],
+                    "GHSV": _sr["real_world_eval"]["GHSV"], "X_observed": _sr["real_world_eval"]["X_observed"],
+                    "Pred (pre-adaptation)": _pre["predictions"], "Pred (post-adaptation)": _post["predictions"],
+                }).round(3)
+                st.write("**Evaluation points (40, held out from adaptation):**")
+                st.dataframe(_eval_df, use_container_width=True)
+
+        st.divider()
+
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 19 — Federated learning (v1: genuine FedAvg across hypothetical
+        # plant instances — same illustrative-variant pattern as
+        # multi_module_orchestration.py; see python/federated_learning.py for
+        # the full honest-scoping statement)
+        # ---------------------------------------------------------------------
+        st.header("Federated Learning")
+        st.caption(maturity.caption("federated_learning"))
+        st.warning(
+            "**Illustrative hypothetical plants, not real facilities.** This repo represents exactly one "
+            "real plant. The plants below are illustrative HTS-temperature-variant stand-ins — the same "
+            "pattern Multi-Module Orchestration above already uses — not live data from a real fleet. What "
+            "IS real: genuine federated averaging (FedAvg) of real model weights, trained with this "
+            "project's own physics-informed loss (its gradient checked against finite differences), reused unchanged from `pinn_kinetics.py`.",
+            icon="⚠️",
+        )
+        st.caption(
+            "**The federated-learning premise, actually implemented:** each hypothetical plant has its own "
+            "private local training data AND its own local physics-collocation sampling, restricted to its "
+            "own narrow operating band — it never sees another plant's data, and never pools raw data with "
+            "anyone. Only trained weights cross plant boundaries, and only via a plain average (FedAvg)."
+        )
+
+        fl_col1, fl_col2 = st.columns(2)
+        with fl_col1:
+            fl_n_plants = st.slider("Number of hypothetical plants", 2, len(federated_learning.DEFAULT_PLANTS),
+                                     len(federated_learning.DEFAULT_PLANTS), key="fl_n_plants")
+        with fl_col2:
+            fl_n_rounds = st.slider("Federation rounds", 10, 80, 50, step=10, key="fl_n_rounds")
+
+        if st.button("Run federated learning experiment"):
+            with st.spinner("Training locally at each plant, federating weights across rounds, and training "
+                             "the single-plant and pooled-upper-bound comparison models — can take up to a "
+                             "minute..."):
+                st.session_state["fl_result"] = federated_learning.run_experiment(
+                    plants=federated_learning.DEFAULT_PLANTS[:fl_n_plants], n_rounds=fl_n_rounds,
+                )
+
+        if "fl_result" in st.session_state:
+            _fr = st.session_state["fl_result"]
+
+            st.subheader("Step 3: three-way comparison on a full-domain test set")
+            st.caption(
+                "Federated is compared against each single-plant-alone model (no federation at all) and, as "
+                "an honest upper-bound REFERENCE ONLY, a model trained on every plant's raw data pooled "
+                "together directly — exactly what federated learning exists to avoid."
+            )
+            _fl_rows = [
+                {"Model": s["name"] + " (alone)", "Mean abs. error": s["mean_error"], "Max abs. error": s["max_error"]}
+                for s in _fr["single_results"]
+            ]
+            _fl_rows.append({"Model": "Single-plant-alone AVERAGE", "Mean abs. error": _fr["avg_single_mean_error"], "Max abs. error": None})
+            _fl_rows.append({"Model": "FEDERATED (FedAvg)", "Mean abs. error": _fr["fed_result"]["mean_error"], "Max abs. error": _fr["fed_result"]["max_error"]})
+            _fl_rows.append({"Model": "POOLED — upper bound, reference only", "Mean abs. error": _fr["pooled_result"]["mean_error"], "Max abs. error": _fr["pooled_result"]["max_error"]})
+            _fl_df = pd.DataFrame(_fl_rows)
+            st.dataframe(_fl_df.round(4), use_container_width=True, hide_index=True)
+
+            def _fl_role(name):
+                if name == "FEDERATED (FedAvg)":
+                    return "Federated"
+                if name == "POOLED — upper bound, reference only":
+                    return "Pooled (reference only)"
+                return "Single-plant-alone"
+
+            _fl_chart_df = _fl_df.dropna(subset=["Max abs. error"]).copy()
+            _fl_chart_df["Role"] = _fl_chart_df["Model"].apply(_fl_role)
+            _fl_bar = alt.Chart(_fl_chart_df).mark_bar().encode(
+                x=alt.X("Mean abs. error:Q", title="Mean absolute error (full-domain test set)"),
+                y=alt.Y("Model:N", sort="-x", title=None),
+                color=alt.Color("Role:N", scale=alt.Scale(
+                    domain=["Single-plant-alone", "Federated", "Pooled (reference only)"],
+                    range=["#BAB0AC", "#4C78A8", "#B279A2"],
+                )),
+            ).properties(height=220)
+            st.altair_chart(_fl_bar, use_container_width=True)
+
+            _fed_err = _fr["fed_result"]["mean_error"]
+            _avg_single_err = _fr["avg_single_mean_error"]
+            _best_single_err = _fr["best_single_mean_error"]
+            _pooled_err = _fr["pooled_result"]["mean_error"]
+            _avg_line = (
+                f"Federated's mean error ({_fed_err:.4f}) is **{_avg_single_err / _fed_err:.1f}× better than the "
+                f"average single-plant-alone model** ({_avg_single_err:.4f})."
+                if _fed_err < _avg_single_err else
+                f"Federated's mean error ({_fed_err:.4f}) does **not** beat the average single-plant-alone model "
+                f"({_avg_single_err:.4f}) here — with plants this similar to each other, there's less of a "
+                f"robustness gap for federation to close (see the cross-plant checks below, which are the real test)."
+            )
+            _pooled_line = (
+                f"It sits {_fed_err / _pooled_err:.1f}× above the pooled upper bound ({_pooled_err:.4f})."
+                if _fed_err > _pooled_err else
+                f"It even matches or beats the pooled upper bound ({_pooled_err:.4f}) here."
+            )
+            _best_line = (
+                f"It does **not** beat every single-plant model on this full-domain metric — the best single "
+                f"plant alone ({_best_single_err:.4f}) is still somewhat better here — federation's real payoff "
+                f"is shown below: robustness on data no single plant's own model ever saw."
+                if _best_single_err < _fed_err else
+                f"It also beats the single best-case plant-alone model ({_best_single_err:.4f})."
+            )
+            st.write(f"{_avg_line} {_pooled_line} {_best_line}")
+
+            st.subheader("Step 5: the actual point — does federation help on data a plant never saw?")
+            st.caption(
+                "Each plant's OWN single-plant model, evaluated on ANOTHER plant's local operating range (data "
+                "it never trained on, directly or via any physics constraint) — compared to the federated "
+                "model on that same held-out range, which only ever received averaged weights, never that "
+                "plant's raw data either."
+            )
+            _cross_df = pd.DataFrame(_fr["cross_checks"])
+            _cross_df = _cross_df.rename(columns={
+                "single_plant": "Single-plant model", "tested_on_range_of": "Tested on range of",
+                "single_plant_error": "Single-plant error", "federated_error": "Federated error",
+                "federated_wins": "Federated wins",
+            })
+            st.dataframe(_cross_df.round(4), use_container_width=True, hide_index=True)
             st.write(
-                f"**Adaptation did not help here** — post-adaptation error ({_post['mean_error']:.4f}) is "
-                f"higher than pre-adaptation error ({_pre['mean_error']:.4f}). This is an honest result, "
-                f"not a bug: with a small (or zero) calibration offset, the imperfection is mostly random "
-                f"sensor noise with no systematic bias to correct, so fine-tuning on just 8 noisy points "
-                f"has nothing systematic to learn and can slightly overfit to that noise instead. Try "
-                f"raising the temperature calibration offset — a genuine systematic domain shift is what "
-                f"this adaptation step is actually good at correcting."
+                f"**Federated wins {_fr['federated_wins_fraction'] * 100:.0f}% of these cross-plant checks** — "
+                f"most decisively exactly where it matters most: correcting a single plant's worst blind spots, "
+                f"not just nudging its already-good regions."
             )
 
-        with st.expander("The 8 noisy points used to adapt, and the 40 held-out points used to evaluate"):
-            _adapt_df = pd.DataFrame({
-                "T_true (°C)": _sr["adapt_set"]["T_true_C"], "T_sensor (°C)": _sr["adapt_set"]["T_sensor_C"],
-                "GHSV": _sr["adapt_set"]["GHSV"], "X_true": _sr["adapt_set"]["X_true"],
-                "X_observed (used to fine-tune)": _sr["adapt_set"]["X_observed"],
-            }).round(3)
-            st.write("**Adaptation points (8, noisy — the model never sees `X_true`, only `X_observed`):**")
-            st.dataframe(_adapt_df, use_container_width=True)
+        st.divider()
 
-            _eval_df = pd.DataFrame({
-                "T_true (°C)": _sr["real_world_eval"]["T_true_C"], "T_sensor (°C)": _sr["real_world_eval"]["T_sensor_C"],
-                "GHSV": _sr["real_world_eval"]["GHSV"], "X_observed": _sr["real_world_eval"]["X_observed"],
-                "Pred (pre-adaptation)": _pre["predictions"], "Pred (post-adaptation)": _post["predictions"],
-            }).round(3)
-            st.write("**Evaluation points (40, held out from adaptation):**")
-            st.dataframe(_eval_df, use_container_width=True)
-
-    st.divider()
-
-    # ---------------------------------------------------------------------
-    # Section 19 — Federated learning (v1: genuine FedAvg across hypothetical
-    # plant instances — same illustrative-variant pattern as
-    # multi_module_orchestration.py; see python/federated_learning.py for
-    # the full honest-scoping statement)
-    # ---------------------------------------------------------------------
-    st.header("Federated Learning")
-    st.caption(maturity.caption("federated_learning"))
-    st.warning(
-        "**Illustrative hypothetical plants, not real facilities.** This repo represents exactly one "
-        "real plant. The plants below are illustrative HTS-temperature-variant stand-ins — the same "
-        "pattern Multi-Module Orchestration above already uses — not live data from a real fleet. What "
-        "IS real: genuine federated averaging (FedAvg) of real model weights, trained with this "
-        "project's own physics-informed loss (its gradient checked against finite differences), reused unchanged from `pinn_kinetics.py`.",
-        icon="⚠️",
-    )
-    st.caption(
-        "**The federated-learning premise, actually implemented:** each hypothetical plant has its own "
-        "private local training data AND its own local physics-collocation sampling, restricted to its "
-        "own narrow operating band — it never sees another plant's data, and never pools raw data with "
-        "anyone. Only trained weights cross plant boundaries, and only via a plain average (FedAvg)."
-    )
-
-    fl_col1, fl_col2 = st.columns(2)
-    with fl_col1:
-        fl_n_plants = st.slider("Number of hypothetical plants", 2, len(federated_learning.DEFAULT_PLANTS),
-                                 len(federated_learning.DEFAULT_PLANTS), key="fl_n_plants")
-    with fl_col2:
-        fl_n_rounds = st.slider("Federation rounds", 10, 80, 50, step=10, key="fl_n_rounds")
-
-    if st.button("Run federated learning experiment"):
-        with st.spinner("Training locally at each plant, federating weights across rounds, and training "
-                         "the single-plant and pooled-upper-bound comparison models — can take up to a "
-                         "minute..."):
-            st.session_state["fl_result"] = federated_learning.run_experiment(
-                plants=federated_learning.DEFAULT_PLANTS[:fl_n_plants], n_rounds=fl_n_rounds,
-            )
-
-    if "fl_result" in st.session_state:
-        _fr = st.session_state["fl_result"]
-
-        st.subheader("Step 3: three-way comparison on a full-domain test set")
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 20 — Performance guarantee pricing (v1: PSA recovery threshold
+        # guarantee priced from uncertainty.py's real Monte Carlo distribution —
+        # see python/performance_guarantee.py for the full honest-scoping
+        # statement)
+        # ---------------------------------------------------------------------
+        st.header("Performance Guarantee Pricing")
+        st.caption(maturity.caption("performance_guarantee"))
+        st.warning(
+            "**Illustrative pricing framework, not a real actuarial/insurance-grade guarantee.** This "
+            "prices a hypothetical \"we guarantee ≥X% PSA recovery, or pay a penalty\" offer using this "
+            "project's own Monte Carlo uncertainty distribution — real guarantee terms need actual legal "
+            "and financial structuring (credit risk, counterparty terms, measurement/verification protocol, "
+            "force majeure) that doesn't exist here. The penalty rate below is OUR OWN assumed placeholder "
+            "— same honesty pattern as Circularity Scoring's ash/carbon-black market prices — not sourced "
+            "from any real DOK-ING contract or market data.",
+            icon="⚠️",
+        )
         st.caption(
-            "Federated is compared against each single-plant-alone model (no federation at all) and, as "
-            "an honest upper-bound REFERENCE ONLY, a model trained on every plant's raw data pooled "
-            "together directly — exactly what federated learning exists to avoid."
+            "**What IS real:** breach probability and expected cost are computed directly from "
+            "`uncertainty.py`'s genuine Monte Carlo propagation of the six real unconfirmed design "
+            "assumptions through the real `kinetics.py`/`psa.py` physics — not a guessed number. PSA "
+            "recovery's uncertainty in this model comes entirely from the PSA recovery target calibration "
+            "assumption, so this section is automatically live to whatever the Confirmation Tracker above "
+            "has (or hasn't) confirmed for it."
         )
-        _fl_rows = [
-            {"Model": s["name"] + " (alone)", "Mean abs. error": s["mean_error"], "Max abs. error": s["max_error"]}
-            for s in _fr["single_results"]
-        ]
-        _fl_rows.append({"Model": "Single-plant-alone AVERAGE", "Mean abs. error": _fr["avg_single_mean_error"], "Max abs. error": None})
-        _fl_rows.append({"Model": "FEDERATED (FedAvg)", "Mean abs. error": _fr["fed_result"]["mean_error"], "Max abs. error": _fr["fed_result"]["max_error"]})
-        _fl_rows.append({"Model": "POOLED — upper bound, reference only", "Mean abs. error": _fr["pooled_result"]["mean_error"], "Max abs. error": _fr["pooled_result"]["max_error"]})
-        _fl_df = pd.DataFrame(_fl_rows)
-        st.dataframe(_fl_df.round(4), use_container_width=True, hide_index=True)
 
-        def _fl_role(name):
-            if name == "FEDERATED (FedAvg)":
-                return "Federated"
-            if name == "POOLED — upper bound, reference only":
-                return "Pooled (reference only)"
-            return "Single-plant-alone"
-
-        _fl_chart_df = _fl_df.dropna(subset=["Max abs. error"]).copy()
-        _fl_chart_df["Role"] = _fl_chart_df["Model"].apply(_fl_role)
-        _fl_bar = alt.Chart(_fl_chart_df).mark_bar().encode(
-            x=alt.X("Mean abs. error:Q", title="Mean absolute error (full-domain test set)"),
-            y=alt.Y("Model:N", sort="-x", title=None),
-            color=alt.Color("Role:N", scale=alt.Scale(
-                domain=["Single-plant-alone", "Federated", "Pooled (reference only)"],
-                range=["#BAB0AC", "#4C78A8", "#B279A2"],
-            )),
-        ).properties(height=220)
-        st.altair_chart(_fl_bar, use_container_width=True)
-
-        _fed_err = _fr["fed_result"]["mean_error"]
-        _avg_single_err = _fr["avg_single_mean_error"]
-        _best_single_err = _fr["best_single_mean_error"]
-        _pooled_err = _fr["pooled_result"]["mean_error"]
-        _avg_line = (
-            f"Federated's mean error ({_fed_err:.4f}) is **{_avg_single_err / _fed_err:.1f}× better than the "
-            f"average single-plant-alone model** ({_avg_single_err:.4f})."
-            if _fed_err < _avg_single_err else
-            f"Federated's mean error ({_fed_err:.4f}) does **not** beat the average single-plant-alone model "
-            f"({_avg_single_err:.4f}) here — with plants this similar to each other, there's less of a "
-            f"robustness gap for federation to close (see the cross-plant checks below, which are the real test)."
-        )
-        _pooled_line = (
-            f"It sits {_fed_err / _pooled_err:.1f}× above the pooled upper bound ({_pooled_err:.4f})."
-            if _fed_err > _pooled_err else
-            f"It even matches or beats the pooled upper bound ({_pooled_err:.4f}) here."
-        )
-        _best_line = (
-            f"It does **not** beat every single-plant model on this full-domain metric — the best single "
-            f"plant alone ({_best_single_err:.4f}) is still somewhat better here — federation's real payoff "
-            f"is shown below: robustness on data no single plant's own model ever saw."
-            if _best_single_err < _fed_err else
-            f"It also beats the single best-case plant-alone model ({_best_single_err:.4f})."
-        )
-        st.write(f"{_avg_line} {_pooled_line} {_best_line}")
-
-        st.subheader("Step 5: the actual point — does federation help on data a plant never saw?")
-        st.caption(
-            "Each plant's OWN single-plant model, evaluated on ANOTHER plant's local operating range (data "
-            "it never trained on, directly or via any physics constraint) — compared to the federated "
-            "model on that same held-out range, which only ever received averaged weights, never that "
-            "plant's raw data either."
-        )
-        _cross_df = pd.DataFrame(_fr["cross_checks"])
-        _cross_df = _cross_df.rename(columns={
-            "single_plant": "Single-plant model", "tested_on_range_of": "Tested on range of",
-            "single_plant_error": "Single-plant error", "federated_error": "Federated error",
-            "federated_wins": "Federated wins",
-        })
-        st.dataframe(_cross_df.round(4), use_container_width=True, hide_index=True)
+        _pg_confirmed = uncertainty.is_confirmed("psa_target_calibration")
+        _pg_lo, _pg_hi = uncertainty.bounds("psa_target_calibration")
         st.write(
-            f"**Federated wins {_fr['federated_wins_fraction'] * 100:.0f}% of these cross-plant checks** — "
-            f"most decisively exactly where it matters most: correcting a single plant's worst blind spots, "
-            f"not just nudging its already-good regions."
+            f"**Current PSA calibration range in use:** [{_pg_lo:.2f}, {_pg_hi:.2f}]× "
+            f"({'CONFIRMED via Confirmation Tracker' if _pg_confirmed else 'default ±15% assumption, unconfirmed'})"
         )
 
-    st.divider()
+        pg_col1, pg_col2, pg_col3 = st.columns(3)
+        with pg_col1:
+            pg_threshold = st.slider(
+                "Guaranteed PSA recovery (≥, %)", 65.0, 80.0, performance_guarantee.DEFAULT_THRESHOLD * 100,
+                step=0.5, key="pg_threshold",
+            ) / 100.0
+        with pg_col2:
+            pg_penalty = st.number_input(
+                "Penalty (€ per percentage-point shortfall)", min_value=0.0,
+                value=performance_guarantee.DEFAULT_PENALTY_EUR_PER_POINT, step=500.0, key="pg_penalty",
+            )
+        with pg_col3:
+            pg_n_runs = st.slider("Monte Carlo runs", 200, 1000, performance_guarantee.DEFAULT_N_RUNS, step=100, key="pg_n_runs")
 
-    # ---------------------------------------------------------------------
-    # Section 20 — Performance guarantee pricing (v1: PSA recovery threshold
-    # guarantee priced from uncertainty.py's real Monte Carlo distribution —
-    # see python/performance_guarantee.py for the full honest-scoping
-    # statement)
-    # ---------------------------------------------------------------------
-    st.header("Performance Guarantee Pricing")
-    st.caption(maturity.caption("performance_guarantee"))
-    st.warning(
-        "**Illustrative pricing framework, not a real actuarial/insurance-grade guarantee.** This "
-        "prices a hypothetical \"we guarantee ≥X% PSA recovery, or pay a penalty\" offer using this "
-        "project's own Monte Carlo uncertainty distribution — real guarantee terms need actual legal "
-        "and financial structuring (credit risk, counterparty terms, measurement/verification protocol, "
-        "force majeure) that doesn't exist here. The penalty rate below is OUR OWN assumed placeholder "
-        "— same honesty pattern as Circularity Scoring's ash/carbon-black market prices — not sourced "
-        "from any real DOK-ING contract or market data.",
-        icon="⚠️",
-    )
-    st.caption(
-        "**What IS real:** breach probability and expected cost are computed directly from "
-        "`uncertainty.py`'s genuine Monte Carlo propagation of the six real unconfirmed design "
-        "assumptions through the real `kinetics.py`/`psa.py` physics — not a guessed number. PSA "
-        "recovery's uncertainty in this model comes entirely from the PSA recovery target calibration "
-        "assumption, so this section is automatically live to whatever the Confirmation Tracker above "
-        "has (or hasn't) confirmed for it."
-    )
+        if st.button("Price this guarantee"):
+            with st.spinner(f"Running {pg_n_runs} samples through the real PSA recovery uncertainty distribution..."):
+                st.session_state["pg_result"] = performance_guarantee.price_guarantee(
+                    pg_threshold, penalty_eur_per_point=pg_penalty, n_runs=pg_n_runs,
+                )
 
-    _pg_confirmed = uncertainty.is_confirmed("psa_target_calibration")
-    _pg_lo, _pg_hi = uncertainty.bounds("psa_target_calibration")
-    st.write(
-        f"**Current PSA calibration range in use:** [{_pg_lo:.2f}, {_pg_hi:.2f}]× "
-        f"({'CONFIRMED via Confirmation Tracker' if _pg_confirmed else 'default ±15% assumption, unconfirmed'})"
-    )
+        if "pg_result" in st.session_state:
+            _pg = st.session_state["pg_result"]
+            pgcol1, pgcol2, pgcol3 = st.columns(3)
+            pgcol1.metric("Breach probability", f"{_pg['breach_probability'] * 100:.1f}%")
+            pgcol2.metric("Expected cost", f"€{_pg['expected_cost']:,.0f}")
+            pgcol3.metric("Expected cost, given breach", f"€{_pg['expected_cost_given_breach']:,.0f}")
 
-    pg_col1, pg_col2, pg_col3 = st.columns(3)
-    with pg_col1:
-        pg_threshold = st.slider(
-            "Guaranteed PSA recovery (≥, %)", 65.0, 80.0, performance_guarantee.DEFAULT_THRESHOLD * 100,
-            step=0.5, key="pg_threshold",
-        ) / 100.0
-    with pg_col2:
-        pg_penalty = st.number_input(
-            "Penalty (€ per percentage-point shortfall)", min_value=0.0,
-            value=performance_guarantee.DEFAULT_PENALTY_EUR_PER_POINT, step=500.0, key="pg_penalty",
-        )
-    with pg_col3:
-        pg_n_runs = st.slider("Monte Carlo runs", 200, 1000, performance_guarantee.DEFAULT_N_RUNS, step=100, key="pg_n_runs")
-
-    if st.button("Price this guarantee"):
-        with st.spinner(f"Running {pg_n_runs} samples through the real PSA recovery uncertainty distribution..."):
-            st.session_state["pg_result"] = performance_guarantee.price_guarantee(
-                pg_threshold, penalty_eur_per_point=pg_penalty, n_runs=pg_n_runs,
+            st.caption(
+                f"From {_pg['n_samples']} Monte Carlo samples: mean recovery {_pg['mean_recovery'] * 100:.1f}%, "
+                f"90% CI [{_pg['p5_recovery'] * 100:.1f}%, {_pg['p95_recovery'] * 100:.1f}%]. Given a breach, the "
+                f"average shortfall is {_pg['mean_shortfall_points_given_breach']:.2f} percentage points."
             )
 
-    if "pg_result" in st.session_state:
-        _pg = st.session_state["pg_result"]
-        pgcol1, pgcol2, pgcol3 = st.columns(3)
-        pgcol1.metric("Breach probability", f"{_pg['breach_probability'] * 100:.1f}%")
-        pgcol2.metric("Expected cost", f"€{_pg['expected_cost']:,.0f}")
-        pgcol3.metric("Expected cost, given breach", f"€{_pg['expected_cost_given_breach']:,.0f}")
+            _pg_df = pd.DataFrame({
+                "recovery_pct": _pg["samples"] * 100,
+                "Result": np.where(_pg["breach_mask"], "Breaches guarantee", "Meets guarantee"),
+            })
+            _pg_hist = alt.Chart(_pg_df).mark_bar().encode(
+                x=alt.X("recovery_pct:Q", bin=alt.Bin(maxbins=40), title="PSA recovery (%)"),
+                y=alt.Y("count():Q", title="Monte Carlo samples"),
+                color=alt.Color("Result:N", scale=alt.Scale(
+                    domain=["Meets guarantee", "Breaches guarantee"], range=["#4C78A8", "#E45756"],
+                )),
+            ).properties(height=260)
+            _pg_rule = alt.Chart(pd.DataFrame({"x": [pg_threshold * 100]})).mark_rule(
+                color="black", strokeDash=[4, 4], size=2,
+            ).encode(x="x:Q")
+            st.altair_chart(_pg_hist + _pg_rule, use_container_width=True)
+            st.caption("Dashed line: the guaranteed threshold. Red bars: samples that would breach it.")
 
+        st.divider()
+
+    with tab_sim:
+        # ---------------------------------------------------------------------
+        # Section 21 — Topological data analysis (v1: multi-sensor coordinated-
+        # anomaly detection on a synthetic time series — see
+        # python/time_series_sim.py and python/tda_analysis.py for the full
+        # honest-scoping statements)
+        # ---------------------------------------------------------------------
+        st.header("Topological Data Analysis")
+        st.caption(maturity.caption("tda_analysis"))
+        st.warning(
+            "**First-pass illustrative pipeline on synthetic data — not validated against real plant "
+            "sensor data.** The underlying time series is a steady-state physics chain (`kinetics.py`/"
+            "`psa.py`) evaluated repeatedly at evolving operating conditions, explicitly NOT real process "
+            "dynamics — this repo has zero time-domain modeling elsewhere (the Novelty Audit above already "
+            "flags zero Dynamics coverage), and this module doesn't quietly try to close that gap.",
+            icon="⚠️",
+        )
         st.caption(
-            f"From {_pg['n_samples']} Monte Carlo samples: mean recovery {_pg['mean_recovery'] * 100:.1f}%, "
-            f"90% CI [{_pg['p5_recovery'] * 100:.1f}%, {_pg['p95_recovery'] * 100:.1f}%]. Given a breach, the "
-            f"average shortfall is {_pg['mean_shortfall_points_given_breach']:.2f} percentage points."
+            f"**Dependency decision:** none of ripser / giotto-tda / persim / gudhi are installed "
+            f"(checked directly at import time — real-library available: "
+            f"`{tda_analysis.TDA_LIBRARY_AVAILABLE}`), and adding one is a real build/size risk on "
+            "Streamlit Community Cloud's free tier (most ship native C++/Cython extensions). Instead this "
+            "uses the lighter, still-genuinely-topological alternative: exact 0-dimensional persistent "
+            "homology via the well-known single-linkage/minimum-spanning-tree equivalence (scipy only, no "
+            "new dependency) — real H0 persistence, not H1/loops, which a real library would be needed for."
         )
-
-        _pg_df = pd.DataFrame({
-            "recovery_pct": _pg["samples"] * 100,
-            "Result": np.where(_pg["breach_mask"], "Breaches guarantee", "Meets guarantee"),
-        })
-        _pg_hist = alt.Chart(_pg_df).mark_bar().encode(
-            x=alt.X("recovery_pct:Q", bin=alt.Bin(maxbins=40), title="PSA recovery (%)"),
-            y=alt.Y("count():Q", title="Monte Carlo samples"),
-            color=alt.Color("Result:N", scale=alt.Scale(
-                domain=["Meets guarantee", "Breaches guarantee"], range=["#4C78A8", "#E45756"],
-            )),
-        ).properties(height=260)
-        _pg_rule = alt.Chart(pd.DataFrame({"x": [pg_threshold * 100]})).mark_rule(
-            color="black", strokeDash=[4, 4], size=2,
-        ).encode(x="x:Q")
-        st.altair_chart(_pg_hist + _pg_rule, use_container_width=True)
-        st.caption("Dashed line: the guaranteed threshold. Red bars: samples that would breach it.")
-
-    st.divider()
-
-    # ---------------------------------------------------------------------
-    # Section 21 — Topological data analysis (v1: multi-sensor coordinated-
-    # anomaly detection on a synthetic time series — see
-    # python/time_series_sim.py and python/tda_analysis.py for the full
-    # honest-scoping statements)
-    # ---------------------------------------------------------------------
-    st.header("Topological Data Analysis")
-    st.caption(maturity.caption("tda_analysis"))
-    st.warning(
-        "**First-pass illustrative pipeline on synthetic data — not validated against real plant "
-        "sensor data.** The underlying time series is a steady-state physics chain (`kinetics.py`/"
-        "`psa.py`) evaluated repeatedly at evolving operating conditions, explicitly NOT real process "
-        "dynamics — this repo has zero time-domain modeling elsewhere (the Novelty Audit above already "
-        "flags zero Dynamics coverage), and this module doesn't quietly try to close that gap.",
-        icon="⚠️",
-    )
-    st.caption(
-        f"**Dependency decision:** none of ripser / giotto-tda / persim / gudhi are installed "
-        f"(checked directly at import time — real-library available: "
-        f"`{tda_analysis.TDA_LIBRARY_AVAILABLE}`), and adding one is a real build/size risk on "
-        "Streamlit Community Cloud's free tier (most ship native C++/Cython extensions). Instead this "
-        "uses the lighter, still-genuinely-topological alternative: exact 0-dimensional persistent "
-        "homology via the well-known single-linkage/minimum-spanning-tree equivalence (scipy only, no "
-        "new dependency) — real H0 persistence, not H1/loops, which a real library would be needed for."
-    )
-    st.caption(
-        "**The test case:** a simulated startup ramp into steady operation, then a period where "
-        "several sensors shift slightly together — each individually too small to trip its own "
-        "threshold — then recovery. The topological score compares a sliding window's multi-sensor "
-        "shape against a reference cloud of known-normal operation; a naive per-sensor rolling-"
-        "deviation monitor is the comparison baseline."
-    )
-
-    if st.button("Run time-series simulation + TDA analysis"):
-        with st.spinner("Simulating the plant trajectory (predictive-maintenance root-finding is the "
-                         "slow part) and computing the topological score — can take a minute or more..."):
-            _tda_result = tda_analysis.run_tda()
-            st.session_state["tda_result"] = _tda_result
-            st.session_state["tda_comparison"] = tda_analysis.compare_to_naive_baseline(_tda_result)
-
-    if "tda_result" in st.session_state:
-        _tr = st.session_state["tda_result"]
-        _tc = st.session_state["tda_comparison"]
-        _td = _tr["data"]
-
-        st.subheader("Step 5: does TDA catch what per-sensor thresholds miss?")
-        tdacol1, tdacol2, tdacol3, tdacol4 = st.columns(4)
-        tdacol1.metric("TDA detection (in anomaly)", f"{_tc['tda_detection_rate_in_anomaly'] * 100:.0f}%")
-        tdacol2.metric("TDA false-positive rate", f"{_tc['tda_false_positive_rate_in_normal'] * 100:.0f}%")
-        tdacol3.metric("Naive detection (in anomaly)", f"{_tc['naive_detection_rate_in_anomaly'] * 100:.0f}%")
-        tdacol4.metric("Naive false-positive rate", f"{_tc['naive_false_positive_rate_in_normal'] * 100:.0f}%")
-        st.write(tda_analysis.summarize_comparison(_tc))
-
-        _anomaly_t = _td["t"][_td["is_anomaly"]]
-        _span_df = pd.DataFrame({"t_start": [int(_anomaly_t.min())], "t_end": [int(_anomaly_t.max()) + 1]})
-        _band = alt.Chart(_span_df).mark_rect(opacity=0.15, color="#E45756").encode(x="t_start:Q", x2="t_end:Q")
-
-        st.subheader("The multi-sensor time series (each shift individually subtle)")
-        st.caption(maturity.caption("time_series_sim"))
-        _sensor_df = pd.concat([
-            pd.DataFrame({"t": _td["t"], "value": _td["hts"] * 100, "Sensor": "HTS conversion (%)"}),
-            pd.DataFrame({"t": _td["t"], "value": _td["lts"] * 100, "Sensor": "LTS conversion (%)"}),
-            pd.DataFrame({"t": _td["t"], "value": _td["psa_recovery"] * 100, "Sensor": "PSA recovery (%)"}),
-            pd.DataFrame({"t": _td["t"], "value": _td["activity_factor"] * 100, "Sensor": "Activity factor (%)"}),
-        ], ignore_index=True)
-        _sensor_lines = alt.Chart(_sensor_df).mark_line(size=1.5).encode(
-            x=alt.X("t:Q", title="Timestep"), y=alt.Y("value:Q", title="Value (%)", scale=alt.Scale(zero=False)),
-            color=alt.Color("Sensor:N", title=None),
-        )
-        st.altair_chart((_band + _sensor_lines).properties(height=280), use_container_width=True)
-        st.caption("Red band: the coordinated-anomaly period. Notice no single line makes an obvious jump there.")
-
-        st.subheader("Topological anomaly score over time")
-        _score_df = pd.DataFrame({"t": _td["t"], "score": _tr["score"]}).dropna()
-        _score_line = alt.Chart(_score_df).mark_line(color="#4C78A8", size=1.5).encode(
-            x=alt.X("t:Q", title="Timestep"), y=alt.Y("score:Q", title="Topological anomaly score"),
-        )
-        _threshold_rule = alt.Chart(pd.DataFrame({"y": [_tc["score_threshold"]]})).mark_rule(
-            color="black", strokeDash=[4, 4],
-        ).encode(y="y:Q")
-        st.altair_chart((_band + _score_line + _threshold_rule).properties(height=280), use_container_width=True)
         st.caption(
-            "Dashed line: the flagging threshold (95th percentile of scores during known-normal "
-            "operation). Red band: the coordinated-anomaly period — a real detection shows the blue "
-            "line rising above the dashed line inside the red band."
+            "**The test case:** a simulated startup ramp into steady operation, then a period where "
+            "several sensors shift slightly together — each individually too small to trip its own "
+            "threshold — then recovery. The topological score compares a sliding window's multi-sensor "
+            "shape against a reference cloud of known-normal operation; a naive per-sensor rolling-"
+            "deviation monitor is the comparison baseline."
         )
+
+        if st.button("Run time-series simulation + TDA analysis"):
+            with st.spinner("Simulating the plant trajectory (predictive-maintenance root-finding is the "
+                             "slow part) and computing the topological score — can take a minute or more..."):
+                _tda_result = tda_analysis.run_tda()
+                st.session_state["tda_result"] = _tda_result
+                st.session_state["tda_comparison"] = tda_analysis.compare_to_naive_baseline(_tda_result)
+
+        if "tda_result" in st.session_state:
+            _tr = st.session_state["tda_result"]
+            _tc = st.session_state["tda_comparison"]
+            _td = _tr["data"]
+
+            st.subheader("Step 5: does TDA catch what per-sensor thresholds miss?")
+            tdacol1, tdacol2, tdacol3, tdacol4 = st.columns(4)
+            tdacol1.metric("TDA detection (in anomaly)", f"{_tc['tda_detection_rate_in_anomaly'] * 100:.0f}%")
+            tdacol2.metric("TDA false-positive rate", f"{_tc['tda_false_positive_rate_in_normal'] * 100:.0f}%")
+            tdacol3.metric("Naive detection (in anomaly)", f"{_tc['naive_detection_rate_in_anomaly'] * 100:.0f}%")
+            tdacol4.metric("Naive false-positive rate", f"{_tc['naive_false_positive_rate_in_normal'] * 100:.0f}%")
+            st.write(tda_analysis.summarize_comparison(_tc))
+
+            _anomaly_t = _td["t"][_td["is_anomaly"]]
+            _span_df = pd.DataFrame({"t_start": [int(_anomaly_t.min())], "t_end": [int(_anomaly_t.max()) + 1]})
+            _band = alt.Chart(_span_df).mark_rect(opacity=0.15, color="#E45756").encode(x="t_start:Q", x2="t_end:Q")
+
+            st.subheader("The multi-sensor time series (each shift individually subtle)")
+            st.caption(maturity.caption("time_series_sim"))
+            _sensor_df = pd.concat([
+                pd.DataFrame({"t": _td["t"], "value": _td["hts"] * 100, "Sensor": "HTS conversion (%)"}),
+                pd.DataFrame({"t": _td["t"], "value": _td["lts"] * 100, "Sensor": "LTS conversion (%)"}),
+                pd.DataFrame({"t": _td["t"], "value": _td["psa_recovery"] * 100, "Sensor": "PSA recovery (%)"}),
+                pd.DataFrame({"t": _td["t"], "value": _td["activity_factor"] * 100, "Sensor": "Activity factor (%)"}),
+            ], ignore_index=True)
+            _sensor_lines = alt.Chart(_sensor_df).mark_line(size=1.5).encode(
+                x=alt.X("t:Q", title="Timestep"), y=alt.Y("value:Q", title="Value (%)", scale=alt.Scale(zero=False)),
+                color=alt.Color("Sensor:N", title=None),
+            )
+            st.altair_chart((_band + _sensor_lines).properties(height=280), use_container_width=True)
+            st.caption("Red band: the coordinated-anomaly period. Notice no single line makes an obvious jump there.")
+
+            st.subheader("Topological anomaly score over time")
+            _score_df = pd.DataFrame({"t": _td["t"], "score": _tr["score"]}).dropna()
+            _score_line = alt.Chart(_score_df).mark_line(color="#4C78A8", size=1.5).encode(
+                x=alt.X("t:Q", title="Timestep"), y=alt.Y("score:Q", title="Topological anomaly score"),
+            )
+            _threshold_rule = alt.Chart(pd.DataFrame({"y": [_tc["score_threshold"]]})).mark_rule(
+                color="black", strokeDash=[4, 4],
+            ).encode(y="y:Q")
+            st.altair_chart((_band + _score_line + _threshold_rule).properties(height=280), use_container_width=True)
+            st.caption(
+                "Dashed line: the flagging threshold (95th percentile of scores during known-normal "
+                "operation). Red band: the coordinated-anomaly period — a real detection shows the blue "
+                "line rising above the dashed line inside the red band."
+            )
 
     st.divider()
 
@@ -11302,7 +11336,8 @@ with tab12:
 
 # Tab 11 -- a throw-away what-if simulation (python/ui_transient_tab.py). It never reads or writes the plant state published by the
 # hourly runtime and touches no database; a failure here must not take the other tabs down.
-with tab11:
+with tab_sim:
+    st.divider()
     try:
         from python import ui_transient_tab
         ui_transient_tab.render()
