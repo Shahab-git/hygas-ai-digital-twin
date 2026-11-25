@@ -36,7 +36,7 @@ def test_the_app_runs_the_trace_on_the_button_only():
             mock.patch("urllib.request.urlopen", side_effect=smoke._offline_urlopen):
         at = AppTest.from_file(smoke.APP, default_timeout=120).run()
         assert not at.exception and "_summary_trace" not in at.session_state
-        btn = [b for b in at.tabs[0].button if b.label == "Run 30-cycle trace"]
+        btn = [b for b in at.tabs[-1].button if b.label == "Run 30-cycle trace"]
         assert len(btn) == 1
         btn[0].click().run()
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
