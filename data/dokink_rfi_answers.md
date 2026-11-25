@@ -67,3 +67,25 @@ via `set_confirmed()`.
 17. **Budget.** No fixed capital cost goal or limit — the modular,
     factory-assembled design is inherently intended to minimize cost
     versus traditional large-scale plants.
+
+---
+
+# RFI 2 — short-form replies (received 2026-11-25)
+
+DOK-ING's replies to the 10-question short form (`RFI2_short_form_DOK-ING-2.docx`), recorded verbatim. Appended at the end so the line
+numbers cited above do not move. Only what is written here is DOK-ING-stated. Where the reply does not say something (basis of the
+moisture, whether the char share includes ash, the syngas composition), the twin's value stays Assumed. The switchable basis built from these
+replies is `python/rfi2_basis.py`; the default model is not changed by them.
+
+1. **Gasifying agent.** During operation, waste feed is the only feed to the reactor. No gasifying agent is added. Nitrogen is used for
+   inerting the reactor before waste feeding begins.
+2. **Oxygen supply.** No air separation unit is used to supply oxygen to the reactor. Nitrogen is used for inerting before feeding begins.
+3. **Carrier loop.** There is no oxygen carrier loop or separate air reactor. The tubular reactor is heated externally by electric heaters.
+4. **Air and steam flows.** No air or steam is added to reactor. The corresponding inlet flows are 0 Nm³/h for air and 0 kg/h for injected steam.
+5. **Feed basis.** Feed of up to 15% moisture can be used and the feed is not dried.
+6. **External energy.** Around 100 kW of electrical energy is used for heating and propulsion of the facility.
+7. **PSA recovery.** DOK-ING facility does not yet separate hydrogen from the syngas using PSA.
+8. **Carbon black or char.** 40 to 50% of the 41.67 kg/h feed is expected as carbon black / char.
+9. **Ash and tar.** Ash is separated at the reactor exit and pulled out with spindle in the separate container.
+10. **Preheat temperatures.** Preheat temperatures do not apply because neither stream is supplied to the reactor. Feed with a moisture
+    content of up to 15% can be fed directly into the reactor without preheating.

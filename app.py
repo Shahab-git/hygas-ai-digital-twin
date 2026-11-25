@@ -527,6 +527,8 @@ with tab_sim:
     try:
         from python import ui_simulation_tab
         with sim_plant:
+            ui_simulation_tab.render_rfi2_comparison()
+            st.divider()
             ui_simulation_tab.render()
         for _sec_name in _sim_sections.SECTIONS:
             with _sim_sub[_sec_name]:

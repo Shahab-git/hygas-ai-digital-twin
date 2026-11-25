@@ -217,3 +217,36 @@ def render_section(section, runner=None):
                 col.metric(label, "n/a" if v is None else f"{v:.4g}")
         except Exception as exc:
             st.warning(f"Baseline unavailable: {type(exc).__name__}")
+
+
+def render_rfi2_comparison():
+    """Plant-wide: the model basis next to the DOK-ING RFI2 basis (python/rfi2_basis.py). Button-triggered; nothing is written."""
+    from . import rfi2_basis as rb
+    st.subheader("Model basis vs DOK-ING RFI2 basis")
+    st.caption("SIMULATED. Left: today's default model (air at ER 0.25, feed dried, char about 2 kg/h). Right: DOK-ING's replies (RFI 2, 2026-11-25) "
+               "applied as a what-if: no air or steam, no carrier loop, feed not dried, 40 to 50 % of the feed leaves as char. The char share is the "
+               "number that decides the result, and DOK-ING gave only the range. The engine has no pyrolysis or tar chemistry: this is an "
+               "equilibrium estimate with a carbon-conversion cap, not a pyrolysis-gas prediction. External electric heat is not modelled.")
+    c1, c2 = st.columns(2)
+    char = c1.slider("Char share of the as-received feed", rb.CHAR_FRACTION_RANGE[0], rb.CHAR_FRACTION_RANGE[1], rb.CHAR_FRACTION_DEFAULT, 0.01,
+                     key="_rfi2_char")
+    moist = c2.slider("Feed moisture (Assumed)", rb.MOISTURE_RANGE[0], rb.MOISTURE_RANGE[1], rb.MOISTURE_DEFAULT, 0.01, key="_rfi2_moist")
+    if char >= 0.495:
+        st.warning("At 50 % the char holds nearly all the carbon, so almost no gas carbon is left: the gas is a few Nm3/h and its composition "
+                   "(inert N2 from the feed) is not meaningful.")
+    if st.button("Compare the two bases", key="_rfi2_run"):
+        with st.spinner("Running the engine twice (10 cycles each)..."):
+            try:
+                st.session_state["_rfi2_cmp"] = {"char": char, "moist": moist, "res": rb.compare(10, char, moist)}
+            except Exception as exc:
+                st.warning(f"Comparison failed: {type(exc).__name__}")
+    saved = st.session_state.get("_rfi2_cmp")
+    if saved:
+        res = saved["res"]
+        rows = []
+        for k in res["model"]:
+            a, b = res["model"][k], res["rfi2"][k]
+            rows.append({"quantity": k, "model basis": "n/a" if a is None else f"{a:.4g}", "RFI2 basis": "n/a" if b is None else f"{b:.4g}",
+                         "change": "" if a is None or b is None else f"{b - a:+.4g}"})
+        st.caption(f"Shown for char {saved['char']:.0%}, moisture {saved['moist']:.0%}. Press the button again after moving a slider.")
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
