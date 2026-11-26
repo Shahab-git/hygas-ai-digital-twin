@@ -832,6 +832,9 @@ with tab1:
             "math are correct, since DOK-ING hasn't confirmed them yet.",
             icon="⚠️",
         )
+        st.caption("DOK-ING RFI2 (2026-11-25): the real plant adds no air or steam, so the steam-to-feed and air-ratio ranges here belong to the earlier air-blown basis. "
+                   "This module is unchanged on purpose: the largest remaining uncertainty on DOK-ING's basis is the char share (40 to 50 % of the feed), "
+                   "which it does not sample; see the Simulation tab, Plant-wide, for that sensitivity.")
 
         with st.expander("Assumption ranges used (point value ± 15% — our own assumed default, not DOK-ING-sourced)"):
             st.table({

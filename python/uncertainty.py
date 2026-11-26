@@ -242,3 +242,8 @@ if __name__ == "__main__":
         s = summarize(results[key])
         print(f"{key}: mean={s['mean']*100:.1f}%  90% CI=[{s['p5']*100:.1f}%, {s['p95']*100:.1f}%]  "
               f"(point-value target: {target*100:.1f}%)")
+
+
+# NOTE (2026-11-26, DOK-ING RFI2): the engine default is now no gasifying agent, so the steam-to-feed and air equivalence ratio ranges above
+# describe the earlier air-blown basis. Left unchanged on purpose (results are pinned and nothing new is known about these ranges); the
+# uncertainty that dominates on DOK-ING's basis is the char share (40-50 % of the feed, Assumed 45 %), not sampled here. See python/rfi2_basis.py.
