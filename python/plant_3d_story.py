@@ -28,6 +28,20 @@ def _f(v, fmt="%.1f", unit=""):
     return "n/a" if v is None else (fmt % float(v)) + unit
 
 
+def _heat_duty_line(snapshot):
+    """Read-only: the gasifier heat duty the energy-balance report implies (Calculated, not part of the engine), against DOK-ING's ~100 kW electric envelope."""
+    eb = snapshot.get(("GA-001", "EnergyBalance"))
+    try:
+        cases = eb["value"]["cases"]
+        lo = cases["DOK-ING low (Confirmed range end)"]["implied_gasifier_heat_duty_kw"]
+        mid = cases["DOK-ING midpoint (Assumed point)"]["implied_gasifier_heat_duty_kw"]
+        hi = cases["DOK-ING high (Confirmed range end)"]["implied_gasifier_heat_duty_kw"]
+    except (TypeError, KeyError):
+        return "The implied gasifier heat duty could not be read this cycle."
+    return (f"Implied gasifier heat duty (energy-balance report, Calculated, excludes heat losses and tar): about {mid:.0f} kW at the 17.5 MJ/kg midpoint, "
+            f"{min(lo, hi):.0f} to {max(lo, hi):.0f} kW over DOK-ING's 15 to 20 MJ/kg range; DOK-ING's 100 kW electric covers heating and propulsion together, so it is not split here.")
+
+
 def story_data(snapshot):
     """Pure function of a snapshot. Returns {"tour": [...], "findings": [...]} as plain JSON-able data."""
     sm = summary_tab.summary_data(snapshot)
@@ -57,7 +71,7 @@ def story_data(snapshot):
         {"key": "utilities", "title": "5 · Electrical and utilities", "group": "EU", "focus": ["EU-008"], "status": "Calculated",
          "lines": [(f"Cooling demand in the model: about {cool['demand_kw']:.0f} kW; the registry lists a {cool['rating_kw']:.0f} kW cooling tower."
                     if cool else "Cooling demand could not be read this cycle."),
-                   "The model has no heat-integration equipment: heat terms are an inventory, not a design. DOK-ING (RFI2) states about 100 kW electric for heating and propulsion; the model has no electric heating term (Missing)."]},
+                   "The model has no heat-integration equipment: heat terms are an inventory, not a design. DOK-ING (RFI2) states about 100 kW electric for heating and propulsion; the model has no electric heating term (Missing).", _heat_duty_line(snapshot)]},
         {"key": "control", "title": "6 · Sensors and automation", "group": "SA", "focus": [], "status": "Simulated",
          "lines": ["No physical sensors exist yet: sensor and AI items show model values, labelled simulated.",
                    "Nothing here is trained on or validated against plant data."]},
