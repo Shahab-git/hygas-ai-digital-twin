@@ -408,7 +408,7 @@ def _render_plant_operations_header():
     if not src_info["reachable"] and _LOCAL_DEMO:
         sim_status = "LOCAL DEMO"
         cycle_str = "—"
-        update_str = "no database in this copy; the model runs here (Summary: Live simulation)"
+        update_str = "no database in this copy; the model runs here (Simulation: Plant-wide, Live simulation)"
     elif not src_info["reachable"]:
         sim_status = "OFFLINE"
         cycle_str = "—"
@@ -507,8 +507,8 @@ def _render_simulated_banner():
 
 _render_simulated_banner()
 
-tab0, tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab_sim = st.tabs(
-    ["Summary", "Digital Twin", "Plant Overview", "3D Plant", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
+tab1, tab2, tab12, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab_sim = st.tabs(
+    ["Digital Twin", "Plant Overview", "3D Plant", "Feed Handling", "Gasification", "Gas Cleaning", "Sensors & Analysers",
      "Hydrogen & BoP", "Electrical & Utilities", "Automation & Instrumentation", "Design Basis", "Simulation"]
 )
 
@@ -545,38 +545,15 @@ with tab_sim:
         st.error(f"The device picker could not be displayed ({type(_simdev_exc).__name__}).")
     st.divider()
 
-with tab0:
-    # P2-1: partner front page. Every number is read from the same snapshot the other tabs use
-    # (python/summary_tab.py); nothing here is a typed result.
-    st.title("HYGAS-AI — Summary")
-    st.caption("MSW-to-hydrogen plant, 1 tonne/day, DOK-ING (NACHIP pilot). Model results (see the banner above for how many values are Measured).")
-    try:
-        _sm = summary_tab.summary_data(_tab1_integration_snapshot())
-    except Exception as _exc:
-        _sm = None
-        st.warning(f"Summary unavailable: {type(_exc).__name__}")
-    if _sm:
-        _c1, _c2, _c3, _c4 = st.columns(4)
-        _c1.metric("Hydrogen (model)", "n/a" if _sm["h2_kg_day"] is None else f"{_sm['h2_kg_day']:.1f} kg/day")
-        _c2.metric("DOK-ING stated (plastic feed)", f"~{_sm['h2_reference_kg_day']:.0f} kg/day")
-        _c3.metric("PSA recovery (model)", "n/a" if _sm["psa_recovery"] is None else f"{100 * float(_sm['psa_recovery']):.1f} %")
-        _c4.metric("Clean syngas (model)", "n/a" if _sm["syngas_nm3_h"] is None else f"{float(_sm['syngas_nm3_h']):.0f} Nm3/h")
-        st.caption("The DOK-ING figure is for standard high-calorific plastic (RFI answer 6), not this model's MSW feed. "
-                   "The model figure follows the Assumed tail-gas mode shown in Digital Twin.")
-        st.subheader("Evidence behind the published values")
-        _e = st.columns(5)
-        for _col, _name in zip(_e, summary_tab.STATUSES):
-            _col.metric(_name, _sm["counts"].get(_name, 0))
-        st.caption(f"{_sm['total']} published values. Measured means a plant measurement"
-                   + ("; none exists yet." if _sm["counts"].get("Measured", 0) == 0 else "."))
-        st.subheader("Design finding of the model")
-        if _sm["cooling"]:
-            _cl = _sm["cooling"]
-            st.markdown(f"Modelled cooling demand is **{_cl['demand_kw']:.0f} kW** against a **{_cl['rating_kw']:.0f} kW** "
-                        "cooling-tower rating (EU-008, rating Unverified). Overall simulated plant state: "
-                        f"**{_status_label(_sm['overall_status'])}**. Please confirm the installed cooling capacity.")
-        else:
-            st.caption("Cooling demand or rating unavailable this cycle.")
+# The former Summary tab is removed (owner request 2026-11-26). Its model trace and live run stay in Simulation > Plant-wide;
+# the front-page text (metrics, evidence counts, design finding, open items) is no longer shown. summary_tab.py still feeds them.
+try:
+    _sm = summary_tab.summary_data(_tab1_integration_snapshot())
+except Exception as _exc:
+    _sm = None
+    with sim_plant:
+        st.warning(f"Trace and live run unavailable: {type(_exc).__name__}")
+if _sm:
         with sim_plant:
             st.subheader("Model trace (simulated)")
             st.caption("The engine run cycle by cycle from a cold start, with an optional feed-rate step. The x axis is the model "
@@ -662,10 +639,6 @@ with tab0:
                 st.fragment(_live_body, run_every=live_runner.DEFAULT_SECONDS_PER_CYCLE)()
             else:
                 st.fragment(_live_body)()
-        st.caption("The model trace (30 cycles, optional feed step) and the live run are in the Simulation tab (last tab).")
-        st.subheader("Open with DOK-ING")
-        for _item in _sm["open_items"]:
-            st.markdown(f"- {_item}")
 
 
 with tab1:
@@ -712,7 +685,7 @@ with tab1:
         st.info(
             "**Standalone design calculators, not the live plant.** The sliders below call `kinetics.py`, `psa.py` and the CHP "
             "dispatch directly. At their default positions they reproduce the earlier design targets (HTS 75.0 %, LTS 40.0 %, "
-            "overall WGS 85.0 %, PSA 75.0 %). The values the live engine publishes each cycle are on the Summary and "
+            "overall WGS 85.0 %, PSA 75.0 %). The values the live engine publishes each cycle are on the Digital Twin and "
             "Hydrogen & BoP tabs and differ from these targets. Simulated; no plant data.",
             icon="ℹ️",
         )
