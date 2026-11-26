@@ -223,8 +223,8 @@ def render_rfi2_comparison():
     """Plant-wide: the model basis next to the DOK-ING RFI2 basis (python/rfi2_basis.py). Button-triggered; nothing is written."""
     from . import rfi2_basis as rb
     st.subheader("Model basis vs DOK-ING RFI2 basis")
-    st.caption("SIMULATED. Left: today's default model (air at ER 0.25, feed dried, char about 2 kg/h). Right: DOK-ING's replies (RFI 2, 2026-11-25) "
-               "applied as a what-if: no air or steam, no carrier loop, feed not dried, 40 to 50 % of the feed leaves as char. The char share is the "
+    st.caption("SIMULATED. Left: the earlier air-blown model (air at ER 0.25, feed dried, char about 2 kg/h). Right: DOK-ING's replies (RFI 2, 2026-11-25), "
+               "now the default basis: no air or steam, no carrier loop, feed not dried, 40 to 50 % of the feed leaves as char. The char share is the "
                "number that decides the result, and DOK-ING gave only the range. The engine has no pyrolysis or tar chemistry: this is an "
                "equilibrium estimate with a carbon-conversion cap, not a pyrolysis-gas prediction. External electric heat is not modelled.")
     c1, c2 = st.columns(2)
