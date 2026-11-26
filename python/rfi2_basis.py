@@ -137,3 +137,12 @@ def kpis(snap):
 def compare(n_cycles=10, char_fraction=CHAR_FRACTION_DEFAULT, moisture=MOISTURE_DEFAULT):
     """{'model': kpis, 'rfi2': kpis} of the two bases."""
     return {"model": kpis(run("model", n_cycles)), "rfi2": kpis(run("rfi2", n_cycles, char_fraction, moisture))}
+
+
+# Items DOK-ING's RFI2 replies make not applicable (display labels only; the registry and the engine keys are unchanged). Assumed project reading.
+NOT_APPLICABLE_RFI2 = {
+    "FE-005": "the feed is not dried (RFI2 #5), so this model evaporates nothing",
+    "GA-003": "no air or steam is added to the reactor (RFI2 #1, #4)",
+    "GA-004": "no injected air or steam, so no injection temperature or preheat (RFI2 #4, #10)",
+}
+NOT_APPLICABLE_LABEL = "Not applicable per DOK-ING RFI2"

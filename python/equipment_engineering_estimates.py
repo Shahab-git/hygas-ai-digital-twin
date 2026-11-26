@@ -2876,3 +2876,38 @@ if __name__ == "__main__":
 # (touch: force fresh Streamlit Cloud rebuild after adding AI-001..AI-015 estimates, 2026-08-31 --
 #  live app was confirmed serving a stale pre-9cfc4e9 import, showing AI at 0 Engineering Estimate
 #  instead of the actual 2; this commit forces a fresh rebuild)
+
+
+# DOK-ING RFI2 (2026-11-26): when the engine default is the RFI2 basis, the remarks of the fills whose air-basis wording would now be wrong are
+# adjusted. Values already follow the default (the carbon black comes from circularity.derived_carbon_black_kg_h()). Appended at the end so line
+# numbers stay put; on the earlier air basis (GASIFYING_AGENT_DEFAULT == AIR_AGENT, used by the legacy test fixture) nothing changes.
+def _apply_rfi2_remarks():
+    from . import ga001_gasifier_model as _ga
+    if _ga.GASIFYING_AGENT_DEFAULT == _ga.AIR_AGENT:
+        return
+
+    def row(item, section):
+        return ESTIMATE_FILLS[item][section][0]
+    r = row("GA-008", "Inputs")
+    r["remarks"] = (
+        f"DOK-ING RFI2 basis (2026-11-25 replies): the reactor adds no gasifying agent and 40 to 50 % of the 41.67 kg/h feed leaves as char/carbon black; the model takes 45 % "
+        f"(Assumed midpoint), i.e. 18.75 kg/h of char of which 3.75 kg/h is ash, leaving the live engine's DERIVED carbon black ((GA-001, CarbonAccounting), Calculated "
+        f"from the Assumed char share): {_GA_CARBON_BLACK_KG_H:.4f} kg/h, carried here as its converged fraction (0.40) of the 37.503 kg/h dry solids via "
+        f"circularity.derived_carbon_black_kg_h(). This is about 8 times this item's OWN registry remark ('~1.88 kg/h nominal') and 5 times its registry capacity of 3 kg/h, "
+        f"which are air-basis figures; DOK-ING did not say whether its char share includes ash. At 40 % and 50 % char the figure is about 12.9 and 17.1 kg/h. "
+        f"It is not the feedstock elemental carbon (RFI #2 'Carbon >45%'), a different metric."
+    )
+    r = row("GA-010", "Inputs")
+    r["remarks"] = (
+        f"GA-008's OWN confirmed Performance Indicator ('Collection efficiency = >95%') applied to the carbon-black generation rate of the DOK-ING RFI2 basis "
+        f"({_GA_CARBON_BLACK_KG_H:.4f} kg/h, Assumed 45 % char share, same figure as GA-008's estimated Inputs): GA-010 receives what GA-008 RECOVERS, not 100 %. "
+        f"The silo and packaging of this item are listed in the RFI2 impact table as sized for the earlier ~2 kg/h class."
+    )
+    for item, section in (("GA-006", "Outputs"),):
+        row(item, section)["remarks"] += (" DOK-ING RFI2: the char leaving the reactor (40 to 50 % of the feed, about 17 to 21 kg/h) is far above this ash-only "
+                                          "figure; this fill covers the ash stream only and does not size the conveyor for the char.")
+    row("FE-005", "Performance Indicators")["remarks"] += (" DOK-ING RFI2 (2026-11-25): the feed is not dried (up to 15 % moisture), so this dryer duty "
+                                                           "is not applicable on DOK-ING's basis; the range is kept for the earlier design only.")
+
+
+_apply_rfi2_remarks()

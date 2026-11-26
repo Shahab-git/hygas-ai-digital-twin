@@ -66,6 +66,11 @@ GAP_M = 0.7
 ROW_PITCH_M = 4.8
 
 
+def _rfi2():
+    from . import rfi2_basis
+    return rfi2_basis
+
+
 def registry_names():
     with open(os.path.join(ROOT, "data", "equipment_registry.json"), encoding="utf-8") as fh:
         reg = json.load(fh)
@@ -99,8 +104,10 @@ def scene_items(item_states, names=None):
         total = sum(s[2] for s in sized) + GAP_M * max(len(sized) - 1, 0)
         x = -total / 2.0
         for it, shape, w, h, d, basis, note in sized:
-            out.append({"id": it["id"], "name": names.get(it["id"], it["id"]), "group": g, "state": it["state"],
-                        "state_label": STATE_LABELS[it["state"]], "shape": shape, "w": w, "h": h, "d": d,
+            na = _rfi2().NOT_APPLICABLE_RFI2.get(it["id"])
+            out.append({"id": it["id"], "name": names.get(it["id"], it["id"]) + (" (not applicable per RFI2)" if na else ""), "group": g,
+                        "state": "static" if na else it["state"],
+                        "state_label": f"{_rfi2().NOT_APPLICABLE_LABEL}: {na}" if na else STATE_LABELS[it["state"]], "shape": shape, "w": w, "h": h, "d": d,
                         "basis": basis, "basis_note": note, "count": COUNTS_FROM_REGISTRY.get(it["id"], (0,))[0], "x": round(x + w / 2.0, 3), "z": row * ROW_PITCH_M})
             x += w + GAP_M
     return out

@@ -66,7 +66,11 @@ def real_snap():
     from test_tail_gas_mode import _mode
     cycle_clock.set_elapsed_hours(None)
     with patched_supabase(FakeSupabase()):
-        return t1.build_live_snapshot(n_cycles=N, overrides=_mode("heat_only"))[0]
+        # 2026-11-26: the static carbon black follows the RFI2 default, so its engine reference runs on the RFI2 basis (this module's other fixtures stay on the earlier basis)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(ga001, "GASIFYING_AGENT_DEFAULT", ga001.RFI2_AGENT)
+            mp.setattr(fe, "FE005_DRYING_ACTIVE", False)
+            return t1.build_live_snapshot(n_cycles=N, overrides=_mode("heat_only"))[0]
 
 
 def _text(rel):
@@ -170,7 +174,7 @@ def test_the_circularity_default_is_the_dry_solids_the_live_engine_feeds_ga001(s
     live_feed = float(_val(snaps[N], ("GA-001-INPUT", "dry_feed_rate_kg_h")))
     assert circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == fe.FE001_DEFAULT_DELIVERY_RATE_KG_H * (1.0 - fe.FE005_INLET_MOISTURE_FRACTION)
     assert s["dry_feed_kg_h"] == circularity.DEFAULT_DRY_SOLIDS_FEED_KG_H == pytest.approx(DRY_INCL_ASH, abs=1e-9) == pytest.approx(live_feed, abs=1e-9)
-    assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(1.687635, abs=1e-5)
+    assert s["ash_kg_h"] == pytest.approx(3.7503, abs=1e-9) and s["carbon_black_kg_h"] == pytest.approx(15.0012, abs=1e-5)   # RFI2 default (2026-11-26): 0.40 of the dry feed; 1.687635 on the earlier air basis
     assert s["carbon_black_rule_kg_h"] == pytest.approx(1.87515, abs=1e-9)             # the legacy rule, kept as the cross-check
     assert s["ash_kg_h"] == pytest.approx(gmb.byproduct_mass_flows(live_feed)["ash_kg_h"], rel=1e-12)
     assert s["carbon_black_rule_kg_h"] == pytest.approx(gmb.CARBON_BLACK_FRACTION * live_feed, rel=1e-12)
@@ -211,8 +215,8 @@ def test_the_equipment_datasheet_ga_fills_use_the_dry_solids_feed_the_live_engin
     assert got[("GA-006", "Estimated ash mass flow rate (to GA-007)")] == "~3.750"
     assert got[("GA-007", "Estimated ash mass inflow rate (from GA-006)")] == "~3.750"
     assert got[("GA-007", "Estimated ash mass outflow rate (to GA-008/GA-009)")] == "~3.750"
-    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~1.688"
-    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=1.60"
+    assert got[("GA-008", "Estimated carbon-black-laden fines inflow rate")] == "~15.001"   # RFI2 default; "~1.688" on the earlier air basis
+    assert got[("GA-010", "Estimated recovered carbon-black inflow rate (from GA-008)")] == ">=14.25"   # RFI2 default; ">=1.60" on the earlier air basis
 
 
 def test_the_static_default_ash_and_carbon_black_rule_are_on_the_live_dry_feed(snaps):
