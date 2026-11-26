@@ -30,8 +30,8 @@ def test_quote_table_unreachable_does_not_stop_the_other_tabs():
                         failures={("vendor_quotes", "select"): [RuntimeError("Missing secret 'SUPABASE_URL'")] * 5})
     at = _run(fake)
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
-    labels = [t.label for t in at.tabs][:13]      # the 13 top-level tabs; the sub-tabs of Simulation follow them
-    assert len(labels) == 13 and labels[-1] == "Simulation", labels
+    labels = [t.label for t in at.tabs][:12]      # the 12 top-level tabs; the sub-tabs of Simulation follow them
+    assert len(labels) == 12 and labels[-1] == "Simulation", labels
     # the later tabs really rendered (Tab 2 counters exist), not just declared
     assert [m for m in at.metric if m.label == "🔴 Design findings"], "Tab 2 did not render after the vendor section"
     warnings = " ".join(str(w.value) for w in at.warning)

@@ -32,17 +32,16 @@ def test_missing_entries_give_none_not_a_number():
     assert d["total"] == 0 and d["h2_kg_day"] is None and d["cooling"] is None and d["psa_recovery"] is None
 
 
-def test_the_app_shows_the_summary_first_and_its_numbers():
+def test_the_summary_tab_is_removed_and_the_trace_stays_in_simulation():
+    """2026-11-26: the Summary tab is gone; its trace and live run live in Simulation > Plant-wide."""
     st.cache_data.clear()
     with patched_supabase(FakeSupabase({"plant_state_current": smoke._store_rows()})), \
             mock.patch("urllib.request.urlopen", side_effect=smoke._offline_urlopen):
         at = AppTest.from_file(smoke.APP, default_timeout=90).run()
     assert not at.exception, [str(e.value)[:300] for e in at.exception]
-    assert at.tabs[0].label == "Summary" and at.tabs[12].label == "Simulation" and len(at.tabs) == 13 + 8
-    inside = {m.label: m.value for m in at.tabs[0].metric}
-    assert inside["DOK-ING stated (plastic feed)"] == "~50 kg/day"
-    assert inside["Measured"] == str(sum(1 for r in smoke._store_rows() if r["entry"].get("status") == "Measured"))
-    assert inside["Hydrogen (model)"].endswith("kg/day") and "n/a" not in inside["Hydrogen (model)"]
+    assert "Summary" not in [t.label for t in at.tabs] and at.tabs[0].label == "Digital Twin"
+    assert at.tabs[11].label == "Simulation" and len(at.tabs) == 12 + 8
+    assert any(b.label == "Start live run" for b in at.tabs[11].button)
 
 
 def test_fixed_sentences_follow_the_measured_count():
