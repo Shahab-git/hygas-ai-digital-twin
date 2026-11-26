@@ -133,6 +133,7 @@ def _controls():
             st.slider("New ER (air / equivalence ratio)", sim.ER_RANGE[0], sim.ER_RANGE[1], step=0.0025, format="%.4f", key=_K + "er_new",
                       help=f"Starts at {sim.ER_BASE:g}. Fixed limits (the default Assumed band, 0.25 ± 15 %), independent of any confirmation.")
             st.caption(f"{sim.ER_RANGE[0]:g} … {sim.ER_RANGE[1]:g}: {sim.LIMITS_NOTE}. {sim.air_ratio_status()[1]}.")
+            st.caption("Basis of this tab: the earlier air-blown reference (ER 0.25). DOK-ING RFI2 says the real plant adds no gasifying agent, so ER has no counterpart there; the live plant default is the RFI2 basis.")
         else:
             st.number_input("New gasifier T setpoint [°C]", min_value=sim.T_RANGE[0], max_value=sim.T_RANGE[1], step=5.0, key=_K + "T_new",
                             help=f"Starts at {sim.T_BASE:g} °C (Confirmed registry value). The upper limit is below the Confirmed 1050 °C "

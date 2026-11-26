@@ -5,6 +5,7 @@ import pytest
 
 from python import rfi2_basis as rb
 
+RFI2_DEFAULT = True          # this module tests the new default (tests/conftest.py)
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

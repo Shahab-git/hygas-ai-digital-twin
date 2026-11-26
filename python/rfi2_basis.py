@@ -1,4 +1,4 @@
-"""The DOK-ING RFI2 basis as a SWITCHABLE what-if, next to the existing model basis (nothing in the default engine changes).
+"""The DOK-ING RFI2 basis (the DEFAULT of the engine since 2026-11-25) and the earlier model basis as a SWITCHABLE what-if.
 
 CLASS: simulated scenario on the unchanged quasi-steady engine; every number derived here is Assumed. DOK-ING's replies themselves are in
 data/dokink_rfi_answers.md (RFI 2); only what they state is Confirmed there.
@@ -7,18 +7,18 @@ What RFI2 says (verbatim in data/dokink_rfi_answers.md): no gasifying agent is a
 reactor, the tubular reactor is heated externally by electric heaters, the feed is not dried (up to 15 % moisture), and 40 to 50 % of the
 41.67 kg/h feed leaves as carbon black / char.
 
-How this module maps that onto the engine (each step a simplification, none a DOK-ING figure):
-  1. No agent: GA-001's existing 'steam_only_0.4' agent switch (ER 0, no oxidant) with the steam-to-feed input set to 0. The published agent
-     label of that switch still reads "steam only"; with steam-to-feed 0 the effective inputs are ER 0 and steam 0, so the only water is the
-     feed moisture. (A dedicated agent would change the agent table that tests/test_gasifying_agent.py pins; left for the owner.)
-  2. No dryer: FE-005's moisture balance is replaced so that ALL feed moisture (default 10 %, RFI2 allows up to 15 %) reaches GA-001 as water
-     and the dry solids are wet x (1 - moisture).
-  3. Char: carbon conversion is derived so that the unconverted carbon plus the ash equals the chosen char share of the as-received feed
-     (default 45 %, the midpoint of 40 to 50 %): conversion = 1 - (char_kg_h - ash_kg_h) / carbon_in_kg_h. This treats char as carbon plus ash
-     only (real char also holds H and O) and clamps at 0 when the char share exceeds carbon plus ash.
+How the engine maps that (each step a simplification, none a DOK-ING figure):
+  1. No agent: GA-001's gasifying_agent default is 'none_external_heat' (ER 0, steam 0, no oxidant), so the only water is the feed moisture.
+  2. No dryer: fe_feed_handling.FE005_DRYING_ACTIVE is False, so ALL feed moisture (10 %, Assumed; RFI2 allows up to 15 %) reaches GA-001 as water.
+  3. Char: carbon conversion is derived so that the unconverted carbon plus the ash equals the char share of the as-received feed (45 %, the
+     midpoint of 40 to 50 %): conversion = 1 - (char_kg_h - ash_kg_h) / carbon_in_kg_h = 0.111. Char is treated as carbon plus ash only
+     (real char also holds H and O); the conversion is clamped at 0 when the char share exceeds carbon plus ash.
   4. External electric heat: not modelled (the duty stays Missing). RFI2 #6 gives about 100 kW electrical in total for heating AND propulsion.
 The engine has no pyrolysis or tar chemistry: it is an equilibrium solver with a carbon-conversion cap, so the gas composition is an
 equilibrium estimate, not a pyrolysis-gas prediction.
+
+This module: run('rfi2' | 'model') runs the engine on either basis. 'rfi2' with the default char share and moisture is the plain default
+engine; other values use engine overrides. 'model' restores the earlier basis (air at ER 0.25, feed dried to 1 %, conversion 0.90).
 
 Numeric check (comment, project convention): with the default char share (0.45) the derived carbon conversion is 0.111 and the 10-cycle engine
 gives about 13.5 kg/day hydrogen and 2.5 % dry N2 (tests/test_rfi2_basis.py).
@@ -33,7 +33,7 @@ CHAR_FRACTION_RANGE = (0.40, 0.50)
 MOISTURE_DEFAULT = 0.10              # Assumed: RFI2 #5 says up to 15 %; 10 % is the existing project assumption
 MOISTURE_RANGE = (0.05, 0.15)
 AGENT_KEY = ga.GASIFYING_AGENT_KEY
-AGENT = "steam_only_0.4"             # ER 0, no oxidant; with steam-to-feed 0 this is "no agent" (see the module docstring)
+AGENT = ga.GASIFYING_AGENT_DEFAULT   # "none_external_heat"
 STEAM_KEY = ("GA-001-INPUT", "steam_to_feed_ratio")
 CONV_KEY = ("GA-001-INPUT", "carbon_conversion_efficiency")
 FE005_KEY = ("FE-005", "MoistureBalance")
@@ -80,11 +80,37 @@ def overrides(char_fraction=CHAR_FRACTION_DEFAULT, moisture=MOISTURE_DEFAULT):
             FE005_KEY: _no_dryer(moisture)}
 
 
+def _dryer(moisture=0.10, outlet=fe.FE005_OUTLET_MOISTURE_FRACTION):
+    def fn(get_input):
+        wet = get_input(("FE-004", "ShredderPower"))["value"]["outlet_kg_h"]
+        dry = wet * (1.0 - moisture)
+        outlet_wet = dry / (1.0 - outlet)
+        return {"value": {"dry_solids_kg_h": dry, "outlet_wet_kg_h": outlet_wet, "outlet_moisture_fraction": outlet,
+                          "residual_water_kg_h": outlet_wet - dry, "water_evaporated_kg_h": wet - outlet_wet},
+                "status": ps.STATUS_ASSUMED, "model": "rfi2_basis.earlier_dryer", "inputs": [("FE-004", "ShredderPower")],
+                "validation_basis": ps.VALIDATION_NA,
+                "confidence_note": "Earlier model basis: the feed is dried from 10 % to the registry's <1 % target (contradicted by DOK-ING RFI2 #5)."}
+    return fn
+
+
+def model_overrides():
+    """Engine overrides that restore the earlier (pre-RFI2) basis: air at ER 0.25, feed dried to about 1 %, carbon conversion 0.90."""
+    return {AGENT_KEY: _const(ga.AIR_AGENT, "Earlier model basis: air-blown (contradicted by DOK-ING RFI2 #1-#4)."),
+            CONV_KEY: _const(ga.CARBON_CONVERSION_EFFICIENCY, "Earlier model basis: literature-typical air/steam-blown conversion."),
+            FE005_KEY: _dryer()}
+
+
 def run(basis, n_cycles=10, char_fraction=CHAR_FRACTION_DEFAULT, moisture=MOISTURE_DEFAULT):
-    """Snapshot after n_cycles. basis: 'model' (today's default engine) or 'rfi2' (this module's overrides)."""
+    """Snapshot after n_cycles. basis: 'model' (the earlier basis) or 'rfi2' (the default engine; overrides only for a non-default char share or moisture)."""
     if basis not in ("model", "rfi2"):
         raise ValueError(f"basis {basis!r} is not 'model' or 'rfi2'")
-    snap, _s, _e = t1.build_live_snapshot(n_cycles, overrides=overrides(char_fraction, moisture) if basis == "rfi2" else None)
+    if basis == "model":
+        ov = model_overrides()
+    elif abs(char_fraction - CHAR_FRACTION_DEFAULT) < 1e-12 and abs(moisture - MOISTURE_DEFAULT) < 1e-12:
+        ov = None
+    else:
+        ov = overrides(char_fraction, moisture)
+    snap, _s, _e = t1.build_live_snapshot(n_cycles, overrides=ov)
     return snap
 
 

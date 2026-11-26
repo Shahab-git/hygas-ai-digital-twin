@@ -4607,10 +4607,8 @@ def _plant_overview_active_findings(snap):
                     "detail": f"live N₂ {sa005['value']:.1f} {unit} vs. {expected:.0f} {unit} "
                               f"registry-expected ({rel_dev*100:+.0f}%) — the SAME divergence "
                               f"documented at the project level in `docs/master_open_questions.md` "
-                              f"item 5, root cause: the registry's own 'Expected' table assumes a "
-                              f"near-N₂-free steam-blown process; the live model correctly uses an "
-                              f"air-containing gasifying agent per GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) "
-                              f"description.",
+                              f"item 5. The registry's own 'Expected' table predates DOK-ING's RFI 2 reply (no air, steam or oxygen added, external electric heating, "
+                              f"char 40 to 50% of the feed); the live model now follows that reply, so the two differ.",
                     "banner_html": None,
                 })
 
@@ -5759,14 +5757,11 @@ def _render_ga_live_results(snap):
 
         st.markdown("**Fe₂O₃/Fe₃O₄ oxygen-carrier circulation — a separate, clearly-labeled estimate**")
         st.caption(
-            f"GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) is Bubbling Fluidized Bed (BFB), "
-            "steam-blown, Fe₂O₃/Fe₃O₄ chemical-looping oxygen carrier — not a conventional simple "
-            "air-blown gasifier. The metrics above model only the air/steam (ER Estimated (literature-informed) and steam ratio Assumed in the provenance worksheet; not DOK-ING-confirmed) "
-            "partial-oxidation portion, closed with standard elemental/WGS-equilibrium stoichiometry; "
-            "the oxygen carrier's own separate reduction/regeneration chemistry and circulation loop "
-            "is explicitly NOT modeled — no oxygen-carrier capacity, conversion degree, or circulation "
-            "rate is confirmed anywhere in this project's registry to model it with. The figure below "
-            "is a real, clearly-tagged Estimated range (Graf et al. 2024's own real oxygen-carrier-to-"
+            f"GA-001's own registry technology ({_caption_status('GA-001', 'Gasifier technology type')}) is described as a Bubbling Fluidized Bed (BFB), "
+            "steam-blown, Fe₂O₃/Fe₃O₄ chemical-looping oxygen carrier. DOK-ING's RFI 2 reply (2026-11-25) contradicts that: there is no oxygen carrier loop and no "
+            "separate air reactor, no gasifying agent is added, and the tubular reactor is heated externally by electric heaters. The estimate below is therefore an "
+            "EARLIER reference range for a chemical-looping design that DOK-ING says the plant does not use; it is kept only so the earlier work can be compared, and "
+            "its oxygen demand reads zero under the current (no-agent) basis. (Earlier basis: ER Estimated (literature-informed) and steam ratio Assumed in the provenance worksheet; not DOK-ING-confirmed.) The range is a real, clearly-tagged Estimated figure (Graf et al. 2024's own real oxygen-carrier-to-"
             "fuel ratio, scaled to GA-001's own live feed rate) shown for reference only — it does NOT "
             "feed back into the metrics above in any way."
         )
@@ -7920,17 +7915,10 @@ def _render_sa_mass_energy_balance(snap):
     )
 
     st.error(
-        "**Real finding, surfaced honestly:** gas COMPOSITION and FLOW diverge substantially from "
-        "the registry's own separately-stated \"Expected\" design-basis figures — most notably N2 "
-        "(roughly 39% live vs 10% expected) and CO2/CH4 (far below expected), with SA-010's flow "
-        "above the registry's own 50 Nm³/h design point; the exact deviations are in the table above. **Root cause, found by direct inspection "
-        "of `ga001_gasifier_model.py` (not assumed):** that module's own comments state explicitly "
-        "GA-001's live product gas carries substantial N2 \"roughly matching the fresh air feed's "
-        "own N2 content\" — the live physics model uses an air-containing gasifying agent, producing "
-        "a meaningfully more dilute, N2-heavier syngas than the registry's own \"Expected\" table "
-        "assumed (a near-N2-free steam-blown composition). This is a genuine, PRE-EXISTING "
-        "divergence between the registry's own static design-basis assumptions and the later live "
-        "GA-001 physics model — not created by this build, and not silently reconciled here.",
+        "**Real finding, surfaced honestly:** the registry's separately-stated \"Expected\" gas composition and flow (for example N2 10%, the 50 Nm³/h design flow) are "
+        "not the basis the live model now uses. DOK-ING's RFI 2 reply (2026-11-25) says that no air, steam or oxygen is added to the reactor, that it is heated externally "
+        "by electric heaters, and that 40 to 50% of the feed leaves as char; the live model follows that, so its gas flow and composition differ from the registry table "
+        "(the exact deviations are in the table above). The syngas composition at the reactor exit has not been given by DOK-ING, so neither side is confirmed.",
         icon="🔴",
     )
     st.caption(

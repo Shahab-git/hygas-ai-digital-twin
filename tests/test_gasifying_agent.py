@@ -33,6 +33,7 @@ FIXTURE = os.path.join(ROOT, "tests", "fixtures", "snapshot_origin_main_701de71.
 SCRIPT = os.path.join(ROOT, "scripts", "run_agent_comparison.py")
 KEY = ga001.GASIFYING_AGENT_KEY
 NEW_KEYS = {"GA-001-INPUT|gasifying_agent", "GA-001|AgentConsistency"}          # A1.1 the switch; A1.3 the read-only consistency entry
+STUDY_AGENTS = ("air", "enriched_30", "enriched_50", "oxygen", "steam_only_0.4", "steam_only_0.8")      # the six agents of the gasifying-agent study; "none_external_heat" (RFI2) is not one of them
 AGENT_TO_STUDY = {"air": "S0", "enriched_30": "S1a", "enriched_50": "S1b", "oxygen": "S2", "steam_only_0.4": "S4a", "steam_only_0.8": "S4b"}
 N = 5
 NP = N - 1
@@ -92,7 +93,7 @@ def live(fake):
     """{agent: snapshot} of the LIVE engine with the agent switch, N cycles, tail_gas_mode default (the real default, heat_only since P1-06; this module no longer restores regasify)."""
     cycle_clock.set_elapsed_hours(None)
     with patched_supabase(fake):
-        return {a: t1.build_live_snapshot(N, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in ga001.GASIFYING_AGENT_NAMES}
+        return {a: t1.build_live_snapshot(N, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in STUDY_AGENTS}
 
 
 @pytest.fixture(scope="module")
@@ -110,7 +111,7 @@ REGASIFY = {("GA-001-INPUT", "tail_gas_mode"): _const("regasify")}
 
 def _agents(n, extra):
     cycle_clock.set_elapsed_hours(None)
-    return {a: t1.build_live_snapshot(n, overrides={**extra, **({} if a == "air" else {KEY: _const(a)})} or None)[0] for a in ga001.GASIFYING_AGENT_NAMES}
+    return {a: t1.build_live_snapshot(n, overrides={**extra, **({} if a == "air" else {KEY: _const(a)})} or None)[0] for a in STUDY_AGENTS}
 
 
 @pytest.fixture(scope="module")
@@ -123,7 +124,7 @@ def by_mode(fake, live):
 # ---------------------------------------------------------------- the table: Assumed, Missing, no S3
 
 def test_the_agent_table_is_these_six_and_chemical_looping_is_not_one():
-    assert ga001.GASIFYING_AGENT_NAMES == ("air", "enriched_30", "enriched_50", "oxygen", "steam_only_0.4", "steam_only_0.8")
+    assert ga001.GASIFYING_AGENT_NAMES == STUDY_AGENTS + ("none_external_heat",)       # RFI2 added the seventh; the study table is unchanged
     assert ga001.GASIFYING_AGENT_DEFAULT == "air" and not any("loop" in a or "carrier" in a or a == "S3" for a in ga001.GASIFYING_AGENTS)
 
 
@@ -213,7 +214,7 @@ def test_the_solver_with_the_explicit_air_ratio_equals_the_default_path_bit_for_
 # ---------------------------------------------------------------- 2: each live agent equals its study scenario
 
 @pytest.mark.parametrize("mode", ["heat_only", "regasify"])
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_a_live_agent_equals_the_study_scenario_in_species_moles_and_the_downstream_chain(agent, mode, by_mode, runs):
     r, snap = runs[mode][agent], by_mode[mode][0][agent]
     assert "error" not in r, r
@@ -238,7 +239,7 @@ def _solver_case(agent):
     return x, y, z, er, steam, product, n2
 
 
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_c_h_o_n_close_for_every_agent_with_the_agents_own_oxidant(agent):
     x, y, z, er, steam, product, n2 = _solver_case(agent)
     ok, detail = ga001.verify_atom_balance(x, y, z, er, steam, product, 0.9, n2_per_o2=n2)
@@ -274,15 +275,15 @@ def live_prev(fake):
     """{agent: snapshot of the cycle before} (the audit reads the lagged recycle from it, as the study does)."""
     cycle_clock.set_elapsed_hours(None)
     with patched_supabase(fake):
-        return {a: t1.build_live_snapshot(NP, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in ga001.GASIFYING_AGENT_NAMES}
+        return {a: t1.build_live_snapshot(NP, overrides=None if a == "air" else {KEY: _const(a)})[0] for a in STUDY_AGENTS}
 
 
-NON_DEFAULT = [a for a in ga001.GASIFYING_AGENT_NAMES if a != "air"]
+NON_DEFAULT = [a for a in STUDY_AGENTS if a != "air"]
 
 
 # ---------------------------------------------------------------- test 3: audit-based C, H, O, N closure for every agent
 
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_the_audit_closes_c_h_o_n_for_every_agent_in_the_gasifier_and_the_loop(agent, live, live_prev):
     out = ba.audit_snapshot(live[agent], live_prev[agent])
     assert out["missing_inputs"] == [], out["missing_inputs"]
@@ -323,7 +324,7 @@ def test_the_default_audit_is_unlabelled_and_a_non_default_audit_names_its_agent
 # ---------------------------------------------------------------- test 2 (energy part): the live numbers equal the study's
 
 @pytest.mark.parametrize("mode", ["heat_only", "regasify"])
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_a_live_agent_equals_the_study_scenario_in_the_gasifier_duty_the_heat_demands_and_the_efficiencies(agent, mode, by_mode, runs):
     snap, prev = by_mode[mode][0][agent], by_mode[mode][1][agent]
     d = ba.ga001_terms(snap, prev)
@@ -340,7 +341,7 @@ def test_a_live_agent_equals_the_study_scenario_in_the_gasifier_duty_the_heat_de
         assert _same(live_vals, study_vals) is True, (agent, lhv, live_vals, study_vals)
 
 
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_the_engine_energy_balance_carries_the_same_duty_as_the_audit_functions(agent, live, live_prev):
     snap, prev = live[agent], live_prev[agent]
     v = snap[("GA-001", "EnergyBalance")]["value"]
@@ -478,7 +479,7 @@ def test_a_numeric_tolerance_flags_a_deliberately_inconsistent_registry_value_as
 
 
 @pytest.mark.parametrize("tol", [None, 1.0])
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_the_wording_is_neutral_for_every_agent_with_and_without_a_tolerance(agent, tol):
     reading = ga001.agent_consistency(agent, 39.6, tolerance_vol_pct=tol)["reading"].lower()
     assert not [w for w in JUDGEMENT_WORDS if w in reading], reading
@@ -501,7 +502,7 @@ def test_an_invalid_number_or_agent_raises(bad):
         ga001.agent_consistency(bad if isinstance(bad, str) else "nitrogen", 39.6)
 
 
-@pytest.mark.parametrize("agent", ga001.GASIFYING_AGENT_NAMES)
+@pytest.mark.parametrize("agent", STUDY_AGENTS)
 def test_the_live_entry_is_calculated_names_the_agent_and_publishes_the_numbers(agent, live):
     e = live[agent][("GA-001", "AgentConsistency")]
     v, g = e["value"], live[agent][("GA-001", "Outputs")]["value"]

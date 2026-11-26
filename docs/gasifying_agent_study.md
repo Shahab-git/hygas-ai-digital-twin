@@ -109,12 +109,13 @@ This section was added when the study scenarios became selectable inside the eng
 
 | live agent | study scenario | O2 fraction of the oxidant | ER the model uses | steam-to-feed the model uses | N2 per O2 of the oxidant |
 |---|---|---|---|---|---|
-| `air` (default) | S0 | 0.21 (a label) | the ER input (0.25) | the steam input (0.4) | 0.79 / 0.21 (the existing expression) |
+| `air` (earlier default) | S0 | 0.21 (a label) | the ER input (0.25) | the steam input (0.4) | 0.79 / 0.21 (the existing expression) |
 | `enriched_30` | S1a | 0.30 | the ER input | the steam input | (1 - 0.30) / 0.30 |
 | `enriched_50` | S1b | 0.50 | the ER input | the steam input | (1 - 0.50) / 0.50 |
 | `oxygen` | S2 | 1.0 | the ER input | the steam input | 0 |
 | `steam_only_0.4` | S4a | none (no oxygen used) | 0 | the steam input | 0 |
 | `steam_only_0.8` | S4b | none (no oxygen used) | 0 | 0.8 | 0 |
+| `none_external_heat` (default since DOK-ING RFI2, 2026-11-25) | RFI2 | none (no agent, external electric heating) | 0 | 0 | 0 |
 
 **What stays a study scenario.** S3 (chemical-looping equivalent) is not a live agent: its air reactor, carrier circulation and carrier heat terms are not in the registry and the model has no basis for them. The oxygen-carrier circulation estimate in the engine is a literature range, not a loop model.
 

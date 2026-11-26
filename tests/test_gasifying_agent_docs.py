@@ -9,7 +9,7 @@ from python import balance_audit as ba
 from python import ga001_gasifier_model as ga001
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-STUDY_OF = {"air": "S0", "enriched_30": "S1a", "enriched_50": "S1b", "oxygen": "S2", "steam_only_0.4": "S4a", "steam_only_0.8": "S4b"}
+STUDY_OF = {"air": "S0", "enriched_30": "S1a", "enriched_50": "S1b", "oxygen": "S2", "steam_only_0.4": "S4a", "steam_only_0.8": "S4b", "none_external_heat": "RFI2"}
 
 
 def _section():

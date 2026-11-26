@@ -286,13 +286,13 @@ def fe005_moisture_balance(get_input):
     module docstring."""
     wet_inlet_kg_h = get_input(("FE-004", "ShredderPower"))["value"]["outlet_kg_h"]
     dry_solids_kg_h = wet_inlet_kg_h * (1.0 - FE005_INLET_MOISTURE_FRACTION)
-    outlet_wet_kg_h = dry_solids_kg_h / (1.0 - FE005_OUTLET_MOISTURE_FRACTION)
+    outlet_wet_kg_h = dry_solids_kg_h / (1.0 - _fe005_outlet_moisture())
     residual_water_kg_h = outlet_wet_kg_h - dry_solids_kg_h
     water_evaporated_kg_h = wet_inlet_kg_h - outlet_wet_kg_h
     return {
         "value": {
             "dry_solids_kg_h": dry_solids_kg_h, "outlet_wet_kg_h": outlet_wet_kg_h,
-            "outlet_moisture_fraction": FE005_OUTLET_MOISTURE_FRACTION,
+            "outlet_moisture_fraction": _fe005_outlet_moisture(),
             "residual_water_kg_h": residual_water_kg_h, "water_evaporated_kg_h": water_evaporated_kg_h,
         },
         "status": ps.STATUS_CALCULATED, "model": "fe_feed_handling.fe005_moisture_balance",
@@ -527,3 +527,11 @@ if __name__ == "__main__":
           "propagation through every phase built so far, in one pass.")
 
     print("\nAll fe_feed_handling.py self-tests PASSED.")
+
+
+# ---- RFI2 #5 (DOK-ING, 2026-11-25): "the feed is not dried". Appended at the END of the module so that no earlier line number moves. ----------------------
+FE005_DRYING_ACTIVE = False          # False: the dryer evaporates nothing and all feed moisture reaches GA-001; True restores the earlier <1 % outlet balance
+
+
+def _fe005_outlet_moisture():
+    return FE005_OUTLET_MOISTURE_FRACTION if FE005_DRYING_ACTIVE else FE005_INLET_MOISTURE_FRACTION

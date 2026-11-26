@@ -14,7 +14,7 @@ DOKING_H2_KG_DAY_PLASTIC = 50.0   # RFI #1/#6, plastic feed, not this model's MS
 STATUSES = ("Measured", "Calculated", "Estimated", "Assumed", "Missing")
 
 OPEN_ITEMS = (
-    "Gasifying agent (air at ER 0.25 versus steam-blown chemical looping) and the feed LHV (15-20 MJ/kg)",
+    "Syngas composition at the reactor exit, whether the char share (40 to 50% of the feed) includes ash, and the feed LHV (15-20 MJ/kg)",
     "Wet or dry basis of the 1 tonne/day feed rate",
     "Rate constants for the LOHC reactors (HB-014, HB-016)",
 )
