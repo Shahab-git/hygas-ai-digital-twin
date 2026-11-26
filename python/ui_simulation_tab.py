@@ -145,6 +145,9 @@ def render(section=None, key="all"):
         return
     keys = item_keys(base, pick)
     st.markdown(f"**{labels[pick]}** · {cat[pick]}")
+    from . import rfi2_basis as _rb
+    if pick in _rb.NOT_APPLICABLE_RFI2:
+        st.warning(f"{_rb.NOT_APPLICABLE_LABEL}: {_rb.NOT_APPLICABLE_RFI2[pick]}. The registry row is unchanged; any value shown below is from the engine as built and does not describe DOK-ING's plant.")
     if not keys:
         st.info("No model: this item has no live engine key, so it cannot be simulated. Its registry data is shown in the equipment tabs.")
         return

@@ -99,3 +99,11 @@ if __name__ == "__main__":
           f"(€{s['total_revenue_eur_h']*8760:,.0f}/yr at 100% uptime — illustrative only)")
     print(f"  Diversion from landfill: {s['diversion_fraction']*100:.2f}% of dry feed mass "
           f"(real mass-balance ratio, no price assumption)")
+
+
+# DOK-ING RFI2 (2026-11-26): on the RFI2 default basis (no gasifying agent, char 45 % of the as-received feed, Assumed) the engine's derived carbon black is
+# 15.0012 kg/h on the 37.503 kg/h dry solids, i.e. exactly 0.40 of the dry feed (char 18.75 kg/h less the 3.75 kg/h ash). The pinned fraction follows the
+# engine default, like the carbon conversion does: 0.045 on the earlier air basis, 0.40 here. Appended at the end so that line numbers stay put.
+from . import ga001_gasifier_model as _ga001_default_basis
+if _ga001_default_basis.GASIFYING_AGENT_DEFAULT != _ga001_default_basis.AIR_AGENT:
+    ENGINE_CARBON_BLACK_FRACTION_OF_DRY_FEED = 0.40

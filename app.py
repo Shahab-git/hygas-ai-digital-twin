@@ -3451,6 +3451,7 @@ def _render_fe_live_results(snap):
             unsafe_allow_html=True,
         )
         if not fe.FE005_DRYING_ACTIVE:
+            st.warning("Not applicable per DOK-ING RFI2: the feed is not dried.", icon="ℹ️")
             st.caption("DOK-ING RFI2 (2026-11-25): the feed is not dried (up to 15 % moisture), so this model evaporates nothing and all inlet moisture "
                        "reaches GA-001. The <1 % target above is the earlier design intent, shown for reference only.")
         with st.expander("Full status & traceability"):
@@ -5622,7 +5623,8 @@ def _render_ga_status_table(snap):
     for eq_id, short_name in _GA_SUBITEMS:
         changed, note = _fe_status_changed_flag(f"tab4_status_changed__{eq_id}", "static")
         sub_trs.append(
-            f'<tr><td></td><td>{eq_id}</td><td>{short_name} (same vessel/injection assembly as GA-001)</td>'
+            f'<tr><td></td><td>{eq_id}</td><td>{short_name} (same vessel/injection assembly as GA-001)'
+            + (' <b>Not applicable per DOK-ING RFI2: no air or steam is added.</b>' if eq_id in ("GA-003", "GA-004") else '') + '</td>'
             f'<td>{_ga_status_pill_html("static")}</td>'
             f'<td>{_fe_changed_pill_html(changed, note)}</td>'
             f'<td><code>— (no live key registered)</code></td></tr>'
