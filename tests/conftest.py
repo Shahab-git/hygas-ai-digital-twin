@@ -40,6 +40,22 @@ def _no_real_step_summary():
 # the real default ("heat_only" since P1-06); a test about the recycle selects "regasify" explicitly through the engine override.
 
 
+# RFI2 (DOK-ING, 2026-11-25): the engine default is now the RFI2 basis (no gasifying agent, feed not dried, char-derived carbon conversion). The ~1000 older tests pin
+# numbers and texts of the EARLIER basis (air at ER 0.25, feed dried to 1 %, conversion 0.90); they keep characterizing it by running with the earlier basis restored.
+# A module that tests the new default declares `RFI2_DEFAULT = True` at module level and then runs on the real default. (Same pattern as the old LEGACY_REGASIFY_DEFAULT.)
+@pytest.fixture(scope="module", autouse=True)
+def _earlier_basis_unless_module_declares_rfi2_default(request):
+    """Module scope on purpose: module-scoped fixtures of the older tests build snapshots before any function-scoped fixture runs."""
+    if getattr(request.module, "RFI2_DEFAULT", False):
+        yield
+        return
+    from python import fe_feed_handling, ga001_gasifier_model
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(ga001_gasifier_model, "GASIFYING_AGENT_DEFAULT", ga001_gasifier_model.AIR_AGENT)
+        mp.setattr(fe_feed_handling, "FE005_DRYING_ACTIVE", True)
+        yield
+
+
 class RealSupabaseAttempt(BaseException):
     """Deliberately a BaseException so that the repo's own `except Exception`
     fallbacks cannot swallow it: a test that reaches a REAL Supabase client or

@@ -33,7 +33,8 @@ Q_SIZING, Q_CYCLE, Q_POLY, Q_PEM = _MQ % "3.1", _MQ % "3.2", _MQ % "3.3", _MQ % 
 _G, _GM, _U = "python/ga001_gasifier_model.py", "python/gasifier_mass_balance.py", "python/uncertainty.py"
 TABLE_COVERS = {
     "GA-001.feedstock_daf_CHON": [lc.const_key(_G, n) for n in ("FEEDSTOCK_C_FRACTION", "FEEDSTOCK_H_FRACTION", "FEEDSTOCK_O_FRACTION", "FEEDSTOCK_N_FRACTION")],
-    "GA-001.carbon_conversion": [lc.const_key(_G, "CARBON_CONVERSION_EFFICIENCY"), lc.const_key(_G, "CARBON_CONVERSION_EFFICIENCY_RANGE")],
+    "GA-001.carbon_conversion": [lc.const_key(_G, "CARBON_CONVERSION_EFFICIENCY"), lc.const_key(_G, "CARBON_CONVERSION_EFFICIENCY_RANGE"),
+                                  lc.const_key(_G, "RFI2_CHAR_FRACTION"), lc.const_key(_G, "RFI2_CHAR_FRACTION_RANGE")],      # RFI2 #8: the char share and the conversion derived from it
     "GA-001.ch4_carbon_fraction": [lc.const_key(_G, "CH4_CARBON_FRACTION"), lc.const_key(_G, "CH4_CARBON_FRACTION_RANGE")],
     "GA-001.T_gasifier_C": [lc.const_key(_G, "GA001_OPERATING_TEMPERATURE_C")],
     "GA-001.unconverted_C_to_carbon_black": [lc.const_key(_G, "CARBON_BLACK_SPLIT_DEFAULT"), lc.const_key(_G, "CARBON_BLACK_SPLIT_RANGE")],

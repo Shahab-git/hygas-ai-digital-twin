@@ -108,7 +108,7 @@ def tail_gas_mode(snapshot):
 def gasifying_agent(snapshot):
     """'air' (today) or one of ga001.GASIFYING_AGENT_NAMES (task A1). A snapshot from before the switch existed has no such key: air. An invalid value raises."""
     e = snapshot.get(ga001.GASIFYING_AGENT_KEY)
-    return ga001.GASIFYING_AGENT_DEFAULT if e is None or e["status"] == ps.STATUS_MISSING else ga001.check_gasifying_agent(e["value"])
+    return ga001.AIR_AGENT if e is None or e["status"] == ps.STATUS_MISSING else ga001.check_gasifying_agent(e["value"])
 
 
 def oxidant_heat_label(agent):
@@ -116,7 +116,7 @@ def oxidant_heat_label(agent):
     temperature' is a registry value for AIR (Unverified (registry)): no preheat temperature or heat source exists for an O2-enriched or oxygen oxidant, and steam only uses no oxygen and has no
     oxidant at all (0 mol, so its 0 kW is the arithmetic of no flow, not a closed budget). Heat capacity: CP_J_MOLK['N2'] = 30.6 J/mol.K for N2 and, by the repo's own convention, for O2
     (CP_J_MOLK_O2_NOTE: 'O2 uses the N2 mean cp', Estimated), a 300-1200 K mean applied from 25 degC to 200 degC; the same for enriched oxidant (O2 and N2 both at 30.6)."""
-    if agent == ga001.GASIFYING_AGENT_DEFAULT:
+    if agent == ga001.AIR_AGENT:
         return "preheat air to 200 degC", ps.STATUS_ESTIMATED, "GA-004 'recovered process heat'"
     return (f"preheat oxidant (agent {agent}) to 200 degC [FLAGGED]", ps.STATUS_ASSUMED,
             "FLAGGED: the 200 degC is GA-004's air preheat temperature applied to this agent's oxidant (cp O2 = cp N2 = 30.6 J/mol.K, a 300-1200 K mean applied from 25 degC); no preheat temperature or heat source exists for it. No oxidant (steam only, no oxygen used): 0 mol, 0 kW is no flow.")
@@ -307,7 +307,7 @@ def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
     o2_air = inp["equivalence_ratio"] * (c_tot + h_tot / 4.0 - o_tot / 2.0)    # er x (1 + x/4 - y/2) x C_total, ga001:253-258,299-300
     n2_air = o2_air * (0.79 / 0.21) if inp["n2_per_o2"] is None else o2_air * inp["n2_per_o2"]      # ga001_gasifier_model.py:301 (task A1: the agent's N2 per O2 for a non-air oxidant)
     agent = inp["gasifying_agent"]
-    o2_name, n2_name = ("air O2", "air N2") if agent == ga001.GASIFYING_AGENT_DEFAULT else (f"oxidant O2 (agent {agent})", f"oxidant N2 (agent {agent})")
+    o2_name, n2_name = ("air O2", "air N2") if agent == ga001.AIR_AGENT else (f"oxidant O2 (agent {agent})", f"oxidant N2 (agent {agent})")
     steam = inp["steam_to_feed_ratio"] * f * 1000.0 / M_H2O_ENGINE               # ga001_gasifier_model.py:752
     moist = inp["residual_water_kg_h"] * 1000.0 / M_H2O_ENGINE                   # ga001_gasifier_model.py:715
     byp = gmb.byproduct_mass_flows(f)                                            # gasifier_mass_balance.py:72-78
@@ -320,11 +320,11 @@ def ga001_terms(snapshot, previous_snapshot=None, derived_carbon_black=True):
         make_term("residual moisture in dry feed", "in", {"H2O": moist}, status=ps.STATUS_CALCULATED,
                   source="FE-005 MoistureBalance.residual_water_kg_h (fe_feed_handling.py:290), folded in at ga001:761-763"),
         make_term(o2_name, "in", {"O2": o2_air}, status=ps.STATUS_CALCULATED,
-                  source="ER x stoichiometric O2 on the recycle-augmented fuel (ga001:299-300, :776-778); ER Assumed 0.25" if agent == ga001.GASIFYING_AGENT_DEFAULT
+                  source="ER x stoichiometric O2 on the recycle-augmented fuel (ga001:299-300, :776-778); ER Assumed 0.25" if agent == ga001.AIR_AGENT
                   else f"agent {agent}: effective ER {inp['equivalence_ratio']} x stoichiometric O2 on the recycle-augmented fuel (the model's own formula); Assumed agent",
                   note="not a published stream: re-derived with the model's own formula"),
         make_term(n2_name, "in", {"N2": n2_air}, status=ps.STATUS_CALCULATED,
-                  source="O2 x 0.79/0.21 (ga001:301); argon and CO2 in air ignored by the model" if agent == ga001.GASIFYING_AGENT_DEFAULT
+                  source="O2 x 0.79/0.21 (ga001:301); argon and CO2 in air ignored by the model" if agent == ga001.AIR_AGENT
                   else f"agent {agent}: O2 x {inp['n2_per_o2']:g} N2 per O2 of the oxidant ((1 - f) / f, f = O2 fraction); NOT air"),
         make_term("gasifier steam", "in", {"H2O": steam}, status=ps.STATUS_ASSUMED,
                   source="steam_to_feed_ratio 0.4 kg/kg (Assumed, ga001:458-480) x dry feed; GA-003 registry 15 kg/h"),
@@ -671,7 +671,7 @@ def _en_labelled(label, kw):
 
 def oxidant_sensible_label(agent):
     """(name, status, source) of the oxidant sensible-heat INPUT term of the gasifier energy balance: today's air text for 'air'; Assumed and FLAGGED for any other agent (see oxidant_heat_label)."""
-    if agent == ga001.GASIFYING_AGENT_DEFAULT:
+    if agent == ga001.AIR_AGENT:
         return "air sensible heat (preheated to 200 degC)", ps.STATUS_ESTIMATED, "GA-004 air preheat 200 degC (registry); cp O2 = cp N2 (Estimated)"
     return (f"oxidant sensible heat (agent {agent}, taken at 200 degC) [FLAGGED]", ps.STATUS_ASSUMED,
             "FLAGGED: GA-004's air preheat temperature (200 degC) applied to this agent's oxidant, cp O2 = cp N2 = 30.6 J/mol.K (a 300-1200 K mean applied from 25 degC); no preheat temperature or heat source exists for it. No oxidant (steam only, no oxygen used): 0 mol, 0 kW is no flow.")
@@ -727,7 +727,7 @@ def gasifier_energy(snapshot, previous_snapshot, lhv_mj_kg):
             "cold_gas_efficiency_formula": "gas LHV (H2+CO+CH4) / (feed LHV + recycle LHV); net of recycle: (gas LHV - recycle LHV) / feed LHV"}
 
 
-def heat_demands(n_gasifier_steam_mol_h, wgs_steam_kg_h, air_o2_mol_h, air_n2_mol_h, evaporated_kg_h, agent=ga001.GASIFYING_AGENT_DEFAULT):
+def heat_demands(n_gasifier_steam_mol_h, wgs_steam_kg_h, air_o2_mol_h, air_n2_mol_h, evaporated_kg_h, agent=ga001.AIR_AGENT):
     """Heat the plant needs that no engine term sources (kW): raise the gasifier and WGS steam from liquid at 25 degC to vapour at the GA-004 /
     HB-005 350 degC, preheat the air to the GA-004 200 degC, evaporate the feed moisture in the dryer. Named constants above; Estimated.
     Shared by plant_energy and the engine's read-only (GA-001, EnergyBalance) key so the two cannot drift apart."""
@@ -899,7 +899,7 @@ def audit_snapshot(snapshot, previous_snapshot=None, kpis=None):
         except AuditInputMissing as exc:
             out["missing_inputs"].append(exc.args[0])
     agent = gasifying_agent(snapshot)
-    if agent != ga001.GASIFYING_AGENT_DEFAULT:
+    if agent != ga001.AIR_AGENT:
         out["gasifying_agent"] = agent                # task A1: only for a non-default agent, so the default result is unchanged
     balance_closure_kind.annotate_audit(out, agent)          # task A5: label each closure row ENFORCED / VERIFIED / PARTLY; no number is touched
     return out

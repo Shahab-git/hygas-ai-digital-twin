@@ -451,7 +451,7 @@ def run_in_child(params):
 
 
 def worker_main():
-    _install_guards()
+    _install_guards(); ga001.GASIFYING_AGENT_DEFAULT = ga001.AIR_AGENT     # the ER what-if needs an oxidant: this throw-away tab keeps the earlier air-blown basis (DOK-ING RFI2: the plant adds none)
     params = json.loads(sys.stdin.read())
     payload = simulate(params)
     sys.stdout.write(RESULT_MARKER + json.dumps(payload) + "\n")

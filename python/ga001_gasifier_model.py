@@ -1645,7 +1645,7 @@ def _input_carbon_black_split(get_input):
 # (allothermal) heat duty are Missing for every agent: no number is written for them.
 # Which agent runs is a switch, not a measurement, and there is no selector in the UI (read-only display only).
 GASIFYING_AGENT_KEY = ("GA-001-INPUT", "gasifying_agent")
-GASIFYING_AGENT_DEFAULT = "air"
+GASIFYING_AGENT_DEFAULT = "none_external_heat"; AIR_AGENT = "air"; RFI2_AGENT = GASIFYING_AGENT_DEFAULT       # RFI2 (DOK-ING, 2026-11-25): no agent is added; the old default "air" is AIR_AGENT
 AGENT_AIR_O2_FRACTION = 0.21                                       # label of the air agent; the air path itself uses the AIR_N2_PER_O2 expression
 AGENT_O2_FRACTION = {"enriched_30": 0.30, "enriched_50": 0.50, "oxygen": 1.0}      # Assumed: O2 mole fraction of the oxidant (study S1a, S1b, S2)
 AGENT_ER_OVERRIDE = {"steam_only_0.4": 0.0, "steam_only_0.8": 0.0}                # Assumed: steam only has no oxidant (study S4a, S4b)
@@ -1685,7 +1685,7 @@ def _input_gasifying_agent(get_input):
         "confidence_note": (
             "Switch, not a measurement. 'air' = today's behaviour; 'enriched_30', 'enriched_50', 'oxygen', 'steam_only_0.4', 'steam_only_0.8' = the gasifying-agent study's "
             "scenarios as live configurations. Every agent definition is Assumed (no DOK-ING source until RFI #2 answers which agent the plant uses). "
-            "Oxygen source cost and external heat duty are Missing. Default unchanged until the owner decides."
+            "Oxygen source cost and external heat duty are Missing. Default unchanged until the owner decides." + ("" if GASIFYING_AGENT_DEFAULT == AIR_AGENT else " UPDATE (DOK-ING RFI2, 2026-11-25): the default is now 'none_external_heat' (no agent added, external electric heating); 'air' is the earlier basis.")
         ),
     }
 
@@ -1706,7 +1706,7 @@ def agent_oxidant(agent, er_input, steam_input):
     spec = GASIFYING_AGENTS[check_gasifying_agent(agent)]
     er = er_input if spec["er"] is None else spec["er"]
     steam = steam_input if spec["steam_to_feed"] is None else spec["steam_to_feed"]
-    if agent == GASIFYING_AGENT_DEFAULT:
+    if agent == AIR_AGENT:
         return er, steam, None
     f = spec["o2_fraction"]
     return er, steam, (0.0 if f is None else (1.0 - f) / f)
@@ -1722,7 +1722,7 @@ def _agent_inputs(get_input):
 def _agent_effective_values(agent, er, steam, n2_per_o2):
     """Extra keys of the (GA-001, Outputs) value for a NON-default agent (empty for air, so the default entry is unchanged): the agent and the effective values the model used.
     The ER and steam-to-feed INPUT entries keep showing the inputs, not these (the input functions are untouched on purpose)."""
-    if agent == GASIFYING_AGENT_DEFAULT:
+    if agent == AIR_AGENT:
         return {}
     return {"gasifying_agent": agent, "effective_equivalence_ratio": er, "effective_steam_to_feed_ratio": steam, "oxidant_n2_per_o2": n2_per_o2,
             "oxidant_o2_fraction": GASIFYING_AGENTS[agent]["o2_fraction"]}
@@ -1730,7 +1730,7 @@ def _agent_effective_values(agent, er, steam, n2_per_o2):
 
 def _agent_note(agent, er, steam, n2_per_o2):
     """Text appended to the (GA-001, Outputs) confidence note for a NON-default agent (empty for air)."""
-    if agent == GASIFYING_AGENT_DEFAULT:
+    if agent == AIR_AGENT:
         return ""
     f = GASIFYING_AGENTS[agent]["o2_fraction"]
     return (f" Gasifying agent '{agent}' (Assumed switch, no DOK-ING source): effective ER {er}, steam-to-feed {steam}, oxidant O2 fraction {f}; the ER and steam-to-feed input "
@@ -1741,7 +1741,7 @@ def agent_missing_terms(agent):
     """The terms the heat and power summaries must carry for a NON-default agent (empty for air), each explicitly Missing: {name, status: Missing, kw: None, missing_reason}. Never a number,
     never 0 kW, never 'closed': no oxygen source or allothermal heat supply is modelled, so the energy they cost is unknown. A steam-only agent uses no oxygen: its oxygen term says
     'no oxygen used' (recorded Missing only because no oxygen-source model exists) and implies no air-separation unit."""
-    if check_gasifying_agent(agent) == GASIFYING_AGENT_DEFAULT:
+    if check_gasifying_agent(agent) == AIR_AGENT:
         return []
     spec = GASIFYING_AGENTS[agent]
     o2 = spec["oxygen_source_cost"]["missing_reason"]
@@ -1753,7 +1753,7 @@ def agent_missing_terms(agent):
 
 def agent_summary_block(agent):
     """The 'agent' block the read-only heat summaries ((GA-001, EnergyBalance), (PLANT, HeatIntegration)) publish for a NON-default agent (None for air)."""
-    if check_gasifying_agent(agent) == GASIFYING_AGENT_DEFAULT:
+    if check_gasifying_agent(agent) == AIR_AGENT:
         return None
     return {"gasifying_agent": agent, "status": ps.STATUS_ASSUMED, "label": GASIFYING_AGENTS[agent]["label"], "oxygen_used": GASIFYING_AGENTS[agent]["oxidant"],
             "oxidant_preheat": ("Assumed and FLAGGED: GA-004's air preheat temperature applied to this agent's oxidant (no basis for it)" if GASIFYING_AGENTS[agent]["oxidant"]
@@ -1763,7 +1763,7 @@ def agent_summary_block(agent):
 
 def _agent_carrier_note(agent, er):
     """Text appended to the oxygen-carrier estimate's consistency note for a NON-default agent (empty for air)."""
-    if agent == GASIFYING_AGENT_DEFAULT:
+    if agent == AIR_AGENT:
         return ""
     return (f" GASIFYING AGENT '{agent}' (Assumed): this is a chemical-looping carrier estimate and is not meaningful for this agent. The O2 demand it checks uses the agent's effective ER "
             f"({er}), not the ER input; a steam-only agent has no O2 demand, so the utilization check cannot pass.")
@@ -1829,3 +1829,31 @@ def ga001_agent_consistency(get_input):
             "validation_basis": ps.VALIDATION_NA,
             "confidence_note": (f"Read-only comparison of the model's dry N2 with the registry's expected N2 (SA-005, resolved status {SA005_RESOLVED_STATUS}, wet or dry basis not stated) for the declared "
                                 "agent (Assumed). It reports a difference and judges nothing; no tolerance is set, so there is no verdict. It is not validation against DOK-ING data: none exists.")}
+
+
+# ---- RFI2 (DOK-ING, 2026-11-25), appended at the END of the module so that no earlier line number moves --------------------------------
+# The seventh gasifying agent and the char-derived carbon conversion. RFI2 #1-#4: no air, steam or oxygen is added, no carrier loop, external electric heating.
+# RFI2 #8: 40 to 50 % of the as-received feed leaves as carbon black / char.
+GASIFYING_AGENTS["none_external_heat"] = _agent("no gasifying agent, external electric heating (DOK-ING RFI2 #1-#4)", None, 0.0, 0.0, oxidant=False)
+GASIFYING_AGENT_NAMES = tuple(GASIFYING_AGENTS)
+RFI2_CHAR_FRACTION = 0.45          # Assumed: midpoint of RFI2 #8 (40 to 50 % of the as-received feed)
+RFI2_CHAR_FRACTION_RANGE = (0.40, 0.50)
+# char = unconverted carbon + ash, so conversion = 1 - (char - ash) / carbon fed. Per kg of as-received feed (moisture 10 %, ash 10 % of dry, carbon 50 % of the ash-free dry):
+# ash 0.09, carbon 0.405, char 0.45 -> 1 - 0.36 / 0.405 = 0.1111. A ratio, so it does not depend on the feed rate.
+RFI2_CARBON_CONVERSION_EFFICIENCY = 1.0 - (RFI2_CHAR_FRACTION - 0.90 * ASH_FRACTION) / (0.90 * (1.0 - ASH_FRACTION) * FEEDSTOCK_C_FRACTION)
+_input_carbon_conversion_efficiency_air = _input_carbon_conversion_efficiency
+
+
+def _input_carbon_conversion_efficiency(get_input):
+    """The carbon conversion input. It follows the DEFAULT agent constant, not the live agent switch (reading the switch would be an undeclared dependency): with the RFI2 default
+    it is derived from the char share (RFI2 #8), with the earlier default ('air') it is the literature value. A scenario that overrides the agent must also override this input
+    (python/rfi2_basis.model_overrides does)."""
+    if GASIFYING_AGENT_DEFAULT != RFI2_AGENT:
+        return _input_carbon_conversion_efficiency_air(get_input)
+    return {
+        "value": RFI2_CARBON_CONVERSION_EFFICIENCY, "status": ps.STATUS_ASSUMED, "validation_basis": ps.VALIDATION_NA,
+        "confidence_note": (
+            f"Derived from DOK-ING RFI2 #8 (40 to 50 % of the feed leaves as carbon black / char): at {RFI2_CHAR_FRACTION:.0%} (Assumed midpoint) the char is unconverted carbon plus ash, "
+            f"so conversion = 1 - (char - ash) / carbon fed = {RFI2_CARBON_CONVERSION_EFFICIENCY:.4f}. Treats char as carbon plus ash only (real char also holds H and O). "
+            f"The range 40 to 50 % is DOK-ING-stated; the midpoint and the derivation are Assumed."),
+    }

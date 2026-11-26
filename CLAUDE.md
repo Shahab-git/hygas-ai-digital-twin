@@ -600,6 +600,10 @@ individually against every FE/GA/GC/SA/HB/EU/AI estimate actually
 shipped, and none was used as a stated basis; no previously-shipped
 estimate has needed correction or withdrawal as a result of any sweep.
 
+## DOK-ING RFI2 basis is now the engine default (2026-11-25)
+
+DOK-ING's RFI2 replies (`data/dokink_rfi_answers.md`, end of file) are applied as the default: no gasifying agent (0 Nm3/h air, 0 kg/h steam; N2 only for inerting), no ASU, no carrier loop, tubular reactor heated by external electric heaters (~100 kW electric for heating and propulsion), feed not dried (up to 15% moisture), ash removed at the reactor exit, PSA does not exist yet, char/carbon black 40-50% of the 41.67 kg/h feed. Derived and all Assumed: char 45% (midpoint), carbon conversion 0.1111. At 10 cycles: H2 13.56 kg/day (older air basis 55.75; 23.9 at 40% char, 4.6 at 50%), dry syngas 10.95 Nm3/h, H2 65.6 mol%, N2 2.5%, carbon black 15.0 kg/h, EU-008 cooling about 5.7 kW (older 40; the ~58 kW peak figure above belongs to the air basis). External electric heat duty stays Missing; the engine has no pyrolysis/tar chemistry. The earlier air-blown basis stays selectable (`python/rfi2_basis.py`, `GASIFYING_AGENTS["air"]`); the Transient What-If tab (Tab 11) deliberately keeps it, since its ER step needs an oxidant. Statements above about ER=0.25, the 39.6 % N2 and the steam-blown/air-blown divergence describe the air basis. Tests: after this change CI is 195 passed / 1 skipped, then 1057 passed / 3 skipped.
+
 ## Known limitations (proven by docs/audit_2026-10-27.md)
 
 Only what the 2026-10-27 audit measured; nothing here is a new claim.

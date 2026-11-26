@@ -146,7 +146,7 @@ def test_every_parameter_is_a_ledger_row_or_a_listed_exception(built):
     assert lc.uncovered(items, covered, exceptions) == []
     assert lc.stale(items, covered, exceptions) == {"covers_not_found": [], "exceptions_not_found": [], "both_row_and_exception": []}
     assert lc.exception_problems(exceptions) == []
-    assert len(items) == 365 and len(exceptions) == 188 and len(items) - len(exceptions) == 177     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
+    assert len(items) == 367 and len(exceptions) == 188 and len(items) - len(exceptions) == 179     # A3b 2.3: 7 HHV coefficients moved from one row to exceptions; A1 (deliberate edit): +4 agent constants, each a ledger row (184 -> 191); 2.4: two persisted-verdict thresholds became rows (191 -> 189, PARAMETERs 169 -> 171)
 
 
 def test_the_scan_covers_the_seventeen_modules_and_finds_the_known_hard_coded_ones(built):
@@ -1092,6 +1092,9 @@ def test_the_committed_ledger_files_equal_a_fresh_generation(fake):
     from python import ga001_gasifier_model as ga
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(ga, "TAIL_GAS_MODE_DEFAULT", "heat_only")
+        mp.setattr(ga, "GASIFYING_AGENT_DEFAULT", ga.RFI2_AGENT)          # RFI2 (deliberate edit): the committed files are generated on the real default (no agent, feed not dried)
+        from python import fe_feed_handling as _fe_rfi2
+        mp.setattr(_fe_rfi2, "FE005_DRYING_ACTIVE", False)
         with patched_supabase(fake):
             readers = lcons.engine_input_readers(lambda: t1.build_live_snapshot(3))
         _check_committed_ledger((pt.build_ledger(readers=readers), lc.scan(), lc.load_exceptions(), readers))
