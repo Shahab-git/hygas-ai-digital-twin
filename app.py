@@ -3447,6 +3447,9 @@ def _render_fe_live_results(snap):
             f'&nbsp; moisture vs {_caption_status("FE-005", "Outlet moisture (target)")} target &lt;{_fe005_target_frac*100:.0f}%',
             unsafe_allow_html=True,
         )
+        if not fe.FE005_DRYING_ACTIVE:
+            st.caption("DOK-ING RFI2 (2026-11-25): the feed is not dried (up to 15 % moisture), so this model evaporates nothing and all inlet moisture "
+                       "reaches GA-001. The <1 % target above is the earlier design intent, shown for reference only.")
         with st.expander("Full status & traceability"):
             st.caption(
                 f"Status: {e['status']} · **This dry-solids figure is the live input to GA-001's own "

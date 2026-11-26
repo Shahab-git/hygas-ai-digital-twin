@@ -1,0 +1,828 @@
+{
+ "header": {
+  "basis": "DOK-ING RFI2 short-form replies (2026-11-25) against the registry and the engine",
+  "status": "Assumed (project reading of DOK-ING's answers)",
+  "note": "Display/documentation only. data/equipment_registry.json is not edited and no model reads this file."
+ },
+ "items": [
+  {
+   "id": "FE-001",
+   "name": "MSW Receiving Hopper",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-002",
+   "name": "Magnetic & Eddy Current Separator",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-003",
+   "name": "Weighing Conveyor",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-004",
+   "name": "Shredder / Size Reducer",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-005",
+   "name": "Feed Dryer (Rotary/Belt)",
+   "category": "Feed & Gasification",
+   "impact_class": "1 Remove / not applicable",
+   "why": "RFI2 #5: the feed is not dried; up to 15% moisture goes straight into the reactor.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-006",
+   "name": "Moisture Analyser",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #5: moisture range is up to 15%, not the assumed 10%; the dryer outlet reading no longer applies.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "FE-007",
+   "name": "Feed Screw / Ram Feeder",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "FE-008",
+   "name": "Air-lock / Rotary Valve",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged (feed only)",
+   "why": "Moves only with the feed rate, not with the agent; RFI2 #5 says the feed is not dried, so check the moisture basis.",
+   "live_model": "yes",
+   "moves_with": "feed"
+  },
+  {
+   "id": "GA-001",
+   "name": "Gasifier Vessel (Reactor)",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #1,#3: tubular reactor heated electrically from outside, no carrier loop, no air reactor, no added agent. The twin models an air-blown carrier reactor.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GA-002",
+   "name": "Gasifier Vessel (Pressure)",
+   "category": "Feed & Gasification",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-003",
+   "name": "Air/Steam Injection (Flow)",
+   "category": "Feed & Gasification",
+   "impact_class": "1 Remove / not applicable",
+   "why": "RFI2 #1,#4: no air or steam is added to the reactor (0 Nm3/h, 0 kg/h).",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-004",
+   "name": "Air/Steam Injection (Temp)",
+   "category": "Feed & Gasification",
+   "impact_class": "1 Remove / not applicable",
+   "why": "RFI2 #4,#10: no injected air or steam, so no injection temperature or preheat.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-005",
+   "name": "Bed Drain / Ash Discharge System",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #9: ash is separated at the reactor exit and removed by a spindle into a separate container, not a bed drain.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-006",
+   "name": "Char / Ash Conveyor",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #8: char/carbon black is 40 to 50% of the feed (17 to 21 kg/h), about 10 times the twin's 1.7 to 2 kg/h.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-007",
+   "name": "Char Collection Bin",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #8: bin sizing depends on the 17 to 21 kg/h char flow.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-008",
+   "name": "Carbon Black Recovery & Classification Unit",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #8: registry capacity 3 kg/h against 17 to 21 kg/h expected.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-009",
+   "name": "Ash Aggregate Processing & Packaging Unit",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #8,#9: ash and carbon-black flows differ; it is unclear whether char includes ash.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GA-010",
+   "name": "Carbon Black Packaging & Storage Silo",
+   "category": "Feed & Gasification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #8: silo and packaging sized for 2 kg/h class flow.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-001",
+   "name": "Primary Cyclone (Temp)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-002",
+   "name": "Primary Cyclone (ΔP)",
+   "category": "Gas Cleaning",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-003",
+   "name": "Secondary Cyclone",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-004",
+   "name": "Quench Tower (Temp)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-005",
+   "name": "Quench Tower (Water)",
+   "category": "Gas Cleaning",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-006",
+   "name": "Tar Removal Unit",
+   "category": "Gas Cleaning",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-007",
+   "name": "Wet Scrubber (Tar)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-008",
+   "name": "Wet Scrubber (H₂S)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-009",
+   "name": "HCl Scrubber (Alkaline)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-010",
+   "name": "Bag Filter (Dust)",
+   "category": "Gas Cleaning",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-011",
+   "name": "Bag Filter (ΔP)",
+   "category": "Gas Cleaning",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-012",
+   "name": "Activated Carbon Filter",
+   "category": "Gas Cleaning",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-013",
+   "name": "Gas Blower / ID Fan (Flow)",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "GC-014",
+   "name": "Gas Blower (Pressure)",
+   "category": "Gas Cleaning",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "GC-015",
+   "name": "Condensate Tank",
+   "category": "Gas Cleaning",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "SA-001",
+   "name": "Gas Analyser (H₂)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-002",
+   "name": "Gas Analyser (CO)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-003",
+   "name": "Gas Analyser (CO₂)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-004",
+   "name": "Gas Analyser (CH₄)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-005",
+   "name": "Gas Analyser (N₂)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-006",
+   "name": "Gas Calorimeter / LHV",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "SA-007",
+   "name": "Tar Sampling Port",
+   "category": "Syngas Analysis",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "SA-008",
+   "name": "H₂S / COS Analyser",
+   "category": "Syngas Analysis",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "SA-009",
+   "name": "Dust / Particulate Monitor",
+   "category": "Syngas Analysis",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "SA-010",
+   "name": "Gas Flow Meter (Clean)",
+   "category": "Syngas Analysis",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "SA-011",
+   "name": "Gas Temperature Sensor",
+   "category": "Syngas Analysis",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "SA-012",
+   "name": "Gas Pressure Sensor",
+   "category": "Syngas Analysis",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-001",
+   "name": "WGS Reactor HTS (Temp)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "HB-002",
+   "name": "WGS Reactor HTS (CO Conv.)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-003",
+   "name": "Heat Exchanger (WGS)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "HB-004",
+   "name": "WGS Reactor LTS",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "HB-005",
+   "name": "Steam Generator (WGS)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "2 Redefine",
+   "why": "RFI2 #4: no steam goes to the reactor; its role (steam for the gasifier) disappears. It may remain only if WGS needs steam.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "HB-006",
+   "name": "PSA Unit (H₂ Purity)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays. Note RFI2 #7: DOK-ING does not yet separate hydrogen by PSA; this item is the planned chain, not existing equipment.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "HB-007",
+   "name": "PSA Unit (H₂ Recovery)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm. Note RFI2 #7: DOK-ING does not yet separate hydrogen by PSA; this item is the planned chain, not existing equipment.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-008",
+   "name": "PSA Unit (Pressure)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm. Note RFI2 #7: DOK-ING does not yet separate hydrogen by PSA; this item is the planned chain, not existing equipment.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-009",
+   "name": "PSA Tail Gas Handler",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays. Note RFI2 #7: DOK-ING does not yet separate hydrogen by PSA; this item is the planned chain, not existing equipment.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "HB-010",
+   "name": "Membrane Separator",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays. Note RFI2 #7: DOK-ING does not yet separate hydrogen by PSA; this item is the planned chain, not existing equipment.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc"
+  },
+  {
+   "id": "HB-011",
+   "name": "Electrolyser (Green H₂) — Auxiliary/Optional",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-012",
+   "name": "H₂ Compressor",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "HB-013",
+   "name": "H₂ Storage Vessel",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "HB-014",
+   "name": "LOHC Hydrogenation / Loading Reactor",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-015",
+   "name": "LOHC Storage Tank (Lean/Rich Oil)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-016",
+   "name": "LOHC Dehydrogenation Unit — Auxiliary/Optional",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-017",
+   "name": "H₂ Purification (Post-LOHC Dehydrogenation)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "HB-018",
+   "name": "H₂ Dispensing Station (Mobility/FCEV Refuelling)",
+   "category": "H2 Boosting & Purification",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "EU-001",
+   "name": "SOFC Stack (Temp)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "no model",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-002",
+   "name": "SOFC Stack (Efficiency)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-003",
+   "name": "Gas Engine / Genset (Power)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-004",
+   "name": "Gas Engine (Thermal Eff.)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-005",
+   "name": "Microturbine",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-006",
+   "name": "H₂ Fuel Cell (Stationary)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-007",
+   "name": "Flare / Emergency Burner",
+   "category": "Energy Utilisation",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "EU-008",
+   "name": "Cooling Tower",
+   "category": "Energy Utilisation",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "EU-009",
+   "name": "Electrical Metering (Grid)",
+   "category": "Energy Utilisation",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "EU-010",
+   "name": "UPS / Battery Buffer",
+   "category": "Energy Utilisation",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "EU-011",
+   "name": "Heat Recovery Unit",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-012",
+   "name": "District Heating HX",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "EU-013",
+   "name": "Thermal Energy Metering (District Heat)",
+   "category": "Energy Utilisation",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-001",
+   "name": "Weather Station",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-002",
+   "name": "Camera / Vision System",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-003",
+   "name": "Bed Pressure-Drop Sensor",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-004",
+   "name": "PLC (Main Control)",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-005",
+   "name": "OPC-UA Gateway",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-006",
+   "name": "MQTT Broker",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-007",
+   "name": "DCS / SCADA Server",
+   "category": "AI Control & Instruments",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "AI-008",
+   "name": "Edge Computing Server",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-009",
+   "name": "Cybersecurity Firewall (ICS)",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-010",
+   "name": "Cloud IoT Hub",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-011",
+   "name": "Time-Series Database",
+   "category": "AI Control & Instruments",
+   "impact_class": "3 Inputs change",
+   "why": "Its live values move with the air ratio, steam ratio or carbon conversion; with no agent and a new char split the gas and flows change. The item itself stays.",
+   "live_model": "yes",
+   "moves_with": "er, st, cc, feed"
+  },
+  {
+   "id": "AI-012",
+   "name": "AI Model Server (MPC/RL)",
+   "category": "AI Control & Instruments",
+   "impact_class": "2 Redefine",
+   "why": "MPC/RL setpoints use equivalence ratio and steam-to-feed as manipulated variables, which no longer exist.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-013",
+   "name": "Digital Twin Engine",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-014",
+   "name": "Multi-Module Orchestration Controller",
+   "category": "AI Control & Instruments",
+   "impact_class": "5 Unchanged",
+   "why": "No dependence found on the removed inputs.",
+   "live_model": "yes",
+   "moves_with": ""
+  },
+  {
+   "id": "AI-015",
+   "name": "RFNBO Compliance & Guarantee-of-Origin Monitor — Auxiliary/Optional",
+   "category": "AI Control & Instruments",
+   "impact_class": "4 Check text",
+   "why": "No live value moves, but its registry text mentions air, steam, preheat, drying, char/ash or PSA. Read and confirm.",
+   "live_model": "yes",
+   "moves_with": ""
+  }
+ ]
+}
