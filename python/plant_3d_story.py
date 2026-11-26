@@ -44,7 +44,7 @@ def story_data(snapshot):
                    f"Hydrogen: {_f(sm['h2_kg_day'])} kg/day (model). DOK-ING states about {ref:.0f} kg/day for plastic waste (RFI #6)."]},
         {"key": "feed", "title": "1 · Feed handling", "group": "FE", "focus": [], "status": "Assumed basis",
          "lines": [f"Feed: {_f(sm['feed_kg_h'], '%.2f')} kg/h (DOK-ING's stated 1 tonne/day).",
-                   "The wet or dry basis is not stated by DOK-ING; the model treats it as as-received."]},
+                   "The wet or dry basis is not stated by DOK-ING; the model treats it as as-received. DOK-ING (RFI2): the feed is not dried (up to 15% moisture), so the dryer FE-005 evaporates nothing in the model."]},
         {"key": "gasification", "title": "2 · Gasification", "group": "GA", "focus": ["GA-001"], "status": "Calculated from Assumed inputs",
          "lines": [f"Dry N2 in the product gas: {_f(n2)} vol% (registry expects {_f(reg_n2, '%.0f')} vol%).",
                    "DOK-ING (RFI2): no air, steam or oxygen is added and the reactor is heated electrically from outside; the model follows that. Char is 40 to 50% of the feed (DOK-ING); the 45% midpoint is Assumed."]},
@@ -53,11 +53,11 @@ def story_data(snapshot):
                    "Cleaning targets are registry values; the feed sulfur and chlorine contents are Assumed inputs."]},
         {"key": "hydrogen", "title": "4 · Hydrogen and balance of plant", "group": "HB", "focus": ["HB-006"], "status": "Calculated",
          "lines": [f"PSA recovery {_f(None if sm['psa_recovery'] is None else 100 * sm['psa_recovery'])} %; hydrogen {_f(sm['h2_kg_day'])} kg/day.",
-                   "The shift and PSA figures are correlations calibrated to design targets, not plant data."]},
+                   "The shift and PSA figures are correlations calibrated to design targets, not plant data. DOK-ING (RFI2): the PSA does not exist yet, so this chain is the NACHIP design, not existing DOK-ING equipment."]},
         {"key": "utilities", "title": "5 · Electrical and utilities", "group": "EU", "focus": ["EU-008"], "status": "Calculated",
          "lines": [(f"Cooling demand in the model: about {cool['demand_kw']:.0f} kW; the registry lists a {cool['rating_kw']:.0f} kW cooling tower."
                     if cool else "Cooling demand could not be read this cycle."),
-                   "The model has no heat-integration equipment: heat terms are an inventory, not a design."]},
+                   "The model has no heat-integration equipment: heat terms are an inventory, not a design. DOK-ING (RFI2) states about 100 kW electric for heating and propulsion; the model has no electric heating term (Missing)."]},
         {"key": "control", "title": "6 · Sensors and automation", "group": "SA", "focus": [], "status": "Simulated",
          "lines": ["No physical sensors exist yet: sensor and AI items show model values, labelled simulated.",
                    "Nothing here is trained on or validated against plant data."]},
@@ -67,7 +67,8 @@ def story_data(snapshot):
         {"id": "cooling", "title": "Cooling capacity", "items": FINDING_ITEMS["cooling"], "status": "Calculated (Assumed inputs)",
          "lines": ([f"Model peak cooling demand about {cool['demand_kw']:.0f} kW against a registry rating of {cool['rating_kw']:.0f} kW."]
                    if cool else ["Cooling demand could not be read this cycle."]) +
-                  ["The 20 kW is Unverified (registry); its remark scopes it to EU-004 jacket cooling."],
+                  ["The 20 kW is Unverified (registry); its remark scopes it to EU-004 jacket cooling."] +
+                  (["On DOK-ING's RFI2 basis the model demand is below that rating; the earlier air-blown basis gave about 40 kW."] if cool and cool["demand_kw"] < cool["rating_kw"] else []),
          "ask": "What cooling capacity is installed for the whole plant?"},
         {"id": "gas", "title": "Gas composition", "items": FINDING_ITEMS["gas"], "status": "Calculated (Assumed inputs)",
          "lines": [f"Dry N2 {_f(n2)} vol% in the model against {_f(reg_n2, '%.0f')} vol% expected in the registry.",
