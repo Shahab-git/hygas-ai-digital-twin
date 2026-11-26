@@ -1085,3 +1085,22 @@ conversation. Section 3's own bucket reconciled against the live model
 (see immediately above), and the grand total's own headline figure updated
 from 291 to 284 to match it on 2026-09-04; no other section's figures were
 re-verified in either pass.*
+
+---
+
+## Update 2026-11-26 — DOK-ING RFI2 replies change items 5 and 6 (appended; the text above is the earlier record)
+
+DOK-ING answered the RFI2 short form (`data/dokink_rfi_answers.md`, end of file; engine default since PR #99, text follow-ups in PR #100). DOK-ING cannot be asked further questions, so the points below are closed as far as DOK-ING's replies go, and what remains is an Assumed project reading.
+
+**Item 5 (Fe2O3/Fe3O4 oxygen-carrier circulation) — answered, as not applicable.** DOK-ING states there is no carrier loop and no air reactor: a tubular reactor heated externally by electric heaters (about 100 kW electric for heating and propulsion). The registry's steam-blown chemical-looping description of GA-001 is therefore contradicted; the carrier circulation rate and capacity questions fall away. The registry itself is not edited (`data/equipment_registry.json` is DOK-ING's static extract).
+
+**Item 6 (GA-001/GA-003 primary air flow) — answered.** No gasifying agent is added (0 Nm3/h air, 0 kg/h steam); N2 is used only for inerting; no ASU; preheat is not applicable. GA-003 and GA-004 are classed "Remove / not applicable" in `docs/rfi2_item_impact.md`, as is the FE-005 dryer (feed not dried, up to 15 % moisture). The earlier 39.6 % N2 versus the registry's 10 % divergence described the air-blown model, which is now the non-default basis.
+
+**What is still open (cannot be settled by DOK-ING any more; Assumed in the model):**
+- Char share: DOK-ING gave 40 to 50 % of the 41.67 kg/h feed as carbon black/char; the model takes 45 % (midpoint). H2 at 10 cycles is about 23.9 / 13.6 / 4.6 kg/day at 40 / 45 / 50 %. Whether the char share includes ash is not stated.
+- Syngas composition at the reactor exit is not stated. The engine has no pyrolysis or tar chemistry (equilibrium solve with a carbon-conversion cap), so the gas composition is an estimate, not a pyrolysis-gas prediction.
+- External electric heat duty is Missing (the engine has no heating term).
+- The PSA does not exist at DOK-ING yet; the WGS/PSA/CHP chain is this project's planned design, not existing DOK-ING equipment.
+- `python/uncertainty.py` still propagates "air equivalence ratio" as an unconfirmed assumption (air basis); that module is not changed.
+
+Reference: `CLAUDE.md` (RFI2 section), `docs/rfi2_dokink.md`, `docs/rfi2_item_impact.md`, `python/rfi2_basis.py` (both bases, switchable).
